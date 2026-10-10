@@ -1,0 +1,4 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root{color-scheme:light}body{margin:0;background:#f6f8fc;color:#182339;font-family:ui-sans-serif,system-ui,"Noto Sans TC",sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #90c2ff;outline-offset:2px}
