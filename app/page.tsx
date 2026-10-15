@@ -18,6 +18,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
+import { QuestionFilterPanel, SubjectFilter } from "./components/question-filter-panel";
 import { RolePinKeypad } from "./components/role-pin-keypad";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, CheckMode,
@@ -26,6 +27,9 @@ import {
     PlanQuestionKind, QuestionMetadataField, ROLE_OPTIONS, RoleAccess, ScheduledPractice, Section,
     SEMESTER_OPTIONS, StoredState, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
+import {
+    DEFAULT_QUESTION_FILTERS, filterQuestions, normalizeQuestionFilters, QuestionFilters,
+} from "./lib/question-filters";
 
 interface QuestionFlowProps {
     /** 目前題目。 */
@@ -70,17 +74,6 @@ interface PracticeFieldLabelProps {
     label: string;
     /** 子標題配色。 */
     className?: string;
-}
-
-interface SubjectFilterProps {
-    /** 目前年級可使用的科目。 */
-    subjects: Subject[];
-    /** 目前選取的科目。 */
-    value: Subject | "全部";
-    /** 元件所在區塊的額外樣式。 */
-    className?: string;
-    /** 科目更新事件。 */
-    onChange: (value: Subject | "全部") => void;
 }
 
 interface QuestionLimitControlProps {
@@ -134,38 +127,9 @@ const AVATAR_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MISTAKE_PAGE_SIZE = 10;
 const RECENT_IMPORT_LIMIT = 10;
 const QUESTION_OVERVIEW_PAGE_SIZE = 12;
-const ALL_QUESTION_FILTERS = "all";
 /** 顯示練習設定欄位共用的圖示與標題。 */
 function PracticeFieldLabel({ icon: Icon, label, className = "" }: PracticeFieldLabelProps) {
     return <span className={`practice-field-label ${className}`}><Icon aria-hidden="true" />{label}</span>;
-}
-
-/** 顯示各頁共用的科目篩選按鈕。 */
-function SubjectFilter({ subjects, value, className = "", onChange }: SubjectFilterProps) {
-    const options: { value: Subject | "全部"; label: string }[] = [
-        { value: "全部", label: "全部" },
-        ...subjects.map((subject) => ({ value: subject, label: subject })),
-    ];
-
-    return (
-        <fieldset className={`subject-filter grid gap-2 ${className}`.trim()}>
-            <legend><PracticeFieldLabel className="field-dot-violet" icon={Library} label="科目" /></legend>
-            <div className="subject-filter-options">
-                {options.map((option) => (
-                    <button
-                        aria-pressed={value === option.value}
-                        className="plan-choice plan-subject-choice"
-                        data-selected={value === option.value}
-                        key={option.value}
-                        onClick={() => onChange(option.value)}
-                        type="button"
-                    >
-                        <span className="text-sm font-semibold">{option.label}</span>
-                    </button>
-                ))}
-            </div>
-        </fieldset>
-    );
 }
 
 /** 判斷題目是否必須以手寫方式作答並交由 AI 辨識。 */
@@ -1179,18 +1143,11 @@ export default function Home() {
     const [sessionExitOpen, setSessionExitOpen] = useState(false);
     const [answer, setAnswer] = useState("");
     const [handwriting, setHandwriting] = useState("");
-    const [mistakeSubject, setMistakeSubject] = useState<Subject | "全部">("全部");
-    const [mistakeScope, setMistakeScope] = useState(ALL_UNITS);
+    const [mistakeFilters, setMistakeFilters] = useState<QuestionFilters>(DEFAULT_QUESTION_FILTERS);
     const [mistakePage, setMistakePage] = useState(1);
     const [mistakeRankingView, setMistakeRankingView] = useState<"personal" | "community">("personal");
     const [selectedMistakes, setSelectedMistakes] = useState<number[]>([]);
-    const [questionSubject, setQuestionSubject] = useState<Subject | "全部">("全部");
-    const [questionVersion, setQuestionVersion] = useState(ALL_QUESTION_FILTERS);
-    const [questionScope, setQuestionScope] = useState(ALL_UNITS);
-    const [questionKind, setQuestionKind] = useState(ALL_QUESTION_FILTERS);
-    const [questionSource, setQuestionSource] = useState(ALL_QUESTION_FILTERS);
-    const [questionCollection, setQuestionCollection] = useState(ALL_QUESTION_FILTERS);
-    const [questionSearch, setQuestionSearch] = useState("");
+    const [questionFilters, setQuestionFilters] = useState<QuestionFilters>(DEFAULT_QUESTION_FILTERS);
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
     const [selectedQuestionId, setSelectedQuestionId] = useState<number>();
     const [questionPage, setQuestionPage] = useState(1);
@@ -1290,42 +1247,10 @@ export default function Home() {
         () => questionCollectionsByLearner[activeLearnerId] ?? [],
         [activeLearnerId, questionCollectionsByLearner],
     );
-    const questionVersionOptions = useMemo(() => [
-        { value: ALL_QUESTION_FILTERS, label: "全部版本" },
-        ...[...new Set(learnerQuestions.map((question) => question.bookVersion).filter((version): version is string => Boolean(version)))]
-            .map((version) => ({ value: version, label: version })),
-    ], [learnerQuestions]);
-    const questionScopeOptions = useMemo(() => {
-        const candidates = learnerQuestions
-            .filter((question) => questionSubject === "全部" || question.subject === questionSubject)
-            .filter((question) => questionVersion === ALL_QUESTION_FILTERS || question.bookVersion === questionVersion);
-        const scopes = new Map(candidates.map((question) => [
-            getUnitScopeValue(question),
-            questionSubject === "全部" ? `${question.subject} · ${getUnitLabel(question.unit)}` : getUnitLabel(question.unit),
-        ]));
-        return [{ value: ALL_UNITS, label: "全部單元" }, ...[...scopes].map(([value, label]) => ({ value, label }))];
-    }, [learnerQuestions, questionSubject, questionVersion]);
-    const questionSourceOptions = useMemo(() => [
-        { value: ALL_QUESTION_FILTERS, label: "全部來源" },
-        ...[...new Set(learnerQuestions.map((question) => question.source))].map((source) => ({ value: source, label: source })),
-    ], [learnerQuestions]);
-    const questionCollectionOptions = useMemo(() => [
-        { value: ALL_QUESTION_FILTERS, label: "全部題目" },
-        ...activeQuestionCollections.map((collection) => ({ value: collection.id, label: `${collection.name}（${collection.questionIds.length}）` })),
-    ], [activeQuestionCollections]);
-    const filteredOverviewQuestions = useMemo(() => {
-        const collectionIds = activeQuestionCollections.find((collection) => collection.id === questionCollection)?.questionIds;
-        const keyword = questionSearch.trim().toLocaleLowerCase();
-        return learnerQuestions
-            .filter((question) => questionSubject === "全部" || question.subject === questionSubject)
-            .filter((question) => questionVersion === ALL_QUESTION_FILTERS || question.bookVersion === questionVersion)
-            .filter((question) => questionScope === ALL_UNITS || getUnitScopeValue(question) === questionScope)
-            .filter((question) => questionKind === ALL_QUESTION_FILTERS || question.kind === questionKind)
-            .filter((question) => questionSource === ALL_QUESTION_FILTERS || question.source === questionSource)
-            .filter((question) => !collectionIds || collectionIds.includes(question.id))
-            .filter((question) => !keyword || [question.code, question.prompt, question.knowledge, question.topic, question.source]
-                .some((value) => value?.toLocaleLowerCase().includes(keyword)));
-    }, [activeQuestionCollections, learnerQuestions, questionCollection, questionKind, questionScope, questionSearch, questionSource, questionSubject, questionVersion]);
+    const filteredOverviewQuestions = useMemo(
+        () => filterQuestions(learnerQuestions, questionFilters, activeQuestionCollections),
+        [activeQuestionCollections, learnerQuestions, questionFilters],
+    );
     const questionPageCount = Math.max(1, Math.ceil(filteredOverviewQuestions.length / QUESTION_OVERVIEW_PAGE_SIZE));
     const activeQuestionPage = Math.min(questionPage, questionPageCount);
     const pagedOverviewQuestions = filteredOverviewQuestions.slice((activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE, activeQuestionPage * QUESTION_OVERVIEW_PAGE_SIZE);
@@ -1461,22 +1386,18 @@ export default function Home() {
     const rankingQuestions = useMemo(() => mistakeRankingView === "personal"
         ? mistakeQuestions
         : communityMistakeRows.map((row) => row.question), [communityMistakeRows, mistakeQuestions, mistakeRankingView]);
-    const mistakeScopeOptions = useMemo(() => {
-        const subjectQuestions = mistakeSubject === "全部"
-            ? rankingQuestions
-            : rankingQuestions.filter((question) => question.subject === mistakeSubject);
-        const scopes = new Map(subjectQuestions.map((question) => [
-            getUnitScopeValue(question),
-            mistakeSubject === "全部" ? `${question.subject} · ${getUnitLabel(question.unit)}` : getUnitLabel(question.unit),
-        ]));
-        return [{ value: ALL_UNITS, label: "全部單元" }, ...[...scopes].map(([value, label]) => ({ value, label }))];
-    }, [mistakeSubject, rankingQuestions]);
-    const visibleMistakeQuestions = useMemo(() => mistakeQuestions
-        .filter((question) => mistakeSubject === "全部" || question.subject === mistakeSubject)
-        .filter((question) => mistakeScope === ALL_UNITS || getUnitScopeValue(question) === mistakeScope), [mistakeQuestions, mistakeScope, mistakeSubject]);
-    const visibleCommunityMistakeRows = useMemo(() => communityMistakeRows
-        .filter(({ question }) => mistakeSubject === "全部" || question.subject === mistakeSubject)
-        .filter(({ question }) => mistakeScope === ALL_UNITS || getUnitScopeValue(question) === mistakeScope), [communityMistakeRows, mistakeScope, mistakeSubject]);
+    const filteredRankingQuestions = useMemo(
+        () => filterQuestions(rankingQuestions, mistakeFilters, activeQuestionCollections),
+        [activeQuestionCollections, mistakeFilters, rankingQuestions],
+    );
+    const filteredRankingIds = useMemo(
+        () => new Set(filteredRankingQuestions.map((question) => question.id)),
+        [filteredRankingQuestions],
+    );
+    const visibleMistakeQuestions = mistakeRankingView === "personal" ? filteredRankingQuestions : [];
+    const visibleCommunityMistakeRows = useMemo(() => mistakeRankingView === "community"
+        ? communityMistakeRows.filter(({ question }) => filteredRankingIds.has(question.id))
+        : [], [communityMistakeRows, filteredRankingIds, mistakeRankingView]);
     const mistakeResultCount = mistakeRankingView === "personal" ? visibleMistakeQuestions.length : visibleCommunityMistakeRows.length;
     const mistakePageCount = Math.max(1, Math.ceil(mistakeResultCount / MISTAKE_PAGE_SIZE));
     const activeMistakePage = Math.min(mistakePage, mistakePageCount);
@@ -1554,17 +1475,10 @@ export default function Home() {
 
     useEffect(() => {
         setImportGrade(activeLearner.grade);
-        setMistakeSubject("全部");
-        setMistakeScope(ALL_UNITS);
+        setMistakeFilters(DEFAULT_QUESTION_FILTERS);
         setMistakePage(1);
         setSelectedMistakes([]);
-        setQuestionSubject("全部");
-        setQuestionVersion(ALL_QUESTION_FILTERS);
-        setQuestionScope(ALL_UNITS);
-        setQuestionKind(ALL_QUESTION_FILTERS);
-        setQuestionSource(ALL_QUESTION_FILTERS);
-        setQuestionCollection(ALL_QUESTION_FILTERS);
-        setQuestionSearch("");
+        setQuestionFilters(DEFAULT_QUESTION_FILTERS);
         setSelectedQuestionIds([]);
         setSelectedQuestionId(undefined);
         setQuestionPage(1);
@@ -1586,21 +1500,24 @@ export default function Home() {
     }, [activeQuestionCollections, targetCollectionId]);
 
     useEffect(() => {
-        if (questionScope === ALL_UNITS || questionScopeOptions.some((option) => option.value === questionScope)) return;
-        setQuestionScope(ALL_UNITS);
+        const normalized = normalizeQuestionFilters(questionFilters, learnerQuestions, activeQuestionCollections);
+        if (JSON.stringify(normalized) === JSON.stringify(questionFilters)) return;
+        setQuestionFilters(normalized);
         setQuestionPage(1);
         setSelectedQuestionIds([]);
-    }, [questionScope, questionScopeOptions]);
+    }, [activeQuestionCollections, learnerQuestions, questionFilters]);
 
     useEffect(() => {
         if (!selectedImportBookId || availableImportBooks.some((book) => book.id === selectedImportBookId)) return;
         setSelectedImportBookId("");
     }, [availableImportBooks, selectedImportBookId]);
     useEffect(() => {
-        if (mistakeScope === ALL_UNITS || mistakeScopeOptions.some((option) => option.value === mistakeScope)) return;
-        setMistakeScope(ALL_UNITS);
+        const normalized = normalizeQuestionFilters(mistakeFilters, rankingQuestions, activeQuestionCollections);
+        if (JSON.stringify(normalized) === JSON.stringify(mistakeFilters)) return;
+        setMistakeFilters(normalized);
         setMistakePage(1);
-    }, [mistakeScope, mistakeScopeOptions]);
+        setSelectedMistakes([]);
+    }, [activeQuestionCollections, mistakeFilters, rankingQuestions]);
     useEffect(() => {
         if (activePlan.subject === "全部" || availableSubjects.includes(activePlan.subject as Subject)) return;
         setPlansByLearner((current) => ({
@@ -2115,13 +2032,7 @@ export default function Home() {
 
     /** 清除題目總覽的所有篩選與勾選狀態。 */
     function resetQuestionFilters() {
-        setQuestionSubject("全部");
-        setQuestionVersion(ALL_QUESTION_FILTERS);
-        setQuestionScope(ALL_UNITS);
-        setQuestionKind(ALL_QUESTION_FILTERS);
-        setQuestionSource(ALL_QUESTION_FILTERS);
-        setQuestionCollection(ALL_QUESTION_FILTERS);
-        setQuestionSearch("");
+        setQuestionFilters(DEFAULT_QUESTION_FILTERS);
         setSelectedQuestionIds([]);
         setQuestionPage(1);
     }
@@ -3247,13 +3158,6 @@ export default function Home() {
 
     /** 顯示可篩選、批次整理與建立練習計劃的題目總覽。 */
     function renderQuestionOverview() {
-        const kindOptions = [
-            { value: ALL_QUESTION_FILTERS, label: "全部題型" },
-            { value: "choice", label: "選擇題" },
-            { value: "multi-choice", label: "複合選擇題" },
-            { value: "boolean", label: "是非題" },
-            { value: "written", label: "書寫題" },
-        ];
         const targetOptions = activeQuestionCollections.length
             ? activeQuestionCollections.map((collection) => ({ value: collection.id, label: collection.name }))
             : [{ value: "", label: "請先建立收藏清單", disabled: true }];
@@ -3278,26 +3182,23 @@ export default function Home() {
             <Card className="workspace-card question-overview-card border-border/80 shadow-sm">
                 <CardHeader><WorkspaceHeading icon={ListChecks} title="題目總覽" description="篩選全部題目、整理收藏清單，或將目前結果建立為練習計劃。" /></CardHeader>
                 <CardContent className="question-overview-content">
-                    <section className="question-filter-panel" aria-labelledby="question-filter-title">
-                        <div className="question-filter-heading"><div><h3 id="question-filter-title">篩選題目</h3><p>條件會同時套用到列表與「全部篩選結果」批次範圍。</p></div><Button appearance="ghost" tone="muted" size="sm" onClick={resetQuestionFilters}><RotateCcw />清除篩選</Button></div>
-                        <div className="question-filter-grid">
-                            <SubjectFilter className="question-filter-subject" subjects={availableSubjects} value={questionSubject} onChange={(value) => { setQuestionSubject(value); setQuestionScope(ALL_UNITS); setQuestionPage(1); setSelectedQuestionIds([]); }} />
-                            <FormField label="版本"><NativeSelect options={questionVersionOptions} value={questionVersion} onChange={(event) => { setQuestionVersion(event.target.value); setQuestionScope(ALL_UNITS); setQuestionPage(1); setSelectedQuestionIds([]); }} /></FormField>
-                            <FormField label="單元"><NativeSelect options={questionScopeOptions} value={questionScope} onChange={(event) => { setQuestionScope(event.target.value); setQuestionPage(1); setSelectedQuestionIds([]); }} /></FormField>
-                            <FormField label="題型"><NativeSelect options={kindOptions} value={questionKind} onChange={(event) => { setQuestionKind(event.target.value); setQuestionPage(1); setSelectedQuestionIds([]); }} /></FormField>
-                            <FormField label="來源"><NativeSelect options={questionSourceOptions} value={questionSource} onChange={(event) => { setQuestionSource(event.target.value); setQuestionPage(1); setSelectedQuestionIds([]); }} /></FormField>
-                            <FormField label="收藏清單"><NativeSelect options={questionCollectionOptions} value={questionCollection} onChange={(event) => { setQuestionCollection(event.target.value); setQuestionPage(1); setSelectedQuestionIds([]); }} /></FormField>
-                            <div className="question-filter-create"><Button appearance="outline" onClick={() => { setCollectionDialogOpen(true); setQuestionActionStatus(""); }}><Plus />新增收藏清單</Button></div>
-                        </div>
-                    </section>
+                    <QuestionFilterPanel
+                        idPrefix="question-overview"
+                        subjects={availableSubjects}
+                        questions={learnerQuestions}
+                        collections={activeQuestionCollections}
+                        value={questionFilters}
+                        onChange={(filters) => { setQuestionFilters(filters); setQuestionPage(1); setSelectedQuestionIds([]); }}
+                        onReset={resetQuestionFilters}
+                    />
 
                     <section className="question-list-section" aria-labelledby="question-list-title">
                         <div className="question-list-heading">
                             <div className="question-list-title"><h3 id="question-list-title">題目清單</h3><span>共 {filteredOverviewQuestions.length} 題</span></div>
                             <div className="question-list-heading-actions">
-                                <div className="question-search question-list-search"><Search aria-hidden="true" /><Input aria-label="搜尋題目" value={questionSearch} placeholder="搜尋題目、編號或來源" onChange={(event) => { setQuestionSearch(event.target.value); setQuestionPage(1); setSelectedQuestionIds([]); }} /></div>
                                 <label className="question-select-page"><Checkbox checked={allFilteredSelected} indeterminate={selectedFilteredCount > 0 && !allFilteredSelected} onChange={(event) => toggleQuestions(filteredQuestionIds, event.target.checked)} />選取全部頁面</label>
                                 <Badge tone="muted">第 {activeQuestionPage}／{questionPageCount} 頁</Badge>
+                                <Button appearance="outline" onClick={() => { setCollectionDialogOpen(true); setQuestionActionStatus(""); }}><Plus />新增收藏清單</Button>
                                 <Button appearance="outline" onClick={() => { setQuestionActionStatus(""); setQuestionBatchOpen(true); }}><FolderInput />批次動作</Button>
                             </div>
                         </div>
@@ -3640,25 +3541,20 @@ export default function Home() {
 
     /** 顯示個人與社群錯題排行。 */
     function renderMistakes() {
-        const visibleQueue = usableQueue.filter((id) => {
-            const question = questions.find((item) => item.id === id);
-            return (mistakeSubject === "全部" || question?.subject === mistakeSubject)
-                && (mistakeScope === ALL_UNITS || (question && getUnitScopeValue(question) === mistakeScope));
-        });
+        const queuedQuestions = questions.filter((question) => usableQueue.includes(question.id));
+        const visibleQueue = filterQuestions(queuedQuestions, mistakeFilters, activeQuestionCollections)
+            .map((question) => question.id);
 
-        /** 切換錯題科目時清除跨科勾選，避免批次複習混入隱藏題目。 */
-        function changeMistakeSubject(value: string) {
-            if (value !== "全部" && !availableSubjects.includes(value as Subject)) return;
-            setMistakeSubject(value as Subject | "全部");
-            setMistakeScope(ALL_UNITS);
+        /** 套用錯題篩選並清除隱藏題目的勾選狀態。 */
+        function changeMistakeFilters(filters: QuestionFilters) {
+            setMistakeFilters(filters);
             setMistakePage(1);
             setSelectedMistakes([]);
         }
 
-        /** 切換錯題章節範圍時清除隱藏題目的勾選狀態。 */
-        function changeMistakeScope(value: string) {
-            if (!mistakeScopeOptions.some((option) => option.value === value)) return;
-            setMistakeScope(value);
+        /** 清除錯題英雄榜的所有篩選與勾選狀態。 */
+        function resetMistakeFilters() {
+            setMistakeFilters(DEFAULT_QUESTION_FILTERS);
             setMistakePage(1);
             setSelectedMistakes([]);
         }
@@ -3666,8 +3562,9 @@ export default function Home() {
         /** 切換排行來源並重設只適用於上一個排行的範圍與勾選。 */
         function changeMistakeRanking(value: string) {
             if (value !== "personal" && value !== "community") return;
+            const nextQuestions = value === "personal" ? mistakeQuestions : communityMistakeRows.map((row) => row.question);
             setMistakeRankingView(value);
-            setMistakeScope(ALL_UNITS);
+            setMistakeFilters((current) => normalizeQuestionFilters(current, nextQuestions, activeQuestionCollections));
             setMistakePage(1);
             setSelectedMistakes([]);
         }
@@ -3694,29 +3591,30 @@ export default function Home() {
                             <TabsTrigger value="personal"><UserCheck />個人錯題排行</TabsTrigger>
                             <TabsTrigger value="community"><Users />社群錯題排行</TabsTrigger>
                         </TabsList>
-                        <div className="mistake-toolbar">
-                            <SubjectFilter subjects={availableSubjects} value={mistakeSubject} onChange={changeMistakeSubject} />
-                            <div className="mistake-filter-row">
-                                <div className="min-w-0 flex-1 sm:max-w-sm">
-                                    <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={BookOpen} label="章節／單元" />}>
-                                        <NativeSelect aria-label="篩選錯題範圍" options={mistakeScopeOptions} value={mistakeScope} onChange={(event) => changeMistakeScope(event.target.value)} />
-                                    </FormField>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge tone="muted">目前顯示 {mistakeResultCount} 題</Badge>
-                                    {mistakeRankingView === "personal" && visibleQueue.length > 0 && <Button appearance="outline" onClick={() => beginSession("similar", visibleQueue, "instant")}><Sparkles />開始後續練習（{visibleQueue.length}）</Button>}
-                                    {mistakeRankingView === "personal" && <Button appearance="outline" disabled={!selectedMistakes.length} onClick={() => openQuestionPlan(selectedMistakes, "錯題")}><CalendarDays />加入練習計劃</Button>}
-                                    {mistakeRankingView === "personal" && <Button disabled={!selectedMistakes.length} onClick={() => beginSession("review", selectedMistakes, "instant", undefined, getWrongPartIdsByQuestion(latestAttempts.filter((attempt) => selectedMistakes.includes(attempt.questionId))))}>複習已選錯題</Button>}
-                                </div>
+                        <QuestionFilterPanel
+                            idPrefix="mistake-ranking"
+                            subjects={availableSubjects}
+                            questions={rankingQuestions}
+                            collections={activeQuestionCollections}
+                            value={mistakeFilters}
+                            onChange={changeMistakeFilters}
+                            onReset={resetMistakeFilters}
+                        />
+                        <div className="mistake-list-heading">
+                            <div className="question-list-title"><h3>{mistakeRankingView === "personal" ? "個人錯題清單" : "社群錯題清單"}</h3><span>共 {mistakeResultCount} 題</span></div>
+                            <div className="mistake-list-actions">
+                                {mistakeRankingView === "personal" && visibleQueue.length > 0 && <Button appearance="outline" size="sm" onClick={() => beginSession("similar", visibleQueue, "instant")}><Sparkles />後續練習（{visibleQueue.length}）</Button>}
+                                {mistakeRankingView === "personal" && <Button appearance="outline" size="sm" disabled={!selectedMistakes.length} onClick={() => openQuestionPlan(selectedMistakes, "錯題")}><CalendarDays />加入計劃</Button>}
+                                {mistakeRankingView === "personal" && <Button size="sm" disabled={!selectedMistakes.length} onClick={() => beginSession("review", selectedMistakes, "instant", undefined, getWrongPartIdsByQuestion(latestAttempts.filter((attempt) => selectedMistakes.includes(attempt.questionId))))}>複習已選</Button>}
                             </div>
                         </div>
                         <TabsContent className="mistake-ranking-content" value="personal">
-                            {!visibleMistakeQuestions.length && <div className="workspace-surface rounded-2xl p-8 text-center"><CheckCircle2 className="mx-auto text-primary" /><p className="mt-3 font-bold">{mistakeSubject === "全部" ? "目前沒有個人錯題" : `${mistakeSubject}目前沒有個人錯題`}</p><p className="mt-1 text-sm text-muted-foreground">完成一輪練習後，最新一次仍答錯的題目會依累計錯誤次數排列。</p>{mistakeSubject === "全部" ? <Button className="mt-4" appearance="outline" onClick={() => navigateToSection("practice")}>前往安排練習</Button> : <Button className="mt-4" appearance="outline" onClick={() => changeMistakeSubject("全部")}>查看全部錯題</Button>}</div>}
+                            {!visibleMistakeQuestions.length && <div className="workspace-surface rounded-2xl p-8 text-center"><CheckCircle2 className="mx-auto text-primary" /><p className="mt-3 font-bold">目前條件沒有個人錯題</p><p className="mt-1 text-sm text-muted-foreground">完成一輪練習後，最新一次仍答錯的題目會依累計錯誤次數排列。</p><Button className="mt-4" appearance="outline" onClick={mistakeQuestions.length ? resetMistakeFilters : () => navigateToSection("practice")}>{mistakeQuestions.length ? "清除篩選" : "前往安排練習"}</Button></div>}
                             {visibleMistakeQuestions.length > 0 && <div className="mistake-table-wrap">
                                 <table className="mistake-table mistake-personal-table">
                                     <thead><tr>
                                         <th className="mistake-select-column" scope="col"><label className="mistake-select" aria-label="選取全部篩選錯題"><Checkbox checked={allVisibleMistakesSelected} onChange={(event) => toggleAllVisibleMistakes(event.target.checked)} /><span className="sr-only">選取全部篩選錯題</span></label></th>
-                                        <th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">最後測驗</th><th scope="col">錯誤次數</th><th scope="col"><span className="sr-only">操作</span></th>
+                                        <th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">最後測驗</th><th scope="col">錯誤次數</th><th scope="col"><span className="sr-only">操作</span></th>
                                     </tr></thead>
                                     <tbody>{pagedMistakeQuestions.map((question, index) => {
                                         const similar = questions.find((item) => item.generatedFrom === question.id && item.grade === activeLearner.grade);
@@ -3727,7 +3625,8 @@ export default function Home() {
                                         return <tr key={question.id}>
                                             <td className="mistake-select-cell"><label className="mistake-select" aria-label={`選取${question.prompt}`}><Checkbox checked={selected} onChange={(event) => setSelectedMistakes((current) => event.target.checked ? [...new Set([...current, question.id])] : current.filter((id) => id !== question.id))} /><span className="sr-only">選取此錯題</span></label></td>
                                             <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                            <td className="mistake-question-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p></td>
+                                            <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{question.source}</small></td>
+                                            <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                             <td data-label="最後測驗"><time className="mistake-meta" dateTime={lastAttempt?.date}>{lastAttempt ? formatAttemptDate(lastAttempt.date) : "尚無紀錄"}</time></td>
                                             <td data-label="錯誤次數"><Badge tone={wrongCount > 1 ? "danger" : "muted"}>{wrongCount} 次</Badge></td>
                                             <td className="mistake-table-actions"><Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, lastAttempt ? getWrongPartIdsByQuestion([lastAttempt]) : undefined)}><RotateCcw />練習</Button><Button appearance="ghost" tone="muted" size="sm" disabled={!similar || usableQueue.includes(similar.id)} onClick={() => queueSimilar([question.id])}>{usableQueue.includes(similar?.id ?? -1) ? "已加入" : "加入後續"}</Button></td>
@@ -3740,10 +3639,11 @@ export default function Home() {
                             {!visibleCommunityMistakeRows.length && <div className="workspace-surface rounded-2xl p-8 text-center"><Users className="mx-auto text-primary" /><p className="mt-3 font-bold">目前沒有社群錯題紀錄</p><p className="mt-1 text-sm text-muted-foreground">社群排行會彙整系統內同年級題目的全部已檢核作答。</p></div>}
                             {visibleCommunityMistakeRows.length > 0 && <div className="mistake-table-wrap">
                                 <table className="mistake-table mistake-community-table">
-                                    <thead><tr><th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">作答次數</th><th scope="col">錯誤次數</th><th scope="col">錯誤率</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
+                                    <thead><tr><th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">作答次數</th><th scope="col">錯誤次數</th><th scope="col">錯誤率</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
                                     <tbody>{pagedCommunityMistakeRows.map(({ question, total, wrong, wrongRate }, index) => <tr key={question.id}>
                                         <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                        <td className="mistake-question-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p></td>
+                                        <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{question.source}</small></td>
+                                        <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                         <td data-label="作答次數"><span className="mistake-meta">{total} 次</span></td>
                                         <td data-label="錯誤次數"><Badge tone={wrong > 1 ? "danger" : "muted"}>{wrong} 次</Badge></td>
                                         <td data-label="錯誤率"><strong>{wrongRate}%</strong></td>
