@@ -158,8 +158,22 @@ textarea:focus-visible,
 }
 
 .sidebar-brand-caption {
+    min-width: 0;
+    flex: 1;
+    white-space: nowrap;
+}
+
+.sidebar-brand-meta {
+    display: flex;
     width: 10.5rem;
-    text-align: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-top: -0.2rem;
+}
+
+.sidebar-learning-badge {
+    flex: none;
 }
 
 .lerniqa-wordmark {

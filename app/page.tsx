@@ -4138,8 +4138,11 @@ export default function Home() {
             <div id="mobile-navigation-panel" className="sidebar-panel-content">
             <div className="sidebar-identity-row">
                 <div className="sidebar-brand">
-                    <div className="flex min-w-0 items-center gap-2"><LerniqaLogo /><Badge tone="primary">學習卡</Badge></div>
-                    <p className="sidebar-brand-caption mt-1 text-xs text-muted-foreground">智慧卡牌學習平台</p>
+                    <LerniqaLogo />
+                    <div className="sidebar-brand-meta">
+                        <p className="sidebar-brand-caption text-xs text-muted-foreground">智慧卡牌學習平台</p>
+                        <Badge className="sidebar-learning-badge" tone="primary">學習卡</Badge>
+                    </div>
                 </div>
                 <div className="learner-card mt-6">
                     <div className="flex items-center gap-3">
