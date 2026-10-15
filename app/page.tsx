@@ -102,8 +102,8 @@ interface QuestionReviewProps {
     total: number;
     /** 檢視來源名稱。 */
     title: string;
-    /** 答案區下方的來源頁專屬操作。 */
-    actions?: ReactNode;
+    /** 標題列的來源頁專屬操作。 */
+    headerActions?: ReactNode;
     /** 返回來源頁。 */
     onBack: () => void;
     /** 切換到上一題。 */
@@ -899,7 +899,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
 }
 
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
-function QuestionReview({ question, index, total, title, actions, onBack, onPrevious, onNext }: QuestionReviewProps) {
+function QuestionReview({ question, index, total, title, headerActions, onBack, onPrevious, onNext }: QuestionReviewProps) {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [handwriting, setHandwriting] = useState<Record<number, string>>({});
     const questionNumber = index >= 0 ? index + 1 : 1;
@@ -916,6 +916,7 @@ function QuestionReview({ question, index, total, title, actions, onBack, onPrev
                     <h1 className="truncate text-base font-bold sm:text-lg">{title} · 第 {questionNumber} 題，共 {total} 題</h1>
                 </div>
                 <div className="practice-focus-actions">
+                    {headerActions}
                     <Button appearance="outline" tone="muted" onClick={onBack}><X />返回</Button>
                     <Button appearance="outline" disabled={index <= 0} onClick={onPrevious}><ArrowLeft />上一題</Button>
                     <Button appearance="outline" disabled={index < 0 || index >= total - 1} onClick={onNext}>下一題<ArrowRight /></Button>
@@ -937,15 +938,14 @@ function QuestionReview({ question, index, total, title, actions, onBack, onPrev
                                 <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
                             </div>
                             <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
+                            <div className="question-review-solution">
+                                <p className="question-detail-label">解答</p>
+                                <strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong>
+                                <ContentImages blocks={question.blocks} placement="answer" />
+                            </div>
                         </section>
                         <aside className="practice-handwriting-pane question-review-handwriting-pane">
                             <HandwritingPad value={handwritingValue} recognitionStatus={isCharacterHandwritingQuestion(question) ? "預覽模式" : undefined} onChange={(value) => setHandwriting((current) => ({ ...current, [question.id]: value }))} />
-                        </aside>
-                        <aside className="question-review-answer-pane">
-                            <div><p className="question-detail-label">參考答案</p><strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong><ContentImages blocks={question.blocks} placement="answer" /></div>
-                            <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{question.explanation || "尚未提供解析。"}</p></div>
-                            <div><p className="question-detail-label">分類與來源</p><p className="text-sm text-muted-foreground">{getUnitLabel(question.unit)} · {question.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{question.source}</p></div>
-                            {actions}
                         </aside>
                     </CardContent>
                 </Card>
@@ -3315,12 +3315,22 @@ export default function Home() {
             : [{ value: "", label: "請先建立收藏清單", disabled: true }];
         if (!selectedOverviewQuestion) return <main className="practice-focus-shell"><div className="practice-focus-frame"><section className="summary-card question-detail-empty"><ListChecks /><h2>正在讀取題目</h2></section></div></main>;
         const collections = activeQuestionCollections.filter((collection) => collection.questionIds.includes(selectedOverviewQuestion.id));
-        const actions = <>
-            {collections.length > 0 && <div className="question-collection-tags">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
-            <div className="question-detail-collection"><NativeSelect aria-label="選擇收藏清單" disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />加入收藏</Button></div>
-        </>;
+        const headerActions = <Dialog>
+            <DialogTrigger asChild><Button appearance="outline"><Bookmark />收藏</Button></DialogTrigger>
+            <DialogContent closeLabel="關閉收藏分類">
+                <DialogHeader><DialogTitle>收藏題目</DialogTitle><DialogDescription>選擇要收藏此題的分類。</DialogDescription></DialogHeader>
+                <DialogBody>
+                    <FormField label="收藏分類"><NativeSelect disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /></FormField>
+                    {collections.length > 0 && <div className="question-collection-tags" aria-label="目前收藏分類">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
+                </DialogBody>
+                <DialogFooter>
+                    <DialogClose asChild><Button appearance="outline">取消</Button></DialogClose>
+                    <DialogClose asChild><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />收藏</Button></DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>;
         return <QuestionReview
-            actions={actions}
+            headerActions={headerActions}
             index={selectedOverviewIndex}
             question={selectedOverviewQuestion}
             title="題目總覽"

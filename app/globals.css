@@ -1764,19 +1764,10 @@ textarea:focus-visible,
     padding: 0.8rem;
 }
 
-.question-detail-collection {
-    display: grid;
-    gap: 0.55rem;
-    border-top: 1px solid var(--color-border);
-    padding-top: 1rem;
-}
-
 .question-review-layout {
     display: grid;
     grid-template-columns: minmax(0, 0.82fr) minmax(28rem, 1.18fr);
-    grid-template-areas:
-        "question handwriting"
-        "answer answer";
+    grid-template-areas: "question handwriting";
     gap: 1rem 1.25rem;
     align-items: start;
 }
@@ -1789,16 +1780,14 @@ textarea:focus-visible,
     grid-area: handwriting;
 }
 
-.question-review-answer-pane {
-    display: grid;
-    grid-area: answer;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
-    align-content: start;
+.question-review-solution {
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 1rem;
     border: 1px solid #e7ddfb;
-    border-radius: 1.25rem;
+    border-radius: 0.9rem;
     background: #faf7ff;
-    padding: 1.25rem;
+    padding: 0.75rem 1rem;
 }
 
 @media (max-width: 1023px) {
@@ -1806,12 +1795,7 @@ textarea:focus-visible,
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
             "question"
-            "handwriting"
-            "answer";
-    }
-
-    .question-review-answer-pane {
-        grid-template-columns: minmax(0, 1fr);
+            "handwriting";
     }
 }
 
@@ -1829,7 +1813,7 @@ textarea:focus-visible,
     .question-review-header .practice-focus-actions {
         display: grid;
         width: 100%;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .question-review-header .practice-focus-actions button[data-slot="button"] {
