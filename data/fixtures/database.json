@@ -1,0 +1,5278 @@
+{
+  "version": 14,
+  "state": {
+    "roleAccess": {
+      "activeRole": "家長",
+      "registrationEmail": "parent@example.com",
+      "pinHashes": {
+        "家長": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        "家教": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+      }
+    },
+    "learners": [
+      {
+        "id": "learner-1",
+        "name": "宥安",
+        "grade": "國一",
+        "semester": "上學期",
+        "bookVersions": {
+          "數學": "康軒",
+          "國語": "翰林",
+          "英文": "翰林",
+          "理化": "康軒",
+          "生物": "康軒",
+          "歷史": "南一",
+          "地理": "南一",
+          "公民": "南一"
+        },
+        "school": "青禾國小",
+        "defaultQuestionLimit": 10
+      },
+      {
+        "id": "learner-2",
+        "name": "予晴",
+        "grade": "小五",
+        "semester": "上學期",
+        "bookVersions": {
+          "數學": "南一",
+          "國語": "翰林",
+          "英文": "南一",
+          "理化": "康軒",
+          "生物": "康軒",
+          "歷史": "南一",
+          "地理": "南一",
+          "公民": "南一"
+        },
+        "school": "青禾國小",
+        "defaultQuestionLimit": 10
+      }
+    ],
+    "activeLearnerId": "learner-1",
+    "attemptsByLearner": {
+      "learner-1": [
+        {
+          "questionId": 1,
+          "answer": "90°",
+          "correct": false,
+          "date": "2026-10-12T09:10:00.000Z",
+          "durationSeconds": 48
+        },
+        {
+          "questionId": 2,
+          "answer": "2 個",
+          "correct": true,
+          "date": "2026-10-12T09:12:00.000Z",
+          "durationSeconds": 35
+        }
+      ],
+      "learner-2": [
+        {
+          "questionId": 5,
+          "answer": "2/6",
+          "correct": false,
+          "date": "2026-10-10T08:30:00.000Z",
+          "durationSeconds": 62
+        }
+      ]
+    },
+    "plansByLearner": {
+      "learner-1": {
+        "creatorRole": "家長",
+        "subject": "數學",
+        "scope": "all-units",
+        "examSettings": [
+          {
+            "id": "exam-1",
+            "name": "第一次定期評量",
+            "date": "2026-11-05",
+            "ranges": {
+              "數學": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "國語": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "英文": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "理化": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "生物": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "歷史": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "地理": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "公民": {
+                "start": "all-units",
+                "end": "all-units"
+              }
+            }
+          }
+        ],
+        "activeExamId": "exam-1",
+        "checkMode": "complete",
+        "questionLimit": 10,
+        "basis": "chapter",
+        "difficultyMix": {
+          "easy": 40,
+          "medium": 40,
+          "hard": 20
+        },
+        "sourceFilters": [],
+        "metadataFilters": {},
+        "questionKind": "all",
+        "knowledge": "all-knowledge"
+      },
+      "learner-2": {
+        "creatorRole": "家長",
+        "subject": "數學",
+        "scope": "all-units",
+        "examSettings": [
+          {
+            "id": "exam-1",
+            "name": "第一次定期評量",
+            "date": "2026-11-05",
+            "ranges": {
+              "數學": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "國語": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "英文": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "理化": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "生物": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "歷史": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "地理": {
+                "start": "all-units",
+                "end": "all-units"
+              },
+              "公民": {
+                "start": "all-units",
+                "end": "all-units"
+              }
+            }
+          }
+        ],
+        "activeExamId": "exam-1",
+        "checkMode": "complete",
+        "questionLimit": 10,
+        "basis": "chapter",
+        "difficultyMix": {
+          "easy": 40,
+          "medium": 40,
+          "hard": 20
+        },
+        "sourceFilters": [],
+        "metadataFilters": {},
+        "questionKind": "all",
+        "knowledge": "all-knowledge"
+      }
+    },
+    "schedulesByLearner": {
+      "learner-1": [
+        {
+          "id": "schedule-fixture-parent",
+          "creatorRole": "家長",
+          "date": "2026-10-15",
+          "time": "19:30",
+          "subjectLabel": "數學 · 康軒版",
+          "scopeLabel": "1-1 負數與數線",
+          "checkMode": "complete",
+          "questionIds": [
+            7025,
+            7026,
+            7027,
+            7028,
+            7029
+          ],
+          "createdAt": "2026-10-14T12:00:00.000Z"
+        },
+        {
+          "id": "schedule-fixture-tutor",
+          "creatorRole": "家教",
+          "date": "2026-10-17",
+          "subjectLabel": "國語 · 翰林版",
+          "scopeLabel": "01 第一課 夏夜",
+          "checkMode": "instant",
+          "questionIds": [
+            7001,
+            7004,
+            7007,
+            7010,
+            7013
+          ],
+          "createdAt": "2026-10-14T12:05:00.000Z"
+        },
+        {
+          "id": "schedule-fixture-learner",
+          "creatorRole": "學習者",
+          "date": "2026-10-19",
+          "time": "18:00",
+          "subjectLabel": "英文 · 翰林版",
+          "scopeLabel": "01 Starter Unit",
+          "checkMode": "score",
+          "questionIds": [
+            7034,
+            7037,
+            7040,
+            7049,
+            7055
+          ],
+          "createdAt": "2026-10-14T12:10:00.000Z"
+        }
+      ],
+      "learner-2": []
+    },
+    "queuedSimilarByLearner": {
+      "learner-1": [],
+      "learner-2": []
+    },
+    "questionCollectionsByLearner": {
+      "learner-1": [
+        {
+          "id": "collection-favorites",
+          "name": "我的收藏",
+          "questionIds": [
+            7001,
+            7025
+          ],
+          "createdAt": "2026-10-15T00:00:00.000Z"
+        }
+      ],
+      "learner-2": [
+        {
+          "id": "collection-favorites-learner-2",
+          "name": "我的收藏",
+          "questionIds": [],
+          "createdAt": "2026-10-15T00:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "questions": [
+    {
+      "id": 1,
+      "subject": "數學",
+      "grade": "小四",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "第 3 單元",
+      "unit": "數學四上角度題庫",
+      "topic": "角的分類",
+      "knowledge": "角的分類",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "prompt": "一個平角是多少度？",
+      "options": [
+        "90°",
+        "180°",
+        "270°",
+        "360°"
+      ],
+      "answer": "180°",
+      "explanation": "平角形成一直線，大小為 180°。",
+      "source": "康軒數學四上 · 第 3 單元",
+      "sourceDetail": {
+        "documentName": "數學四上角度題庫.doc",
+        "page": 2,
+        "questionNumber": "1",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q1-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "一個平角是多少度？"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "數學",
+      "grade": "小四",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "第 3 單元",
+      "unit": "數學四上角度題庫",
+      "topic": "周角與平角",
+      "knowledge": "周角與平角",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "prompt": "一個周角相當於幾個平角？",
+      "options": [
+        "1 個",
+        "2 個",
+        "3 個",
+        "4 個"
+      ],
+      "answer": "2 個",
+      "explanation": "周角 360°，平角 180°，所以相當於 2 個平角。",
+      "source": "康軒數學四上 · 第 3 單元",
+      "sourceDetail": {
+        "documentName": "數學四上角度題庫.doc",
+        "page": 2,
+        "questionNumber": "2",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q2-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "一個周角相當於幾個平角？"
+        },
+        {
+          "id": "q2-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "angle-question.svg",
+            "mimeType": "image/svg+xml",
+            "alt": "平角與周角示意圖",
+            "width": 720,
+            "height": 280
+          }
+        },
+        {
+          "id": "q2-answer-text",
+          "placement": "answer",
+          "type": "text",
+          "order": 1,
+          "text": "2 個"
+        },
+        {
+          "id": "q2-answer-image",
+          "placement": "answer",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "angle-answer.svg",
+            "mimeType": "image/svg+xml",
+            "alt": "周角由兩個平角組成的答案圖",
+            "width": 720,
+            "height": 280
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "英文",
+      "grade": "小四",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "Unit 2",
+      "unit": "English 4 Unit 2",
+      "topic": "常用單字",
+      "knowledge": "常用單字",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "prompt": "Which word means「結果」？",
+      "options": [
+        "result",
+        "reason",
+        "review",
+        "return"
+      ],
+      "answer": "result",
+      "explanation": "result 是「結果」；reason 是「原因」。",
+      "source": "南一英文四上 · Unit 2",
+      "sourceDetail": {
+        "documentName": "English 4 Unit 2.doc",
+        "page": 1,
+        "questionNumber": "4",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q4-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Which word means「結果」？"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "數學",
+      "grade": "小五",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "第 5 單元",
+      "unit": "數學五上分數題庫",
+      "topic": "異分母加法",
+      "knowledge": "異分母加法",
+      "difficulty": "中等",
+      "kind": "choice",
+      "prompt": "1/2 + 1/4 = ?",
+      "options": [
+        "1/4",
+        "2/6",
+        "3/4",
+        "1"
+      ],
+      "answer": "3/4",
+      "explanation": "1/2 = 2/4，2/4 + 1/4 = 3/4。",
+      "source": "南一數學五上 · 第 5 單元",
+      "sourceDetail": {
+        "documentName": "數學五上分數題庫.doc",
+        "page": 3,
+        "questionNumber": "5",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q5-prompt-text",
+          "placement": "prompt",
+          "type": "formula",
+          "order": 1,
+          "text": "1/2 + 1/4 = ?"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "subject": "數學",
+      "grade": "小四",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "第 3 單元",
+      "unit": "數學四上角度題庫",
+      "topic": "角度合成",
+      "knowledge": "角度合成",
+      "difficulty": "中等",
+      "kind": "choice",
+      "prompt": "直角加上平角等於幾度？",
+      "options": [
+        "180°",
+        "225°",
+        "270°",
+        "360°"
+      ],
+      "answer": "270°",
+      "explanation": "直角 90° 加上平角 180°，合計 270°。",
+      "source": "康軒數學四上 · 第 3 單元",
+      "sourceDetail": {
+        "documentName": "數學四上角度題庫.doc",
+        "page": 3,
+        "questionNumber": "6",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q6-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "直角加上平角等於幾度？"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "subject": "數學",
+      "grade": "小四",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "第 3 單元",
+      "unit": "相近題模擬",
+      "topic": "角的分類",
+      "knowledge": "角的分類",
+      "difficulty": "中等",
+      "kind": "choice",
+      "prompt": "兩個直角合起來是多少度？",
+      "options": [
+        "90°",
+        "180°",
+        "270°",
+        "360°"
+      ],
+      "answer": "180°",
+      "explanation": "一個直角是 90°，兩個直角合計 180°。",
+      "source": "相近題模擬 · 原始題 #1",
+      "sourceDetail": {
+        "documentName": "相近題模擬.json",
+        "questionNumber": "101",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q101-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "兩個直角合起來是多少度？"
+        }
+      ],
+      "generatedFrom": 1
+    },
+    {
+      "id": 102,
+      "subject": "數學",
+      "grade": "小五",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "第 5 單元",
+      "unit": "相近題模擬",
+      "topic": "異分母加法",
+      "knowledge": "異分母加法",
+      "difficulty": "中等",
+      "kind": "choice",
+      "prompt": "1/3 + 1/6 = ?",
+      "options": [
+        "1/2",
+        "2/9",
+        "2/6",
+        "1"
+      ],
+      "answer": "1/2",
+      "explanation": "1/3 = 2/6，2/6 + 1/6 = 3/6，也就是 1/2。",
+      "source": "相近題模擬 · 原始題 #5",
+      "sourceDetail": {
+        "documentName": "相近題模擬.json",
+        "questionNumber": "102",
+        "valueSource": "fixture",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q102-prompt-text",
+          "placement": "prompt",
+          "type": "formula",
+          "order": 1,
+          "text": "1/3 + 1/6 = ?"
+        }
+      ],
+      "generatedFrom": 5
+    },
+    {
+      "id": 7001,
+      "code": "05010001",
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "寫出國字、注音",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "寫出國字、注音",
+      "prompt": "銀「ㄅㄧˋ」：",
+      "answer": "幣",
+      "sourceAnswer": "幣",
+      "explanation": "答案：幣",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010001",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        {
+          "key": "source_type",
+          "label": "出處",
+          "rawValue": "試題",
+          "values": [
+            "試題"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "cognitive_dimension",
+          "label": "認知向度",
+          "rawValue": "基本語文知識",
+          "values": [
+            "基本語文知識"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "knowledge_dimension",
+          "label": "知識向度",
+          "rawValue": "正確用字",
+          "values": [
+            "正確用字"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "lesson",
+          "label": "課名",
+          "rawValue": "夏夜",
+          "values": [
+            "夏夜"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        }
+      ],
+      "blocks": [
+        {
+          "id": "q7001-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "銀「ㄅㄧˋ」："
+        }
+      ]
+    },
+    {
+      "id": 7002,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "寫出國字、注音",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "寫出國字、注音",
+      "prompt": "山「ㄌㄨㄢˊ」：",
+      "answer": "巒",
+      "sourceAnswer": "巒",
+      "explanation": "答案：巒",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010002",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7002-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "山「ㄌㄨㄢˊ」："
+        }
+      ]
+    },
+    {
+      "id": 7003,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "寫出國字、注音",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "寫出國字、注音",
+      "prompt": "一「ㄇㄟˊ」硬幣：",
+      "answer": "枚",
+      "sourceAnswer": "枚",
+      "explanation": "答案：枚",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010003",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7003-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "一「ㄇㄟˊ」硬幣："
+        }
+      ]
+    },
+    {
+      "id": 7004,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "注釋",
+      "knowledge": "單字解釋",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "注釋",
+      "prompt": "「闔」上眼睛：",
+      "answer": "閉合。",
+      "sourceAnswer": "閉合。",
+      "explanation": "答案：閉合。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010037",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7004-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "「闔」上眼睛："
+        }
+      ]
+    },
+    {
+      "id": 7005,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "注釋",
+      "knowledge": "單字解釋",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "注釋",
+      "prompt": "「撒」了滿天的珍珠：",
+      "answer": "散布。",
+      "sourceAnswer": "散布。",
+      "explanation": "答案：散布。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010038",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7005-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "「撒」了滿天的珍珠："
+        }
+      ]
+    },
+    {
+      "id": 7006,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "注釋",
+      "knowledge": "單字解釋",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "注釋",
+      "prompt": "樹「梢」：",
+      "answer": "樹枝的末端。",
+      "sourceAnswer": "樹枝的末端。",
+      "explanation": "答案：樹枝的末端。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010039",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7006-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "樹「梢」："
+        }
+      ]
+    },
+    {
+      "id": 7007,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "改錯題",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "改錯題",
+      "prompt": "夏天的夜晚緩緩降林，花間的密蜂已經歸巢，草原上的羊群與牛隊也踏上歸途，天邊的夕陽西沈，街上路燈亮起，映照寧靜村裝。……（　　　　　　）",
+      "answer": "臨；蜜；沉；莊",
+      "sourceAnswer": "臨；蜜；沉；莊",
+      "explanation": "答案：臨；蜜；沉；莊",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010045",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7007-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "夏天的夜晚緩緩降林，花間的密蜂已經歸巢，草原上的羊群與牛隊也踏上歸途，天邊的夕陽西沈，街上路燈亮起，映照寧靜村裝。……（　　　　　　）"
+        }
+      ]
+    },
+    {
+      "id": 7008,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "改錯題",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "改錯題",
+      "prompt": "廈天的午後，我和朋友一起扒上山陂，欣賞微風拂過翠錄草原的美景。……（　　　　　　）",
+      "answer": "夏；爬；坡；綠",
+      "sourceAnswer": "夏；爬；坡；綠",
+      "explanation": "答案：夏；爬；坡；綠",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010046",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7008-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "廈天的午後，我和朋友一起扒上山陂，欣賞微風拂過翠錄草原的美景。……（　　　　　　）"
+        }
+      ]
+    },
+    {
+      "id": 7009,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "改錯題",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "改錯題",
+      "prompt": "夜色蒙朧，遠方山欒隱約可見，屋頂上纏繞著茂密的籐蔓，涼爽的微風輕輕吹彿，帶來淡淡的花香。……（　　　　　　）",
+      "answer": "朦；巒；藤；拂",
+      "sourceAnswer": "朦；巒；藤；拂",
+      "explanation": "答案：朦；巒；藤；拂",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010047",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7009-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "夜色蒙朧，遠方山欒隱約可見，屋頂上纏繞著茂密的籐蔓，涼爽的微風輕輕吹彿，帶來淡淡的花香。……（　　　　　　）"
+        }
+      ]
+    },
+    {
+      "id": 7010,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "填充題",
+      "knowledge": "作者的作品風格",
+      "difficulty": "進階",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "楊喚的童詩感情真摯豐富，充滿（　　　　），被譽為臺灣（　　　　）文學的先驅。",
+      "answer": "童心童趣；兒童",
+      "sourceAnswer": "童心童趣；兒童",
+      "explanation": "答案：童心童趣；兒童",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010065",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7010-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "楊喚的童詩感情真摯豐富，充滿（　　　　），被譽為臺灣（　　　　）文學的先驅。"
+        }
+      ]
+    },
+    {
+      "id": 7011,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "填充題",
+      "knowledge": "作者的作品風格",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "楊喚本名（　　　　），他的童詩感情真摯豐富，充滿童心童趣，被譽為臺灣（　　　　）的先驅。",
+      "answer": "楊森；兒童文學",
+      "sourceAnswer": "楊森；兒童文學",
+      "explanation": "答案：楊森；兒童文學",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010066",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7011-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "楊喚本名（　　　　），他的童詩感情真摯豐富，充滿童心童趣，被譽為臺灣（　　　　）的先驅。"
+        }
+      ]
+    },
+    {
+      "id": 7012,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "填充題",
+      "knowledge": "作者的作品風格",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "「童詩」是新詩的一種，以兒童的（　　　　）世界和（　　　　）經驗為主要題材，是極富情感、具想像力、活潑有趣的兒童文學。",
+      "answer": "內心；生活",
+      "sourceAnswer": "內心；生活",
+      "explanation": "答案：內心；生活",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010067",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7012-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "「童詩」是新詩的一種，以兒童的（　　　　）世界和（　　　　）經驗為主要題材，是極富情感、具想像力、活潑有趣的兒童文學。"
+        }
+      ]
+    },
+    {
+      "id": 7013,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "配合題",
+      "knowledge": "成語填充",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "下列是有關動物的成語，請從參考選項中選出適當的答案，並填入（　）中。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "豬（　　　）不如。",
+          "options": [
+            "(A)龍",
+            "(B)羊",
+            "(C)馬",
+            "(D)狼",
+            "(E)狗"
+          ],
+          "answer": "(E)狗"
+        },
+        {
+          "id": "２",
+          "prompt": "（　　　）腸小徑。",
+          "options": [
+            "(A)龍",
+            "(B)羊",
+            "(C)馬",
+            "(D)狼",
+            "(E)狗"
+          ],
+          "answer": "(B)羊"
+        },
+        {
+          "id": "３",
+          "prompt": "（　　　）狽為奸。",
+          "options": [
+            "(A)龍",
+            "(B)羊",
+            "(C)馬",
+            "(D)狼",
+            "(E)狗"
+          ],
+          "answer": "(D)狼"
+        },
+        {
+          "id": "４",
+          "prompt": "直搗黃（　　　）。",
+          "options": [
+            "(A)龍",
+            "(B)羊",
+            "(C)馬",
+            "(D)狼",
+            "(E)狗"
+          ],
+          "answer": "(A)龍"
+        },
+        {
+          "id": "５",
+          "prompt": "（　　　）耳東風。",
+          "options": [
+            "(A)龍",
+            "(B)羊",
+            "(C)馬",
+            "(D)狼",
+            "(E)狗"
+          ],
+          "answer": "(C)馬"
+        }
+      ],
+      "answer": "[\"(E)狗\",\"(B)羊\",\"(D)狼\",\"(A)龍\",\"(C)馬\"]",
+      "sourceAnswer": "(１)(Ｅ)；(２)(Ｂ)；(３)(Ｄ)；(４)(Ａ)；(５)(Ｃ)",
+      "explanation": "(１)豬狗不如：罵人連牲畜都不如的話。\n(２)羊腸小徑：形容狹窄曲折的小路。\n(３)狼狽為奸：比喻彼此勾結做壞事。\n(４)直搗黃龍：直接攻入敵人都城要地。\n(５)馬耳東風：比喻對事情漠不關心。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010072",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7013-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "下列是有關動物的成語，請從參考選項中選出適當的答案，並填入（　）中。"
+        }
+      ]
+    },
+    {
+      "id": 7014,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "配合題",
+      "knowledge": "成語填充",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "請根據成語的釋義，從參考選項中選出正確的答案填入（　）中。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "（　　　）絲馬跡：比喻有線索跡象可以尋查推求。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "蛛"
+        },
+        {
+          "id": "２",
+          "prompt": "（　　　）頭小利：形容微少的利益。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "蠅"
+        },
+        {
+          "id": "３",
+          "prompt": "井（　　　）之見：比喻識見偏狹。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "蛙"
+        },
+        {
+          "id": "４",
+          "prompt": "莊周夢（　　　）：比喻人生變幻無常。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "蝶"
+        },
+        {
+          "id": "５",
+          "prompt": "囊（　　　）積雪：比喻勤學苦讀。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "螢"
+        },
+        {
+          "id": "６",
+          "prompt": "飛（　　　）撲火：比喻自尋死路，自取滅亡。",
+          "options": [
+            "蛙",
+            "蛛",
+            "蝶",
+            "螢",
+            "蠅",
+            "蛾"
+          ],
+          "answer": "蛾"
+        }
+      ],
+      "answer": "[\"蛛\",\"蠅\",\"蛙\",\"蝶\",\"螢\",\"蛾\"]",
+      "sourceAnswer": "(１)蛛；(２)蠅；(３)蛙；(４)蝶；(５)螢；(６)蛾",
+      "explanation": "答案：(１)蛛；(２)蠅；(３)蛙；(４)蝶；(５)螢；(６)蛾",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010073",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7014-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "請根據成語的釋義，從參考選項中選出正確的答案填入（　）中。"
+        }
+      ]
+    },
+    {
+      "id": 7015,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "配合題",
+      "knowledge": "從文意推判所詠的物品",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "請猜猜下列各詩句所描寫的主題，並從參考選項中，選出一個最適合的代號，填入（　）中。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "每一個／凹凹凸凸的小丘／是起起落落的人生／軟硬澀甜／是成長的滋味／青衫之內／芸芸眾生／哪個是如來（朱淑玫）",
+          "options": [
+            "(A)釋迦",
+            "(B)風箏",
+            "(C)郵筒",
+            "(D)眉毛",
+            "(E)苦瓜",
+            "(F)鉛筆",
+            "(G)鳳梨",
+            "(H)眼睛"
+          ],
+          "answer": "(A)釋迦"
+        },
+        {
+          "id": "２",
+          "prompt": "一對相戀的魚／尾巴要在四十歲以後才出現／中間隔著一道鼻梁／這一輩子是無法相見的了／偶爾／也會混在一起／只是在夢中他們的淚（商禽）",
+          "options": [
+            "(A)釋迦",
+            "(B)風箏",
+            "(C)郵筒",
+            "(D)眉毛",
+            "(E)苦瓜",
+            "(F)鉛筆",
+            "(G)鳳梨",
+            "(H)眼睛"
+          ],
+          "answer": "(H)眼睛"
+        },
+        {
+          "id": "３",
+          "prompt": "整個昨夜的思念都／任它一口吞噬／它一直裝傻／胃口又很大／可是那張肚皮是否能／消化了我的思念／而後隨風飄給／伊（黃樹根）",
+          "options": [
+            "(A)釋迦",
+            "(B)風箏",
+            "(C)郵筒",
+            "(D)眉毛",
+            "(E)苦瓜",
+            "(F)鉛筆",
+            "(G)鳳梨",
+            "(H)眼睛"
+          ],
+          "answer": "(C)郵筒"
+        },
+        {
+          "id": "４",
+          "prompt": "那時才看清我是一支／剛在人生的簿子上／歪歪斜斜的／畫下了幾筆／歲月的痕跡／卻被時間削著好玩／越削越短／短得只剩／一聲癱在嘴裡的嘆息（佚名）",
+          "options": [
+            "(A)釋迦",
+            "(B)風箏",
+            "(C)郵筒",
+            "(D)眉毛",
+            "(E)苦瓜",
+            "(F)鉛筆",
+            "(G)鳳梨",
+            "(H)眼睛"
+          ],
+          "answer": "(F)鉛筆"
+        }
+      ],
+      "answer": "[\"(A)釋迦\",\"(H)眼睛\",\"(C)郵筒\",\"(F)鉛筆\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｈ)；(３)(Ｃ)；(４)(Ｆ)",
+      "explanation": "答案：(１)(Ａ)；(２)(Ｈ)；(３)(Ｃ)；(４)(Ｆ)",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010074",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7015-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "請猜猜下列各詩句所描寫的主題，並從參考選項中，選出一個最適合的代號，填入（　）中。"
+        }
+      ]
+    },
+    {
+      "id": 7016,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "單一選擇題",
+      "knowledge": "同音字字形",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "單一選擇題",
+      "prompt": "下列「　」中的注音寫成國字後，何組字形兩兩相同？",
+      "options": [
+        "(A)為國捐「ㄑㄩ」／並駕齊「ㄑㄩ」",
+        "(B)「ㄌㄨㄣˊ」流值班／語無「ㄌㄨㄣˊ」次",
+        "(C)迅速「ㄇㄢˋ」延／溫柔浪「ㄇㄢˋ」",
+        "(D)呼風「ㄏㄨㄢˋ」雨／千呼萬「ㄏㄨㄢˋ」"
+      ],
+      "answer": "(D)呼風「ㄏㄨㄢˋ」雨／千呼萬「ㄏㄨㄢˋ」",
+      "sourceAnswer": "(Ｄ)",
+      "explanation": "(Ａ)軀／驅(Ｂ)輪／倫(Ｃ)蔓／漫(Ｄ)喚。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010076",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7016-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "下列「　」中的注音寫成國字後，何組字形兩兩相同？"
+        }
+      ]
+    },
+    {
+      "id": 7017,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "單一選擇題",
+      "knowledge": "一字多義",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "單一選擇題",
+      "prompt": "下列各「　」中的字，何組意義相同？",
+      "options": [
+        "(A)「道」過晚安／頭頭是「道」",
+        "(B)「闔」上眼睛／開「闔」自如",
+        "(C)「溜」之大吉／英語很「溜」",
+        "(D)「撒」落滿地／「撒」腿就跑"
+      ],
+      "answer": "(B)「闔」上眼睛／開「闔」自如",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "(Ａ)說／方法、道理(Ｂ)閉合(Ｃ)私自離開或進入／流利、順暢、不結巴(Ｄ)散布／放開、散放。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010077",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7017-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "下列各「　」中的字，何組意義相同？"
+        }
+      ]
+    },
+    {
+      "id": 7018,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "單一選擇題",
+      "knowledge": "狀聲詞",
+      "difficulty": "中等",
+      "kind": "choice",
+      "typeLabel": "單一選擇題",
+      "prompt": "下列各「　」中模擬事物或動作的狀聲詞，何者使用「不正確」？",
+      "options": [
+        "(A)遍地黃葉，秋風「嗡嗡」，此時節總會引我感傷",
+        "(B)登山隊員順著「淙淙」的流水聲，找到了泉水源頭",
+        "(C)熱鬧的夏夜，樹叢裡傳來蟲聲「唧唧」",
+        "(D)隨著小孩「呱呱」墜地，父親的肩上又多了一項負擔"
+      ],
+      "answer": "(A)遍地黃葉，秋風「嗡嗡」，此時節總會引我感傷",
+      "sourceAnswer": "(Ａ)",
+      "explanation": "(Ａ)宜改為「瑟瑟」。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010078",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7018-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "下列各「　」中模擬事物或動作的狀聲詞，何者使用「不正確」？"
+        }
+      ]
+    },
+    {
+      "id": 7019,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "選詞測驗",
+      "knowledge": "根據上下文填入適當用語",
+      "difficulty": "進階",
+      "kind": "multi-choice",
+      "typeLabel": "選詞測驗",
+      "prompt": "我是天空裡的一片雲，\n（(１)）投影在你的波心—\n你不必（(２)），\n更無須歡喜—\n在（(３)）間消滅了（(４)）。\n你我相逢在黑夜的海上，\n你有你的，我有我的，方向；\n你記得也好，\n最好你忘掉，\n在這交會時互放的（(５)）！\n（徐志摩　偶然）",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)率爾　(Ｂ)卓爾　(Ｃ)偶爾　(Ｄ)燕爾。",
+          "options": [
+            "(A)率爾",
+            "(B)卓爾",
+            "(C)偶爾",
+            "(D)燕爾"
+          ],
+          "answer": "(C)偶爾"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)捉摸　(Ｂ)訝異　(Ｃ)適應　(Ｄ)困擾。",
+          "options": [
+            "(A)捉摸",
+            "(B)訝異",
+            "(C)適應",
+            "(D)困擾"
+          ],
+          "answer": "(B)訝異"
+        },
+        {
+          "id": "３",
+          "prompt": "(Ａ)轉手　(Ｂ)轉瞬　(Ｃ)宇宙　(Ｄ)天地。",
+          "options": [
+            "(A)轉手",
+            "(B)轉瞬",
+            "(C)宇宙",
+            "(D)天地"
+          ],
+          "answer": "(B)轉瞬"
+        },
+        {
+          "id": "４",
+          "prompt": "(Ａ)蹤影　(Ｂ)背影　(Ｃ)行徑　(Ｄ)聲息。",
+          "options": [
+            "(A)蹤影",
+            "(B)背影",
+            "(C)行徑",
+            "(D)聲息"
+          ],
+          "answer": "(A)蹤影"
+        },
+        {
+          "id": "５",
+          "prompt": "(Ａ)回首　(Ｂ)光亮　(Ｃ)餘暉　(Ｄ)迴響。",
+          "options": [
+            "(A)回首",
+            "(B)光亮",
+            "(C)餘暉",
+            "(D)迴響"
+          ],
+          "answer": "(B)光亮"
+        }
+      ],
+      "answer": "[\"(C)偶爾\",\"(B)訝異\",\"(B)轉瞬\",\"(A)蹤影\",\"(B)光亮\"]",
+      "sourceAnswer": "(１)(Ｃ)；(２)(Ｂ)；(３)(Ｂ)；(４)(Ａ)；(５)(Ｂ)",
+      "explanation": "(１)(Ａ)率爾：輕率、急躁(Ｂ)卓爾：特立突出的樣子(Ｄ)燕爾：新婚。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010234",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7019-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "我是天空裡的一片雲，\n（(１)）投影在你的波心—\n你不必（(２)），\n更無須歡喜—\n在（(３)）間消滅了（(４)）。\n你我相逢在黑夜的海上，\n你有你的，我有我的，方向；\n你記得也好，\n最好你忘掉，\n在這交會時互放的（(５)）！\n（徐志摩　偶然）"
+        }
+      ]
+    },
+    {
+      "id": 7020,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "選詞測驗",
+      "knowledge": "根據上下文填入適當用語",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "選詞測驗",
+      "prompt": "尤其近傍晚時分，陽光已逐漸褪去威力，廣袤田野（(１)）向榮，映著金黃溫柔暖陽，自然和合之美常在此間流露傾出。面對這樣寧靜、（(２)）青蔥翠綠的田間情趣，豈是驚嘆、喜悅所能（(３)）？\n這分感動，使心底深處田園詩詞一一顯影：村里墟煙、耕種自娛的情懷，從我眼前這片（(４)）平疇中，重新復甦，化為（(５)）在目的生活寫真，再也不是毫無生命的文字記憶。\n註：eq \\o(○,１)廣袤：土地的面積。袤，音ㄇㄠˋ。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)息息　(Ｂ)欣欣　(Ｃ)孜孜　(Ｄ)渺渺。",
+          "options": [
+            "(A)息息",
+            "(B)欣欣",
+            "(C)孜孜",
+            "(D)渺渺"
+          ],
+          "answer": "(B)欣欣"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)迸裂　(Ｂ)洋溢　(Ｃ)滋潤　(Ｄ)浸淫。",
+          "options": [
+            "(A)迸裂",
+            "(B)洋溢",
+            "(C)滋潤",
+            "(D)浸淫"
+          ],
+          "answer": "(B)洋溢"
+        },
+        {
+          "id": "３",
+          "prompt": "(Ａ)明瞭　(Ｂ)對比　(Ｃ)形容　(Ｄ)塑造。",
+          "options": [
+            "(A)明瞭",
+            "(B)對比",
+            "(C)形容",
+            "(D)塑造"
+          ],
+          "answer": "(C)形容"
+        },
+        {
+          "id": "４",
+          "prompt": "(Ａ)綠野　(Ｂ)雪白　(Ｃ)火紅　(Ｄ)晨曦。",
+          "options": [
+            "(A)綠野",
+            "(B)雪白",
+            "(C)火紅",
+            "(D)晨曦"
+          ],
+          "answer": "(A)綠野"
+        },
+        {
+          "id": "５",
+          "prompt": "(Ａ)汲汲　(Ｂ)營營　(Ｃ)涔涔　(Ｄ)歷歷。",
+          "options": [
+            "(A)汲汲",
+            "(B)營營",
+            "(C)涔涔",
+            "(D)歷歷"
+          ],
+          "answer": "(D)歷歷"
+        }
+      ],
+      "answer": "[\"(B)欣欣\",\"(B)洋溢\",\"(C)形容\",\"(A)綠野\",\"(D)歷歷\"]",
+      "sourceAnswer": "(１)(Ｂ)；(２)(Ｂ)；(３)(Ｃ)；(４)(Ａ)；(５)(Ｄ)",
+      "explanation": "答案：(１)(Ｂ)；(２)(Ｂ)；(３)(Ｃ)；(４)(Ａ)；(５)(Ｄ)",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010235",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7020-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "尤其近傍晚時分，陽光已逐漸褪去威力，廣袤田野（(１)）向榮，映著金黃溫柔暖陽，自然和合之美常在此間流露傾出。面對這樣寧靜、（(２)）青蔥翠綠的田間情趣，豈是驚嘆、喜悅所能（(３)）？\n這分感動，使心底深處田園詩詞一一顯影：村里墟煙、耕種自娛的情懷，從我眼前這片（(４)）平疇中，重新復甦，化為（(５)）在目的生活寫真，再也不是毫無生命的文字記憶。\n註：eq \\o(○,１)廣袤：土地的面積。袤，音ㄇㄠˋ。"
+        }
+      ]
+    },
+    {
+      "id": 7021,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "選詞測驗",
+      "knowledge": "根據上下文填入適當用語",
+      "difficulty": "進階",
+      "kind": "multi-choice",
+      "typeLabel": "選詞測驗",
+      "prompt": "一件作品，無論你第一印象是喜悅還是厭惡，只要你直覺它是「誠實的」，你就會繼續看下去，直到你的「忍受」變成了「享受」；接受現代詩與現代畫的情形，（(１)）是如此。許多讀者或觀眾，由於不能經歷忍受的階段，也永遠到達不了享受的（(２)）。現代文藝往往是深刻而含蓄的，究竟不是（(３)）一聽就可以入耳，你必須克服一些惰性，改變一些觀念，換一個角度，甚至重新調整你的呼吸與脈搏的（(４)），始能擴大你的美感視域，豐富你的美感經驗。\n（余光中　從古典詩到現代詩）",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)尤其　(Ｂ)畢竟　(Ｃ)雖然　(Ｄ)而且。",
+          "options": [
+            "(A)尤其",
+            "(B)畢竟",
+            "(C)雖然",
+            "(D)而且"
+          ],
+          "answer": "(A)尤其"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)造境　(Ｂ)境地　(Ｃ)環境　(Ｄ)境況。",
+          "options": [
+            "(A)造境",
+            "(B)境地",
+            "(C)環境",
+            "(D)境況"
+          ],
+          "answer": "(B)境地"
+        },
+        {
+          "id": "３",
+          "prompt": "(Ａ)流行小調　(Ｂ)陽春白雪　(Ｃ)古典樂章　(Ｄ)靡靡之音。",
+          "options": [
+            "(A)流行小調",
+            "(B)陽春白雪",
+            "(C)古典樂章",
+            "(D)靡靡之音"
+          ],
+          "answer": "(A)流行小調"
+        },
+        {
+          "id": "４",
+          "prompt": "(Ａ)跳動　(Ｂ)快慢　(Ｃ)高低　(Ｄ)節奏。",
+          "options": [
+            "(A)跳動",
+            "(B)快慢",
+            "(C)高低",
+            "(D)節奏"
+          ],
+          "answer": "(D)節奏"
+        }
+      ],
+      "answer": "[\"(A)尤其\",\"(B)境地\",\"(A)流行小調\",\"(D)節奏\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｂ)；(３)(Ａ)；(４)(Ｄ)",
+      "explanation": "(３)(Ｂ)較為深奧難懂的音樂(Ｄ)指令人頹廢、喪志的音樂。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010236",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7021-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "一件作品，無論你第一印象是喜悅還是厭惡，只要你直覺它是「誠實的」，你就會繼續看下去，直到你的「忍受」變成了「享受」；接受現代詩與現代畫的情形，（(１)）是如此。許多讀者或觀眾，由於不能經歷忍受的階段，也永遠到達不了享受的（(２)）。現代文藝往往是深刻而含蓄的，究竟不是（(３)）一聽就可以入耳，你必須克服一些惰性，改變一些觀念，換一個角度，甚至重新調整你的呼吸與脈搏的（(４)），始能擴大你的美感視域，豐富你的美感經驗。\n（余光中　從古典詩到現代詩）"
+        }
+      ]
+    },
+    {
+      "id": 7022,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "題組",
+      "knowledge": "白話文意理解",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "有一條道路，兩旁種了很多椰子樹。看那粗大合抱的樹幹，株株頂天立地，雄渾挺拔，不免令人油然生敬！看到一簇一簇的巨葉，好似飛蓬亂髮，灑脫不羈；有如舞者長臂，令人神往！一遇野風吹來，凌空婆娑，真是曼妙多姿！\n路旁多果園，樹外盡藍天。每次走在這條路上，便閒情自生，逸致頓現。任心中多少煩惱，皆拋諸腦後！\n（粟耘　椰子樹）",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "文中的椰子樹，是生長在什麼地方？",
+          "options": [
+            "(A)校園內",
+            "(B)果園內",
+            "(C)植物園",
+            "(D)道路旁"
+          ],
+          "answer": "(D)道路旁"
+        },
+        {
+          "id": "２",
+          "prompt": "椰子樹為什麼令人油然生敬？",
+          "options": [
+            "(A)頂天立地，雄渾挺拔",
+            "(B)樹葉碧綠，賞心悅目",
+            "(C)臨風搖曳，曼妙多姿",
+            "(D)飛蓬亂髮，灑脫不羈"
+          ],
+          "answer": "(A)頂天立地，雄渾挺拔"
+        },
+        {
+          "id": "３",
+          "prompt": "文中「凌空婆娑」是形容什麼？",
+          "options": [
+            "(A)天空白雲",
+            "(B)白鷺凌空",
+            "(C)椰子樹葉",
+            "(D)園中果樹"
+          ],
+          "answer": "(C)椰子樹葉"
+        },
+        {
+          "id": "４",
+          "prompt": "作者看了什麼，以致「閒情自生，逸致頓現」？",
+          "options": [
+            "(A)茫茫碧野",
+            "(B)綠樹藍天",
+            "(C)白雲悠悠",
+            "(D)茂密草坪"
+          ],
+          "answer": "(B)綠樹藍天"
+        },
+        {
+          "id": "５",
+          "prompt": "文中「拋諸腦後」一詞，其涵義與下列哪一詞語相近？",
+          "options": [
+            "(A)推得一乾二淨",
+            "(B)拋到九霄雲外",
+            "(C)不費吹灰之力",
+            "(D)化腐朽為神奇"
+          ],
+          "answer": "(B)拋到九霄雲外"
+        }
+      ],
+      "answer": "[\"(D)道路旁\",\"(A)頂天立地，雄渾挺拔\",\"(C)椰子樹葉\",\"(B)綠樹藍天\",\"(B)拋到九霄雲外\"]",
+      "sourceAnswer": "(１)(Ｄ)；(２)(Ａ)；(３)(Ｃ)；(４)(Ｂ)；(５)(Ｂ)",
+      "explanation": "(１)由「有一條道路，兩旁種了很多椰子樹」可知，故選(Ｄ)。\n(２)由「頂天立地，雄渾挺拔，不免令人油然生敬」可知，故選(Ａ)。\n(３)由「簇一簇的巨葉，好似飛蓬亂髮……一遇野風吹來，凌空婆娑」可知，故選(Ｃ)。\n(４)由「樹外盡藍天。每次走在這條路上，便閒情自生，逸致頓現」可知，故選(Ｂ)。\n(５)由「拋諸腦後」（把事情丟在一邊，不去管它）可知，故選(Ｂ)。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010240",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7022-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "有一條道路，兩旁種了很多椰子樹。看那粗大合抱的樹幹，株株頂天立地，雄渾挺拔，不免令人油然生敬！看到一簇一簇的巨葉，好似飛蓬亂髮，灑脫不羈；有如舞者長臂，令人神往！一遇野風吹來，凌空婆娑，真是曼妙多姿！\n路旁多果園，樹外盡藍天。每次走在這條路上，便閒情自生，逸致頓現。任心中多少煩惱，皆拋諸腦後！\n（粟耘　椰子樹）"
+        }
+      ]
+    },
+    {
+      "id": 7023,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "題組",
+      "knowledge": "新詩詩意理解",
+      "difficulty": "進階",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "我是忙碌的。\n我是忙碌的。\n我忙於搖醒火把，我忙於雕塑自己；\n我忙於擂動行動的鼓鈸，\n我忙於吹響迎春的蘆笛；\n我忙於拍發幸福的預報，\n我忙於採訪真理的消息；\n我忙於把生命的樹移植於戰鬥的叢林，\n我忙於把發酵的血釀成愛的汁液。\n直到有一天我死去，\n像尾魚睡眠於微笑的池沼，\n我才會熄燈休息，\n我，才有個美好的完成，\n如一冊詩集；\n而那覆蓋著我的大地，\n就是那詩集的封皮。\n我是忙碌的。\n我是忙碌的。\n（楊喚　我是忙碌的）",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "根據本詩，下列敘述何者錯誤？",
+          "options": [
+            "(A)新詩的格律自由，因此本詩並未押韻",
+            "(B)本詩透過重複的句子，表達聲韻之美",
+            "(C)本詩善用譬喻修辭使抽象情感具象化",
+            "(D)透過八個不同的行動表達忙碌的情緒"
+          ],
+          "answer": "(A)新詩的格律自由，因此本詩並未押韻"
+        },
+        {
+          "id": "２",
+          "prompt": "關於本詩的分析，下列敘述何者正確？",
+          "options": [
+            "(A)透過「我忙於」表達作者為生活而疲於奔命",
+            "(B)詩中「戰鬥的叢林」說明作者擅長軍事行動",
+            "(C)作者以「熄燈休息」象徵死亡到來的那一天",
+            "(D)「我是忙碌的」反覆出現證明作者碌碌無為"
+          ],
+          "answer": "(C)作者以「熄燈休息」象徵死亡到來的那一天"
+        }
+      ],
+      "answer": "[\"(A)新詩的格律自由，因此本詩並未押韻\",\"(C)作者以「熄燈休息」象徵死亡到來的那一天\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｃ)",
+      "explanation": "(１)(Ａ)新詩格律自由，並未一定要押韻。本詩有押韻，韻腳為己、笛、息、集、地、皮。(Ｂ)本詩「我是忙碌的」及「我忙於」以類疊方式重複出現，呈現複沓字句及聲音的節奏(Ｃ)由「直到有一天我死去／像尾魚睡眠於微笑的池沼」、「我／才有個美好的完成／如一冊詩集」可知(Ｄ)由「我忙於搖醒火把……我忙於把發酵的血釀成愛的汁液」可知。\n(２)(Ｃ)由「直到有一天我死去」可知，熄燈意指死亡到來。(Ａ)由「我忙於搖醒火把、雕塑自己……」可知是為了理想而忙碌（雕塑自己意味著充實、磨鍊），並非為了生活而疲於奔命(Ｂ)「生命的樹」是指作者將自己的生命比擬成樹木，而「移植於戰鬥的叢林」則意味著讓自己接受各種挑戰與磨鍊，全詩並未提到軍事行動(Ｄ)「碌碌無為」意指平庸無奇，毫無作為。根據詩意，忙碌是指作者為了理想而忙碌，並非無所作為。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010241",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7023-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "我是忙碌的。\n我是忙碌的。\n我忙於搖醒火把，我忙於雕塑自己；\n我忙於擂動行動的鼓鈸，\n我忙於吹響迎春的蘆笛；\n我忙於拍發幸福的預報，\n我忙於採訪真理的消息；\n我忙於把生命的樹移植於戰鬥的叢林，\n我忙於把發酵的血釀成愛的汁液。\n直到有一天我死去，\n像尾魚睡眠於微笑的池沼，\n我才會熄燈休息，\n我，才有個美好的完成，\n如一冊詩集；\n而那覆蓋著我的大地，\n就是那詩集的封皮。\n我是忙碌的。\n我是忙碌的。\n（楊喚　我是忙碌的）"
+        }
+      ]
+    },
+    {
+      "id": 7024,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "題組",
+      "knowledge": "新詩詩意理解",
+      "difficulty": "進階",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "走六小時寂寞的長途／到你頭邊放一束紅山茶／我等待著，長夜漫漫／你卻臥聽著海濤閒話。\n（戴望舒　蕭紅墓畔口占）",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "詩中「我等待著」，到底詩人在等待什麼？",
+          "options": [
+            "(A)等待漫長的黑夜過去",
+            "(B)等待悲傷逐漸平復",
+            "(C)等待與老友再度閒話",
+            "(D)等待新朋友的出現"
+          ],
+          "answer": "(C)等待與老友再度閒話"
+        },
+        {
+          "id": "２",
+          "prompt": "詩人在詩中使用了許多巧妙的暗示手法。下列何者敘述「錯誤」？",
+          "options": [
+            "(A)第一句話暗示詩人與朋友感情的深厚",
+            "(B)以海濤的閒話，暗示墓地的不平靜",
+            "(C)「紅山茶」暗示了詩人上墳的季節",
+            "(D)以生者長夜的寂寞，暗示死者永恆的寂寞"
+          ],
+          "answer": "(B)以海濤的閒話，暗示墓地的不平靜"
+        }
+      ],
+      "answer": "[\"(C)等待與老友再度閒話\",\"(B)以海濤的閒話，暗示墓地的不平靜\"]",
+      "sourceAnswer": "(１)(Ｃ)；(２)(Ｂ)",
+      "explanation": "(１)由題目「蕭紅墓畔口占」、「我等待著，長夜漫漫／你卻臥聽著海濤閒話」可知「等待與已死老友再度閒話」，故選(Ｃ)。\n(２)(Ｂ)暗示墓地的寂靜(Ｃ)山茶花自十月開放，暗示秋季。",
+      "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
+      "sourceDetail": {
+        "documentName": "01_第一課_夏夜.doc",
+        "questionNumber": "05010242",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7024-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "走六小時寂寞的長途／到你頭邊放一束紅山茶／我等待著，長夜漫漫／你卻臥聽著海濤閒話。\n（戴望舒　蕭紅墓畔口占）"
+        }
+      ]
+    },
+    {
+      "id": 7025,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "選擇",
+      "knowledge": "數線",
+      "difficulty": "中等",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "數線上三點A、B、C，其所表示的數分別為1、3、8，若以B點為新原點，單位長不變，則A點所表示的數應為多少？",
+      "options": [
+        "(A)－2",
+        "(B)2",
+        "(C)5",
+        "(D)11"
+      ],
+      "answer": "(A)－2",
+      "sourceAnswer": "A",
+      "explanation": "1－3＝－2，故選(A)",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003305",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7025-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "數線上三點A、B、C，其所表示的數分別為1、3、8，若以B點為新原點，單位長不變，則A點所表示的數應為多少？"
+        }
+      ]
+    },
+    {
+      "id": 7026,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "選擇",
+      "knowledge": "絕對值",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "絕對值小於8的整數有多少個？",
+      "options": [
+        "(A)6",
+        "(B)7",
+        "(C)13",
+        "(D)15"
+      ],
+      "answer": "(D)15",
+      "sourceAnswer": "D",
+      "explanation": "絕對值小於8的整數有：\n0、±1、±2、±3、±4、±5、±6、±7\n共有72＋1＝15個\n故選(D)",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003401",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7026-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "絕對值小於8的整數有多少個？"
+        }
+      ]
+    },
+    {
+      "id": 7027,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "選擇",
+      "knowledge": "數線",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "數線上表示「7」的點有幾個？",
+      "options": [
+        "(A)1個",
+        "(B)2個",
+        "(C)0個",
+        "(D)不一定"
+      ],
+      "answer": "(A)1個",
+      "sourceAnswer": "A",
+      "explanation": "「7」的點位於原點右方7個單位長的位置\n故選(A)",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003497",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7027-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "數線上表示「7」的點有幾個？"
+        }
+      ]
+    },
+    {
+      "id": 7028,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "相反數",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "若甲數的相反數為7，乙數的相反數為－(－8)，丙數為－9的相反數，則甲、乙、丙三數的大小關係為________。",
+      "answer": "丙＞甲＞乙",
+      "sourceAnswer": "丙＞甲＞乙",
+      "explanation": "甲＝－7\n乙＝－(－(－8))＝－8\n丙＝－(－9)＝9\n而9＞－7＞－8\n得丙＞甲＞乙",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003303",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7028-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "若甲數的相反數為7，乙數的相反數為－(－8)，丙數為－9的相反數，則甲、乙、丙三數的大小關係為________。"
+        }
+      ]
+    },
+    {
+      "id": 7029,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "相反數",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "若(甲數－8)的相反數為－3，則甲數為________。",
+      "answer": "11",
+      "sourceAnswer": "11",
+      "explanation": "甲數－8＝－(－3)＝3\n甲數＝11",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003322",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7029-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "若(甲數－8)的相反數為－3，則甲數為________。"
+        }
+      ]
+    },
+    {
+      "id": 7030,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "絕對值",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充",
+      "group": {
+        "id": "1501003362",
+        "part": 1,
+        "total": 2
+      },
+      "prompt": "絕對值等於3的整數有哪些？答：________。",
+      "answer": "±3",
+      "sourceAnswer": "±3",
+      "explanation": "∵│＋3│＝3\n│－3│＝3\n∴±3的絕對值都等於3",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003362",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7030-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "絕對值等於3的整數有哪些？答：________。"
+        }
+      ]
+    },
+    {
+      "id": 7085,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "絕對值",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充",
+      "group": {
+        "id": "1501003362",
+        "part": 2,
+        "total": 2
+      },
+      "prompt": "絕對值小於3的整數有哪些？答：________。",
+      "answer": "0、±1、±2",
+      "sourceAnswer": "0、±1、±2",
+      "explanation": "絕對值小於3的整數有：0、±1、±2",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003362",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7085-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "絕對值小於3的整數有哪些？答：________。"
+        }
+      ]
+    },
+    {
+      "id": 7031,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "計算",
+      "knowledge": "數的大小",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "計算",
+      "prompt": "數線上A、B、C、D四點分別代表a、b、c、d，其中它們的位置關係分別如下：\n(1) A點在B點左邊，且與B點的距離為6。\n(2) B點在C點左邊，且與C點的距離為10。\n(3) C點在D點右邊，且與D點的距離為4。\n則a、b、c、d的大小關係為何？",
+      "answer": "c＞d＞b＞a",
+      "sourceAnswer": "c＞d＞b＞a",
+      "explanation": "由題意可知\n從右至左分別為C、D、B、A\n所以c＞d＞b＞a",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003842",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7031-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "數線上A、B、C、D四點分別代表a、b、c、d，其中它們的位置關係分別如下：\n(1) A點在B點左邊，且與B點的距離為6。\n(2) B點在C點左邊，且與C點的距離為10。\n(3) C點在D點右邊，且與D點的距離為4。\n則a、b、c、d的大小關係為何？"
+        }
+      ]
+    },
+    {
+      "id": 7032,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "計算",
+      "knowledge": "數線",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "計算",
+      "prompt": "設以2公分為單位測量一繩子，所測得的數為15，請問：\n(1)這繩子的長為多少公分？\n(2)若改以5公分為單位時，則所測得的數為多少？",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "這繩子的長為多少公分？",
+          "answer": "30公分"
+        },
+        {
+          "id": "2",
+          "prompt": "若改以5公分為單位時，則所測得的數為多少？",
+          "answer": "6"
+        }
+      ],
+      "answer": "[\"30公分\",\"6\"]",
+      "sourceAnswer": "(1)30公分　(2)6",
+      "explanation": "(1)215＝30(公分)\n(2)30÷5＝6",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501004128",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7032-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "設以2公分為單位測量一繩子，所測得的數為15，請問：\n(1)這繩子的長為多少公分？\n(2)若改以5公分為單位時，則所測得的數為多少？"
+        }
+      ]
+    },
+    {
+      "id": 7033,
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "計算",
+      "knowledge": "正數與負數",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "計算",
+      "prompt": "若一隻甲蟲在數線上由原點O向右走4公分，我們將它的位置記為＋2，則：\n(1)由原點O向左走6公分，我們應該將甲蟲位置記為多少？\n(2)由原點O向左走6單位，則甲蟲與原點的距離是多少公分？",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "由原點O向左走6公分，我們應該將甲蟲位置記為多少？",
+          "answer": "－3"
+        },
+        {
+          "id": "2",
+          "prompt": "由原點O向左走6單位，則甲蟲與原點的距離是多少公分？",
+          "answer": "12公分"
+        }
+      ],
+      "answer": "[\"－3\",\"12公分\"]",
+      "sourceAnswer": "(1)－3　(2)12公分",
+      "explanation": "(1)1單位長為4÷2＝2公分\n向左6公分相當於向左6÷2＝3單位長\n記作－3\n(2)26＝12",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501004130",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7033-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "若一隻甲蟲在數線上由原點O向右走4公分，我們將它的位置記為＋2，則：\n(1)由原點O向左走6公分，我們應該將甲蟲位置記為多少？\n(2)由原點O向左走6單位，則甲蟲與原點的距離是多少公分？"
+        }
+      ]
+    },
+    {
+      "id": 7034,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "字彙選擇",
+      "knowledge": "名詞",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "字彙選擇",
+      "prompt": "The school 　　　 is big.  Many（許多）students take（搭乘）it to school.",
+      "options": [
+        "(A)bed",
+        "(B)car",
+        "(C)desk",
+        "(D)bus"
+      ],
+      "answer": "(D)bus",
+      "sourceAnswer": "(Ｄ)",
+      "explanation": "那臺「校車」很大。很多學生搭它去上學。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010001",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7034-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "The school 　　　 is big.  Many（許多）students take（搭乘）it to school."
+        }
+      ]
+    },
+    {
+      "id": 7035,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "字彙選擇",
+      "knowledge": "形容詞",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "字彙選擇",
+      "prompt": "Look at the sky（天空）.  It is 　　　 today（今天）.",
+      "options": [
+        "(A)blue",
+        "(B)tall",
+        "(C)sad",
+        "(D)small"
+      ],
+      "answer": "(A)blue",
+      "sourceAnswer": "(Ａ)",
+      "explanation": "看看天空。它今天是「藍色的」。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010002",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7035-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Look at the sky（天空）.  It is 　　　 today（今天）."
+        }
+      ]
+    },
+    {
+      "id": 7036,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "字彙選擇",
+      "knowledge": "動詞",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "字彙選擇",
+      "prompt": "We 　　　 water（水）after P.E. class（在體育課之後）.",
+      "options": [
+        "(A)read",
+        "(B)drink",
+        "(C)sing",
+        "(D)run"
+      ],
+      "answer": "(B)drink",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "體育課後，我們會「喝」水。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010003",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7036-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "We 　　　 water（水）after P.E. class（在體育課之後）."
+        }
+      ]
+    },
+    {
+      "id": 7037,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "文法選擇",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "choice",
+      "typeLabel": "文法選擇",
+      "prompt": "Jacob is in Class（班級）701, and Teddy is in Class 701, too.  　　　 classmates（同班同學）.",
+      "options": [
+        "(A)We’re",
+        "(B)He’s",
+        "(C)They’re",
+        "(D)It’s"
+      ],
+      "answer": "(C)They’re",
+      "sourceAnswer": "(Ｃ)",
+      "explanation": "Jacob　和　Teddy　是他們（they），主詞是兩個人，be　動詞用　are，縮寫即為　They’re。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010021",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7037-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Jacob is in Class（班級）701, and Teddy is in Class 701, too.  　　　 classmates（同班同學）."
+        }
+      ]
+    },
+    {
+      "id": 7038,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "文法選擇",
+      "knowledge": "人稱代名詞",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "文法選擇",
+      "prompt": "The girl is cute（可愛的）.  What’s 　　　 name?",
+      "options": [
+        "(A)her",
+        "(B)she",
+        "(C)his",
+        "(D)he"
+      ],
+      "answer": "(A)her",
+      "sourceAnswer": "(Ａ)",
+      "explanation": "girl　是女性，用所有格　her。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010022",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7038-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "The girl is cute（可愛的）.  What’s 　　　 name?"
+        }
+      ]
+    },
+    {
+      "id": 7039,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "文法選擇",
+      "knowledge": "人稱代名詞",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "文法選擇",
+      "prompt": "Look at the tall man.  　　　 is Tiffany’s uncle.",
+      "options": [
+        "(A)You",
+        "(B)He",
+        "(C)I",
+        "(D)We"
+      ],
+      "answer": "(B)He",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "man　的主格是　he。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010023",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7039-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Look at the tall man.  　　　 is Tiffany’s uncle."
+        }
+      ]
+    },
+    {
+      "id": 7040,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "對話與完成句子",
+      "knowledge": "對話",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "對話與完成句子",
+      "prompt": "Derek: Hi.  My name is Derek.  　　　  Vivi: My name’s Vivi.",
+      "options": [
+        "(A)How are you?",
+        "(B)What’s your name?",
+        "(C)How tall is she?",
+        "(D)What is this?"
+      ],
+      "answer": "(B)What’s your name?",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "問名字，用　What’s＋所有格＋name?。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010066",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7040-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Derek: Hi.  My name is Derek.  　　　  Vivi: My name’s Vivi."
+        }
+      ]
+    },
+    {
+      "id": 7041,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "對話與完成句子",
+      "knowledge": "對話",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "對話與完成句子",
+      "prompt": "Freddy: 　　　  Sarah: No.  My number is eight.",
+      "options": [
+        "(A)Is this your phone?",
+        "(B)How old are you?",
+        "(C)Is your number seven?",
+        "(D)Are they numbers?"
+      ],
+      "answer": "(C)Is your number seven?",
+      "sourceAnswer": "(Ｃ)",
+      "explanation": "問對方的號碼是否為　7　號，故選(Ｃ)。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010067",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7041-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Freddy: 　　　  Sarah: No.  My number is eight."
+        }
+      ]
+    },
+    {
+      "id": 7042,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "對話與完成句子",
+      "knowledge": "對話",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "對話與完成句子",
+      "prompt": "Wendy: Your brother is cute（可愛的）.  　　　  Colin: He’s four.",
+      "options": [
+        "(A)How old is he?",
+        "(B)How is he?",
+        "(C)What’s his name?",
+        "(D)What is his number?"
+      ],
+      "answer": "(A)How old is he?",
+      "sourceAnswer": "(Ａ)",
+      "explanation": "問年齡，用　How old...。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010068",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7042-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Wendy: Your brother is cute（可愛的）.  　　　  Colin: He’s four."
+        }
+      ]
+    },
+    {
+      "id": 7049,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "填充題",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "Johnny 　　　 a student.  　　　 sister is 24.  　　　 a nurse.",
+      "answer": "is；His；She’s",
+      "sourceAnswer": "is；His；She’s",
+      "explanation": "Johnny　的所有格用　His。姐姐是女性用　She，與　be　動詞縮寫為　She’s。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010092",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7049-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Johnny 　　　 a student.  　　　 sister is 24.  　　　 a nurse."
+        }
+      ]
+    },
+    {
+      "id": 7050,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "填充題",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "Natalie and Ruby 　　　 good friends, and 　　　 Ms. Smith’s students.",
+      "answer": "are；they’re",
+      "sourceAnswer": "are；they’re",
+      "explanation": "Natalie　和　Ruby　用　they　取代，與　be　動詞縮寫為　they’re。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010093",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7050-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Natalie and Ruby 　　　 good friends, and 　　　 Ms. Smith’s students."
+        }
+      ]
+    },
+    {
+      "id": 7051,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "填充題",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "name is Gary.  I 　　　 15, and 　　　 from Japan.",
+      "answer": "My；am；I’m",
+      "sourceAnswer": "My；am；I’m",
+      "explanation": "I　的所有格為　My，be　動詞為　am，縮寫為　I’m。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010094",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7051-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "name is Gary.  I 　　　 15, and 　　　 from Japan."
+        }
+      ]
+    },
+    {
+      "id": 7055,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "依提示作答",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "依提示作答",
+      "prompt": "She is Helen Wang.（加入　name　改寫）",
+      "answer": "Her name is Helen Wang.",
+      "sourceAnswer": "Her name is Helen Wang.",
+      "explanation": "name　的前面要搭配所有格。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010133",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7055-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "She is Helen Wang.（加入　name　改寫）"
+        }
+      ]
+    },
+    {
+      "id": 7056,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "依提示作答",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "依提示作答",
+      "prompt": "Debby and Kate are Tony’s sisters.（畫線部分用人稱代名詞改寫）",
+      "answer": "They are his sisters.",
+      "sourceAnswer": "They are his sisters.",
+      "explanation": "Debby and Kate　用主格　they　取代，Tony’s　則用所有格　his　取代。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010134",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7056-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Debby and Kate are Tony’s sisters.（畫線部分用人稱代名詞改寫）"
+        }
+      ]
+    },
+    {
+      "id": 7057,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "依提示作答",
+      "knowledge": "以 WH 引導的問句及答句",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "依提示作答",
+      "prompt": "My father is fine.（依畫線部分造原問句）",
+      "answer": "How is your father?",
+      "sourceAnswer": "How is your father?",
+      "explanation": "詢問某人狀態好不好用疑問詞　How。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010135",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7057-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "My father is fine.（依畫線部分造原問句）"
+        }
+      ]
+    },
+    {
+      "id": 7058,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "翻譯",
+      "knowledge": "現在簡單式",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "翻譯",
+      "prompt": "那些學生　13　歲。我是他們的老師。",
+      "answer": "The / Those students are thirteen (years old).  I am their teacher.",
+      "sourceAnswer": "The / Those students are thirteen (years old).  I am their teacher.",
+      "explanation": "那些學生為複數，搭配　be　動詞　are。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010147",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7058-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "那些學生　13　歲。我是他們的老師。"
+        }
+      ]
+    },
+    {
+      "id": 7059,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "翻譯",
+      "knowledge": "以 WH 引導的問句及答句",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "翻譯",
+      "prompt": "你叫什麼名字？",
+      "answer": "What is / What’s your name?",
+      "sourceAnswer": "What is / What’s your name?",
+      "explanation": "疑問詞（What）＋單數　be　動詞（is）＋所有格（your）＋單數名詞（name）?；前二字　What is　可形成縮寫式　What’s。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010148",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7059-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "你叫什麼名字？"
+        }
+      ]
+    },
+    {
+      "id": 7060,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "翻譯",
+      "knowledge": "人稱代名詞",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "翻譯",
+      "prompt": "他的名字叫做　Snowball。他是我的狗。",
+      "answer": "His name is Snowball.  He’s my dog.",
+      "sourceAnswer": "His name is Snowball.  He’s my dog.",
+      "explanation": "狗的主人已知狗的性別，故狗的代名詞所有格及主格分別用　His　及　He。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010149",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7060-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "他的名字叫做　Snowball。他是我的狗。"
+        }
+      ]
+    },
+    {
+      "id": 7043,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "克漏字測驗",
+      "knowledge": "克漏字—文意題組：理解文章(圖、表)並推論。",
+      "difficulty": "基礎",
+      "kind": "multi-choice",
+      "typeLabel": "克漏字測驗",
+      "prompt": "eq \\o\\ar(　　　,George): My name is George.  　(1)\neq \\o\\ar(　　　,Susan): 　(2)　 Susan.\neq \\o\\ar(　　　,George): Nice to meet you.\neq \\o\\ar(　　　,Susan): Nice to meet you, too.\neq \\o\\ar(　　　,George): I’m in Class 705.  And you?\neq \\o\\ar(　　　,Susan): Really?  I’m in Class 705, too.  We are classmates.",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)　Nice to meet you.　(Ｂ)　Who are you?　(Ｃ)　What’s your name?　(Ｄ)　Thank you.",
+          "options": [
+            "(A)Nice to meet you",
+            "(B)Who are you?",
+            "(C)What’s your name?",
+            "(D)Thank you"
+          ],
+          "answer": "(C)What’s your name?"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)　He’s　(Ｂ)　She’s　(Ｃ)　They’re　(Ｄ)　I’m",
+          "options": [
+            "(A)He’s",
+            "(B)She’s",
+            "(C)They’re",
+            "(D)I’m"
+          ],
+          "answer": "(D)I’m"
+        }
+      ],
+      "answer": "[\"(C)What’s your name?\",\"(D)I’m\"]",
+      "sourceAnswer": "(１)(Ｃ)；(２)(Ｄ)",
+      "explanation": "(１)自我介紹後，反問對方的名字，所以用　“What’s your name?”　詢問。\n(２)因為說話的人是　Susan　本人，故用　I’m　較合適。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010085",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7043-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "eq \\o\\ar(　　　,George): My name is George.  　(1)\neq \\o\\ar(　　　,Susan): 　(2)　 Susan.\neq \\o\\ar(　　　,George): Nice to meet you.\neq \\o\\ar(　　　,Susan): Nice to meet you, too.\neq \\o\\ar(　　　,George): I’m in Class 705.  And you?\neq \\o\\ar(　　　,Susan): Really?  I’m in Class 705, too.  We are classmates."
+        }
+      ]
+    },
+    {
+      "id": 7044,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "克漏字測驗",
+      "knowledge": "克漏字—文意題組：理解文章(圖、表)並推論。",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "克漏字測驗",
+      "prompt": "eq \\o\\ar(　　　　,Jane): Frank, this is my good friend, Amanda.\neq \\o\\ar(　　　　,Frank): Hi, my name is Frank.  　(1)\neq \\o\\ar(　　　　,Amanda): I’m Amanda.\neq \\o\\ar(　　　　,Frank): Where is our teacher, Miss Beck?\neq \\o\\ar(　　　　,Amanda): Look!  　(2)　 over there.\neq \\o\\ar(　　　　,Frank): Wow!  She is so beautiful.\neq \\o\\ar(　　　　,Amanda): She is nice, too.  I’m very happy.\neq \\o\\ar(　　　　,Frank): Me too.  By the way, 　(3)\neq \\o\\ar(　　　　,Amanda): Miss Wendy Beck.\neq \\o\\ar(　　　　,Jane): Oh!  She’s my aunt.  What a small world!",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)　And you?　(Ｂ)　How do you do?　(Ｃ)　How are you?　(Ｄ)　I’m fine.  Thank you.",
+          "options": [
+            "(A)And you?",
+            "(B)How do you do?",
+            "(C)How are you?",
+            "(D)I’m fine.  Thank you"
+          ],
+          "answer": "(A)And you?"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)　He’s　(Ｂ)　She’s　(Ｃ)　His　(Ｄ)　Her",
+          "options": [
+            "(A)He’s",
+            "(B)She’s",
+            "(C)His",
+            "(D)Her"
+          ],
+          "answer": "(B)She’s"
+        },
+        {
+          "id": "３",
+          "prompt": "(Ａ)　how is she?　(Ｂ)　what’s her phone number?　(Ｃ)　where is she?　(Ｄ)　what’s her name?",
+          "options": [
+            "(A)how is she?",
+            "(B)what’s her phone number?",
+            "(C)where is she?",
+            "(D)what’s her name?"
+          ],
+          "answer": "(D)what’s her name?"
+        }
+      ],
+      "answer": "[\"(A)And you?\",\"(B)She’s\",\"(D)what’s her name?\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｂ)；(３)(Ｄ)",
+      "explanation": "(１)自己報完名字後，可用　And you?　詢問對方。\n(２)主詞是女性，並且要用主格　She，然後再和　be　動詞　is　縮寫成　She’s。\n(３)　Amanda　回答出姓名，所以推測　Frank　是詢問老師的名字。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010086",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7044-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "eq \\o\\ar(　　　　,Jane): Frank, this is my good friend, Amanda.\neq \\o\\ar(　　　　,Frank): Hi, my name is Frank.  　(1)\neq \\o\\ar(　　　　,Amanda): I’m Amanda.\neq \\o\\ar(　　　　,Frank): Where is our teacher, Miss Beck?\neq \\o\\ar(　　　　,Amanda): Look!  　(2)　 over there.\neq \\o\\ar(　　　　,Frank): Wow!  She is so beautiful.\neq \\o\\ar(　　　　,Amanda): She is nice, too.  I’m very happy.\neq \\o\\ar(　　　　,Frank): Me too.  By the way, 　(3)\neq \\o\\ar(　　　　,Amanda): Miss Wendy Beck.\neq \\o\\ar(　　　　,Jane): Oh!  She’s my aunt.  What a small world!"
+        }
+      ]
+    },
+    {
+      "id": 7045,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "克漏字測驗",
+      "knowledge": "克漏字—文意題組：理解文章(圖、表)並推論。",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "克漏字測驗",
+      "prompt": "Alan: Good morning.\nErica: Good morning.\nAlan: I’m Alan.  　(1)　 your name?\nErica: Erica.\nAlan: Nice to meet you, Erica.\nErica: Nice to meet you, too, Alan.\nAlan: 　(2)　 a student in Joyful Junior High School?\nErica: Yes.  I’m a new student.\nAlan: Where 　(3)　 you from?\nErica: Canada.\nAlan: Canada?  Is Kube your brother?\nErica: Yes.  　(4)　 brother and sister.  And you are Kube’s...\nAlan: I am Kube’s classmate.\nErica: What a small world!",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "(Ａ)　What’s　(Ｂ)　What　(Ｃ)　How’s　(Ｄ)　How",
+          "options": [
+            "(A)What’s",
+            "(B)What",
+            "(C)How’s",
+            "(D)How"
+          ],
+          "answer": "(A)What’s"
+        },
+        {
+          "id": "２",
+          "prompt": "(Ａ)　Is she　(Ｂ)　Is it　(Ｃ)　Are you　(Ｄ)　Are we",
+          "options": [
+            "(A)Is she",
+            "(B)Is it",
+            "(C)Are you",
+            "(D)Are we"
+          ],
+          "answer": "(C)Are you"
+        },
+        {
+          "id": "３",
+          "prompt": "(Ａ)　am　(Ｂ)　are　(Ｃ)　be　(Ｄ)　is",
+          "options": [
+            "(A)am",
+            "(B)are",
+            "(C)be",
+            "(D)is"
+          ],
+          "answer": "(B)are"
+        },
+        {
+          "id": "４",
+          "prompt": "(Ａ)　They’re　(Ｂ)　He’s　(Ｃ)　We’re　(Ｄ)　It’s",
+          "options": [
+            "(A)They’re",
+            "(B)He’s",
+            "(C)We’re",
+            "(D)It’s"
+          ],
+          "answer": "(C)We’re"
+        }
+      ],
+      "answer": "[\"(A)What’s\",\"(C)Are you\",\"(B)are\",\"(C)We’re\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｃ)；(３)(Ｂ)；(４)(Ｃ)",
+      "explanation": "(１)問姓名，用　What’s＋所有格＋name?，故選(Ａ)。\n(２)　Erica　回答　I’m...，所以問句是　Are you...?，故選(Ｃ)。\n(３)　you　搭配　be　動詞　are。\n(４)　Erica　和　Kube　是兄妹的關係，用　We are...　來描述。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010087",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7045-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Alan: Good morning.\nErica: Good morning.\nAlan: I’m Alan.  　(1)　 your name?\nErica: Erica.\nAlan: Nice to meet you, Erica.\nErica: Nice to meet you, too, Alan.\nAlan: 　(2)　 a student in Joyful Junior High School?\nErica: Yes.  I’m a new student.\nAlan: Where 　(3)　 you from?\nErica: Canada.\nAlan: Canada?  Is Kube your brother?\nErica: Yes.  　(4)　 brother and sister.  And you are Kube’s...\nAlan: I am Kube’s classmate.\nErica: What a small world!"
+        }
+      ]
+    },
+    {
+      "id": 7046,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "閱讀測驗",
+      "knowledge": "圖表題組：理解文章(圖、表)細節。",
+      "difficulty": "基礎",
+      "kind": "multi-choice",
+      "typeLabel": "閱讀測驗",
+      "prompt": "",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "Two 　　　 and three 　　　 are in the classroom.",
+          "options": [
+            "(A)boy; mothers",
+            "(B)girls; fathers",
+            "(C)boys; girls",
+            "(D)teachers; girls"
+          ],
+          "answer": "(C)boys; girls"
+        },
+        {
+          "id": "２",
+          "prompt": "What is on the wall（牆）?",
+          "options": [
+            "(A)The chair",
+            "(B)The apple",
+            "(C)The ruler",
+            "(D)The clock"
+          ],
+          "answer": "(D)The clock"
+        }
+      ],
+      "answer": "[\"(C)boys; girls\",\"(D)The clock\"]",
+      "sourceAnswer": "(１)(Ｃ)；(２)(Ｄ)",
+      "explanation": "(１)由圖示，兩個「男孩」和三個「女孩」在教室裡面。\n(２)看圖可知，牆壁上有一個「時鐘」。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010088",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7046-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": ""
+        },
+        {
+          "id": "q7046-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010088.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit閱讀測驗附圖",
+            "width": 191,
+            "height": 195
+          }
+        }
+      ]
+    },
+    {
+      "id": 7047,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "閱讀測驗",
+      "knowledge": "圖表題組：理解文章(圖、表)細節。",
+      "difficulty": "基礎",
+      "kind": "multi-choice",
+      "typeLabel": "閱讀測驗",
+      "prompt": "",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "Andy has（有） a cat and a dog.  What is the cat’s name?",
+          "options": [
+            "(A)Mimi",
+            "(B)Lucky",
+            "(C)Max",
+            "(D)Andy"
+          ],
+          "answer": "(A)Mimi"
+        },
+        {
+          "id": "２",
+          "prompt": "What is in Andy’s hand（手）?",
+          "options": [
+            "(A)A dog",
+            "(B)A ball",
+            "(C)A cat",
+            "(D)A pencil"
+          ],
+          "answer": "(D)A pencil"
+        }
+      ],
+      "answer": "[\"(A)Mimi\",\"(D)A pencil\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｄ)",
+      "explanation": "(１)由圖可知，貓的名字是「Mimi」。\n(２)由圖可推知，Andy　手上拿著「鉛筆」。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010089",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7047-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": ""
+        },
+        {
+          "id": "q7047-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010089.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit閱讀測驗附圖",
+            "width": 152,
+            "height": 152
+          }
+        }
+      ]
+    },
+    {
+      "id": 7048,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "閱讀測驗",
+      "knowledge": "圖表題組：理解文章(圖、表)細節。",
+      "difficulty": "基礎",
+      "kind": "multi-choice",
+      "typeLabel": "閱讀測驗",
+      "prompt": "",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "There are（有）　　　 students in the picture.",
+          "options": [
+            "(A)six",
+            "(B)seven",
+            "(C)eight",
+            "(D)nine"
+          ],
+          "answer": "(D)nine"
+        },
+        {
+          "id": "２",
+          "prompt": "The teacher’s name is 　　　.",
+          "options": [
+            "(A)Emily",
+            "(B)Lynn",
+            "(C)John",
+            "(D)Meg"
+          ],
+          "answer": "(A)Emily"
+        },
+        {
+          "id": "３",
+          "prompt": "John is Number 　　　.",
+          "options": [
+            "(A)Four",
+            "(B)Seven",
+            "(C)Eight",
+            "(D)Nine"
+          ],
+          "answer": "(B)Seven"
+        }
+      ],
+      "answer": "[\"(D)nine\",\"(A)Emily\",\"(B)Seven\"]",
+      "sourceAnswer": "(１)(Ｄ)；(２)(Ａ)；(３)(Ｂ)",
+      "explanation": "(１)圖中總共有「九個」學生。\n(２)看圖可知，老師是「Emily」。\n(３)由座位號碼可得知　John　是「七號」。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010090",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7048-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": ""
+        },
+        {
+          "id": "q7048-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010090.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit閱讀測驗附圖",
+            "width": 189,
+            "height": 192
+          }
+        }
+      ]
+    },
+    {
+      "id": 7052,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "看圖回答問題",
+      "knowledge": "以 WH 引導的問句及答句",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "看圖回答問題",
+      "prompt": "What is the boy’s name?",
+      "answer": "The boy’s name / His name is Willis.",
+      "sourceAnswer": "The boy’s name / His name is Willis.",
+      "explanation": "所有格＋name，也可以用　The boy’s＋name。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010123",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7052-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "What is the boy’s name?"
+        },
+        {
+          "id": "q7052-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010123.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit看圖回答問題附圖",
+            "width": 92,
+            "height": 121
+          }
+        }
+      ]
+    },
+    {
+      "id": 7053,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "看圖回答問題",
+      "knowledge": "以 WH 引導的問句及答句",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "看圖回答問題",
+      "prompt": "How old is the short girl?（數字用英文寫出）",
+      "answer": "She is twelve (years old).",
+      "sourceAnswer": "She is twelve (years old).",
+      "explanation": "year(s) old　可省略不寫。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010124",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7053-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "How old is the short girl?（數字用英文寫出）"
+        },
+        {
+          "id": "q7053-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010124.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit看圖回答問題附圖",
+            "width": 110,
+            "height": 121
+          }
+        }
+      ]
+    },
+    {
+      "id": 7054,
+      "subject": "英文",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "Starter Unit",
+      "unit": "01_Starter Unit",
+      "topic": "看圖回答問題",
+      "knowledge": "以 WH 引導的問句及答句",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "看圖回答問題",
+      "prompt": "Are the women（女人）teachers?",
+      "answer": "No, they are nurses.",
+      "sourceAnswer": "No, they are nurses.",
+      "explanation": "女性是護理師，而非老師。",
+      "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
+      "sourceDetail": {
+        "documentName": "01_Starter Unit.doc",
+        "questionNumber": "05010125",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7054-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "Are the women（女人）teachers?"
+        },
+        {
+          "id": "q7054-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-en-05010125.png",
+            "mimeType": "image/png",
+            "alt": "Starter Unit看圖回答問題附圖",
+            "width": 113,
+            "height": 100
+          }
+        }
+      ]
+    },
+    {
+      "id": 7061,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "09-01",
+      "unit": "09-01第一節　巨觀尺度與微觀尺度",
+      "topic": "選擇",
+      "knowledge": "巨觀尺度與微觀尺度的定義",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "關於巨觀尺度與微觀尺度的敘述，下列何者正確？",
+      "options": [
+        "(A)能用儀器看到的物體，都屬於巨觀尺度",
+        "(B)能用儀器看到的物體，都屬於微觀尺度",
+        "(C)巨觀與微觀是以是否需用儀器做觀察來概分",
+        "(D)巨觀與微觀是以肉眼是否可見來概分"
+      ],
+      "answer": "(D)巨觀與微觀是以肉眼是否可見來概分",
+      "sourceAnswer": "D",
+      "explanation": "巨觀和微觀尺度是以肉眼可否見到來區分，肉眼可見的事物屬於巨觀尺度，肉眼不可見的為微觀尺度。",
+      "source": "康軒自然第一冊 · 09-01第一節　巨觀尺度與微觀尺度 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "09-01第一節　巨觀尺度與微觀尺度.doc",
+        "questionNumber": "1501001648",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7061-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "關於巨觀尺度與微觀尺度的敘述，下列何者正確？"
+        }
+      ]
+    },
+    {
+      "id": 7062,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "09-01",
+      "unit": "09-01第一節　巨觀尺度與微觀尺度",
+      "topic": "選擇",
+      "knowledge": "不同尺度下的物體特徵",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "沛沛打掃教室時發現有的抹布較容易吸水，有的則不易吸水，他想觀察兩布料的織線排列方式，應選擇下列哪種器材來觀察最方便合適？",
+      "options": [
+        "(A)放大鏡",
+        "(B)複式顯微鏡",
+        "(C)望遠鏡",
+        "(D)電子顯微鏡"
+      ],
+      "answer": "(A)放大鏡",
+      "sourceAnswer": "A",
+      "explanation": "(A)觀察布料的紡織方式只需放大3~5倍，並且不須要將布料製成透光樣本，因此使用放大鏡最為方便合適。",
+      "source": "康軒自然第一冊 · 09-01第一節　巨觀尺度與微觀尺度 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "09-01第一節　巨觀尺度與微觀尺度.doc",
+        "questionNumber": "1501001655",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7062-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "沛沛打掃教室時發現有的抹布較容易吸水，有的則不易吸水，他想觀察兩布料的織線排列方式，應選擇下列哪種器材來觀察最方便合適？"
+        }
+      ]
+    },
+    {
+      "id": 7063,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "09-01",
+      "unit": "09-01第一節　巨觀尺度與微觀尺度",
+      "topic": "選擇",
+      "knowledge": "不同尺度下的物體特徵",
+      "difficulty": "中等",
+      "kind": "choice",
+      "typeLabel": "選擇",
+      "prompt": "「清潔洗衣機的濾網時，總是看到濾網上有一團一團的灰色毛絮，但是在放大鏡的觀察下，可以觀察到它是由各種顏色的小毛絮所組成，這是因為衣物有白、黑、紅、綠、藍等不同顏色，這些從不同顏色衣物掉下來的小毛絮，混雜聚集在一起就會變成灰色的毛絮團。」關於以上現象的解釋，何者最合理？",
+      "options": [
+        "(A)灰色毛絮團屬於微觀尺度",
+        "(B)不同色的小毛絮屬於微觀尺度",
+        "(C)肉眼可以分辨出不同色的小毛絮",
+        "(D)用顯微鏡觀察灰色毛絮團，只會看到灰色毛絮"
+      ],
+      "answer": "(B)不同色的小毛絮屬於微觀尺度",
+      "sourceAnswer": "B",
+      "explanation": "巨觀尺度下，毛絮團呈現灰色；但在微觀尺度的觀察下，可發現毛絮團由各種顏色的小毛絮所組成，故選(B)。",
+      "source": "康軒自然第一冊 · 09-01第一節　巨觀尺度與微觀尺度 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "09-01第一節　巨觀尺度與微觀尺度.doc",
+        "questionNumber": "1501001687",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7063-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "「清潔洗衣機的濾網時，總是看到濾網上有一團一團的灰色毛絮，但是在放大鏡的觀察下，可以觀察到它是由各種顏色的小毛絮所組成，這是因為衣物有白、黑、紅、綠、藍等不同顏色，這些從不同顏色衣物掉下來的小毛絮，混雜聚集在一起就會變成灰色的毛絮團。」關於以上現象的解釋，何者最合理？"
+        }
+      ]
+    },
+    {
+      "id": 7064,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "09-01",
+      "unit": "09-01第一節　巨觀尺度與微觀尺度",
+      "topic": "填充",
+      "knowledge": "巨觀尺度與微觀尺度的定義",
+      "difficulty": "進階",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "請將下方各選項由小至大的尺度進行排列：\n(甲)器官(乙)細胞(丙)個體(丁)銀河系(戊)原子(己)生態系(庚)太陽。\n______________________________________",
+      "answer": "(戊)(乙)(甲)(丙)(己) (庚) (丁)",
+      "sourceAnswer": "(戊)(乙)(甲)(丙)(己) (庚) (丁)",
+      "explanation": "答案：(戊)(乙)(甲)(丙)(己) (庚) (丁)",
+      "source": "康軒自然第一冊 · 09-01第一節　巨觀尺度與微觀尺度 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "09-01第一節　巨觀尺度與微觀尺度.doc",
+        "questionNumber": "1501001574",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7064-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "請將下方各選項由小至大的尺度進行排列：\n(甲)器官(乙)細胞(丙)個體(丁)銀河系(戊)原子(己)生態系(庚)太陽。\n______________________________________"
+        }
+      ]
+    },
+    {
+      "id": 7065,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "09-01",
+      "unit": "09-01第一節　巨觀尺度與微觀尺度",
+      "topic": "填充",
+      "knowledge": "巨觀尺度與微觀尺度的定義",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "由小至大將物質尺度進行排列：\n(甲)分子；(乙)組織；(丙)細胞；(丁)個體；(戊)器官；(己)器官系統；(庚)生態系。\n______________________________________",
+      "answer": "(甲)(丙)(乙)(戊)(己)(丁)(庚)",
+      "sourceAnswer": "(甲)(丙)(乙)(戊)(己)(丁)(庚)",
+      "explanation": "答案：(甲)(丙)(乙)(戊)(己)(丁)(庚)",
+      "source": "康軒自然第一冊 · 09-01第一節　巨觀尺度與微觀尺度 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "09-01第一節　巨觀尺度與微觀尺度.doc",
+        "questionNumber": "1501001820",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7065-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "由小至大將物質尺度進行排列：\n(甲)分子；(乙)組織；(丙)細胞；(丁)個體；(戊)器官；(己)器官系統；(庚)生態系。\n______________________________________"
+        }
+      ]
+    },
+    {
+      "id": 7069,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "3-3",
+      "unit": "3-3　人體內物質的運輸",
+      "topic": "填充",
+      "knowledge": "體循環與肺循環",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "醫生在傷患手臂注射消炎藥劑，此藥劑自手臂到腳的流動次序為何？請依序排出。\n甲.主動脈；乙.上大靜脈；丙.肺靜脈；丁.肺動脈；戊.心臟；己.下肢的動脈；庚.手臂的靜脈。\n______________________________________",
+      "answer": "庚→乙→戊→丁→丙→戊→甲→己。",
+      "sourceAnswer": "庚→乙→戊→丁→丙→戊→甲→己。",
+      "explanation": "答案：庚→乙→戊→丁→丙→戊→甲→己。",
+      "source": "康軒自然第一冊 · 3-3　人體內物質的運輸 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "3-3　人體內物質的運輸.doc",
+        "questionNumber": "1501000557",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7069-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "醫生在傷患手臂注射消炎藥劑，此藥劑自手臂到腳的流動次序為何？請依序排出。\n甲.主動脈；乙.上大靜脈；丙.肺靜脈；丁.肺動脈；戊.心臟；己.下肢的動脈；庚.手臂的靜脈。\n______________________________________"
+        }
+      ]
+    },
+    {
+      "id": 7066,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　生命現象",
+      "topic": "題組",
+      "knowledge": "複式顯微鏡",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "過年後小華打算用壓歲錢購買一臺複式顯微鏡，來到店家和老闆討論了一些顯微鏡的功能及使用注意事項，老闆覺得小華很有上進心，於是送他一些已經做好的生物樣品玻片。小華滿心歡喜的回到家中，便開始研究買回來的複式顯微鏡，首先他先了解顯微鏡的構造，接著閱讀操作手冊及使用注意事項，並了解使用完畢的保養方式。最後，小華將老闆送他的樣品玻片，放入顯微鏡下觀察，果然這臺顯微鏡的效果如他預期中的令人滿意。試根據上述所提供的資料，回答下列問題：",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "小華下樓到院子裡的小池塘取一杯池水，利用顯微鏡觀察池水中的生物時，發現一隻黑色的小生物正游向顯微鏡視野中的東南方，請問他應該將玻片往哪個方向移動才能將此生物移至鏡頭的中央？",
+          "options": [
+            "(A)西北方",
+            "(B)西南方",
+            "(C)東北方",
+            "(D)東南方"
+          ],
+          "answer": "(D)東南方"
+        },
+        {
+          "id": "2",
+          "prompt": "小華的哥哥向小華借顯微鏡使用，結果造成顯微鏡某個部位損壞，兩人為此而爭吵，請問下列哪一項可能為小華的哥哥不當的操作？",
+          "options": [
+            "(A)拿取顯微鏡時一手握住鏡臂，一手托住鏡座",
+            "(B)為了看清楚觀察物，轉動粗、細調節輪",
+            "(C)轉換觀察倍率時，轉動旋轉盤更換物鏡倍率",
+            "(D)使用衛生紙朝同一方向擦拭鏡頭"
+          ],
+          "answer": "(D)使用衛生紙朝同一方向擦拭鏡頭"
+        }
+      ],
+      "answer": "[\"(D)東南方\",\"(D)使用衛生紙朝同一方向擦拭鏡頭\"]",
+      "sourceAnswer": "(1)D　(2)D",
+      "explanation": "(1)將玻片往顯微鏡中所看到生物運動的方向移動，就可以把生物移至視野中央。(2)(D)應該使用拭鏡紙擦拭鏡頭。",
+      "source": "康軒自然第一冊 · 1-1　生命現象 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　生命現象.doc",
+        "questionNumber": "1501000852",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7066-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "過年後小華打算用壓歲錢購買一臺複式顯微鏡，來到店家和老闆討論了一些顯微鏡的功能及使用注意事項，老闆覺得小華很有上進心，於是送他一些已經做好的生物樣品玻片。小華滿心歡喜的回到家中，便開始研究買回來的複式顯微鏡，首先他先了解顯微鏡的構造，接著閱讀操作手冊及使用注意事項，並了解使用完畢的保養方式。最後，小華將老闆送他的樣品玻片，放入顯微鏡下觀察，果然這臺顯微鏡的效果如他預期中的令人滿意。試根據上述所提供的資料，回答下列問題："
+        }
+      ]
+    },
+    {
+      "id": 7067,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　生命現象",
+      "topic": "題組",
+      "knowledge": "生命現象",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "生物和非生物之間有許多差異，試回答下列問題：",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "生物和非生物的差異不包括下列哪一項？",
+          "options": [
+            "(A)代謝",
+            "(B)生長",
+            "(C)分裂",
+            "(D)繁殖"
+          ],
+          "answer": "(C)分裂"
+        },
+        {
+          "id": "2",
+          "prompt": "下列哪一條件不是大部分生物生存所必須的？",
+          "options": [
+            "(A)陽光",
+            "(B)沙石",
+            "(C)養分",
+            "(D)水分"
+          ],
+          "answer": "(B)沙石"
+        }
+      ],
+      "answer": "[\"(C)分裂\",\"(B)沙石\"]",
+      "sourceAnswer": "(1)C　(2)B",
+      "explanation": "(1)生物與非生物的差異在於生物會表現出生命現象，選項中只有分裂不屬於生命現象。(2)陽光、空氣、水和養分是大部分生物生存必須條件，而沙石不是。",
+      "source": "康軒自然第一冊 · 1-1　生命現象 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　生命現象.doc",
+        "questionNumber": "1501000862",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7067-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "生物和非生物之間有許多差異，試回答下列問題："
+        }
+      ]
+    },
+    {
+      "id": 7068,
+      "subject": "生物",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　生命現象",
+      "topic": "題組",
+      "knowledge": "複式顯微鏡",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "依照複式顯微鏡的使用原則，試回答下列問題：",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "製作玻片標本時，蓋玻片與載玻片的正確位置為何？",
+          "options": [
+            "(A)",
+            "(B)",
+            "(C)",
+            "(D)"
+          ],
+          "answer": "(B)"
+        },
+        {
+          "id": "2",
+          "prompt": "若視野的上方較暗，下方較亮，應調節哪一部位？",
+          "options": [
+            "(A)反光鏡",
+            "(B)旋轉盤",
+            "(C)物鏡",
+            "(D)目鏡"
+          ],
+          "answer": "(A)反光鏡"
+        },
+        {
+          "id": "3",
+          "prompt": "使用顯微鏡時，下列何者正確？",
+          "options": [
+            "(A)先使用40X物鏡，再用10X物鏡",
+            "(B)先使用10X物鏡，再用40X物鏡",
+            "(C)先使用細調節輪，再用粗調節輪",
+            "(D)使用40X物鏡時，光圈應調小一點"
+          ],
+          "answer": "(B)先使用10X物鏡，再用40X物鏡"
+        }
+      ],
+      "answer": "[\"(B)\",\"(A)反光鏡\",\"(B)先使用10X物鏡，再用40X物鏡\"]",
+      "sourceAnswer": "(1)B　(2)A　(3)B",
+      "explanation": "(1)蓋玻片通常為方形，且應放置在載玻片的正中央，故選(B)。(2)若視野內的光線不一，則應該調整反光鏡，調整反射光線位置，故選(A)。(3)(A)應先由低倍物鏡觀察再用高倍物鏡；(C)應先用粗調節輪，再用細調節輪微調；(D)用高倍鏡時視野會變暗，故光圈應該調大一點。",
+      "source": "康軒自然第一冊 · 1-1　生命現象 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　生命現象.doc",
+        "questionNumber": "1501000963",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7068-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "依照複式顯微鏡的使用原則，試回答下列問題："
+        }
+      ]
+    },
+    {
+      "id": 7070,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "單題",
+      "knowledge": "相對位置",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "單題",
+      "prompt": "小華學校校園中央有一條南北向步道，步道東側為操場，西側為圖書館。圖書館只有在步道南段設有遮蔭的騎樓，北段沒有遮蔽物。早上　8　點，小華到校等待校慶集合，並希望盡量避免被太陽直射晒到，他應該選擇哪一個位置？",
+      "options": [
+        "(A)步道北段的操場旁",
+        "(B)步道南段的操場旁",
+        "(C)步道北段的圖書館旁",
+        "(D)步道南段的圖書館旁"
+      ],
+      "answer": "(D)步道南段的圖書館旁",
+      "sourceAnswer": "(Ｄ)",
+      "explanation": "早上太陽位於東方，操場在步道東側，較容易受到日照；圖書館位於西側，可避開直射陽光。此外，只有步道南段的圖書館旁設有遮蔭騎樓，因此最能避免日晒，故選(Ｄ)。",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010032",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7070-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "小華學校校園中央有一條南北向步道，步道東側為操場，西側為圖書館。圖書館只有在步道南段設有遮蔭的騎樓，北段沒有遮蔽物。早上　8　點，小華到校等待校慶集合，並希望盡量避免被太陽直射晒到，他應該選擇哪一個位置？"
+        }
+      ]
+    },
+    {
+      "id": 7071,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "單題",
+      "knowledge": "絕對位置",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "單題",
+      "prompt": "以下是兩位同學的對話，依內容判斷，奇奇描述超商的位置時，是用何種位置的表示方式？\n奇奇：我昨天發現一間評價很好的餐廳。\n妙妙：快告訴我是哪一間？\n奇奇：就在學校側門附近那間超商的斜對面。",
+      "options": [
+        "(A)絕對位置",
+        "(B)相對位置",
+        "(C)海陸位置",
+        "(D)經緯度位置"
+      ],
+      "answer": "(B)相對位置",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "(Ｂ)以某一個地點為基準，表達目標物相對於這一地點的方位和距離。",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010041",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7071-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "以下是兩位同學的對話，依內容判斷，奇奇描述超商的位置時，是用何種位置的表示方式？\n奇奇：我昨天發現一間評價很好的餐廳。\n妙妙：快告訴我是哪一間？\n奇奇：就在學校側門附近那間超商的斜對面。"
+        }
+      ]
+    },
+    {
+      "id": 7072,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "單題",
+      "knowledge": "絕對位置",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "單題",
+      "prompt": "鼎鼎國中舉辦羽球邀請賽，承辦人員欲告訴參賽隊伍該國中的所在位置。下列哪一種表達方式最為適合？\n甲、距離捷運站　5　公里。\n乙、位於市政府東南方。\n丙、星光市快樂路　76　號。\n丁、位於北緯　23.5　度。",
+      "options": [
+        "(A)甲",
+        "(B)乙",
+        "(C)丙",
+        "(D)丁"
+      ],
+      "answer": "(C)丙",
+      "sourceAnswer": "(Ｃ)",
+      "explanation": "(Ｃ)地址為絕對位置，可直接表達其地點(Ｄ)只有緯度，缺乏經度無法確認絕對位置。",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010043",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7072-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "鼎鼎國中舉辦羽球邀請賽，承辦人員欲告訴參賽隊伍該國中的所在位置。下列哪一種表達方式最為適合？\n甲、距離捷運站　5　公里。\n乙、位於市政府東南方。\n丙、星光市快樂路　76　號。\n丁、位於北緯　23.5　度。"
+        }
+      ]
+    },
+    {
+      "id": 7076,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "題組",
+      "knowledge": "緯線",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "經緯度座標是世界上最常被使用的座標系統，訂定經緯線的目的，是為了方便定位與定向。請根據「經線」與「緯線」的特性，回答下列問題：",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "下列緯線中，長度最長的是下列何者？",
+          "options": [
+            "(A)18°N",
+            "(B)70°N",
+            "(C)2°S",
+            "(D)20°S"
+          ],
+          "answer": "(C)2°S"
+        },
+        {
+          "id": "２",
+          "prompt": "下列有關經線的敘述，哪一項正確？",
+          "options": [
+            "(A)0°經線又稱赤道",
+            "(B)經線分東經、西經各　90°",
+            "(C)最長的經線是　0°經線",
+            "(D)所有的經線均交會於南、北極點"
+          ],
+          "answer": "(D)所有的經線均交會於南、北極點"
+        },
+        {
+          "id": "３",
+          "prompt": "下列有關緯線的敘述，哪一項正確？",
+          "options": [
+            "(A)所有的緯線都是半圓",
+            "(B)緯線分北緯、南緯各　90°",
+            "(C)所有的緯線均一樣長",
+            "(D)所有的緯線均交會於南、北極點"
+          ],
+          "answer": "(B)緯線分北緯、南緯各　90°"
+        }
+      ],
+      "answer": "[\"(C)2°S\",\"(D)所有的經線均交會於南、北極點\",\"(B)緯線分北緯、南緯各　90°\"]",
+      "sourceAnswer": "(１)(Ｃ)；(２)(Ｄ)；(３)(Ｂ)",
+      "explanation": "答案：(１)(Ｃ)；(２)(Ｄ)；(３)(Ｂ)",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010148",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7076-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "經緯度座標是世界上最常被使用的座標系統，訂定經緯線的目的，是為了方便定位與定向。請根據「經線」與「緯線」的特性，回答下列問題："
+        }
+      ]
+    },
+    {
+      "id": 7082,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "03_01_1-1_1-3_位置與生活的關聯",
+      "topic": "題組",
+      "knowledge": "經度與時區",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "2019　年維也納（48°N，15°E）愛樂新年音樂會在　90　多個國家由電視臺轉播，主辦單位當時預估全球約有　5　千萬觀眾共同欣賞，臺灣（25°N，120°E）直播時間是在　2019　年　1　月　1　日　18:15。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "根據上文，樂團的演出時間為維也納時間幾點幾分？",
+          "options": [
+            "(A)8:15",
+            "(B)9:15",
+            "(C)10:15",
+            "(D)11:15"
+          ],
+          "answer": "(D)11:15"
+        },
+        {
+          "id": "２",
+          "prompt": "根據報導內容，可推知維也納位於臺灣哪一方向？",
+          "options": [
+            "(A)東北方",
+            "(B)西北方",
+            "(C)東南方",
+            "(D)西南方"
+          ],
+          "answer": "(B)西北方"
+        }
+      ],
+      "answer": "[\"(D)11:15\",\"(B)西北方\"]",
+      "sourceAnswer": "(１)(Ｄ)；(２)(Ｂ)",
+      "explanation": "(１)臺灣與維也納兩地相差約　7　小時，臺灣時間較快，故往後推　7　小時為維也納時間。\n(２)由兩地經緯度位置可推測，維也納位於臺灣的西北方。",
+      "source": "南一社會第一冊 · 03_01_1-1_1-3_位置與生活的關聯 · 試題",
+      "sourceDetail": {
+        "documentName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+        "questionNumber": "05010265",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7082-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "2019　年維也納（48°N，15°E）愛樂新年音樂會在　90　多個國家由電視臺轉播，主辦單位當時預估全球約有　5　千萬觀眾共同欣賞，臺灣（25°N，120°E）直播時間是在　2019　年　1　月　1　日　18:15。"
+        }
+      ]
+    },
+    {
+      "id": 7083,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "03_01_1-1_1-3_位置與生活的關聯",
+      "topic": "題組",
+      "knowledge": "經度與時區",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "題組",
+      "prompt": "亞青盃女子排球賽在臺灣舉行，來自各國的　15　支球隊齊聚臺北，吸引許多球迷前往觀賞。請問：",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "來自亞洲各地的球隊紛紛至臺北參賽，時差的適應對球員而言是一項考驗。請問：下列哪一國家和臺灣的時差最大？",
+          "options": [
+            "(A)中國（30°　N，120°　E）",
+            "(B)日本（40°　N，140°　E）",
+            "(C)紐西蘭（40°　S，175°　E）",
+            "(D)伊朗（30°　N，60°　E）"
+          ],
+          "answer": "(D)伊朗（30°　N，60°　E）"
+        },
+        {
+          "id": "２",
+          "prompt": "在賽事中，由於哈薩克某位球員長相甜美，意外成為鎂光燈的焦點。若位於東經　75　度時區哈薩克首都，欲實況轉播臺灣當地　7　月　24　日上午　11　時的賽事，則哈薩克的轉播時間為何？",
+          "options": [
+            "(A)上午　8　時",
+            "(B)上午　9　時",
+            "(C)下午　1　時",
+            "(D)下午　2　時"
+          ],
+          "answer": "(A)上午　8　時"
+        }
+      ],
+      "answer": "[\"(D)伊朗（30°　N，60°　E）\",\"(A)上午　8　時\"]",
+      "sourceAnswer": "(１)(Ｄ)；(２)(Ａ)",
+      "explanation": "(２)哈薩克在臺灣西邊，（120－75）／　15＝3，比臺灣慢　3　小時，故當地時間應為上午　8　時。",
+      "source": "南一社會第一冊 · 03_01_1-1_1-3_位置與生活的關聯 · 試題",
+      "sourceDetail": {
+        "documentName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+        "questionNumber": "05010273",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7083-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "亞青盃女子排球賽在臺灣舉行，來自各國的　15　支球隊齊聚臺北，吸引許多球迷前往觀賞。請問："
+        }
+      ]
+    },
+    {
+      "id": 7073,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "填充題",
+      "knowledge": "絕對位置",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "藉由經度和緯度構成的座標系統，可表達出一地的【　　　　】位置。",
+      "answer": "絕對",
+      "sourceAnswer": "絕對",
+      "explanation": "答案：絕對",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010076",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7073-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "藉由經度和緯度構成的座標系統，可表達出一地的【　　　　】位置。"
+        }
+      ]
+    },
+    {
+      "id": 7077,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "填充題",
+      "knowledge": "緯線",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "0°緯線稱為【　　　　】。",
+      "answer": "赤道",
+      "sourceAnswer": "赤道",
+      "explanation": "答案：赤道",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010152",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7077-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "0°緯線稱為【　　　　】。"
+        }
+      ]
+    },
+    {
+      "id": 7078,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "填充題",
+      "knowledge": "緯線",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充題",
+      "prompt": "將地球分為南、北半球的緯線是【　　　　】。",
+      "answer": "赤道",
+      "sourceAnswer": "赤道",
+      "explanation": "答案：赤道",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010153",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7078-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "將地球分為南、北半球的緯線是【　　　　】。"
+        }
+      ]
+    },
+    {
+      "id": 7074,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "配合題",
+      "knowledge": "絕對位置",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "根據題目的敘述，在括號內填入正確答案。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "彰化縣位在雲林縣的北部。",
+          "options": [
+            "(A)絕對位置",
+            "(B)相對位置"
+          ],
+          "answer": "(B)相對位置"
+        },
+        {
+          "id": "２",
+          "prompt": "大安森林公園東南方　100　公尺是清真寺。",
+          "options": [
+            "(A)絕對位置",
+            "(B)相對位置"
+          ],
+          "answer": "(B)相對位置"
+        },
+        {
+          "id": "３",
+          "prompt": "恆春市位於屏東縣地圖上（9，H）的位置。",
+          "options": [
+            "(A)絕對位置",
+            "(B)相對位置"
+          ],
+          "answer": "(A)絕對位置"
+        },
+        {
+          "id": "４",
+          "prompt": "米花國中的東北方為可愛公園。",
+          "options": [
+            "(A)絕對位置",
+            "(B)相對位置"
+          ],
+          "answer": "(B)相對位置"
+        },
+        {
+          "id": "５",
+          "prompt": "永和區位在新店溪的南岸。",
+          "options": [
+            "(A)絕對位置",
+            "(B)相對位置"
+          ],
+          "answer": "(B)相對位置"
+        }
+      ],
+      "answer": "[\"(B)相對位置\",\"(B)相對位置\",\"(A)絕對位置\",\"(B)相對位置\",\"(B)相對位置\"]",
+      "sourceAnswer": "(１)(Ｂ)；(２)(Ｂ)；(３)(Ａ)；(４)(Ｂ)；(５)(Ｂ)",
+      "explanation": "答案：(１)(Ｂ)；(２)(Ｂ)；(３)(Ａ)；(４)(Ｂ)；(５)(Ｂ)",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010078",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7074-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "根據題目的敘述，在括號內填入正確答案。"
+        }
+      ]
+    },
+    {
+      "id": 7079,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "配合題",
+      "knowledge": "緯線",
+      "difficulty": "中等",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "將下列屬於經線與緯線的特點做分類，填上正確的代碼。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "方向為南北向。",
+          "options": [
+            "(A)經線",
+            "(B)緯線"
+          ],
+          "answer": "(A)經線"
+        },
+        {
+          "id": "２",
+          "prompt": "長度均一樣長。",
+          "options": [
+            "(A)經線",
+            "(B)緯線"
+          ],
+          "answer": "(A)經線"
+        },
+        {
+          "id": "３",
+          "prompt": "最大度數為　180°。",
+          "options": [
+            "(A)經線",
+            "(B)緯線"
+          ],
+          "answer": "(A)經線"
+        },
+        {
+          "id": "４",
+          "prompt": "方向為東西向。",
+          "options": [
+            "(A)經線",
+            "(B)緯線"
+          ],
+          "answer": "(B)緯線"
+        },
+        {
+          "id": "５",
+          "prompt": "最大度數為　90°。",
+          "options": [
+            "(A)經線",
+            "(B)緯線"
+          ],
+          "answer": "(B)緯線"
+        }
+      ],
+      "answer": "[\"(A)經線\",\"(A)經線\",\"(A)經線\",\"(B)緯線\",\"(B)緯線\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ａ)；(３)(Ａ)；(４)(Ｂ)；(５)(Ｂ)",
+      "explanation": "答案：(１)(Ａ)；(２)(Ａ)；(３)(Ａ)；(４)(Ｂ)；(５)(Ｂ)",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010156",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7079-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "將下列屬於經線與緯線的特點做分類，填上正確的代碼。"
+        }
+      ]
+    },
+    {
+      "id": 7080,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "配合題",
+      "knowledge": "緯線",
+      "difficulty": "基礎",
+      "kind": "multi-choice",
+      "typeLabel": "配合題",
+      "prompt": "將下列的定義，配上正確的答案。",
+      "parts": [
+        {
+          "id": "１",
+          "prompt": "連結南、北兩極的弧線。",
+          "options": [
+            "(A)經線",
+            "(B)緯線",
+            "(C)相對位置",
+            "(D)絕對位置"
+          ],
+          "answer": "(A)經線"
+        },
+        {
+          "id": "２",
+          "prompt": "赤道以及與赤道平行的圓圈線。",
+          "options": [
+            "(A)經線",
+            "(B)緯線",
+            "(C)相對位置",
+            "(D)絕對位置"
+          ],
+          "answer": "(B)緯線"
+        },
+        {
+          "id": "３",
+          "prompt": "表示兩個事物間的空間關係，例：臺灣在日本的西南方。",
+          "options": [
+            "(A)經線",
+            "(B)緯線",
+            "(C)相對位置",
+            "(D)絕對位置"
+          ],
+          "answer": "(C)相對位置"
+        },
+        {
+          "id": "４",
+          "prompt": "某地位於東經　121°，北緯　23.5°　的交會點。",
+          "options": [
+            "(A)經線",
+            "(B)緯線",
+            "(C)相對位置",
+            "(D)絕對位置"
+          ],
+          "answer": "(D)絕對位置"
+        }
+      ],
+      "answer": "[\"(A)經線\",\"(B)緯線\",\"(C)相對位置\",\"(D)絕對位置\"]",
+      "sourceAnswer": "(１)(Ａ)；(２)(Ｂ)；(３)(Ｃ)；(４)(Ｄ)",
+      "explanation": "答案：(１)(Ａ)；(２)(Ｂ)；(３)(Ｃ)；(４)(Ｄ)",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010157",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7080-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "將下列的定義，配上正確的答案。"
+        }
+      ]
+    },
+    {
+      "id": 7075,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "01_01_1-1_1-1_如何表示位置",
+      "topic": "簡答題",
+      "knowledge": "絕對位置",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "簡答題",
+      "prompt": "位置的表示方法有哪兩種？",
+      "answer": "相對位置、絕對位置",
+      "sourceAnswer": "相對位置、絕對位置",
+      "explanation": "答案：相對位置、絕對位置",
+      "source": "南一社會第一冊 · 01_01_1-1_1-1_如何表示位置 · 試題",
+      "sourceDetail": {
+        "documentName": "01_01_1-1_1-1_如何表示位置.doc",
+        "questionNumber": "05010079",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7075-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "位置的表示方法有哪兩種？"
+        }
+      ]
+    },
+    {
+      "id": 7081,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "02_01_1-1_1-2_經緯線網格",
+      "topic": "簡答題",
+      "knowledge": "緯線",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "簡答題",
+      "prompt": "地球可分為東半球、西半球及南半球、北半球，這些半球的畫分，主要是依據哪條經線與緯線（請寫名稱，不可寫度數）？",
+      "answer": "本初經線、赤道",
+      "sourceAnswer": "本初經線、赤道",
+      "explanation": "答案：本初經線、赤道",
+      "source": "南一社會第一冊 · 02_01_1-1_1-2_經緯線網格 · 試題",
+      "sourceDetail": {
+        "documentName": "02_01_1-1_1-2_經緯線網格.doc",
+        "questionNumber": "05010158",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7081-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "地球可分為東半球、西半球及南半球、北半球，這些半球的畫分，主要是依據哪條經線與緯線（請寫名稱，不可寫度數）？"
+        }
+      ]
+    },
+    {
+      "id": 7084,
+      "subject": "地理",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "南一",
+      "chapter": "1-1",
+      "unit": "03_01_1-1_1-3_位置與生活的關聯",
+      "topic": "簡答題",
+      "knowledge": "經度與時區",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "簡答題",
+      "prompt": "人類登陸月球的壯舉，在東方與西方所記載的日期有相差一天的現象，這是受到哪條經線的影響（請寫度數）？",
+      "answer": "經度　180　度",
+      "sourceAnswer": "經度　180　度",
+      "explanation": "答案：經度　180　度",
+      "source": "南一社會第一冊 · 03_01_1-1_1-3_位置與生活的關聯 · 試題",
+      "sourceDetail": {
+        "documentName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+        "questionNumber": "05010291",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "blocks": [
+        {
+          "id": "q7084-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "人類登陸月球的壯舉，在東方與西方所記載的日期有相差一天的現象，這是受到哪條經線的影響（請寫度數）？"
+        }
+      ]
+    },
+    {
+      "id": 7086,
+      "code": "1501003946",
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "絕對值",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "數線上有 5 1/5、－5.2、1 2/3、－2 2/3、0.8、2 4/5 六個數的點，請問：\n(1) 最大的數為________，最小的數為________。\n(2) 與原點距離相等的兩數是________。\n(3) 絕對值比 1 小的數為________。",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "最大的數與最小的數",
+          "answer": "5 1/5，－5.2"
+        },
+        {
+          "id": "2",
+          "prompt": "與原點距離相等的兩數",
+          "answer": "5 1/5，－5.2"
+        },
+        {
+          "id": "3",
+          "prompt": "絕對值比 1 小的數",
+          "answer": "0.8"
+        }
+      ],
+      "answer": "[\"5 1/5，－5.2\",\"5 1/5，－5.2\",\"0.8\"]",
+      "sourceAnswer": "(1) 5 1/5，－5.2　(2) 5 1/5，－5.2　(3) 0.8",
+      "explanation": "依數值大小排列：5 1/5＞2 4/5＞1 2/3＞0.8＞－2 2/3＞－5.2。5 1/5 與－5.2 的絕對值相等，六個數中只有 0.8 的絕對值小於 1。",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501003946",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        {
+          "key": "learning_content",
+          "label": "學習內容",
+          "rawValue": "N-7-5",
+          "values": [
+            "N-7-5"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "source_type",
+          "label": "來源類型",
+          "rawValue": "題庫題目",
+          "values": [
+            "題庫題目"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        },
+        {
+          "key": "source_path",
+          "label": "來源路徑",
+          "rawValue": "01_題庫題目/第一冊/1-1　負數與數線.doc",
+          "values": [
+            "01_題庫題目/第一冊/1-1　負數與數線.doc"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        }
+      ],
+      "blocks": [
+        {
+          "id": "q7086-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "數線上有 5 1/5、－5.2、1 2/3、－2 2/3、0.8、2 4/5 六個數的點，請依題意回答三個問題。"
+        }
+      ]
+    },
+    {
+      "id": 7087,
+      "code": "1501004060",
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-1",
+      "unit": "1-1　負數與數線",
+      "topic": "填充",
+      "knowledge": "數線",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "填充",
+      "prompt": "如下圖，填入各點所對應的數。",
+      "parts": [
+        {
+          "id": "A",
+          "prompt": "A 點",
+          "answer": "－4 3/4"
+        },
+        {
+          "id": "B",
+          "prompt": "B 點",
+          "answer": "－3"
+        },
+        {
+          "id": "C",
+          "prompt": "C 點",
+          "answer": "－1/3"
+        },
+        {
+          "id": "D",
+          "prompt": "D 點",
+          "answer": "1 3/5"
+        },
+        {
+          "id": "E",
+          "prompt": "E 點",
+          "answer": "3 2/3"
+        }
+      ],
+      "answer": "[\"－4 3/4\",\"－3\",\"－1/3\",\"1 3/5\",\"3 2/3\"]",
+      "sourceAnswer": "A：－4 3/4；B：－3；C：－1/3；D：1 3/5；E：3 2/3",
+      "explanation": "依數線上的整數標示與每一小格代表的等分值，A、B、C、D、E 依序為－4 3/4、－3、－1/3、1 3/5、3 2/3。",
+      "source": "康軒數學第一冊 · 1-1　負數與數線 · 題庫題目",
+      "sourceDetail": {
+        "documentName": "1-1　負數與數線.doc",
+        "questionNumber": "1501004060",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        {
+          "key": "learning_content",
+          "label": "學習內容",
+          "rawValue": "N-7-5",
+          "values": [
+            "N-7-5"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "source_type",
+          "label": "來源類型",
+          "rawValue": "題庫題目",
+          "values": [
+            "題庫題目"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        },
+        {
+          "key": "source_path",
+          "label": "來源路徑",
+          "rawValue": "01_題庫題目/第一冊/1-1　負數與數線.doc",
+          "values": [
+            "01_題庫題目/第一冊/1-1　負數與數線.doc"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        }
+      ],
+      "blocks": [
+        {
+          "id": "q7087-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "如下圖，填入各點所對應的數。"
+        },
+        {
+          "id": "q7087-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-math-1501004060-number-line.jpeg",
+            "mimeType": "image/jpeg",
+            "alt": "標示 A、B、C、D、E 五點的數線",
+            "width": 1059,
+            "height": 169
+          }
+        }
+      ]
+    },
+    {
+      "id": 7088,
+      "code": "1501000035",
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-2",
+      "unit": "1-2　整數的加減",
+      "topic": "計算",
+      "knowledge": "整數的減法",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "計算",
+      "prompt": "下表為部分區域與倫敦格林威治的時差，試回答下列問題：\n(1) 小文上網查中華航空飛往洛杉磯的班機，有一班飛機起飛時間為臺北時間 9 月 20 日 23 時 30 分，抵達洛杉磯時間為 9 月 20 日 19 時 30 分，則此班機的飛行時間為多久？\n(2) 承 (1)，飛機抵達洛杉磯時間恰為雪梨當地時間幾月幾日的幾時幾分？",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "此班機的飛行時間為多久？",
+          "answer": "12 小時"
+        },
+        {
+          "id": "2",
+          "prompt": "抵達洛杉磯時，雪梨當地是幾月幾日的幾時幾分？",
+          "answer": "9 月 21 日 14 時 30 分"
+        }
+      ],
+      "answer": "[\"12 小時\",\"9 月 21 日 14 時 30 分\"]",
+      "sourceAnswer": "(1) 12 小時　(2) 9 月 21 日 14 時 30 分",
+      "explanation": "臺北與洛杉磯相差 16 小時，因此臺北 9 月 20 日 23 時 30 分為洛杉磯 9 月 20 日 7 時 30 分；至 19 時 30 分共飛行 12 小時。雪梨與洛杉磯相差 19 小時，所以抵達時雪梨為 9 月 21 日 14 時 30 分。",
+      "source": "康軒數學第一冊 · 1-2　整數的加減 · 素養題",
+      "sourceDetail": {
+        "documentName": "1-2　整數的加減.doc",
+        "questionNumber": "1501000035",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        {
+          "key": "learning_content",
+          "label": "學習內容",
+          "rawValue": "N-7-3",
+          "values": [
+            "N-7-3"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "source_type",
+          "label": "來源類型",
+          "rawValue": "素養題",
+          "values": [
+            "素養題"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        },
+        {
+          "key": "source_path",
+          "label": "來源路徑",
+          "rawValue": "07_素養題/第一冊/1-2　整數的加減.doc",
+          "values": [
+            "07_素養題/第一冊/1-2　整數的加減.doc"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        }
+      ],
+      "blocks": [
+        {
+          "id": "q7088-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "下表為部分區域與倫敦格林威治的時差，試回答下列問題。"
+        },
+        {
+          "id": "q7088-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-math-1501000035-time-zone-table.jpeg",
+            "mimeType": "image/jpeg",
+            "alt": "雪梨、臺北、倫敦與洛杉磯時差表",
+            "width": 1373,
+            "height": 326
+          }
+        }
+      ]
+    },
+    {
+      "id": 7089,
+      "code": "1501000047",
+      "subject": "數學",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "康軒",
+      "chapter": "1-2",
+      "unit": "1-2　整數的加減",
+      "topic": "計算",
+      "knowledge": "整數的減法",
+      "difficulty": "中等",
+      "kind": "written",
+      "typeLabel": "計算",
+      "prompt": "國際標準時間是指當地與英國倫敦的時差，例如：臺北的國際標準時間為＋8，即表示臺北和倫敦的時差為 8 小時。下表為世界各著名城市的國際標準時間表，試回答下列問題：\n(1) 臺北與紐約相差多少小時？\n(2) 爸爸出差時，於 4 月 10 日下午 6 點在紐約觀看洋基隊與天使隊的比賽，則臺灣的球迷可以在何時觀賞這場 live 精彩賽事？",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "臺北與紐約相差多少小時？",
+          "answer": "13 小時"
+        },
+        {
+          "id": "2",
+          "prompt": "臺灣的球迷可以在何時觀賞賽事？",
+          "answer": "4 月 11 日上午 7 點"
+        }
+      ],
+      "answer": "[\"13 小時\",\"4 月 11 日上午 7 點\"]",
+      "sourceAnswer": "(1) 13 小時　(2) 4 月 11 日上午 7 點",
+      "explanation": "臺北與紐約相差 8－(－5)＝13 小時。紐約 4 月 10 日 18 時加上 13 小時為臺北 4 月 11 日上午 7 點。",
+      "source": "康軒數學第一冊 · 1-2　整數的加減 · 素養題",
+      "sourceDetail": {
+        "documentName": "1-2　整數的加減.doc",
+        "questionNumber": "1501000047",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        {
+          "key": "learning_content",
+          "label": "學習內容",
+          "rawValue": "N-7-3",
+          "values": [
+            "N-7-3"
+          ],
+          "valueSource": "document",
+          "confidence": 1
+        },
+        {
+          "key": "source_type",
+          "label": "來源類型",
+          "rawValue": "素養題",
+          "values": [
+            "素養題"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        },
+        {
+          "key": "source_path",
+          "label": "來源路徑",
+          "rawValue": "07_素養題/第一冊/1-2　整數的加減.doc",
+          "values": [
+            "07_素養題/第一冊/1-2　整數的加減.doc"
+          ],
+          "valueSource": "path",
+          "confidence": 1
+        }
+      ],
+      "blocks": [
+        {
+          "id": "q7089-prompt-text",
+          "placement": "prompt",
+          "type": "text",
+          "order": 1,
+          "text": "依世界各著名城市的國際標準時間表回答問題。"
+        },
+        {
+          "id": "q7089-prompt-image",
+          "placement": "prompt",
+          "type": "image",
+          "order": 2,
+          "asset": {
+            "storageKey": "g7-math-1501000047-time-zone-table.jpeg",
+            "mimeType": "image/jpeg",
+            "alt": "東京、臺北、倫敦、紐約與洛杉磯國際標準時間表",
+            "width": 1598,
+            "height": 326
+          }
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "fixture-import-chinese-summer-night",
+      "createdAt": "2026-10-14T02:20:00.000Z",
+      "fileNames": [
+        "01_第一課_夏夜.doc"
+      ],
+      "questionIds": [
+        7001,
+        7002,
+        7003,
+        7004,
+        7005,
+        7006,
+        7007,
+        7008,
+        7009,
+        7010,
+        7011,
+        7012,
+        7013,
+        7014,
+        7015,
+        7016,
+        7017,
+        7018,
+        7019,
+        7020,
+        7021,
+        7022,
+        7023,
+        7024
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-math-number-line",
+      "createdAt": "2026-10-13T06:40:00.000Z",
+      "fileNames": [
+        "1-1　負數與數線.doc"
+      ],
+      "questionIds": [
+        7025,
+        7026,
+        7027,
+        7028,
+        7029,
+        7030,
+        7031,
+        7032,
+        7033,
+        7085,
+        7086,
+        7087
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-english-starter",
+      "createdAt": "2026-10-12T03:15:00.000Z",
+      "fileNames": [
+        "01_Starter Unit.doc"
+      ],
+      "questionIds": [
+        7034,
+        7035,
+        7036,
+        7037,
+        7038,
+        7039,
+        7040,
+        7041,
+        7042,
+        7043,
+        7044,
+        7045,
+        7046,
+        7047,
+        7048,
+        7049,
+        7050,
+        7051,
+        7052,
+        7053,
+        7054,
+        7055,
+        7056,
+        7057,
+        7058,
+        7059,
+        7060
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-science-scale",
+      "createdAt": "2026-10-11T08:05:00.000Z",
+      "fileNames": [
+        "09-01第一節　巨觀尺度與微觀尺度.doc"
+      ],
+      "questionIds": [
+        7061,
+        7062,
+        7063,
+        7064,
+        7065
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-science-life",
+      "createdAt": "2026-10-10T01:30:00.000Z",
+      "fileNames": [
+        "1-1　生命現象.doc",
+        "3-3　人體內物質的運輸.doc"
+      ],
+      "questionIds": [
+        7066,
+        7067,
+        7068,
+        7069
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-social-location",
+      "createdAt": "2026-10-09T05:45:00.000Z",
+      "fileNames": [
+        "01_01_1-1_1-1_如何表示位置.doc"
+      ],
+      "questionIds": [
+        7070,
+        7071,
+        7072,
+        7073,
+        7074,
+        7075
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-social-grid",
+      "createdAt": "2026-10-08T04:10:00.000Z",
+      "fileNames": [
+        "02_01_1-1_1-2_經緯線網格.doc"
+      ],
+      "questionIds": [
+        7076,
+        7077,
+        7078,
+        7079,
+        7080,
+        7081
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-social-life",
+      "createdAt": "2026-10-07T07:25:00.000Z",
+      "fileNames": [
+        "03_01_1-1_1-3_位置與生活的關聯.doc"
+      ],
+      "questionIds": [
+        7082,
+        7083,
+        7084
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "fixture-import-math-integer-add-subtract",
+      "createdAt": "2026-10-15T08:00:00.000Z",
+      "fileNames": [
+        "1-2　整數的加減.doc"
+      ],
+      "questionIds": [
+        7088,
+        7089
+      ],
+      "status": "confirmed"
+    }
+  ]
+}
