@@ -783,6 +783,23 @@ function ContentImages({ blocks, placement }: { blocks?: QuestionBlock[]; placem
     return <div className="mt-4 grid gap-3">{images.map((block) => <ContentImage block={block} key={block.id} />)}</div>;
 }
 
+/** 將題目來源中的連續空白轉成可辨識的填答底線。 */
+function PromptText({ text }: { text: string }) {
+    const segments = text.split(/( {4,}|　{2,})/g);
+
+    return <>{segments.map((segment, index) => {
+        const isBlank = /^(?: {4,}|　{2,})$/.test(segment);
+        if (!isBlank) return <Fragment key={`${index}-${segment}`}>{segment}</Fragment>;
+
+        const blankWidth = [...segment].reduce((width, character) => width + (character === "　" ? 1 : 0.5), 0);
+        const width = `${Math.min(Math.max(blankWidth, 3), 8)}em`;
+        return <Fragment key={`blank-${index}`}>
+            <span aria-hidden="true" className="question-prompt-blank" style={{ width }} />
+            <span className="sr-only">填答處</span>
+        </Fragment>;
+    })}</>;
+}
+
 /** 依題目區塊順序呈現文字與圖片，沒有穿插資料時沿用完整題幹。 */
 function QuestionPrompt({ question, className, id, title = false }: { question: Question; className?: string; id?: string; title?: boolean }) {
     const blocks = question.blocks?.filter((block) => block.placement === "prompt")
@@ -790,8 +807,8 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     const hasInterleavedContent = blocks.filter((block) => block.type === "text" && block.text).length > 1;
     if (!hasInterleavedContent) {
         return <>{title
-            ? <CardTitle className={className} id={id}>{question.prompt}</CardTitle>
-            : <p className={className} id={id}>{question.prompt}</p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
+            ? <CardTitle className={className} id={id}><PromptText text={question.prompt} /></CardTitle>
+            : <p className={className} id={id}><PromptText text={question.prompt} /></p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
     }
 
     let textIndex = 0;
@@ -802,8 +819,8 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
         const isFirstText = textIndex === 0;
         textIndex += 1;
         return title && isFirstText
-            ? <CardTitle className={className} id={id} key={block.id}>{block.text}</CardTitle>
-            : <p className={className} key={block.id}>{block.text}</p>;
+            ? <CardTitle className={className} id={id} key={block.id}><PromptText text={block.text} /></CardTitle>
+            : <p className={className} key={block.id}><PromptText text={block.text} /></p>;
     })}</div>;
 }
 

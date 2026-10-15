@@ -3760,6 +3760,14 @@ textarea:focus-visible,
     padding: 1.4rem;
 }
 
+.question-prompt-blank {
+    display: inline-block;
+    min-width: 3em;
+    margin-inline: 0.12em;
+    border-bottom: 2px solid #77778a;
+    vertical-align: -0.08em;
+}
+
 .practice-question-conditions {
     display: flex;
     min-width: 0;
