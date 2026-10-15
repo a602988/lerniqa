@@ -18,6 +18,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
+import { RolePinKeypad } from "./components/role-pin-keypad";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, CheckMode,
     DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer, getQuestionPartResults,
@@ -134,7 +135,6 @@ const MISTAKE_PAGE_SIZE = 10;
 const RECENT_IMPORT_LIMIT = 10;
 const QUESTION_OVERVIEW_PAGE_SIZE = 12;
 const ALL_QUESTION_FILTERS = "all";
-
 /** 顯示練習設定欄位共用的圖示與標題。 */
 function PracticeFieldLabel({ icon: Icon, label, className = "" }: PracticeFieldLabelProps) {
     return <span className={`practice-field-label ${className}`}><Icon aria-hidden="true" />{label}</span>;
@@ -4076,7 +4076,10 @@ export default function Home() {
                     {roleStatus && <p className="role-status" role="status">{roleStatus}</p>}
                     <FormField label="要切換的角色"><NativeSelect options={ROLE_OPTIONS} value={requestedRole} onChange={(event) => { setRequestedRole(event.target.value as AccountRole); setRoleStatus(""); setRoleResetOpen(false); setRolePin(""); }} /></FormField>
                     {requestedRole !== "學習者" && requestedRole !== roleAccess.activeRole && !roleResetOpen && <>
-                        <FormField label="六位數角色密碼" description="本機示範預設密碼為 123456。"><Input type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={rolePin} onChange={(event) => setRolePin(event.target.value.replace(/\D/g, "").slice(0, 6))} /></FormField>
+                        <div className="role-pin-field">
+                            <div><p>六位數角色密碼</p><small>本機示範預設密碼為 123456。</small></div>
+                            <RolePinKeypad value={rolePin} onChange={(value) => { setRolePin(value); setRoleStatus(""); }} />
+                        </div>
                         <Button appearance="ghost" tone="muted" onClick={() => { setRoleResetOpen(true); setRoleStatus(""); }}>忘記角色密碼</Button>
                     </>}
                     {requestedRole !== "學習者" && roleResetOpen && <div className="role-reset-panel">

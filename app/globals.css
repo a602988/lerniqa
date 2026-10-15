@@ -1022,6 +1022,92 @@ textarea:focus-visible,
     gap: 0.875rem;
 }
 
+.role-pin-field {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.role-pin-field > div:first-child > p {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.role-pin-field > div:first-child > small {
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+}
+
+.role-pin-entry {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.role-pin-display {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.875rem;
+    background: #fafafe;
+}
+
+.role-pin-display span {
+    width: 0.65rem;
+    height: 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+    border-radius: 999px;
+    background: white;
+}
+
+.role-pin-display span[data-filled="true"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+}
+
+.role-pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.role-pin-keypad button {
+    min-height: 3rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.875rem;
+    background: white;
+    color: var(--color-foreground);
+    font-size: 1rem;
+    font-weight: 700;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.role-pin-keypad button:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    color: var(--color-primary);
+}
+
+.role-pin-keypad button:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.role-pin-keypad button:focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 2px;
+}
+
+.role-pin-keypad button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.role-pin-keypad .role-pin-keypad-action {
+    color: var(--color-muted-foreground);
+    font-size: 0.8rem;
+}
+
 .role-access-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4159,6 +4245,12 @@ textarea:focus-visible,
     .sidebar-action-scroll .sidebar-practice-button {
         min-width: 9rem;
         padding-inline: 1.1rem !important;
+        box-shadow: 0 3px 8px rgba(124, 99, 209, 0.13);
+    }
+
+    .sidebar-action-scroll .sidebar-nav button[aria-current="page"],
+    .sidebar-action-scroll > .sidebar-settings[aria-current="page"] {
+        box-shadow: inset 0 -2px 0 var(--color-primary), 0 1px 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
     }
 
     .sidebar-action-scroll .sidebar-nav {
