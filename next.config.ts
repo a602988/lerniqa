@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
                 destination: "/",
             },
             {
+                source: "/questions/:questionId",
+                destination: "/",
+            },
+            {
                 source: "/practice/schedules",
                 destination: "/",
             },

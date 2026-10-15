@@ -109,6 +109,7 @@ const questions = [
         blocks: [
             { id: "q7088-prompt-text", placement: "prompt", type: "text", order: 1, text: "下表為部分區域與倫敦格林威治的時差，試回答下列問題。" },
             { id: "q7088-prompt-image", placement: "prompt", type: "image", order: 2, asset: { storageKey: "g7-math-1501000035-time-zone-table.jpeg", mimeType: "image/jpeg", alt: "雪梨、臺北、倫敦與洛杉磯時差表", width: 1373, height: 326 } },
+            { id: "q7088-prompt-questions", placement: "prompt", type: "text", order: 3, text: "(1) 小文上網查中華航空飛往洛杉磯的班機，有一班飛機起飛時間為臺北時間 9 月 20 日 23 時 30 分，抵達洛杉磯時間為 9 月 20 日 19 時 30 分，則此班機的飛行時間為多久？\n(2) 承 (1)，飛機抵達洛杉磯時間恰為雪梨當地時間幾月幾日的幾時幾分？" },
         ],
     },
     {
@@ -137,8 +138,9 @@ const questions = [
         sourceDetail: { documentName: "1-2　整數的加減.doc", questionNumber: "1501000047", valueSource: "document", confidence: 1 },
         metadata: metadata("N-7-3", "素養題", "07_素養題/第一冊/1-2　整數的加減.doc"),
         blocks: [
-            { id: "q7089-prompt-text", placement: "prompt", type: "text", order: 1, text: "依世界各著名城市的國際標準時間表回答問題。" },
+            { id: "q7089-prompt-text", placement: "prompt", type: "text", order: 1, text: "國際標準時間是指當地與英國倫敦的時差，例如：臺北的國際標準時間為＋8，即表示臺北和倫敦的時差為 8 小時。下表為世界各著名城市的國際標準時間表，試回答下列問題。" },
             { id: "q7089-prompt-image", placement: "prompt", type: "image", order: 2, asset: { storageKey: "g7-math-1501000047-time-zone-table.jpeg", mimeType: "image/jpeg", alt: "東京、臺北、倫敦、紐約與洛杉磯國際標準時間表", width: 1598, height: 326 } },
+            { id: "q7089-prompt-questions", placement: "prompt", type: "text", order: 3, text: "(1) 臺北與紐約相差多少小時？\n(2) 爸爸出差時，於 4 月 10 日下午 6 點在紐約觀看洋基隊與天使隊的比賽，則臺灣的球迷可以在何時觀賞這場 live 精彩賽事？" },
         ],
     },
 ];

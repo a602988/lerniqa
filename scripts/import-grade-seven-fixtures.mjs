@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const SOURCE_ROOT = process.argv[2];
 const DATABASE_PATH = new URL("../data/fixtures/database.json", import.meta.url);
@@ -327,12 +328,12 @@ function createQuestion(record, config, id)
     }
 
     const unit = getUnit(record);
-    const source = `${config.version}${config.subject}第一冊 · ${unit} · ${record.origin}`;
+    const source = `${config.version}${config.subject}${config.sourceBook ?? "第一冊"} · ${unit} · ${record.origin}`;
     return {
         id,
         subject: config.subject,
-        grade: "國一",
-        semester: "上學期",
+        grade: config.grade ?? "國一",
+        semester: config.semester ?? "上學期",
         bookVersion: config.version,
         chapter: getChapter(record),
         unit,
@@ -367,29 +368,31 @@ function canImport(record)
 }
 
 /** 從一科的來源文件依題型各選三題。 */
-async function collectSubject(config, startId)
+export async function collectSubject(config, startId)
 {
-    const paths = config.paths ?? await listDocuments(config.directory);
+    const availablePaths = config.paths ?? await listDocuments(config.directory);
+    const paths = config.pathFilter ? availablePaths.filter(config.pathFilter) : availablePaths;
     const buckets = new Map(config.types.map((type) => [type, []]));
+    const sampleCount = config.sampleCount ?? 3;
 
     for (const relativePath of paths) {
-        if ([...buckets.values()].every((records) => records.length >= 3)) break;
+        if ([...buckets.values()].every((records) => records.length >= sampleCount)) break;
         const text = readDocument(relativePath);
         const parser = config.style === "metadata-last" ? parseMetadataLast : parseMetadataFirst;
         const records = parser(text, config.types, relativePath);
 
         for (const record of records) {
             const bucket = buckets.get(record.type);
-            if (!bucket || bucket.length >= 3 || !canImport(record)) continue;
+            if (!bucket || bucket.length >= sampleCount || !canImport(record)) continue;
             const question = createQuestion(record, config, startId + [...buckets.values()].reduce((sum, items) => sum + items.length, 0));
             if (question) bucket.push(question);
             else console.warn(`略過無法完整拆分的題目：${config.subject}／${record.type}／${record.number}`);
         }
     }
 
-    const missing = [...buckets.entries()].filter(([, questions]) => questions.length < 3);
+    const missing = [...buckets.entries()].filter(([, questions]) => questions.length < sampleCount);
     if (missing.length) {
-        const details = missing.map(([type, questions]) => `${type} ${questions.length}/3`).join("、");
+        const details = missing.map(([type, questions]) => `${type} ${questions.length}/${sampleCount}`).join("、");
         throw new Error(`${config.subject}來源不足或無法完整解析：${details}`);
     }
 
@@ -508,4 +511,4 @@ async function main()
     console.log(`已寫入 ${questions.length} 題國一來源題目。`);
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

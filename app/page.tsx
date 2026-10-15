@@ -317,6 +317,7 @@ const SECTION_PATHS: Record<Section, string> = {
 
 const SESSION_PATH = "/practice/session";
 const PRACTICE_SCHEDULES_PATH = "/practice/schedules";
+const QUESTION_OVERVIEW_PATH = "/questions";
 const AUTH_PATHS: Record<AuthMode, string> = {
     login: "/login",
     register: "/register",
@@ -387,7 +388,13 @@ function readImage(file: File) {
 function getSectionFromPath(pathname: string): Section {
     const section = Object.entries(SECTION_PATHS).find(([, path]) => path === pathname)?.[0];
     return section as Section | undefined
-        ?? (getSettingsExamId(pathname) ? "settings" : getSessionQuestionId(pathname) !== undefined || pathname === SESSION_PATH || pathname === PRACTICE_SCHEDULES_PATH ? "practice" : "overview");
+        ?? (getSettingsExamId(pathname)
+            ? "settings"
+            : getOverviewQuestionId(pathname) !== undefined
+                ? "questions"
+                : getSessionQuestionId(pathname) !== undefined || pathname === SESSION_PATH || pathname === PRACTICE_SCHEDULES_PATH
+                    ? "practice"
+                    : "overview");
 }
 
 /** 建立考試設定內頁網址。 */
@@ -409,6 +416,19 @@ function getSessionQuestionPath(questionId: number) {
 /** 從單題練習網址取得題目識別碼。 */
 function getSessionQuestionId(pathname: string) {
     const match = pathname.match(/^\/practice\/session\/(\d+)$/);
+    if (!match) return undefined;
+    const questionId = Number(match[1]);
+    return Number.isSafeInteger(questionId) ? questionId : undefined;
+}
+
+/** 建立題目總覽詳情頁網址。 */
+function getOverviewQuestionPath(questionId: number) {
+    return `${QUESTION_OVERVIEW_PATH}/${questionId}`;
+}
+
+/** 從題目總覽詳情頁網址取得題目識別碼。 */
+function getOverviewQuestionId(pathname: string) {
+    const match = pathname.match(/^\/questions\/(\d+)$/);
     if (!match) return undefined;
     const questionId = Number(match[1]);
     return Number.isSafeInteger(questionId) ? questionId : undefined;
@@ -666,18 +686,46 @@ function getSubjectsForGrade(grade: string, questions: Question[]) {
     return SUBJECTS.filter((subject) => subjects.has(subject));
 }
 
+/** 顯示題目、答案或解析中的單一圖片區塊。 */
+function ContentImage({ block }: { block: QuestionBlock }) {
+    return <img
+        alt={block.asset?.alt ?? "題目附圖"}
+        className="max-h-64 w-full rounded-2xl border border-border bg-[#fafafa] object-contain p-2"
+        src={`/api/v1/assets/${encodeURIComponent(block.asset?.storageKey ?? "")}`}
+    />;
+}
+
 /** 顯示題目、答案或解析中的圖片區塊。 */
 function ContentImages({ blocks, placement }: { blocks?: QuestionBlock[]; placement: QuestionBlock["placement"] }) {
     const images = blocks?.filter((block) => block.placement === placement && block.type === "image" && block.asset)
         .sort((first, second) => first.order - second.order) ?? [];
     if (!images.length) return null;
 
-    return <div className="mt-4 grid gap-3">{images.map((block) => <img
-        alt={block.asset?.alt ?? "題目附圖"}
-        className="max-h-64 w-full rounded-2xl border border-border bg-[#fafafa] object-contain p-2"
-        key={block.id}
-        src={`/api/v1/assets/${encodeURIComponent(block.asset?.storageKey ?? "")}`}
-    />)}</div>;
+    return <div className="mt-4 grid gap-3">{images.map((block) => <ContentImage block={block} key={block.id} />)}</div>;
+}
+
+/** 依題目區塊順序呈現文字與圖片，沒有穿插資料時沿用完整題幹。 */
+function QuestionPrompt({ question, className, id, title = false }: { question: Question; className?: string; id?: string; title?: boolean }) {
+    const blocks = question.blocks?.filter((block) => block.placement === "prompt")
+        .sort((first, second) => first.order - second.order) ?? [];
+    const hasInterleavedContent = blocks.filter((block) => block.type === "text" && block.text).length > 1;
+    if (!hasInterleavedContent) {
+        return <>{title
+            ? <CardTitle className={className} id={id}>{question.prompt}</CardTitle>
+            : <p className={className} id={id}>{question.prompt}</p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
+    }
+
+    let textIndex = 0;
+    return <div className="grid gap-4">{blocks.map((block) => {
+        if (block.type === "image" && block.asset) return <ContentImage block={block} key={block.id} />;
+        if (block.type !== "text" || !block.text) return null;
+
+        const isFirstText = textIndex === 0;
+        textIndex += 1;
+        return title && isFirstText
+            ? <CardTitle className={className} id={id} key={block.id}>{block.text}</CardTitle>
+            : <p className={className} key={block.id}>{block.text}</p>;
+    })}</div>;
 }
 
 /** 顯示首頁的抽象學習圖形，不使用幼兒化角色。 */
@@ -824,8 +872,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                                 </div>
                             ))}
                         </dl>
-                        <CardTitle id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl">{question.prompt}</CardTitle>
-                        <ContentImages blocks={question.blocks} placement="prompt" />
+                        <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
                     </div>
                     {question.kind === "written" ? needsCharacterRecognition ? null : question.parts?.length ? (
                         <div className="written-answer-parts">
@@ -1002,6 +1049,8 @@ export default function Home() {
     const sessionHeadingRef = useRef<HTMLHeadingElement>(null);
     const shouldFocusSectionRef = useRef(false);
     const skipNextApiWriteRef = useRef(true);
+    const questionOverviewScrollRef = useRef(0);
+    const shouldRestoreQuestionScrollRef = useRef(false);
 
     const activeLearner = learners.find((learner) => learner.id === activeLearnerId) ?? learners[0] ?? EMPTY_LEARNER;
     const storedPlan = plansByLearner[activeLearnerId];
@@ -1075,6 +1124,10 @@ export default function Home() {
     const activeQuestionPage = Math.min(questionPage, questionPageCount);
     const pagedOverviewQuestions = filteredOverviewQuestions.slice((activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE, activeQuestionPage * QUESTION_OVERVIEW_PAGE_SIZE);
     const selectedOverviewQuestion = questions.find((question) => question.id === selectedQuestionId);
+    const detailOverviewQuestions = selectedQuestionId && filteredOverviewQuestions.some((question) => question.id === selectedQuestionId)
+        ? filteredOverviewQuestions
+        : learnerQuestions;
+    const selectedOverviewIndex = detailOverviewQuestions.findIndex((question) => question.id === selectedQuestionId);
     const questionActionIds = questionBatchScope === "filtered"
         ? filteredOverviewQuestions.map((question) => question.id)
         : selectedQuestionIds;
@@ -1348,8 +1401,19 @@ export default function Home() {
         if (!isHydrated || !learners.length || !questions.length) return;
         const browserPath = pathname;
         const routeQuestionId = getSessionQuestionId(browserPath);
+        const overviewQuestionId = getOverviewQuestionId(browserPath);
         if (browserPath === "/") {
             router.replace(SECTION_PATHS.overview);
+            return;
+        }
+        if (overviewQuestionId !== undefined) {
+            const routeQuestion = learnerQuestions.find((question) => question.id === overviewQuestionId);
+            if (!routeQuestion) {
+                router.replace(SECTION_PATHS.questions);
+                return;
+            }
+            setSection("questions");
+            setSelectedQuestionId(overviewQuestionId);
             return;
         }
         if (browserPath === SESSION_PATH && !session) {
@@ -1393,7 +1457,13 @@ export default function Home() {
         }
         setSection(getSectionFromPath(browserPath));
         if (session?.phase === "answering") setSessionPaused(browserPath !== SESSION_PATH);
-    }, [activeLearnerId, isHydrated, learners.length, pathname, questions, router]);
+    }, [activeLearnerId, isHydrated, learnerQuestions, learners.length, pathname, questions, router]);
+    useEffect(() => {
+        if (pathname !== SECTION_PATHS.questions || !shouldRestoreQuestionScrollRef.current) return;
+        shouldRestoreQuestionScrollRef.current = false;
+        const frame = window.requestAnimationFrame(() => window.scrollTo({ top: questionOverviewScrollRef.current }));
+        return () => window.cancelAnimationFrame(frame);
+    }, [pathname]);
     useEffect(() => {
         if (!shouldFocusSectionRef.current) return;
         shouldFocusSectionRef.current = false;
@@ -1894,10 +1964,26 @@ export default function Home() {
         setQuestionActionStatus(`已${action === "move" ? "移動" : "加入"} ${questionIds.length} 題至「${target?.name ?? "收藏清單"}」。`);
     }
 
-    /** 開啟題目詳情；窄螢幕同時展開詳情區塊。 */
+    /** 開啟題目總覽的獨立詳情頁。 */
     function openQuestionDetail(questionId: number) {
+        questionOverviewScrollRef.current = window.scrollY;
         setSelectedQuestionId(questionId);
-        if (window.matchMedia("(max-width: 767px)").matches) setMobileSummaryOpen(true);
+        router.push(getOverviewQuestionPath(questionId));
+    }
+
+    /** 返回題目清單並回到開啟詳情前的位置。 */
+    function closeQuestionDetail() {
+        shouldRestoreQuestionScrollRef.current = true;
+        setSelectedQuestionId(undefined);
+        router.push(SECTION_PATHS.questions, { scroll: false });
+    }
+
+    /** 依目前題目總覽順序切換詳情。 */
+    function navigateOverviewQuestion(index: number) {
+        const question = detailOverviewQuestions[index];
+        if (!question) return;
+        setSelectedQuestionId(question.id);
+        router.push(getOverviewQuestionPath(question.id));
     }
 
     /** 以指定題目開啟共用的建立練習計劃介面。 */
@@ -2461,8 +2547,8 @@ export default function Home() {
                             <div className={`workspace-surface grid gap-4 rounded-xl p-4 ${attempt.handwriting ? "md:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]" : ""}`} key={`${attempt.questionId}-${index}`}>
                                 <div className="flex min-w-0 items-start justify-between gap-3">
                                     <div>
-                                        <p className="font-semibold">{index + 1}. {question.prompt}</p>
-                                        <ContentImages blocks={question.blocks} placement="prompt" />
+                                        <p className="font-semibold">{index + 1}.</p>
+                                        <QuestionPrompt question={question} className="whitespace-pre-line font-semibold" />
                                         <p className="mt-1 text-sm text-muted-foreground">你的答案：{formatAnswer(question, attempt.answer)}</p>
                                         {session.checkMode === "complete" && <><p className="text-sm text-muted-foreground">參考答案：{formatAnswer(question, question.answer)}</p><ContentImages blocks={question.blocks} placement="answer" /></>}
                                     </div>
@@ -2490,6 +2576,7 @@ export default function Home() {
         if (section === "overview") return renderOverview();
         if (section === "practice" && isScheduleListPage) return renderPracticeScheduleListPage();
         if (section === "practice") return renderPractice();
+        if (section === "questions" && getOverviewQuestionId(pathname) !== undefined) return renderQuestionOverviewDetail();
         if (section === "questions") return renderQuestionOverview();
         if (section === "bank") return renderBank();
         if (section === "mistakes") return renderMistakes();
@@ -3041,25 +3128,36 @@ export default function Home() {
         );
     }
 
-    /** 顯示題目總覽目前選取題目的內容、答案與收藏操作。 */
+    /** 顯示題目總覽的獨立題目詳情頁。 */
     function renderQuestionOverviewDetail() {
         const targetOptions = activeQuestionCollections.length
             ? activeQuestionCollections.map((collection) => ({ value: collection.id, label: collection.name }))
             : [{ value: "", label: "請先建立收藏清單", disabled: true }];
-        if (!selectedOverviewQuestion) return <section className="summary-card question-detail-empty"><ListChecks /><h2>題目詳情</h2><p>從題目清單點選一題後，這裡會顯示題目、答案與解析。</p></section>;
+        if (!selectedOverviewQuestion) return <section className="summary-card question-detail-empty"><ListChecks /><h2>正在讀取題目</h2></section>;
         const collections = activeQuestionCollections.filter((collection) => collection.questionIds.includes(selectedOverviewQuestion.id));
-        return <section className="summary-card question-detail-card" aria-labelledby="question-detail-title">
-            <div className="summary-card-heading"><div className="flex items-center gap-2"><ListChecks size={18} /><h2 id="question-detail-title">題目詳情</h2></div><Badge tone="muted">{selectedOverviewQuestion.code ?? selectedOverviewQuestion.id}</Badge></div>
-            <div className="question-detail-body">
-                <div className="question-detail-meta"><Badge tone="primary">{selectedOverviewQuestion.subject}</Badge><Badge tone="muted">{selectedOverviewQuestion.bookVersion ?? "未設定版本"}</Badge><Badge tone="muted">{getQuestionKindLabel(selectedOverviewQuestion.kind)}</Badge><Badge tone="muted">{selectedOverviewQuestion.difficulty}</Badge></div>
-                <div><p className="question-detail-label">題目</p><p className="question-detail-prompt">{selectedOverviewQuestion.prompt}</p><ContentImages blocks={selectedOverviewQuestion.blocks} placement="prompt" />{selectedOverviewQuestion.options?.length ? <ol className="question-detail-options">{selectedOverviewQuestion.options.map((option, index) => <li key={`${option}-${index}`}>{String.fromCharCode(65 + index)}. {option}</li>)}</ol> : null}</div>
-                <div className="question-detail-answer"><p className="question-detail-label">參考答案</p><strong>{formatAnswer(selectedOverviewQuestion, selectedOverviewQuestion.sourceAnswer ?? selectedOverviewQuestion.answer)}</strong><ContentImages blocks={selectedOverviewQuestion.blocks} placement="answer" /></div>
-                <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{selectedOverviewQuestion.explanation || "尚未提供解析。"}</p></div>
-                <div><p className="question-detail-label">分類與來源</p><p className="text-sm text-muted-foreground">{getUnitLabel(selectedOverviewQuestion.unit)} · {selectedOverviewQuestion.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{selectedOverviewQuestion.source}</p></div>
-                {collections.length > 0 && <div className="question-collection-tags">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
-                <div className="question-detail-collection"><NativeSelect aria-label="選擇收藏清單" disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />加入收藏</Button></div>
+        const questionNumber = selectedOverviewIndex >= 0 ? selectedOverviewIndex + 1 : 1;
+        return <div className="question-detail-page">
+            <div className="question-detail-toolbar">
+                <Button appearance="outline" onClick={closeQuestionDetail}><ArrowLeft />返回題目總覽</Button>
+                <span aria-live="polite">第 {questionNumber}／{detailOverviewQuestions.length} 題</span>
+                <div>
+                    <Button appearance="outline" disabled={selectedOverviewIndex <= 0} onClick={() => navigateOverviewQuestion(selectedOverviewIndex - 1)}><ArrowLeft />上一題</Button>
+                    <Button appearance="outline" disabled={selectedOverviewIndex < 0 || selectedOverviewIndex >= detailOverviewQuestions.length - 1} onClick={() => navigateOverviewQuestion(selectedOverviewIndex + 1)}>下一題<ArrowRight /></Button>
+                </div>
             </div>
-        </section>;
+            <section className="summary-card question-detail-card" aria-labelledby="question-detail-title">
+                <div className="summary-card-heading"><div className="flex items-center gap-2"><ListChecks size={18} /><h2 id="question-detail-title">題目詳情</h2></div><Badge tone="muted">{selectedOverviewQuestion.code ?? selectedOverviewQuestion.id}</Badge></div>
+                <div className="question-detail-body">
+                    <div className="question-detail-meta"><Badge tone="primary">{selectedOverviewQuestion.subject}</Badge><Badge tone="muted">{selectedOverviewQuestion.bookVersion ?? "未設定版本"}</Badge><Badge tone="muted">{getQuestionKindLabel(selectedOverviewQuestion.kind)}</Badge><Badge tone="muted">{selectedOverviewQuestion.difficulty}</Badge></div>
+                    <div><p className="question-detail-label">題目</p><QuestionPrompt question={selectedOverviewQuestion} className="question-detail-prompt" />{selectedOverviewQuestion.options?.length ? <ol className="question-detail-options">{selectedOverviewQuestion.options.map((option, index) => <li key={`${option}-${index}`}>{String.fromCharCode(65 + index)}. {option}</li>)}</ol> : null}</div>
+                    <div className="question-detail-answer"><p className="question-detail-label">參考答案</p><strong>{formatAnswer(selectedOverviewQuestion, selectedOverviewQuestion.sourceAnswer ?? selectedOverviewQuestion.answer)}</strong><ContentImages blocks={selectedOverviewQuestion.blocks} placement="answer" /></div>
+                    <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{selectedOverviewQuestion.explanation || "尚未提供解析。"}</p></div>
+                    <div><p className="question-detail-label">分類與來源</p><p className="text-sm text-muted-foreground">{getUnitLabel(selectedOverviewQuestion.unit)} · {selectedOverviewQuestion.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{selectedOverviewQuestion.source}</p></div>
+                    {collections.length > 0 && <div className="question-collection-tags">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
+                    <div className="question-detail-collection"><NativeSelect aria-label="選擇收藏清單" disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />加入收藏</Button></div>
+                </div>
+            </section>
+        </div>;
     }
 
     /** 顯示題庫與匯入校正。 */
@@ -3858,7 +3956,7 @@ export default function Home() {
             </div>
         </aside>
         <section className="workspace min-w-0 p-5 sm:p-7 lg:p-9" data-workspace={section}>{section !== "practice" && <header className="mb-7 flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold tracking-[0.15em] text-primary">{activeLearner.school}</p><h1 ref={headingRef} data-focus-heading tabIndex={-1} className="mt-1 text-2xl font-bold">{NAV_ITEMS.find((item) => item.id === section)?.label}</h1></div><div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarDays size={17} />{activeExam.name}</div></header>}{storageError && <p className="mb-5 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{storageError}</p>}{renderSection()}</section>
-        <aside className="summary-panel" data-mobile-open={mobileSummaryOpen} data-practice-list-page={isScheduleListPage} data-section={section}>
+        {section !== "questions" && <aside className="summary-panel" data-mobile-open={mobileSummaryOpen} data-practice-list-page={isScheduleListPage} data-section={section}>
             <Button
                 className="mobile-panel-toggle"
                 appearance="ghost"
@@ -3870,12 +3968,12 @@ export default function Home() {
                     setMobileNavigationOpen(false);
                 }}
             >
-                {section === "practice" ? <CalendarDays /> : section === "questions" ? <ListChecks /> : <BarChart3 />}
-                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "練習計劃與日曆" : section === "questions" ? "題目詳情" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : section === "questions" ? selectedOverviewQuestion?.prompt ?? "點選題目查看答案" : `${activeAttempts.length} 題 · 正確率 ${reviewedAttempts.length ? `${accuracy}%` : "—"}`}</small></span>
+                {section === "practice" ? <CalendarDays /> : <BarChart3 />}
+                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "練習計劃與日曆" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : `${activeAttempts.length} 題 · 正確率 ${reviewedAttempts.length ? `${accuracy}%` : "—"}`}</small></span>
                 <ChevronDown className="mobile-panel-chevron" />
             </Button>
             <div id="mobile-summary-panel" className={`summary-panel-content sticky top-6 grid gap-5 ${section === "practice" ? "practice-schedule-panel" : ""}`}>
-                {section === "practice" ? renderPracticeSchedules("summary", { compactList: true, showCreate: schedulePanelOpen, showListLink: true, showClose: true }) : section === "questions" ? renderQuestionOverviewDetail() : <>
+                {section === "practice" ? renderPracticeSchedules("summary", { compactList: true, showCreate: schedulePanelOpen, showListLink: true, showClose: true }) : <>
                 <section className="summary-card" aria-labelledby="summary-title">
                     <div className="summary-card-heading">
                         <div className="flex items-center gap-2"><BarChart3 size={18} /><h2 id="summary-title">練習摘要</h2></div>
@@ -3918,6 +4016,6 @@ export default function Home() {
                 </div>
                 </>}
             </div>
-        </aside>
+        </aside>}
     </div></main>;
 }
