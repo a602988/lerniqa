@@ -3731,12 +3731,7 @@ textarea:focus-visible,
     align-items: center;
     gap: 0.65rem 1rem;
     margin-bottom: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.88);
-    border-radius: var(--practice-focus-radius);
-    background: rgba(255, 255, 255, 0.94);
-    padding: 0.5rem 0.75rem 0.75rem;
-    box-shadow: 0 12px 32px rgba(58, 56, 111, 0.08);
-    backdrop-filter: blur(14px);
+    padding: 0.25rem 0.5rem;
 }
 
 .practice-focus-actions {
@@ -3746,13 +3741,13 @@ textarea:focus-visible,
 }
 
 .practice-focus-actions button {
-    height: 2rem;
-    min-height: 2rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
     min-width: auto;
-    gap: 0.3rem;
-    border-radius: 0.625rem;
-    padding-inline: 0.625rem;
-    font-size: 0.6875rem;
+    gap: 0.25rem;
+    border-radius: 0.55rem;
+    padding-inline: 0.5rem;
+    font-size: 0.625rem;
 }
 
 .practice-focus-actions button svg {
@@ -3762,27 +3757,27 @@ textarea:focus-visible,
 
 .practice-focus-progress {
     position: absolute;
-    right: 0.75rem;
-    bottom: 0.25rem;
-    left: 0.75rem;
+    right: 0.5rem;
+    bottom: -0.875rem;
+    left: 0.5rem;
     width: auto !important;
 }
 
 .practice-focus-mark {
     display: grid;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 1.875rem;
+    height: 1.875rem;
     flex: none;
     place-items: center;
     border: 1px solid #ded8f7;
-    border-radius: 0.75rem;
+    border-radius: 0.625rem;
     background: #f7f4ff;
     color: var(--color-primary);
 }
 
 .practice-focus-mark svg {
-    width: 1.125rem;
-    height: 1.125rem;
+    width: 0.95rem;
+    height: 0.95rem;
 }
 
 .practice-focus-content {
@@ -4324,13 +4319,13 @@ textarea:focus-visible,
     }
 
     .practice-focus-header {
-        align-items: flex-start;
-        padding: 0.75rem 0.75rem 1rem;
+        align-items: center;
+        padding: 0.25rem;
     }
 
     .practice-focus-header button[data-slot="button"] {
-        min-width: 2.75rem;
-        padding-inline: 0.7rem;
+        min-width: 1.75rem;
+        padding-inline: 0.45rem;
         font-size: 0;
     }
 
