@@ -810,7 +810,7 @@ function PromptText({ text }: { text: string }) {
  */
 function QuestionPrompt({ question, className, id, title = false }: { question: Question; className?: string; id?: string; title?: boolean }) {
     const titleSize = title
-        ? question.subject === "英文" ? "text-base sm:text-lg" : "text-xl sm:text-2xl"
+        ? question.subject === "英文" ? "text-base lg:text-lg" : "text-xl sm:text-2xl"
         : "";
     const promptClassName = [className, titleSize].filter(Boolean).join(" ");
     const blocks = question.blocks?.filter((block) => block.placement === "prompt")
