@@ -248,6 +248,23 @@ function getQuestionConditions(question: Question) {
     });
 }
 
+/**
+ * 顯示題目可供辨識與篩選的條件標籤。
+ * @param props 題目資料。
+ * @returns 題目條件標籤清單。
+ */
+function QuestionConditions({ question }: { question: Question }) {
+    const conditions = getQuestionConditions(question);
+
+    return <dl className="practice-question-conditions" aria-label="題目條件">
+        {conditions.map((condition) => (
+            <div className="practice-question-condition" data-wide={condition.label === "來源" || condition.label === "來源文件"} key={`${condition.label}-${condition.value}`}>
+                <dt>{condition.label}</dt><dd>{condition.value}</dd>
+            </div>
+        ))}
+    </dl>;
+}
+
 interface CreatableSelectFieldProps {
     /** 欄位名稱。 */
     label: string;
@@ -945,7 +962,6 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
     const [handwriting, setHandwriting] = useState<Record<number, string>>({});
     const questionNumber = index >= 0 ? index + 1 : 1;
     const progress = total ? (questionNumber / total) * 100 : 0;
-    const conditions = getQuestionConditions(question);
     const answer = answers[question.id] ?? "";
     const handwritingValue = handwriting[question.id] ?? "";
 
@@ -969,14 +985,7 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                     <CardContent className="question-review-layout bg-white p-4">
                         <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                             <div className="practice-prompt">
-                                <dl className="practice-question-conditions" aria-label="題目條件">
-                                    {conditions.map((condition) => (
-                                        <div className="practice-question-condition" data-wide={condition.label === "來源" || condition.label === "來源文件"} key={`${condition.label}-${condition.value}`}>
-                                            <dt>{condition.label}</dt><dd>{condition.value}</dd>
-                                        </div>
-                                    ))}
-                                </dl>
-                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line leading-relaxed" title />
+                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                             </div>
                             <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
                             <div className="question-review-solution">
@@ -984,6 +993,7 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                                 <strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong>
                                 <ContentImages blocks={question.blocks} placement="answer" />
                             </div>
+                            <QuestionConditions question={question} />
                         </section>
                         <aside className="practice-handwriting-pane question-review-handwriting-pane">
                             <HandwritingPad value={handwritingValue} recognitionStatus={isCharacterHandwritingQuestion(question) ? "預覽模式" : undefined} onChange={(value) => setHandwriting((current) => ({ ...current, [question.id]: value }))} />
@@ -1104,7 +1114,6 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 function QuestionFlow(props: QuestionFlowProps) {
     const { question, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
-    const questionConditions = getQuestionConditions(question);
     const isLast = index === total - 1;
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
@@ -1127,14 +1136,7 @@ function QuestionFlow(props: QuestionFlowProps) {
             <CardContent className="practice-question-layout bg-white p-4">
                 <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                     <div className="practice-prompt">
-                        <dl className="practice-question-conditions" aria-label="題目條件">
-                            {questionConditions.map((condition) => (
-                                <div className="practice-question-condition" data-wide={condition.label === "來源" || condition.label === "來源文件"} key={`${condition.label}-${condition.value}`}>
-                                    <dt>{condition.label}</dt><dd>{condition.value}</dd>
-                                </div>
-                            ))}
-                        </dl>
-                        <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line leading-relaxed" title />
+                        <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                     </div>
                     <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
                     {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
@@ -1142,6 +1144,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
                         {feedback.correct !== null && <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>}
                     </div>}
+                    <QuestionConditions question={question} />
                 </section>
                 <aside className="practice-handwriting-pane">
                     <HandwritingPad value={handwriting} disabled={Boolean(feedback)} recognitionStatus={needsCharacterRecognition ? "尚未連接" : undefined} onChange={props.onHandwriting} />
