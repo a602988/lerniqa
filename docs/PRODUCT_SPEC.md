@@ -43,6 +43,14 @@
 - 同一帳號使用多種登入方式時，登入身份需指向同一份帳號資料，避免產生重複帳號與分散紀錄。
 - 登入、註冊、登出確認、忘記密碼、快速註冊與帳號綁定需使用獨立網址，重新整理後仍維持目前流程。前端示範版只呈現操作介面，不送出帳號資料，也不宣稱已完成 OAuth 或帳號綁定。
 
+## 系統管理員
+
+- 系統提供一個不寫入應用程式資料庫的預設系統管理員。其身分與驗證資料保存在後端部署環境的 Secret Manager（密鑰管理服務），不得放入 Vercel 前端、原始碼、fixture 或可由瀏覽器讀取的環境變數。
+- 只有系統管理員可以授予或移除其他資料庫帳號的系統管理員權限。預設系統管理員不出現在一般帳號清單，也不能由管理介面修改或刪除。
+- 一般帳號可以修改自己建立或匯入的題目與答案，不得修改其他帳號或系統提供的題目。系統題目只有系統管理員可以修改。
+- 每一次管理員權限異動與系統題目修改都要由後端重新檢查登入身分及權限，並留下不可由一般管理介面修改的稽核紀錄。
+- 完整資料契約、安全邊界與施工順序定義於[系統管理員與題目異動規劃](system-admin-plan.md)。
+
 ## 學習者共享與權限
 
 - 學習者可分享給其他帳號，例如另一位家長或家教，不需複製學習者檔案。
@@ -135,9 +143,9 @@
 - 是否排除只影響當次查詢與出題結果，不得刪除題目、相近關聯或歷史作答。沒有相近關聯、關聯尚未確認，或群組內少於兩個不同題目答對時，不得套用排除規則。
 
 ## 重要資料模型
-User, AccountIdentity, Student, StudentAccess, ReviewerRole, Subject, CurriculumUnit, ExamPlan, PracticePlan, QuestionBank, SourceDocument, Question, QuestionChoice, QuestionTag, QuestionSimilarityGroup, QuestionSimilarityMembership, PracticeSession, AnswerAttempt, HandwritingAnswer, MistakeReview, GeneratedQuestion。
+User, AccountIdentity, Student, StudentAccess, ReviewerRole, Subject, CurriculumUnit, ExamPlan, PracticePlan, QuestionBank, SourceDocument, Question, QuestionRevision, QuestionChoice, QuestionTag, QuestionSimilarityGroup, QuestionSimilarityMembership, PracticeSession, AnswerAttempt, HandwritingAnswer, MistakeReview, GeneratedQuestion, AdminAuditLog。
 
-關聯要求：一個帳號可關聯多位學習者，一位學習者也可授權給多個帳號；登入方式需關聯至同一帳號；題庫需記錄擁有者；練習計畫需記錄建立者與學習者；題目能追溯原始檔案及頁碼；學習者作答有時間戳；更正解析不覆寫歷史作答；手寫答案需連結到題目與作答紀錄；相近題需連結到原始錯題。
+關聯要求：一個帳號可關聯多位學習者，一位學習者也可授權給多個帳號；登入方式需關聯至同一帳號；題庫與帳號建立的題目需記錄擁有者；系統題目需有明確來源標記；練習計畫需記錄建立者與學習者；題目能追溯原始檔案及頁碼；學習者作答有時間戳並連結當時的題目版本；更正題目、答案或解析不得覆寫歷史作答的判定依據；手寫答案需連結到題目與作答紀錄；相近題需連結到原始錯題；管理員權限異動與系統題目修改需留下稽核紀錄。
 
 `QuestionSimilarityGroup` 代表一組經分析後認定為相近的題目，至少保存群組識別碼、狀態、建立來源、判定方法版本及建立時間。`QuestionSimilarityMembership` 保存題目與群組的多對多關聯，至少包含群組識別碼、題目識別碼、關聯狀態、判定依據、信心值及審核資訊。同一題可依後續規則加入多個群組；查詢時只使用已確認的關聯，關聯異動不得改寫既有作答紀錄。
 
