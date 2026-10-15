@@ -43,6 +43,15 @@ assert.ok(gradeSevenQuestions.every((question) => question.bookVersion && questi
 assert.ok(gradeSevenQuestions.every((question) => question.unit === question.sourceDetail.documentName.replace(/\.[^.]+$/, "")), "單元必須保留來源文件檔名中的編號");
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "written" && question.options?.length).length, 0);
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "multi-choice" && !question.parts?.length).length, 0);
+const multiBlankWrittenQuestions = gradeSevenQuestions.filter((question) => {
+    if (question.kind !== "written") return false;
+    const blankCount = [...question.prompt.matchAll(/[（(][\s　＿_]*[）)]|【[\s　＿_]*】|　{2,}|＿{2,}|_{2,}/g)].length;
+    const answerCount = question.sourceAnswer.split(/[；;]/).map((answer) => answer.trim()).filter(Boolean).length;
+    return blankCount >= 2 && blankCount === answerCount;
+});
+assert.ok(multiBlankWrittenQuestions.every((question) => question.parts?.length === question.sourceAnswer.split(/[；;]/).length), "多個填空與分隔答案必須拆成相同數量的作答欄位");
+const question7011 = gradeSevenQuestions.find((question) => question.id === 7011);
+assert.deepEqual(question7011?.parts?.map((part) => part.answer), ["楊森", "兒童文學"]);
 assert.equal(gradeSevenQuestions.filter((question) => question.blocks?.some((block) => block.type === "image")).length, 9);
 assert.ok(gradeSevenQuestions.some((question) => {
     const promptTypes = question.blocks?.filter((block) => block.placement === "prompt").sort((left, right) => left.order - right.order).map((block) => block.type);

@@ -87,6 +87,18 @@ function cleanText(value)
         .trim();
 }
 
+/**
+ * 清理題幹並保留開頭代表填空的全形空白。
+ * @param {string} value 來源文件中的原始題幹。
+ * @returns {string} 可供後續拆題的題幹。
+ */
+function cleanQuestionBody(value)
+{
+    const leadingBlank = value.match(/^[\r\n \t]*([　＿_]{2,})(?=\S)/)?.[1] ?? "";
+    const body = cleanText(value).replace(/\n答：\s*$/, "").trim();
+    return `${leadingBlank}${body}`;
+}
+
 /** 讀取 DOC 的可搜尋文字；macOS textutil 能處理來源中的兩種 Word 格式。 */
 function readDocument(relativePath)
 {
@@ -140,7 +152,7 @@ function parseMetadataLast(text, types, documentName)
         for (const match of section.content.matchAll(matcher)) {
             records.push({
                 type: section.type,
-                body: cleanText(match[1]).replace(/\n答：\s*$/, "").trim(),
+                body: cleanQuestionBody(match[1]),
                 sourceAnswer: match[2].trim(),
                 explanation: cleanText(match[3] ?? ""),
                 number: match[4].trim(),
@@ -255,19 +267,45 @@ function parseParts(body, sourceAnswer)
     return { prompt, parts };
 }
 
-/** 將含多個編號答案的書寫題拆成可獨立作答的小題。 */
+/**
+ * 將含多個答案位置的書寫題拆成可獨立作答的小題。
+ * @param {string} body 題幹原文。
+ * @param {string} sourceAnswer 來源文件中的答案。
+ * @returns {Array<{id: string, prompt: string, answer: string}> | null} 可獨立作答的小題，無法可靠對應時回傳 null。
+ */
 function parseWrittenParts(body, sourceAnswer)
 {
     const pattern = /[（(]([0-9０-９]+)[）)]\s*([\s\S]*?)(?=[（(][0-9０-９]+[）)]|$)/g;
     const prompts = [...body.matchAll(pattern)];
     const answers = [...sourceAnswer.matchAll(pattern)];
-    if (prompts.length < 2 || prompts.length !== answers.length) return null;
+    if (prompts.length >= 2 && prompts.length === answers.length) {
+        return prompts.map((prompt, index) => ({
+            id: prompt[1],
+            prompt: prompt[2].trim(),
+            answer: answers[index][2].trim(),
+        }));
+    }
 
-    return prompts.map((prompt, index) => ({
-        id: prompt[1],
-        prompt: prompt[2].trim(),
-        answer: answers[index][2].trim(),
-    }));
+    const answerValues = sourceAnswer.split(/[；;]/).map((value) => value.trim()).filter(Boolean);
+    if (answerValues.length < 2) return null;
+
+    const blankPattern = /[（(][\s　＿_]*[）)]|【[\s　＿_]*】|　{2,}|＿{2,}|_{2,}/g;
+    const blanks = [...body.matchAll(blankPattern)];
+    if (blanks.length !== answerValues.length) return null;
+
+    return blanks.map((blank, index) => {
+        const before = body.slice(index ? (blanks[index - 1].index ?? 0) + blanks[index - 1][0].length : 0, blank.index).trim();
+        const afterStart = (blank.index ?? 0) + blank[0].length;
+        const after = body.slice(afterStart, blanks[index + 1]?.index ?? body.length).trim();
+        const left = before.split(/[，。！？；：\n]/).at(-1)?.trim() ?? "";
+        const right = after.split(/[，。！？；：\n]/)[0]?.trim() ?? "";
+        const prompt = `${left}（　）${right}`.trim();
+        return {
+            id: String(index + 1),
+            prompt: prompt === "（　）" ? `第 ${index + 1} 空` : prompt,
+            answer: answerValues[index],
+        };
+    });
 }
 
 /** 將來源難易度轉成前端資料契約。 */

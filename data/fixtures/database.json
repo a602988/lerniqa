@@ -946,7 +946,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "楊喚的童詩感情真摯豐富，充滿（　　　　），被譽為臺灣（　　　　）文學的先驅。",
-      "answer": "童心童趣；兒童",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "充滿（　）",
+          "answer": "童心童趣"
+        },
+        {
+          "id": "2",
+          "prompt": "臺灣（　）文學的先驅",
+          "answer": "兒童"
+        }
+      ],
+      "answer": "[\"童心童趣\",\"兒童\"]",
       "sourceAnswer": "童心童趣；兒童",
       "explanation": "答案：童心童趣；兒童",
       "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
@@ -980,7 +992,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "楊喚本名（　　　　），他的童詩感情真摯豐富，充滿童心童趣，被譽為臺灣（　　　　）的先驅。",
-      "answer": "楊森；兒童文學",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "楊喚本名（　）",
+          "answer": "楊森"
+        },
+        {
+          "id": "2",
+          "prompt": "臺灣（　）的先驅",
+          "answer": "兒童文學"
+        }
+      ],
+      "answer": "[\"楊森\",\"兒童文學\"]",
       "sourceAnswer": "楊森；兒童文學",
       "explanation": "答案：楊森；兒童文學",
       "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
@@ -1014,7 +1038,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "「童詩」是新詩的一種，以兒童的（　　　　）世界和（　　　　）經驗為主要題材，是極富情感、具想像力、活潑有趣的兒童文學。",
-      "answer": "內心；生活",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "兒童的（　）世界",
+          "answer": "內心"
+        },
+        {
+          "id": "2",
+          "prompt": "（　）經驗",
+          "answer": "生活"
+        }
+      ],
+      "answer": "[\"內心\",\"生活\"]",
       "sourceAnswer": "內心；生活",
       "explanation": "答案：內心；生活",
       "source": "翰林國語第一冊 · 01_第一課_夏夜 · 試題",
@@ -2695,7 +2731,24 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "Johnny 　　　 a student.  　　　 sister is 24.  　　　 a nurse.",
-      "answer": "is；His；She’s",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "Johnny（　）a student.",
+          "answer": "is"
+        },
+        {
+          "id": "2",
+          "prompt": "（　）sister is 24.",
+          "answer": "His"
+        },
+        {
+          "id": "3",
+          "prompt": "（　）a nurse.",
+          "answer": "She’s"
+        }
+      ],
+      "answer": "[\"is\",\"His\",\"She’s\"]",
       "sourceAnswer": "is；His；She’s",
       "explanation": "Johnny　的所有格用　His。姐姐是女性用　She，與　be　動詞縮寫為　She’s。",
       "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
@@ -2729,7 +2782,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "Natalie and Ruby 　　　 good friends, and 　　　 Ms. Smith’s students.",
-      "answer": "are；they’re",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "Natalie and Ruby（　）good friends",
+          "answer": "are"
+        },
+        {
+          "id": "2",
+          "prompt": "（　）Ms. Smith’s students",
+          "answer": "they’re"
+        }
+      ],
+      "answer": "[\"are\",\"they’re\"]",
       "sourceAnswer": "are；they’re",
       "explanation": "Natalie　和　Ruby　用　they　取代，與　be　動詞縮寫為　they’re。",
       "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
@@ -2762,8 +2827,25 @@
       "difficulty": "中等",
       "kind": "written",
       "typeLabel": "填充題",
-      "prompt": "name is Gary.  I 　　　 15, and 　　　 from Japan.",
-      "answer": "My；am；I’m",
+      "prompt": "　　　 name is Gary.  I 　　　 15, and 　　　 from Japan.",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "（　）name is Gary.",
+          "answer": "My"
+        },
+        {
+          "id": "2",
+          "prompt": "I（　）15",
+          "answer": "am"
+        },
+        {
+          "id": "3",
+          "prompt": "（　）from Japan",
+          "answer": "I’m"
+        }
+      ],
+      "answer": "[\"My\",\"am\",\"I’m\"]",
       "sourceAnswer": "My；am；I’m",
       "explanation": "I　的所有格為　My，be　動詞為　am，縮寫為　I’m。",
       "source": "翰林英文第一冊 · 01_Starter Unit · 試題",
@@ -2779,7 +2861,7 @@
           "placement": "prompt",
           "type": "text",
           "order": 1,
-          "text": "name is Gary.  I 　　　 15, and 　　　 from Japan."
+          "text": "　　　 name is Gary.  I 　　　 15, and 　　　 from Japan."
         }
       ]
     },
@@ -4983,7 +5065,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "人們通常以【　　　　】來標記歷史時間，稱為【　　　　】或「紀元」。",
-      "answer": "年；紀年",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "以【　】標記歷史時間",
+          "answer": "年"
+        },
+        {
+          "id": "2",
+          "prompt": "稱為【　】或「紀元」",
+          "answer": "紀年"
+        }
+      ],
+      "answer": "[\"年\",\"紀年\"]",
       "sourceAnswer": "年；紀年",
       "explanation": "答案：年；紀年",
       "source": "南一歷史第一冊 · 22_02_2-0_導言_歷史的基礎觀念 · 試題",
@@ -5230,7 +5324,19 @@
       "kind": "written",
       "typeLabel": "填充題",
       "prompt": "取得國籍的途徑分為：(１)【　　　　】取得；(２)【　　　　】取得。",
-      "answer": "天生；歸化",
+      "parts": [
+        {
+          "id": "1",
+          "prompt": "(１)【　】取得",
+          "answer": "天生"
+        },
+        {
+          "id": "2",
+          "prompt": "(２)【　】取得",
+          "answer": "歸化"
+        }
+      ],
+      "answer": "[\"天生\",\"歸化\"]",
       "sourceAnswer": "天生；歸化",
       "explanation": "取得國籍的途徑可分為天生取得（父或母具有我國國籍）和歸化取得（婚姻、收養、投資移民等方式）兩種。",
       "source": "南一公民第一冊 · 35_03_3-1_1-1_什麼是公民？ · 試題",
