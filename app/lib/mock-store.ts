@@ -477,10 +477,23 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
     return value as unknown as StoredState;
 }
 
-/** 取得 runtime 圖片的絕對路徑，拒絕目錄跳脫字串。 */
+/**
+ * 取得 runtime 圖片的絕對路徑，拒絕目錄跳脫字串。
+ * @param storageKey 圖片的儲存識別碼。
+ * @returns 合法識別碼對應的絕對路徑；格式錯誤時回傳 null。
+ */
 export function getAssetPath(storageKey: string) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(storageKey)) return null;
     return path.join(RUNTIME_ASSETS, storageKey);
+}
+
+/**
+ * 取得內建題庫圖片的絕對路徑。
+ * @param storageKey 已通過格式驗證的圖片儲存識別碼。
+ * @returns 內建題庫圖片的絕對路徑。
+ */
+export function getFixtureAssetPath(storageKey: string) {
+    return path.join(FIXTURE_ASSETS, storageKey);
 }
 
 /** 將 data URL 圖片寫入 runtime asset 目錄並回傳儲存資訊。 */
