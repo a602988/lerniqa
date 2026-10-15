@@ -55,3 +55,4 @@
 - 國語選擇校內卷後共有 7 題；版本、主題與知識點欄位隱藏，改顯示學年度、回次、卷別、部分與大題。查詢 API 以 `source=校內卷` 取得相同 7 題。
 - 題目總覽與錯題英雄榜均使用同一個 `QuestionFilterPanel` 與純篩選函式。768×1024 與 390×844 的頁面寬度分別等於 viewport(可視區域)寬度，沒有水平溢位。
 - `npm run lint`、`npm test`、`npm run build` 與 `git diff --check` 通過。build 只有 Keel 文件預覽元件既有的選用套件缺少警告。
+- production deployment(正式環境部署) `dpl_FWLhNUnRv2NAiriUv946Rm5zKArB` 已完成並保留 `vercel_authentication`。`https://lerniqa.vercel.app/questions` 回傳 200，正式環境實際選取校內卷後顯示 7 題及正確的動態欄位。
