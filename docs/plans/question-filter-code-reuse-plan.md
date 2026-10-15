@@ -2,7 +2,7 @@
 
 ## 狀態
 
-本機施工與驗證完成，待 Vercel production 驗證。`docs/reviews/question-filter-code-reuse-review.md` 的 `CR-01` 已於 2026-10-15 核准。
+已完成並部署至 Vercel production。`docs/reviews/question-filter-code-reuse-review.md` 的 `CR-01` 已於 2026-10-15 核准，最終驗證證據記錄於該報告。
 
 ## 範圍
 
