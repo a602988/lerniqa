@@ -3348,6 +3348,8 @@ textarea:focus-visible,
 .mistake-ranking-tabs,
 .mistake-ranking-content {
     display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
 }
 
@@ -3377,6 +3379,9 @@ textarea:focus-visible,
 }
 
 .mistake-table-wrap {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     overflow-x: auto;
     border: 1px solid var(--color-border);
     border-radius: 1rem;
@@ -3397,6 +3402,7 @@ textarea:focus-visible,
     font-weight: 700;
     letter-spacing: 0.02em;
     text-align: left;
+    white-space: nowrap;
 }
 
 .mistake-table th,
@@ -3409,21 +3415,8 @@ textarea:focus-visible,
     border-top: 1px solid var(--color-border);
 }
 
-.mistake-table th:nth-child(2) {
-    width: 40%;
-}
-
-.mistake-table th:nth-child(3) {
-    width: 20%;
-}
-
-.mistake-table th:nth-child(4) {
-    width: 10%;
-}
-
 .mistake-rank-column,
 .mistake-rank-cell {
-    width: 4.5rem;
     text-align: center;
 }
 
@@ -3433,16 +3426,38 @@ textarea:focus-visible,
     font-weight: 800;
 }
 
-.mistake-personal-table th:nth-child(3),
-.mistake-community-table th:nth-child(2) {
-    width: 38%;
+.mistake-personal-table th:nth-child(1) {
+    width: 3.75rem;
 }
 
-.mistake-personal-table th:nth-child(4),
+.mistake-personal-table th:nth-child(2),
+.mistake-community-table th:nth-child(1) {
+    width: 4rem;
+}
+
+.mistake-personal-table th:nth-child(4) {
+    width: 9.25rem;
+}
+
+.mistake-personal-table th:nth-child(5) {
+    width: 6.25rem;
+}
+
+.mistake-personal-table th:nth-child(6) {
+    width: 11.5rem;
+}
+
 .mistake-community-table th:nth-child(3),
-.mistake-community-table th:nth-child(4),
+.mistake-community-table th:nth-child(4) {
+    width: 6.5rem;
+}
+
 .mistake-community-table th:nth-child(5) {
-    width: 12%;
+    width: 5.5rem;
+}
+
+.mistake-community-table th:nth-child(6) {
+    width: 6.5rem;
 }
 
 .mistake-select-column,
@@ -3466,7 +3481,7 @@ textarea:focus-visible,
 
 .mistake-table-actions {
     display: flex;
-    min-width: 10.5rem;
+    min-width: 0;
     justify-content: flex-end;
     gap: 0.35rem;
 }
@@ -3515,10 +3530,15 @@ textarea:focus-visible,
 
     .mistake-table {
         min-width: 0;
+        table-layout: auto;
     }
 
     .mistake-table thead {
         display: none;
+    }
+
+    .mistake-table thead th:nth-child(n) {
+        width: auto;
     }
 
     .mistake-table,
@@ -3527,6 +3547,8 @@ textarea:focus-visible,
     .mistake-table td {
         display: block;
         width: 100%;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .mistake-table tbody tr {
@@ -3547,6 +3569,10 @@ textarea:focus-visible,
 
     .mistake-table td {
         padding: 0.2rem 0;
+    }
+
+    .mistake-question-title {
+        overflow-wrap: anywhere;
     }
 
     .mistake-rank-cell {
