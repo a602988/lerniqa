@@ -3464,7 +3464,7 @@ textarea:focus-visible,
 
 .mistake-table {
     width: 100%;
-    min-width: 52rem;
+    min-width: 46rem;
     border-collapse: collapse;
     table-layout: fixed;
 }
