@@ -279,6 +279,15 @@ export interface Question {
     generatedFrom?: number;
 }
 
+export interface AttemptPartResult {
+    /** 題組內的小題識別碼。 */
+    partId: string;
+    /** 學習者輸入的小題答案。 */
+    answer: string;
+    /** 小題答案是否正確。 */
+    correct: boolean;
+}
+
 export interface Attempt {
     /** 所屬練習的識別碼；舊資料可能沒有此欄位。 */
     sessionId?: string;
@@ -290,6 +299,8 @@ export interface Attempt {
     answer: string;
     /** 是否答對；純手寫且未輸入文字時為待檢視。 */
     correct: boolean | null;
+    /** 複合題各小題的作答結果；舊資料可能沒有此欄位。 */
+    partResults?: AttemptPartResult[];
     /** 作答完成時間。 */
     date: string;
     /** 作答耗時秒數。 */
@@ -317,6 +328,8 @@ export interface PracticeSession {
     phase: "answering" | "complete";
     /** 開始時固定的題目順序。 */
     questionIds: number[];
+    /** 錯題複習時，各題只需再次作答的小題識別碼。 */
+    partIdsByQuestion?: Record<number, string[]>;
     /** 目前題號。 */
     index: number;
     /** 本輪作答結果。 */
@@ -472,21 +485,42 @@ export function getUnitLabel(unit: string) {
  * @param answer 學習者輸入答案。
  * @returns 答案是否正確。
  */
-export function checkAnswer(question: Question, answer: string) {
+export function checkAnswer(question: Question, answer: string, partIds?: string[]) {
     if (question.parts?.length) {
-        try {
-            const selected = JSON.parse(answer) as unknown;
-            return Array.isArray(selected)
-                && question.parts?.length === selected.length
-                && question.parts.every((part, index) => question.kind === "written"
-                    ? answersMatch(String(selected[index]), part.answer)
-                    : selected[index] === part.answer);
-        }
-        catch {
-            return false;
-        }
+        const results = getQuestionPartResults(question, answer, partIds);
+        return results.length > 0 && results.every((result) => result.correct);
     }
     return answersMatch(answer, question.answer);
+}
+
+/**
+ * 逐一比對複合題的小題答案。
+ *
+ * @param question 目前題目。
+ * @param answer 學習者輸入的結構化答案。
+ * @param partIds 只需檢核的小題識別碼；省略時檢核全部小題。
+ * @returns 依題目原始順序排列的小題結果。
+ */
+export function getQuestionPartResults(question: Question, answer: string, partIds?: string[]) {
+    const targetIds = partIds?.length ? new Set(partIds) : undefined;
+    const parts = question.parts?.filter((part) => !targetIds || targetIds.has(part.id)) ?? [];
+    let selected: unknown[] = [];
+    try {
+        const parsed = JSON.parse(answer) as unknown;
+        if (Array.isArray(parsed)) selected = parsed;
+    }
+    catch {
+        selected = [];
+    }
+
+    return parts.map((part) => {
+        const sourceIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
+        const partAnswer = sourceIndex >= 0 ? String(selected[sourceIndex] ?? "") : "";
+        const correct = question.kind === "written"
+            ? answersMatch(partAnswer, part.answer)
+            : partAnswer === part.answer;
+        return { partId: part.id, answer: partAnswer, correct };
+    });
 }
 
 /** 將正負號簡寫展開，讓集合答案不受輸入順序與標點影響。 */

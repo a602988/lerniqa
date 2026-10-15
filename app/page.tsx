@@ -20,7 +20,7 @@ import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, CheckMode,
-    DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer,
+    DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer, getQuestionPartResults,
     GRADE_OPTIONS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PlanBasis, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
     PlanQuestionKind, QuestionMetadataField, ROLE_OPTIONS, RoleAccess, ScheduledPractice, Section,
     SEMESTER_OPTIONS, StoredState, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
@@ -33,6 +33,8 @@ interface QuestionFlowProps {
     index: number;
     /** 題目總數。 */
     total: number;
+    /** 錯題複習時只顯示的小題識別碼。 */
+    partIds?: string[];
     /** 檢核方式。 */
     checkMode: CheckMode;
     /** 文字答案。 */
@@ -115,6 +117,8 @@ interface QuestionAnswerFieldsProps {
     question: Question;
     /** 目前文字或結構化答案。 */
     answer: string;
+    /** 只需顯示的小題識別碼。 */
+    partIds?: string[];
     /** 是否禁止修改答案。 */
     disabled?: boolean;
     /** 更新目前答案。 */
@@ -169,15 +173,19 @@ function isCharacterHandwritingQuestion(question: Question) {
     return question.kind === "written" && question.typeLabel === CHARACTER_HANDWRITING_LABEL;
 }
 
-/** 依整題選項的 UTF-8 位元組總長度決定一致的答案欄數。 */
-function getAnswerColumnCount(question: Question) {
-    const options = question.options ?? [];
-    const hasOptionMedia = question.blocks?.some((block) => block.placement === "option" && block.type !== "text");
+/** 依選項數量、內容長度與媒體內容決定答案欄數。 */
+function getOptionColumnCount(options: string[], hasOptionMedia = false) {
     if (hasOptionMedia || options.length < 2) return 1;
     const totalBytes = options.reduce((total, option) => total + new TextEncoder().encode(option).length, 0);
     if (options.length >= 4 && totalBytes <= ANSWER_GRID_FOUR_COLUMN_BYTES) return 4;
     if (totalBytes <= ANSWER_GRID_TWO_COLUMN_BYTES) return 2;
     return 1;
+}
+
+/** 依整題選項內容決定答案欄數。 */
+function getAnswerColumnCount(question: Question) {
+    const hasOptionMedia = question.blocks?.some((block) => block.placement === "option" && block.type !== "text");
+    return getOptionColumnCount(question.options ?? [], hasOptionMedia);
 }
 
 /** 將複合題保存的 JSON 答案轉成各小題答案。 */
@@ -517,6 +525,24 @@ function getLatestAttempts(attempts: Attempt[]) {
     return [...latest.values()];
 }
 
+/** 取得每一題最新作答中需要再次練習的小題。 */
+function getWrongPartIdsByQuestion(attempts: Attempt[]) {
+    return attempts.reduce<Record<number, string[]>>((targets, attempt) => {
+        const wrongPartIds = attempt.partResults?.filter((result) => !result.correct).map((result) => result.partId) ?? [];
+        if (wrongPartIds.length) targets[attempt.questionId] = wrongPartIds;
+        return targets;
+    }, {});
+}
+
+/** 取得作答紀錄中答錯小題的原始題序標示。 */
+function getWrongPartLabels(question: Question, attempt: Attempt) {
+    return attempt.partResults?.flatMap((result) => {
+        if (result.correct) return [];
+        const index = question.parts?.findIndex((part) => part.id === result.partId) ?? -1;
+        return index >= 0 ? [`第 ${index + 1} 小題`] : [];
+    }) ?? [];
+}
+
 /** 將作答紀錄依每次練習分組；舊資料以相鄰三十分鐘視為同一次。 */
 function getPracticeRecords(attempts: Attempt[]) {
     const records = new Map<string, PracticeRecord>();
@@ -769,26 +795,76 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     })}</div>;
 }
 
+/** 依題目資料逐題顯示複合選擇題的小題與選項。 */
+function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const targetIds = partIds?.length ? new Set(partIds) : undefined;
+    const parts = question.parts?.filter((part) => !targetIds || targetIds.has(part.id)) ?? [];
+    const currentIndex = Math.min(activeIndex, Math.max(parts.length - 1, 0));
+    const currentPart = parts[currentIndex];
+    const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
+
+    useEffect(() => setActiveIndex(0), [question.id]);
+
+    if (!currentPart) return <p className="multi-choice-step-empty" role="status">這題缺少小題資料，暫時無法作答。</p>;
+
+    const options = currentPart.options ?? [];
+    const hasOptionMedia = question.blocks?.some((block) => block.placement === "option" && block.type !== "text");
+    const answerColumnCount = getOptionColumnCount(options, hasOptionMedia);
+
+    /** 保存目前小題答案，不改變其他小題的選擇。 */
+    function selectOption(option: string) {
+        const answerCount = question.parts?.length ?? 0;
+        const sourceIndex = question.parts?.findIndex((part) => part.id === currentPart.id) ?? -1;
+        if (sourceIndex < 0) return;
+        const nextAnswers = Array.from({ length: answerCount }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
+        nextAnswers[sourceIndex] = option;
+        onAnswer(JSON.stringify(nextAnswers));
+    }
+
+    const sourceIndex = question.parts?.findIndex((part) => part.id === currentPart.id) ?? -1;
+    const isPartReview = Boolean(targetIds);
+
+    return <section className="multi-choice-step" aria-label="分題作答">
+        <div className="multi-choice-step-header">
+            <p aria-live="polite">{isPartReview ? <>第 <strong>{sourceIndex + 1}</strong> 小題 · 複習 {currentIndex + 1}／{parts.length}</> : <>小題 <strong>{currentIndex + 1}</strong>／{parts.length}</>}</p>
+            {parts.length > 1 && <div className="multi-choice-step-actions">
+                <Button appearance="outline" size="sm" disabled={currentIndex <= 0} onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}><ArrowLeft />上一小題</Button>
+                <Button appearance="outline" size="sm" disabled={currentIndex >= parts.length - 1} onClick={() => setActiveIndex((index) => Math.min(index + 1, parts.length - 1))}>下一小題<ArrowRight /></Button>
+            </div>}
+        </div>
+        <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
+            <legend className="multi-choice-step-prompt">{currentPart.prompt}</legend>
+            {options.length
+                ? options.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}-part-${currentPart.id}`} value={option} checked={sourceIndex >= 0 && selectedAnswers[sourceIndex] === option} onChange={() => selectOption(option)} /><span>{option}</span></label>)
+                : <p className="multi-choice-step-empty" role="status">這一小題沒有可選答案。</p>}
+        </fieldset>
+    </section>;
+}
+
 /** 顯示正式練習與題目檢視共用的作答欄位。 */
-function QuestionAnswerFields({ question, answer, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
+function QuestionAnswerFields({ question, answer, partIds, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
     const answerColumnCount = getAnswerColumnCount(question);
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
+    const targetIds = partIds?.length ? new Set(partIds) : undefined;
+    const visibleParts = question.parts?.filter((part) => !targetIds || targetIds.has(part.id)) ?? [];
 
     if (question.kind === "written") {
         if (needsCharacterRecognition) return null;
 
-        if (question.parts?.length) {
+        if (visibleParts.length) {
             return <div className="written-answer-parts">
-                {question.parts.map((part, partIndex) => {
+                {visibleParts.map((part) => {
+                    const sourceIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
                     const isNamedPoint = /^[A-Z]$/i.test(part.id);
                     return <FormField
                         key={part.id}
-                        label={isNamedPoint ? part.id.toUpperCase() : `第 ${partIndex + 1} 空`}
+                        label={isNamedPoint ? part.id.toUpperCase() : `第 ${sourceIndex + 1} 空`}
                         description={isNamedPoint ? undefined : part.prompt}
                     >
                         <Input
-                            value={selectedAnswers[partIndex] ?? ""}
+                            value={sourceIndex >= 0 ? selectedAnswers[sourceIndex] ?? "" : ""}
                             disabled={disabled}
                             placeholder="輸入答案"
                             autoComplete="off"
@@ -796,8 +872,9 @@ function QuestionAnswerFields({ question, answer, disabled = false, onAnswer }: 
                             autoCapitalize="none"
                             spellCheck={false}
                             onChange={(event) => {
+                                if (sourceIndex < 0) return;
                                 const nextAnswers = Array.from({ length: question.parts?.length ?? 0 }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
-                                nextAnswers[partIndex] = event.target.value;
+                                nextAnswers[sourceIndex] = event.target.value;
                                 onAnswer(JSON.stringify(nextAnswers));
                             }}
                         />
@@ -812,28 +889,7 @@ function QuestionAnswerFields({ question, answer, disabled = false, onAnswer }: 
     }
 
     if (question.kind === "multi-choice") {
-        return <div className="multi-choice-parts">
-            {question.parts?.map((part, partIndex) => (
-                <div className="multi-choice-part" key={part.id}>
-                    <p className="multi-choice-part-prompt">{part.prompt}</p>
-                    <NativeSelect
-                        aria-label={`第 ${partIndex + 1} 小題答案`}
-                        disabled={disabled}
-                        options={[
-                            { value: "", label: "選擇答案" },
-                            ...(part.options ?? []).map((option) => ({ value: option, label: option })),
-                        ]}
-                        value={selectedAnswers[partIndex] ?? ""}
-                        onChange={(event) => {
-                            const answerCount = question.parts?.length ?? 0;
-                            const nextAnswers = Array.from({ length: answerCount }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
-                            nextAnswers[partIndex] = event.target.value;
-                            onAnswer(JSON.stringify(nextAnswers));
-                        }}
-                    />
-                </div>
-            ))}
-        </div>;
+        return <MultiChoiceAnswerFields key={question.id} question={question} answer={answer} partIds={partIds} disabled={disabled} onAnswer={onAnswer} />;
     }
 
     return <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
@@ -1005,19 +1061,25 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 
 /** 顯示單題作答及手寫區。 */
 function QuestionFlow(props: QuestionFlowProps) {
-    const { question, index, total, checkMode, answer, handwriting, feedback } = props;
+    const { question, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
     const questionConditions = getQuestionConditions(question);
     const isLast = index === total - 1;
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
+    const targetIds = partIds?.length ? new Set(partIds) : undefined;
+    const targetParts = question.parts?.filter((part) => !targetIds || targetIds.has(part.id)) ?? [];
+    const hasCompletePartAnswers = targetParts.length > 0 && targetParts.every((part) => {
+        const partIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
+        return partIndex >= 0 && Boolean(selectedAnswers[partIndex]);
+    });
     const canSubmit = question.kind === "written"
         ? needsCharacterRecognition
             ? Boolean(handwriting)
-            : question.parts?.length
-                ? selectedAnswers.length === question.parts.length && selectedAnswers.every(Boolean) || Boolean(handwriting)
+            : targetParts.length
+                ? hasCompletePartAnswers || Boolean(handwriting)
                 : Boolean(answer.trim() || handwriting)
         : question.kind === "multi-choice"
-            ? Boolean(question.parts?.length && selectedAnswers.length === question.parts.length && selectedAnswers.every(Boolean))
+            ? hasCompletePartAnswers
             : Boolean(answer.trim());
     return (
         <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
@@ -1033,7 +1095,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                         </dl>
                         <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
                     </div>
-                    <QuestionAnswerFields question={question} answer={answer} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
+                    <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
                     {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                         <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
@@ -2132,7 +2194,7 @@ export default function Home() {
     }
 
     /** 開始指定題目的練習。 */
-    function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string) {
+    function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string, partIdsByQuestion?: Record<number, string[]>) {
         if (!ids.length) return;
         if (session?.phase === "answering" && sessionPaused) {
             setSessionPaused(false);
@@ -2141,7 +2203,14 @@ export default function Home() {
             return;
         }
         const startedAt = new Date().toISOString();
-        setSession({ id: `session-${crypto.randomUUID()}`, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: ids, index: 0, attempts: [], questionStartedAt: Date.now() });
+        const validPartIdsByQuestion = ids.reduce<Record<number, string[]>>((targets, questionId) => {
+            const question = questions.find((item) => item.id === questionId);
+            const requestedIds = partIdsByQuestion?.[questionId] ?? [];
+            const validIds = question?.parts?.filter((part) => requestedIds.includes(part.id)).map((part) => part.id) ?? [];
+            if (validIds.length) targets[questionId] = validIds;
+            return targets;
+        }, {});
+        setSession({ id: `session-${crypto.randomUUID()}`, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: ids, ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
         setSessionPaused(false); setSessionExitOpen(false); setAnswer(""); setHandwriting(""); setSection(mode === "practice" ? "practice" : "mistakes");
         router.push(getSessionQuestionPath(ids[0]));
     }
@@ -2218,12 +2287,15 @@ export default function Home() {
         const hasWrittenResponse = Boolean(answer.trim() || handwriting);
         if (isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
         if (currentQuestion.kind === "written" ? !hasWrittenResponse : !answer.trim()) return;
+        const targetPartIds = session.partIdsByQuestion?.[currentQuestion.id];
+        const partResults = currentQuestion.parts?.length ? getQuestionPartResults(currentQuestion, answer, targetPartIds) : [];
         const attempt: Attempt = {
             sessionId: session.id,
             sessionMode: session.mode,
             questionId: currentQuestion.id,
             answer: answer.trim() || "手寫作答",
-            correct: answer.trim() ? checkAnswer(currentQuestion, answer) : null,
+            correct: answer.trim() ? checkAnswer(currentQuestion, answer, targetPartIds) : null,
+            ...(partResults.length ? { partResults } : {}),
             date: new Date().toISOString(),
             durationSeconds: Math.max(1, Math.round((Date.now() - session.questionStartedAt) / 1000)),
             ...(handwriting ? { handwriting } : {}),
@@ -2601,6 +2673,7 @@ export default function Home() {
     const sessionCorrect = session?.attempts.filter((attempt) => attempt.correct === true).length ?? 0;
     const pendingCount = session?.attempts.filter((attempt) => attempt.correct === null).length ?? 0;
     const wrongIds = session?.attempts.filter((attempt) => attempt.correct === false).map((attempt) => attempt.questionId) ?? [];
+    const wrongPartIdsByQuestion = getWrongPartIdsByQuestion(session?.attempts.filter((attempt) => attempt.correct === false) ?? []);
     const similarIds = questions.filter((question) => question.generatedFrom && wrongIds.includes(question.generatedFrom)).map((question) => question.id);
     const dayDifference = getDayDifference(activeExam.date);
     const sessionModeLabel = session?.mode === "similar" ? "相關題目練習" : session?.mode === "review" ? "錯題複習" : "考前練習";
@@ -2614,6 +2687,7 @@ export default function Home() {
                     question={currentQuestion}
                     index={session.index}
                     total={session.questionIds.length}
+                    partIds={session.partIdsByQuestion?.[currentQuestion.id]}
                     checkMode={session.checkMode}
                     answer={answer}
                     handwriting={handwriting}
@@ -2648,6 +2722,7 @@ export default function Home() {
                     {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">本輪答錯 {sessionWrong} 題</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式不顯示逐題結果、答案或解析。</p></div>}
                     {!scoreOnly && session.attempts.map((attempt, index) => {
                         const question = questions.find((item) => item.id === attempt.questionId);
+                        const wrongPartLabels = question ? getWrongPartLabels(question, attempt) : [];
                         return question ? (
                             <div className={`workspace-surface grid gap-4 rounded-xl p-4 ${attempt.handwriting ? "md:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]" : ""}`} key={`${attempt.questionId}-${index}`}>
                                 <div className="flex min-w-0 items-start justify-between gap-3">
@@ -2655,6 +2730,7 @@ export default function Home() {
                                         <p className="font-semibold">{index + 1}.</p>
                                         <QuestionPrompt question={question} className="whitespace-pre-line font-semibold" />
                                         <p className="mt-1 text-sm text-muted-foreground">你的答案：{formatAnswer(question, attempt.answer)}</p>
+                                        {wrongPartLabels.length > 0 && <p className="text-sm text-rose-700">答錯小題：{wrongPartLabels.join("、")}</p>}
                                         {session.checkMode === "complete" && <><p className="text-sm text-muted-foreground">參考答案：{formatAnswer(question, question.answer)}</p><ContentImages blocks={question.blocks} placement="answer" /></>}
                                     </div>
                                     <Badge className="shrink-0" tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "待加強" : "待檢視"}</Badge>
@@ -2667,7 +2743,7 @@ export default function Home() {
                     })}
                     <div className="flex flex-wrap justify-end gap-2">
                         <Button appearance="outline" tone="muted" onClick={leaveSession}>返回工作區</Button>
-                        {!scoreOnly && wrongIds.length > 0 && <Button appearance="outline" onClick={() => beginSession("review", wrongIds, "instant")}>複習本輪錯題</Button>}
+                        {!scoreOnly && wrongIds.length > 0 && <Button appearance="outline" onClick={() => beginSession("review", wrongIds, "instant", undefined, wrongPartIdsByQuestion)}>複習本輪錯題</Button>}
                         {!scoreOnly && similarIds.length > 0 && <Button onClick={() => beginSession("similar", similarIds, "instant")}><Sparkles />練習相近題目</Button>}
                     </div>
                 </CardContent>
@@ -3576,7 +3652,7 @@ export default function Home() {
                                     <Badge tone="muted">目前顯示 {mistakeResultCount} 題</Badge>
                                     {mistakeRankingView === "personal" && visibleQueue.length > 0 && <Button appearance="outline" onClick={() => beginSession("similar", visibleQueue, "instant")}><Sparkles />開始後續練習（{visibleQueue.length}）</Button>}
                                     {mistakeRankingView === "personal" && <Button appearance="outline" disabled={!selectedMistakes.length} onClick={() => openQuestionPlan(selectedMistakes, "錯題")}><CalendarDays />加入練習計劃</Button>}
-                                    {mistakeRankingView === "personal" && <Button disabled={!selectedMistakes.length} onClick={() => beginSession("review", selectedMistakes, "instant")}>複習已選錯題</Button>}
+                                    {mistakeRankingView === "personal" && <Button disabled={!selectedMistakes.length} onClick={() => beginSession("review", selectedMistakes, "instant", undefined, getWrongPartIdsByQuestion(latestAttempts.filter((attempt) => selectedMistakes.includes(attempt.questionId))))}>複習已選錯題</Button>}
                                 </div>
                             </div>
                         </div>
@@ -3600,7 +3676,7 @@ export default function Home() {
                                             <td className="mistake-question-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p></td>
                                             <td data-label="最後測驗"><time className="mistake-meta" dateTime={lastAttempt?.date}>{lastAttempt ? formatAttemptDate(lastAttempt.date) : "尚無紀錄"}</time></td>
                                             <td data-label="錯誤次數"><Badge tone={wrongCount > 1 ? "danger" : "muted"}>{wrongCount} 次</Badge></td>
-                                            <td className="mistake-table-actions"><Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant")}><RotateCcw />練習</Button><Button appearance="ghost" tone="muted" size="sm" disabled={!similar || usableQueue.includes(similar.id)} onClick={() => queueSimilar([question.id])}>{usableQueue.includes(similar?.id ?? -1) ? "已加入" : "加入後續"}</Button></td>
+                                            <td className="mistake-table-actions"><Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, lastAttempt ? getWrongPartIdsByQuestion([lastAttempt]) : undefined)}><RotateCcw />練習</Button><Button appearance="ghost" tone="muted" size="sm" disabled={!similar || usableQueue.includes(similar.id)} onClick={() => queueSimilar([question.id])}>{usableQueue.includes(similar?.id ?? -1) ? "已加入" : "加入後續"}</Button></td>
                                         </tr>;
                                     })}</tbody>
                                 </table>
@@ -3796,13 +3872,15 @@ export default function Home() {
             const resultLabel = attempt.correct === true ? "答對" : attempt.correct === false ? "錯題" : "待檢視";
             const resultTone = attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning";
             const relatedIds = attempt.correct === false ? getRelatedQuestionIds(question.id) : [];
+            const wrongPartLabels = getWrongPartLabels(question, attempt);
             return <article className="result-wrong-item" data-result={attempt.correct === true ? "correct" : attempt.correct === false ? "wrong" : "pending"} key={`${record.id}-${attempt.questionId}-${index}`}>
                 <div>
                     <div className="result-question-heading"><p className="result-wrong-number">第 {index + 1} 題</p><Badge tone={resultTone}>{resultLabel}</Badge></div>
                     <h5>{question.prompt}</h5>
                     <p>{question.subject} · {getUnitLabel(question.unit)} · {question.knowledge}</p>
+                    {wrongPartLabels.length > 0 && <p>答錯小題：{wrongPartLabels.join("、")}</p>}
                     {attempt.correct === false && <div className="result-question-actions">
-                        <Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant")}><RotateCcw />立即測驗</Button>
+                        <Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, getWrongPartIdsByQuestion([attempt]))}><RotateCcw />立即測驗</Button>
                         <Button size="sm" disabled={!relatedIds.length} onClick={() => beginSession("similar", relatedIds, "instant")}><Sparkles />相關題目練習{relatedIds.length ? `（${relatedIds.length}）` : ""}</Button>
                     </div>}
                 </div>

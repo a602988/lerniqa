@@ -379,7 +379,8 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
         && book.learnerIds.every((learnerId) => learnerIds.includes(String(learnerId)))
         && typeof book.createdAt === "string" && !Number.isNaN(Date.parse(book.createdAt)))) return null;
 
-    const questionIds = new Set(questions.map((question) => question.id));
+    const questionsById = new Map(questions.map((question) => [question.id, question]));
+    const questionIds = new Set(questionsById.keys());
     for (const learnerId of learnerIds) {
         const attempts = value.attemptsByLearner[learnerId];
         const plan = value.plansByLearner[learnerId];
@@ -393,6 +394,12 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             && (attempt.sessionMode === undefined || ["practice", "review", "similar"].includes(String(attempt.sessionMode)))
             && typeof attempt.answer === "string" && attempt.answer.length <= 4_000
             && (typeof attempt.correct === "boolean" || attempt.correct === null)
+            && (attempt.partResults === undefined || (Array.isArray(attempt.partResults) && attempt.partResults.length <= 100
+                && attempt.partResults.every((result) => isRecord(result)
+                    && typeof result.partId === "string" && result.partId.length <= 120
+                    && typeof result.answer === "string" && result.answer.length <= 4_000
+                    && typeof result.correct === "boolean"
+                    && questionsById.get(Number(attempt.questionId))?.parts?.some((part) => part.id === result.partId))))
             && typeof attempt.date === "string" && !Number.isNaN(Date.parse(attempt.date))
             && typeof attempt.durationSeconds === "number" && attempt.durationSeconds >= 0
             && (attempt.handwriting === undefined || (typeof attempt.handwriting === "string" && attempt.handwriting.length <= 2_000_000)))) return null;
