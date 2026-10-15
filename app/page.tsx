@@ -182,6 +182,18 @@ function getOptionColumnCount(options: string[], hasOptionMedia = false) {
     return 1;
 }
 
+/** 判斷小題文字是否只是把同一組答案選項再次串接顯示。 */
+function isRepeatedOptionPrompt(prompt: string, options: string[]) {
+    if (!prompt || !options.length) return false;
+
+    const normalize = (value: string) => value
+        .normalize("NFKC")
+        .replace(/[\s。．.、；;]/g, "")
+        .toLocaleLowerCase();
+
+    return normalize(prompt) === normalize(options.join(""));
+}
+
 /** 依整題選項內容決定答案欄數。 */
 function getAnswerColumnCount(question: Question) {
     const hasOptionMedia = question.blocks?.some((block) => block.placement === "option" && block.type !== "text");
@@ -811,6 +823,7 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
     const options = currentPart.options ?? [];
     const hasOptionMedia = question.blocks?.some((block) => block.placement === "option" && block.type !== "text");
     const answerColumnCount = getOptionColumnCount(options, hasOptionMedia);
+    const showPrompt = !isRepeatedOptionPrompt(currentPart.prompt, options);
 
     /** 保存目前小題答案，不改變其他小題的選擇。 */
     function selectOption(option: string) {
@@ -834,7 +847,7 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
             </div>}
         </div>
         <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
-            <legend className="multi-choice-step-prompt">{currentPart.prompt}</legend>
+            <legend className={showPrompt ? "multi-choice-step-prompt" : "sr-only"}>{showPrompt ? currentPart.prompt : "選擇答案"}</legend>
             {options.length
                 ? options.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}-part-${currentPart.id}`} value={option} checked={sourceIndex >= 0 && selectedAnswers[sourceIndex] === option} onChange={() => selectOption(option)} /><span>{option}</span></label>)
                 : <p className="multi-choice-step-empty" role="status">這一小題沒有可選答案。</p>}
