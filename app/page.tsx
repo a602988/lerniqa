@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChangeEvent, DragEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
 import {
@@ -89,6 +89,25 @@ interface QuestionLimitControlProps {
     disabled?: boolean;
     /** 題數更新事件。 */
     onChange: (value: number) => void;
+}
+
+interface QuestionReviewProps {
+    /** 目前檢視的題目。 */
+    question: Question;
+    /** 目前題目在清單中的索引。 */
+    index: number;
+    /** 清單題目總數。 */
+    total: number;
+    /** 檢視來源名稱。 */
+    title: string;
+    /** 答案區下方的來源頁專屬操作。 */
+    actions?: ReactNode;
+    /** 返回來源頁。 */
+    onBack: () => void;
+    /** 切換到上一題。 */
+    onPrevious: () => void;
+    /** 切換到下一題。 */
+    onNext: () => void;
 }
 
 const CHARACTER_HANDWRITING_LABEL = "寫出國字、注音";
@@ -728,6 +747,67 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     })}</div>;
 }
 
+/** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
+function QuestionReview({ question, index, total, title, actions, onBack, onPrevious, onNext }: QuestionReviewProps) {
+    const questionNumber = index >= 0 ? index + 1 : 1;
+    const progress = total ? (questionNumber / total) * 100 : 0;
+    const conditions = getQuestionConditions(question);
+    const answerColumnCount = getAnswerColumnCount(question);
+
+    return <main className="practice-focus-shell question-review-shell">
+        <div className="practice-focus-frame">
+            <header className="practice-focus-header question-review-header">
+                <div className="practice-focus-title flex min-w-0 items-center gap-3">
+                    <div className="practice-focus-mark"><LerniqaMark className="h-6 w-6" /></div>
+                    <h1 className="truncate text-base font-bold sm:text-lg">{title} · 第 {questionNumber} 題，共 {total} 題</h1>
+                </div>
+                <div className="practice-focus-actions">
+                    <Button appearance="outline" tone="muted" onClick={onBack}><X />返回</Button>
+                    <Button appearance="outline" disabled={index <= 0} onClick={onPrevious}><ArrowLeft />上一題</Button>
+                    <Button appearance="outline" disabled={index < 0 || index >= total - 1} onClick={onNext}>下一題<ArrowRight /></Button>
+                </div>
+                <Progress className="practice-focus-progress" aria-label={`題目進度：第 ${questionNumber} 題，共 ${total} 題`} value={progress} />
+            </header>
+            <section className="practice-focus-content">
+                <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
+                    <CardContent className="question-review-layout bg-white p-4">
+                        <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
+                            <div className="practice-prompt">
+                                <dl className="practice-question-conditions" aria-label="題目條件">
+                                    {conditions.map((condition) => (
+                                        <div className="practice-question-condition" data-wide={condition.label === "來源" || condition.label === "來源文件"} key={`${condition.label}-${condition.value}`}>
+                                            <dt>{condition.label}</dt><dd>{condition.value}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
+                            </div>
+                            {question.kind === "multi-choice" && question.parts?.length ? (
+                                <div className="multi-choice-parts">{question.parts.map((part) => (
+                                    <div className="multi-choice-part question-review-part" key={part.id}>
+                                        <p className="multi-choice-part-prompt">{part.prompt}</p>
+                                        <p className="question-review-part-options">{part.options?.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`).join("　")}</p>
+                                    </div>
+                                ))}</div>
+                            ) : question.options?.length ? (
+                                <ol className={`question-review-options answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount}>
+                                    {question.options.map((option, optionIndex) => <li key={`${option}-${optionIndex}`}><span>{String.fromCharCode(65 + optionIndex)}</span>{option}</li>)}
+                                </ol>
+                            ) : null}
+                        </section>
+                        <aside className="question-review-answer-pane">
+                            <div><p className="question-detail-label">參考答案</p><strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong><ContentImages blocks={question.blocks} placement="answer" /></div>
+                            <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{question.explanation || "尚未提供解析。"}</p></div>
+                            <div><p className="question-detail-label">分類與來源</p><p className="text-sm text-muted-foreground">{getUnitLabel(question.unit)} · {question.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{question.source}</p></div>
+                            {actions}
+                        </aside>
+                    </CardContent>
+                </Card>
+            </section>
+        </div>
+    </main>;
+}
+
 /** 顯示首頁的抽象學習圖形，不使用幼兒化角色。 */
 function LearningScene() {
     return (
@@ -1014,7 +1094,7 @@ export default function Home() {
     const [bankMetadataFilters, setBankMetadataFilters] = useState<Record<string, string[]>>({});
     const [bankView, setBankView] = useState<"create" | "history">("create");
     const [selectedImportId, setSelectedImportId] = useState("");
-    const [expandedImportQuestionId, setExpandedImportQuestionId] = useState<number>();
+    const [importReviewQuestionId, setImportReviewQuestionId] = useState<number>();
     const [advancedPlanOpen, setAdvancedPlanOpen] = useState(false);
     const [scheduleDate, setScheduleDate] = useState(getTaipeiDate);
     const [scheduleTime, setScheduleTime] = useState("");
@@ -1194,6 +1274,11 @@ export default function Home() {
     const bankFilteredQuestions = useMemo(() => selectedImportQuestions.filter((question) => (!bankCode.trim() || question.code?.includes(bankCode.trim()))
         && Object.entries(bankMetadataFilters).every(([key, values]) => !values.length
             || question.metadata?.some((field) => field.key === key && field.values.some((value) => values.includes(value))))), [bankCode, bankMetadataFilters, selectedImportQuestions]);
+    const importReviewQuestion = selectedImportQuestions.find((question) => question.id === importReviewQuestionId);
+    const importReviewQuestions = importReviewQuestion && bankFilteredQuestions.some((question) => question.id === importReviewQuestion.id)
+        ? bankFilteredQuestions
+        : selectedImportQuestions;
+    const importReviewIndex = importReviewQuestions.findIndex((question) => question.id === importReviewQuestionId);
     const knowledgeOptions = useMemo(() => [
         { value: ALL_KNOWLEDGE, label: "全部知識點" },
         ...[...new Set(scopedQuestions.map((question) => question.knowledge))].map((value) => ({ value, label: value })),
@@ -2575,7 +2660,6 @@ export default function Home() {
         if (section === "overview") return renderOverview();
         if (section === "practice" && isScheduleListPage) return renderPracticeScheduleListPage();
         if (section === "practice") return renderPractice();
-        if (section === "questions" && getOverviewQuestionId(pathname) !== undefined) return renderQuestionOverviewDetail();
         if (section === "questions") return renderQuestionOverview();
         if (section === "bank") return renderBank();
         if (section === "mistakes") return renderMistakes();
@@ -3132,31 +3216,36 @@ export default function Home() {
         const targetOptions = activeQuestionCollections.length
             ? activeQuestionCollections.map((collection) => ({ value: collection.id, label: collection.name }))
             : [{ value: "", label: "請先建立收藏清單", disabled: true }];
-        if (!selectedOverviewQuestion) return <section className="summary-card question-detail-empty"><ListChecks /><h2>正在讀取題目</h2></section>;
+        if (!selectedOverviewQuestion) return <main className="practice-focus-shell"><div className="practice-focus-frame"><section className="summary-card question-detail-empty"><ListChecks /><h2>正在讀取題目</h2></section></div></main>;
         const collections = activeQuestionCollections.filter((collection) => collection.questionIds.includes(selectedOverviewQuestion.id));
-        const questionNumber = selectedOverviewIndex >= 0 ? selectedOverviewIndex + 1 : 1;
-        return <div className="question-detail-page">
-            <div className="question-detail-toolbar">
-                <Button appearance="outline" onClick={closeQuestionDetail}><ArrowLeft />返回題目總覽</Button>
-                <span aria-live="polite">第 {questionNumber}／{detailOverviewQuestions.length} 題</span>
-                <div>
-                    <Button appearance="outline" disabled={selectedOverviewIndex <= 0} onClick={() => navigateOverviewQuestion(selectedOverviewIndex - 1)}><ArrowLeft />上一題</Button>
-                    <Button appearance="outline" disabled={selectedOverviewIndex < 0 || selectedOverviewIndex >= detailOverviewQuestions.length - 1} onClick={() => navigateOverviewQuestion(selectedOverviewIndex + 1)}>下一題<ArrowRight /></Button>
-                </div>
-            </div>
-            <section className="summary-card question-detail-card" aria-labelledby="question-detail-title">
-                <div className="summary-card-heading"><div className="flex items-center gap-2"><ListChecks size={18} /><h2 id="question-detail-title">題目詳情</h2></div><Badge tone="muted">{selectedOverviewQuestion.code ?? selectedOverviewQuestion.id}</Badge></div>
-                <div className="question-detail-body">
-                    <div className="question-detail-meta"><Badge tone="primary">{selectedOverviewQuestion.subject}</Badge><Badge tone="muted">{selectedOverviewQuestion.bookVersion ?? "未設定版本"}</Badge><Badge tone="muted">{getQuestionKindLabel(selectedOverviewQuestion.kind)}</Badge><Badge tone="muted">{selectedOverviewQuestion.difficulty}</Badge></div>
-                    <div><p className="question-detail-label">題目</p><QuestionPrompt question={selectedOverviewQuestion} className="question-detail-prompt" />{selectedOverviewQuestion.options?.length ? <ol className="question-detail-options">{selectedOverviewQuestion.options.map((option, index) => <li key={`${option}-${index}`}>{String.fromCharCode(65 + index)}. {option}</li>)}</ol> : null}</div>
-                    <div className="question-detail-answer"><p className="question-detail-label">參考答案</p><strong>{formatAnswer(selectedOverviewQuestion, selectedOverviewQuestion.sourceAnswer ?? selectedOverviewQuestion.answer)}</strong><ContentImages blocks={selectedOverviewQuestion.blocks} placement="answer" /></div>
-                    <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{selectedOverviewQuestion.explanation || "尚未提供解析。"}</p></div>
-                    <div><p className="question-detail-label">分類與來源</p><p className="text-sm text-muted-foreground">{getUnitLabel(selectedOverviewQuestion.unit)} · {selectedOverviewQuestion.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{selectedOverviewQuestion.source}</p></div>
-                    {collections.length > 0 && <div className="question-collection-tags">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
-                    <div className="question-detail-collection"><NativeSelect aria-label="選擇收藏清單" disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />加入收藏</Button></div>
-                </div>
-            </section>
-        </div>;
+        const actions = <>
+            {collections.length > 0 && <div className="question-collection-tags">{collections.map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</div>}
+            <div className="question-detail-collection"><NativeSelect aria-label="選擇收藏清單" disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /><Button disabled={!activeTargetCollectionId} onClick={() => updateQuestionCollection([selectedOverviewQuestion.id], "add")}><Bookmark />加入收藏</Button></div>
+        </>;
+        return <QuestionReview
+            actions={actions}
+            index={selectedOverviewIndex}
+            question={selectedOverviewQuestion}
+            title="題目總覽"
+            total={detailOverviewQuestions.length}
+            onBack={closeQuestionDetail}
+            onNext={() => navigateOverviewQuestion(selectedOverviewIndex + 1)}
+            onPrevious={() => navigateOverviewQuestion(selectedOverviewIndex - 1)}
+        />;
+    }
+
+    /** 顯示匯入紀錄中的滿版只讀題目內容。 */
+    function renderImportQuestionReview() {
+        if (!importReviewQuestion) return null;
+        return <QuestionReview
+            index={importReviewIndex}
+            question={importReviewQuestion}
+            title="匯入題目"
+            total={importReviewQuestions.length}
+            onBack={() => setImportReviewQuestionId(undefined)}
+            onNext={() => setImportReviewQuestionId(importReviewQuestions[importReviewIndex + 1]?.id)}
+            onPrevious={() => setImportReviewQuestionId(importReviewQuestions[importReviewIndex - 1]?.id)}
+        />;
     }
 
     /** 顯示題庫與匯入校正。 */
@@ -3174,7 +3263,7 @@ export default function Home() {
         /** 開啟或收合一筆匯入紀錄，並清除前一批次的題目篩選。 */
         function toggleImportBatch(id: string) {
             setSelectedImportId((current) => current === id ? "" : id);
-            setExpandedImportQuestionId(undefined);
+            setImportReviewQuestionId(undefined);
             setBankCode("");
             setBankMetadataFilters({});
         }
@@ -3362,7 +3451,7 @@ export default function Home() {
                     {selectedImport && (
                         <section className="import-batch-detail" aria-labelledby="import-batch-title">
                             <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold" id="import-batch-title">{selectedImport.fileNames.join("、")}</h3><Badge tone="muted">{selectedImport.bookName ?? "系統預設"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">共 {selectedImportQuestions.length} 題；先以密集表格瀏覽，點題目標題才顯示完整內容。</p></div>
+                                <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold" id="import-batch-title">{selectedImport.fileNames.join("、")}</h3><Badge tone="muted">{selectedImport.bookName ?? "系統預設"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">共 {selectedImportQuestions.length} 題；點選題目標題進入滿版檢視。</p></div>
                                 <Button appearance="ghost" tone="muted" size="sm" onClick={() => toggleImportBatch(selectedImport.id)}><X />關閉清單</Button>
                             </div>
                             <div className="import-batch-filters" aria-label="匯入題目篩選">
@@ -3376,25 +3465,15 @@ export default function Home() {
                                 <table className="import-question-table">
                                     <thead><tr><th scope="col">編號</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">題型</th><th scope="col">難度</th></tr></thead>
                                     <tbody>
-                                        {bankFilteredQuestions.map((question) => {
-                                            const expanded = expandedImportQuestionId === question.id;
-                                            return <Fragment key={question.id}>
-                                                <tr data-expanded={expanded}>
-                                                    <td data-label="編號">{question.code ?? question.sourceDetail?.questionNumber ?? question.id}</td>
-                                                    <td className="import-question-title-cell" data-label="題目"><button aria-expanded={expanded} className="import-question-title" onClick={() => setExpandedImportQuestionId(expanded ? undefined : question.id)} type="button">{question.prompt}</button></td>
-                                                    <td data-label="科目／單元">{question.subject} · {getUnitLabel(question.unit)}</td>
-                                                    <td data-label="題型">{getQuestionKindLabel(question.kind)}</td>
-                                                    <td data-label="難度">{question.difficulty}</td>
-                                                </tr>
-                                                {expanded && <tr className="import-question-detail-row"><td colSpan={5}>
-                                                    <div className="import-question-detail">
-                                                        <div><p className="import-question-detail-label">題目</p><p className="whitespace-pre-line font-semibold">{question.prompt}</p><ContentImages blocks={question.blocks} placement="prompt" /></div>
-                                                        <div><p className="import-question-detail-label">參考答案</p><p className="whitespace-pre-line">{question.answer}</p><ContentImages blocks={question.blocks} placement="answer" /></div>
-                                                        <div><p className="import-question-detail-label">來源與分類</p><p className="text-sm text-muted-foreground">{question.bookVersion} · {question.chapter} · {getUnitLabel(question.unit)} · {question.topic ?? question.knowledge}</p><p className="mt-1 text-sm text-muted-foreground">{question.source}</p><div className="mt-3 flex flex-wrap gap-1">{question.metadata?.map((field) => <Badge tone="muted" key={`${field.key}-${field.rawValue}`}>{field.label}：{field.rawValue}</Badge>)}</div></div>
-                                                    </div>
-                                                </td></tr>}
-                                            </Fragment>;
-                                        })}
+                                        {bankFilteredQuestions.map((question) => (
+                                            <tr key={question.id}>
+                                                <td data-label="編號">{question.code ?? question.sourceDetail?.questionNumber ?? question.id}</td>
+                                                <td className="import-question-title-cell" data-label="題目"><button className="import-question-title" onClick={() => setImportReviewQuestionId(question.id)} type="button">{question.prompt}</button></td>
+                                                <td data-label="科目／單元">{question.subject} · {getUnitLabel(question.unit)}</td>
+                                                <td data-label="題型">{getQuestionKindLabel(question.kind)}</td>
+                                                <td data-label="難度">{question.difficulty}</td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                                 {!bankFilteredQuestions.length && <p className="p-8 text-center text-sm text-muted-foreground">目前條件沒有符合的題目。</p>}
@@ -3785,6 +3864,9 @@ export default function Home() {
 
     if (!isHydrated) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">正在讀取模擬資料</p><p className="mt-2 text-sm text-muted-foreground">前端正在透過 API 載入 runtime JSON。</p></CardContent></Card></main>;
     if (!learners.length || !questions.length) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">無法顯示學習資料</p><p className="mt-2 text-sm text-muted-foreground">{storageError || "模擬 API 沒有回傳可用資料。"}</p></CardContent></Card></main>;
+
+    if (section === "questions" && getOverviewQuestionId(pathname) !== undefined) return renderQuestionOverviewDetail();
+    if (section === "bank" && importReviewQuestion) return renderImportQuestionReview();
 
     if (session && !sessionPaused) {
         return (
