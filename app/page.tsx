@@ -800,15 +800,26 @@ function PromptText({ text }: { text: string }) {
     })}</>;
 }
 
-/** 依題目區塊順序呈現文字與圖片，沒有穿插資料時沿用完整題幹。 */
+/**
+ * 依題目區塊順序呈現文字與圖片，並依科目套用主要題幹字級。
+ * @param question 題目資料。
+ * @param className 題幹的額外樣式。
+ * @param id 題幹元素識別碼。
+ * @param title 是否以主要題幹標題呈現。
+ * @returns 依內容順序排列的題幹與圖片。
+ */
 function QuestionPrompt({ question, className, id, title = false }: { question: Question; className?: string; id?: string; title?: boolean }) {
+    const titleSize = title
+        ? question.subject === "英文" ? "text-base sm:text-lg" : "text-xl sm:text-2xl"
+        : "";
+    const promptClassName = [className, titleSize].filter(Boolean).join(" ");
     const blocks = question.blocks?.filter((block) => block.placement === "prompt")
         .sort((first, second) => first.order - second.order) ?? [];
     const hasInterleavedContent = blocks.filter((block) => block.type === "text" && block.text).length > 1;
     if (!hasInterleavedContent) {
         return <>{title
-            ? <CardTitle className={className} id={id}><PromptText text={question.prompt} /></CardTitle>
-            : <p className={className} id={id}><PromptText text={question.prompt} /></p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
+            ? <CardTitle className={promptClassName} id={id}><PromptText text={question.prompt} /></CardTitle>
+            : <p className={promptClassName} id={id}><PromptText text={question.prompt} /></p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
     }
 
     let textIndex = 0;
@@ -819,8 +830,8 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
         const isFirstText = textIndex === 0;
         textIndex += 1;
         return title && isFirstText
-            ? <CardTitle className={className} id={id} key={block.id}><PromptText text={block.text} /></CardTitle>
-            : <p className={className} key={block.id}><PromptText text={block.text} /></p>;
+            ? <CardTitle className={promptClassName} id={id} key={block.id}><PromptText text={block.text} /></CardTitle>
+            : <p className={promptClassName} key={block.id}><PromptText text={block.text} /></p>;
     })}</div>;
 }
 
@@ -965,7 +976,7 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                                         </div>
                                     ))}
                                 </dl>
-                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
+                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line leading-relaxed" title />
                             </div>
                             <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
                             <div className="question-review-solution">
@@ -1123,7 +1134,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                                 </div>
                             ))}
                         </dl>
-                        <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
+                        <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line leading-relaxed" title />
                     </div>
                     <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
                     {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
