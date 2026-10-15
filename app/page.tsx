@@ -110,6 +110,17 @@ interface QuestionReviewProps {
     onNext: () => void;
 }
 
+interface QuestionAnswerFieldsProps {
+    /** 目前題目。 */
+    question: Question;
+    /** 目前文字或結構化答案。 */
+    answer: string;
+    /** 是否禁止修改答案。 */
+    disabled?: boolean;
+    /** 更新目前答案。 */
+    onAnswer: (value: string) => void;
+}
+
 const CHARACTER_HANDWRITING_LABEL = "寫出國字、注音";
 const ANSWER_GRID_FOUR_COLUMN_BYTES = 48;
 const ANSWER_GRID_TWO_COLUMN_BYTES = 144;
@@ -167,6 +178,17 @@ function getAnswerColumnCount(question: Question) {
     if (options.length >= 4 && totalBytes <= ANSWER_GRID_FOUR_COLUMN_BYTES) return 4;
     if (totalBytes <= ANSWER_GRID_TWO_COLUMN_BYTES) return 2;
     return 1;
+}
+
+/** 將複合題保存的 JSON 答案轉成各小題答案。 */
+function getSelectedAnswers(answer: string) {
+    try {
+        const parsed = JSON.parse(answer) as unknown;
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+    }
+    catch {
+        return [];
+    }
 }
 
 /** 整理題目可供辨識與篩選的條件，避免來源欄位重複顯示同一單元。 */
@@ -747,12 +769,88 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     })}</div>;
 }
 
+/** 顯示正式練習與題目檢視共用的作答欄位。 */
+function QuestionAnswerFields({ question, answer, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
+    const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
+    const answerColumnCount = getAnswerColumnCount(question);
+    const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
+
+    if (question.kind === "written") {
+        if (needsCharacterRecognition) return null;
+
+        if (question.parts?.length) {
+            return <div className="written-answer-parts">
+                {question.parts.map((part, partIndex) => {
+                    const isNamedPoint = /^[A-Z]$/i.test(part.id);
+                    return <FormField
+                        key={part.id}
+                        label={isNamedPoint ? part.id.toUpperCase() : `第 ${partIndex + 1} 空`}
+                        description={isNamedPoint ? undefined : part.prompt}
+                    >
+                        <Input
+                            value={selectedAnswers[partIndex] ?? ""}
+                            disabled={disabled}
+                            placeholder="輸入答案"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                            onChange={(event) => {
+                                const nextAnswers = Array.from({ length: question.parts?.length ?? 0 }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
+                                nextAnswers[partIndex] = event.target.value;
+                                onAnswer(JSON.stringify(nextAnswers));
+                            }}
+                        />
+                    </FormField>;
+                })}
+            </div>;
+        }
+
+        return <FormField label="文字答案（選填）" description="可以直接手寫；目前尚未連接 AI 辨識，只有文字答案會立即檢核。">
+            <Input value={answer} disabled={disabled} placeholder="也可以只使用右側手寫板作答" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
+        </FormField>;
+    }
+
+    if (question.kind === "multi-choice") {
+        return <div className="multi-choice-parts">
+            {question.parts?.map((part, partIndex) => (
+                <div className="multi-choice-part" key={part.id}>
+                    <p className="multi-choice-part-prompt">{part.prompt}</p>
+                    <NativeSelect
+                        aria-label={`第 ${partIndex + 1} 小題答案`}
+                        disabled={disabled}
+                        options={[
+                            { value: "", label: "選擇答案" },
+                            ...(part.options ?? []).map((option) => ({ value: option, label: option })),
+                        ]}
+                        value={selectedAnswers[partIndex] ?? ""}
+                        onChange={(event) => {
+                            const answerCount = question.parts?.length ?? 0;
+                            const nextAnswers = Array.from({ length: answerCount }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
+                            nextAnswers[partIndex] = event.target.value;
+                            onAnswer(JSON.stringify(nextAnswers));
+                        }}
+                    />
+                </div>
+            ))}
+        </div>;
+    }
+
+    return <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
+        <legend className="mb-1 text-sm font-semibold">選擇答案</legend>
+        {question.options?.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}`} value={option} checked={answer === option} onChange={() => onAnswer(option)} /><span>{option}</span></label>)}
+    </fieldset>;
+}
+
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
 function QuestionReview({ question, index, total, title, actions, onBack, onPrevious, onNext }: QuestionReviewProps) {
+    const [answers, setAnswers] = useState<Record<number, string>>({});
+    const [handwriting, setHandwriting] = useState<Record<number, string>>({});
     const questionNumber = index >= 0 ? index + 1 : 1;
     const progress = total ? (questionNumber / total) * 100 : 0;
     const conditions = getQuestionConditions(question);
-    const answerColumnCount = getAnswerColumnCount(question);
+    const answer = answers[question.id] ?? "";
+    const handwritingValue = handwriting[question.id] ?? "";
 
     return <main className="practice-focus-shell question-review-shell">
         <div className="practice-focus-frame">
@@ -782,19 +880,11 @@ function QuestionReview({ question, index, total, title, actions, onBack, onPrev
                                 </dl>
                                 <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
                             </div>
-                            {question.kind === "multi-choice" && question.parts?.length ? (
-                                <div className="multi-choice-parts">{question.parts.map((part) => (
-                                    <div className="multi-choice-part question-review-part" key={part.id}>
-                                        <p className="multi-choice-part-prompt">{part.prompt}</p>
-                                        <p className="question-review-part-options">{part.options?.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`).join("　")}</p>
-                                    </div>
-                                ))}</div>
-                            ) : question.options?.length ? (
-                                <ol className={`question-review-options answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount}>
-                                    {question.options.map((option, optionIndex) => <li key={`${option}-${optionIndex}`}><span>{String.fromCharCode(65 + optionIndex)}</span>{option}</li>)}
-                                </ol>
-                            ) : null}
+                            <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
                         </section>
+                        <aside className="practice-handwriting-pane question-review-handwriting-pane">
+                            <HandwritingPad value={handwritingValue} recognitionStatus={isCharacterHandwritingQuestion(question) ? "預覽模式" : undefined} onChange={(value) => setHandwriting((current) => ({ ...current, [question.id]: value }))} />
+                        </aside>
                         <aside className="question-review-answer-pane">
                             <div><p className="question-detail-label">參考答案</p><strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong><ContentImages blocks={question.blocks} placement="answer" /></div>
                             <div><p className="question-detail-label">解析</p><p className="text-sm leading-6 text-muted-foreground">{question.explanation || "尚未提供解析。"}</p></div>
@@ -917,19 +1007,9 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 function QuestionFlow(props: QuestionFlowProps) {
     const { question, index, total, checkMode, answer, handwriting, feedback } = props;
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
-    const answerColumnCount = getAnswerColumnCount(question);
     const questionConditions = getQuestionConditions(question);
     const isLast = index === total - 1;
-    let selectedAnswers: string[] = [];
-    if (question.parts?.length) {
-        try {
-            const parsed = JSON.parse(answer) as unknown;
-            if (Array.isArray(parsed)) selectedAnswers = parsed.map(String);
-        }
-        catch {
-            selectedAnswers = [];
-        }
-    }
+    const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
     const canSubmit = question.kind === "written"
         ? needsCharacterRecognition
             ? Boolean(handwriting)
@@ -953,66 +1033,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                         </dl>
                         <QuestionPrompt question={question} id={`question-${question.id}-title`} className="mt-3 whitespace-pre-line text-xl leading-relaxed sm:text-2xl" title />
                     </div>
-                    {question.kind === "written" ? needsCharacterRecognition ? null : question.parts?.length ? (
-                        <div className="written-answer-parts">
-                            {question.parts.map((part, partIndex) => {
-                                const isNamedPoint = /^[A-Z]$/i.test(part.id);
-                                return (
-                                    <FormField
-                                        key={part.id}
-                                        label={isNamedPoint ? part.id.toUpperCase() : `第 ${partIndex + 1} 空`}
-                                        description={isNamedPoint ? undefined : part.prompt}
-                                    >
-                                        <Input
-                                            value={selectedAnswers[partIndex] ?? ""}
-                                            disabled={Boolean(feedback)}
-                                            placeholder="輸入答案"
-                                            autoComplete="off"
-                                            autoCorrect="off"
-                                            autoCapitalize="none"
-                                            spellCheck={false}
-                                            onChange={(event) => {
-                                                const nextAnswers = Array.from({ length: question.parts?.length ?? 0 }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
-                                                nextAnswers[partIndex] = event.target.value;
-                                                props.onAnswer(JSON.stringify(nextAnswers));
-                                            }}
-                                        />
-                                    </FormField>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <FormField label="文字答案（選填）" description="可以直接手寫；目前尚未連接 AI 辨識，只有文字答案會立即檢核。">
-                            <Input value={answer} disabled={Boolean(feedback)} placeholder="也可以只使用右側手寫板作答" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => props.onAnswer(event.target.value)} />
-                        </FormField>
-                    ) : question.kind === "multi-choice" ? (
-                        <div className="multi-choice-parts">
-                            {question.parts?.map((part, partIndex) => (
-                                <div className="multi-choice-part" key={part.id}>
-                                    <p className="multi-choice-part-prompt">{part.prompt}</p>
-                                    <NativeSelect
-                                        aria-label={`第 ${partIndex + 1} 小題答案`}
-                                        disabled={Boolean(feedback)}
-                                        options={[
-                                            { value: "", label: "選擇答案" },
-                                            ...(part.options ?? []).map((option) => ({ value: option, label: option })),
-                                        ]}
-                                        value={selectedAnswers[partIndex] ?? ""}
-                                        onChange={(event) => {
-                                            const answerCount = question.parts?.length ?? 0;
-                                            const nextAnswers = Array.from({ length: answerCount }, (_, answerIndex) => selectedAnswers[answerIndex] ?? "");
-                                            nextAnswers[partIndex] = event.target.value;
-                                            props.onAnswer(JSON.stringify(nextAnswers));
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={Boolean(feedback)}><legend className="mb-1 text-sm font-semibold">選擇答案</legend>
-                            {question.options?.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}`} value={option} checked={answer === option} onChange={() => props.onAnswer(option)} /><span>{option}</span></label>)}
-                        </fieldset>
-                    )}
+                    <QuestionAnswerFields question={question} answer={answer} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
                     {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                         <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
