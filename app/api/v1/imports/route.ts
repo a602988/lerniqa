@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SUBJECTS } from "@/app/lib/demo-data";
 import type { AccountRole, ContentPlacement, Question, QuestionBlock, QuestionKind, QuestionMetadataField, Subject } from "@/app/lib/demo-data";
 import { removeAssets, updateDatabase, writeDataImage } from "@/app/lib/mock-store";
+import { normalizeQuestionText } from "@/app/lib/question-text";
 
 export const runtime = "nodejs";
 
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
             const questions: Question[] = [];
 
             for (const [index, input] of payload.questions.entries()) {
+                const prompt = normalizeQuestionText(input.prompt.trim());
                 const blocks: QuestionBlock[] = [];
                 const sourceBlocks = input.blocks?.length
                     ? input.blocks
@@ -145,11 +147,11 @@ export async function POST(request: Request) {
                             placement: block.placement,
                             type: "image",
                             order,
-                            asset: { storageKey: asset.storageKey, mimeType: asset.mimeType, alt: block.alt?.trim() || `${input.prompt}的附圖` },
+                            asset: { storageKey: asset.storageKey, mimeType: asset.mimeType, alt: block.alt?.trim() || `${prompt}的附圖` },
                         });
                     }
                     else if (block.text?.trim()) {
-                        blocks.push({ id: `q${nextId}-${block.placement}-${order}`, placement: block.placement, type: "text", order, text: block.text.trim() });
+                        blocks.push({ id: `q${nextId}-${block.placement}-${order}`, placement: block.placement, type: "text", order, text: normalizeQuestionText(block.text.trim()) });
                     }
                 }
 
@@ -166,10 +168,10 @@ export async function POST(request: Request) {
                     knowledge: input.knowledge.trim(),
                     difficulty: input.difficulty === "易" ? "基礎" : input.difficulty === "難" ? "進階" : "中等",
                     kind: input.kind ?? (input.options?.length ? "choice" : "written"),
-                    prompt: input.prompt.trim(),
-                    ...(input.options?.length ? { options: input.options.map((option) => option.trim()) } : {}),
-                    answer: input.answer.trim(),
-                    explanation: input.explanation?.trim() || "尚未提供解析。",
+                    prompt,
+                    ...(input.options?.length ? { options: input.options.map((option) => normalizeQuestionText(option.trim())) } : {}),
+                    answer: normalizeQuestionText(input.answer.trim()),
+                    explanation: input.explanation?.trim() ? normalizeQuestionText(input.explanation.trim()) : "尚未提供解析。",
                     source: input.source.trim(),
                     sourceDetail: {
                         documentName: payload.fileNames[0],

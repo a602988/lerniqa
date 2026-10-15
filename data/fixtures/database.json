@@ -3082,7 +3082,7 @@
       "difficulty": "基礎",
       "kind": "multi-choice",
       "typeLabel": "克漏字測驗",
-      "prompt": "eq \\o\\ar(　　　,George): My name is George.  　(1)\neq \\o\\ar(　　　,Susan): 　(2)　 Susan.\neq \\o\\ar(　　　,George): Nice to meet you.\neq \\o\\ar(　　　,Susan): Nice to meet you, too.\neq \\o\\ar(　　　,George): I’m in Class 705.  And you?\neq \\o\\ar(　　　,Susan): Really?  I’m in Class 705, too.  We are classmates.",
+      "prompt": "George: My name is George.  　(1)\nSusan: 　(2)　 Susan.\nGeorge: Nice to meet you.\nSusan: Nice to meet you, too.\nGeorge: I’m in Class 705.  And you?\nSusan: Really?  I’m in Class 705, too.  We are classmates.",
       "parts": [
         {
           "id": "１",
@@ -3123,7 +3123,7 @@
           "placement": "prompt",
           "type": "text",
           "order": 1,
-          "text": "eq \\o\\ar(　　　,George): My name is George.  　(1)\neq \\o\\ar(　　　,Susan): 　(2)　 Susan.\neq \\o\\ar(　　　,George): Nice to meet you.\neq \\o\\ar(　　　,Susan): Nice to meet you, too.\neq \\o\\ar(　　　,George): I’m in Class 705.  And you?\neq \\o\\ar(　　　,Susan): Really?  I’m in Class 705, too.  We are classmates."
+          "text": "George: My name is George.  　(1)\nSusan: 　(2)　 Susan.\nGeorge: Nice to meet you.\nSusan: Nice to meet you, too.\nGeorge: I’m in Class 705.  And you?\nSusan: Really?  I’m in Class 705, too.  We are classmates."
         }
       ]
     },
@@ -3140,7 +3140,7 @@
       "difficulty": "中等",
       "kind": "multi-choice",
       "typeLabel": "克漏字測驗",
-      "prompt": "eq \\o\\ar(　　　　,Jane): Frank, this is my good friend, Amanda.\neq \\o\\ar(　　　　,Frank): Hi, my name is Frank.  　(1)\neq \\o\\ar(　　　　,Amanda): I’m Amanda.\neq \\o\\ar(　　　　,Frank): Where is our teacher, Miss Beck?\neq \\o\\ar(　　　　,Amanda): Look!  　(2)　 over there.\neq \\o\\ar(　　　　,Frank): Wow!  She is so beautiful.\neq \\o\\ar(　　　　,Amanda): She is nice, too.  I’m very happy.\neq \\o\\ar(　　　　,Frank): Me too.  By the way, 　(3)\neq \\o\\ar(　　　　,Amanda): Miss Wendy Beck.\neq \\o\\ar(　　　　,Jane): Oh!  She’s my aunt.  What a small world!",
+      "prompt": "Jane: Frank, this is my good friend, Amanda.\nFrank: Hi, my name is Frank.  　(1)\nAmanda: I’m Amanda.\nFrank: Where is our teacher, Miss Beck?\nAmanda: Look!  　(2)　 over there.\nFrank: Wow!  She is so beautiful.\nAmanda: She is nice, too.  I’m very happy.\nFrank: Me too.  By the way, 　(3)\nAmanda: Miss Wendy Beck.\nJane: Oh!  She’s my aunt.  What a small world!",
       "parts": [
         {
           "id": "１",
@@ -3192,7 +3192,7 @@
           "placement": "prompt",
           "type": "text",
           "order": 1,
-          "text": "eq \\o\\ar(　　　　,Jane): Frank, this is my good friend, Amanda.\neq \\o\\ar(　　　　,Frank): Hi, my name is Frank.  　(1)\neq \\o\\ar(　　　　,Amanda): I’m Amanda.\neq \\o\\ar(　　　　,Frank): Where is our teacher, Miss Beck?\neq \\o\\ar(　　　　,Amanda): Look!  　(2)　 over there.\neq \\o\\ar(　　　　,Frank): Wow!  She is so beautiful.\neq \\o\\ar(　　　　,Amanda): She is nice, too.  I’m very happy.\neq \\o\\ar(　　　　,Frank): Me too.  By the way, 　(3)\neq \\o\\ar(　　　　,Amanda): Miss Wendy Beck.\neq \\o\\ar(　　　　,Jane): Oh!  She’s my aunt.  What a small world!"
+          "text": "Jane: Frank, this is my good friend, Amanda.\nFrank: Hi, my name is Frank.  　(1)\nAmanda: I’m Amanda.\nFrank: Where is our teacher, Miss Beck?\nAmanda: Look!  　(2)　 over there.\nFrank: Wow!  She is so beautiful.\nAmanda: She is nice, too.  I’m very happy.\nFrank: Me too.  By the way, 　(3)\nAmanda: Miss Wendy Beck.\nJane: Oh!  She’s my aunt.  What a small world!"
         }
       ]
     },

@@ -3,6 +3,7 @@ import path from "node:path";
 import fixture from "@/data/fixtures/database.json";
 import { ALL_UNITS, DEFAULT_ROLE_ACCESS, getUnitLabel, SUBJECTS } from "./demo-data";
 import type { AccountRole, AssessmentRange, ExamSetting, ImportBook, MockDatabase, PracticePlan, Question, QuestionCollection, QuestionMetadataField, RoleAccess, ScheduledPractice, StoredState, Subject } from "./demo-data";
+import { normalizeQuestionText } from "./question-text";
 
 const RUNTIME_DIR = process.env.VERCEL
     ? path.join("/tmp", "lerniqa-runtime")
@@ -140,6 +141,18 @@ function migrateQuestion(question: Question): Question {
     const current = {
         ...question,
         subject: migrateSubject(question.subject as LegacySubject),
+        prompt: normalizeQuestionText(question.prompt),
+        explanation: normalizeQuestionText(question.explanation),
+        ...(question.options ? { options: question.options.map(normalizeQuestionText) } : {}),
+        ...(question.parts ? { parts: question.parts.map((part) => ({
+            ...part,
+            prompt: normalizeQuestionText(part.prompt),
+            ...(part.options ? { options: part.options.map(normalizeQuestionText) } : {}),
+        })) } : {}),
+        ...(question.blocks ? { blocks: question.blocks.map((block) => block.text ? {
+            ...block,
+            text: normalizeQuestionText(block.text),
+        } : block) } : {}),
     };
     const existingMetadata = current.metadata?.map((field) => field.key === "source" ? {
         ...field,

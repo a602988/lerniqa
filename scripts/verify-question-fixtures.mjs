@@ -40,6 +40,8 @@ assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail?.valueSo
 assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail?.questionNumber));
 assert.ok(gradeSevenQuestions.every((question) => question.sourceAnswer));
 assert.ok(gradeSevenQuestions.every((question) => question.bookVersion && question.chapter && question.unit && question.knowledge));
+assert.ok(gradeSevenQuestions.every((question) => !question.prompt.includes("eq \\o\\ar")), "題幹不得保留 Word 方程式欄位碼");
+assert.ok(gradeSevenQuestions.every((question) => question.blocks?.every((block) => !block.text?.includes("eq \\o\\ar")) ?? true), "題目區塊不得保留 Word 方程式欄位碼");
 assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail.documentName), "題目必須保留原始來源檔名");
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "written" && question.options?.length).length, 0);
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "multi-choice" && !question.parts?.length).length, 0);
