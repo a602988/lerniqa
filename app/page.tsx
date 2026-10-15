@@ -985,7 +985,7 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                     <CardContent className="question-review-layout bg-white p-4">
                         <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                             <div className="practice-prompt">
-                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
+                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
                             </div>
                             <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
                             <div className="question-review-solution">

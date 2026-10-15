@@ -1790,6 +1790,11 @@ textarea:focus-visible,
     padding: 0.75rem 1rem;
 }
 
+.question-review-prompt {
+    font-size: 1rem;
+    line-height: 1.9;
+}
+
 @media (max-width: 1023px) {
     .question-review-layout {
         grid-template-columns: minmax(0, 1fr);
