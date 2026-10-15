@@ -3599,7 +3599,7 @@ textarea:focus-visible,
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.65rem 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.88);
     border-radius: var(--practice-focus-radius);
     background: rgba(255, 255, 255, 0.94);
@@ -3624,14 +3624,19 @@ textarea:focus-visible,
 
 .practice-focus-mark {
     display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.25rem;
+    height: 2.25rem;
     flex: none;
     place-items: center;
     border: 1px solid #ded8f7;
-    border-radius: 0.9rem;
+    border-radius: 0.75rem;
     background: #f7f4ff;
     color: var(--color-primary);
+}
+
+.practice-focus-mark svg {
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 .practice-focus-content {
