@@ -875,7 +875,7 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
             </div>}
         </div>
         <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
-            <legend className={showPrompt ? "multi-choice-step-prompt" : "sr-only"}>{showPrompt ? currentPart.prompt : "選擇答案"}</legend>
+            <legend className={showPrompt ? "multi-choice-step-prompt" : "sr-only"}>{showPrompt ? <PromptText text={currentPart.prompt} /> : "選擇答案"}</legend>
             {options.length
                 ? options.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}-part-${currentPart.id}`} value={option} checked={sourceIndex >= 0 && selectedAnswers[sourceIndex] === option} onChange={() => selectOption(option)} /><span>{option}</span></label>)
                 : <p className="multi-choice-step-empty" role="status">這一小題沒有可選答案。</p>}
@@ -902,7 +902,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
                     return <FormField
                         key={part.id}
                         label={isNamedPoint ? part.id.toUpperCase() : `第 ${sourceIndex + 1} 空`}
-                        description={isNamedPoint ? undefined : part.prompt}
+                        description={isNamedPoint ? undefined : <PromptText text={part.prompt} />}
                     >
                         <Input
                             value={sourceIndex >= 0 ? selectedAnswers[sourceIndex] ?? "" : ""}
