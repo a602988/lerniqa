@@ -137,22 +137,14 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
 
 /** 將既有核心欄位轉成可動態篩選的來源欄位。 */
 function migrateQuestion(question: Question): Question {
-    const sourceUnit = question.sourceDetail?.documentName
-        ? path.parse(question.sourceDetail.documentName).name
-        : question.unit;
-    const source = sourceUnit === question.unit
-        ? question.source
-        : question.source.replace(` · ${question.unit} · `, ` · ${sourceUnit} · `);
     const current = {
         ...question,
         subject: migrateSubject(question.subject as LegacySubject),
-        unit: sourceUnit,
-        source,
     };
     const existingMetadata = current.metadata?.map((field) => field.key === "source" ? {
         ...field,
-        rawValue: field.rawValue === question.source ? source : field.rawValue,
-        values: field.values.map((value) => value === question.source ? source : value),
+        rawValue: field.rawValue === question.source ? current.source : field.rawValue,
+        values: field.values.map((value) => value === question.source ? current.source : value),
     } : field);
     if (existingMetadata?.length) return { ...current, metadata: existingMetadata };
     const metadata: QuestionMetadataField[] = [
@@ -182,9 +174,7 @@ function getScopeAliases(questions: Question[]) {
     questions.forEach((question) => {
         const legacySubject = question.subject as LegacySubject;
         const subject = migrateSubject(legacySubject);
-        const unit = question.sourceDetail?.documentName
-            ? path.parse(question.sourceDetail.documentName).name
-            : question.unit;
+        const unit = question.unit;
         const scope = `${subject}::${unit}`;
         aliases.set(`${legacySubject}::${question.unit}`, scope);
         aliases.set(`${subject}::${question.unit}`, scope);
@@ -199,7 +189,12 @@ function migrateDatabase(database: MockDatabase) {
     const fixtureImports = fixtureDatabase.imports;
     const importIds = new Set(database.imports.map((batch) => batch.id));
     const fixtureQuestions = new Map(fixtureDatabase.questions.map((question) => [question.id, question]));
-    const preparedQuestions = database.questions.map((question) => {
+    const currentQuestionIds = new Set(database.questions.map((question) => question.id));
+    const sourceQuestions = [
+        ...database.questions,
+        ...fixtureDatabase.questions.filter((question) => !currentQuestionIds.has(question.id)),
+    ];
+    const preparedQuestions = sourceQuestions.map((question) => {
         const fixtureQuestion = fixtureQuestions.get(question.id);
         const fixtureMetadata = fixtureQuestion?.metadata ?? [];
         const currentMetadata = question.metadata ?? [];

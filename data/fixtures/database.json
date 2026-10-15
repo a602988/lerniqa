@@ -5844,9 +5844,339 @@
           "text": "(1) 臺北與紐約相差多少小時？\n(2) 爸爸出差時，於 4 月 10 日下午 6 點在紐約觀看洋基隊與天使隊的比賽，則臺灣的球迷可以在何時觀賞這場 live 精彩賽事？"
         }
       ]
+    },
+    {
+      "id": 7400,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "國字注音",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "國字注音",
+      "group": {
+        "id": "115-1-chinese-round-1-a-1",
+        "part": 1,
+        "total": 10
+      },
+      "prompt": "星月「ㄐㄧㄠˇ」潔：",
+      "answer": "皎",
+      "sourceAnswer": "皎",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 1,
+        "questionNumber": "第一回 A部分 一-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "A部分", "values": ["A部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "一、國字注音", "values": ["一、國字注音"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7400-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "星月「ㄐㄧㄠˇ」潔：" }
+      ]
+    },
+    {
+      "id": 7401,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "解釋",
+      "knowledge": "字義理解",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "解釋",
+      "group": {
+        "id": "115-1-chinese-round-1-a-2",
+        "part": 1,
+        "total": 5
+      },
+      "prompt": "「撒」了滿天的珍珠：",
+      "answer": "散布",
+      "sourceAnswer": "散布。",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 1,
+        "questionNumber": "第一回 A部分 二-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "A部分", "values": ["A部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "二、解釋", "values": ["二、解釋"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7401-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "「撒」了滿天的珍珠：" }
+      ]
+    },
+    {
+      "id": 7402,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "改錯",
+      "knowledge": "正確用字",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "改錯",
+      "group": {
+        "id": "115-1-chinese-round-1-a-3",
+        "part": 1,
+        "total": 2
+      },
+      "prompt": "閱讀童詩，既可以淘治性情，函養心靈，也可以使讀者對生活有活潑的想項，得到辛悅的感受。",
+      "answer": "陶；冶；涵；像；欣",
+      "sourceAnswer": "陶冶涵像欣",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 1,
+        "questionNumber": "第一回 A部分 三-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "A部分", "values": ["A部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "三、改錯", "values": ["三、改錯"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7402-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "閱讀童詩，既可以淘治性情，函養心靈，也可以使讀者對生活有活潑的想項，得到辛悅的感受。" }
+      ]
+    },
+    {
+      "id": 7403,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "成語填空",
+      "knowledge": "成語運用",
+      "difficulty": "基礎",
+      "kind": "written",
+      "typeLabel": "成語填空",
+      "group": {
+        "id": "115-1-chinese-round-1-a-4",
+        "part": 1,
+        "total": 5
+      },
+      "prompt": "我正以為中了頭彩而大叫，忽然驚醒，才知道只是（　　　　）。",
+      "answer": "南柯一夢",
+      "sourceAnswer": "南柯一夢",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 1,
+        "questionNumber": "第一回 A部分 四-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "A部分", "values": ["A部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "四、成語填空", "values": ["四、成語填空"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7403-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "我正以為中了頭彩而大叫，忽然驚醒，才知道只是（　　　　）。" }
+      ]
+    },
+    {
+      "id": 7404,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "字音字形",
+      "knowledge": "字形辨識",
+      "difficulty": "基礎",
+      "kind": "choice",
+      "typeLabel": "基礎題",
+      "group": {
+        "id": "115-1-chinese-round-1-a-5",
+        "part": 1,
+        "total": 15
+      },
+      "prompt": "下列各「　」中的注音寫成國字後，何組字形相同？",
+      "options": [
+        "(A)電腦「ㄧㄥˊ」幕／「ㄧㄥˊ」光點",
+        "(B)鐵製「ㄍㄤˋ」桿／全力阻「ㄉㄤˇ」",
+        "(C)喜上眉「ㄕㄠ」／「ㄕㄠ」候片刻",
+        "(D)「ㄇㄧˋ」月旅行／機「ㄇㄧˋ」文件"
+      ],
+      "answer": "(A)電腦「ㄧㄥˊ」幕／「ㄧㄥˊ」光點",
+      "sourceAnswer": "(Ａ)",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 1,
+        "questionNumber": "第一回 A部分 五-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "A部分", "values": ["A部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "五、基礎題", "values": ["五、基礎題"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7404-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "下列各「　」中的注音寫成國字後，何組字形相同？" }
+      ]
+    },
+    {
+      "id": 7405,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "創作觀點",
+      "knowledge": "文意理解",
+      "difficulty": "進階",
+      "kind": "choice",
+      "typeLabel": "進階題",
+      "group": {
+        "id": "115-1-chinese-round-1-b-1",
+        "part": 1,
+        "total": 10
+      },
+      "prompt": "「和你的詩作凍結在一起或因某幾首詩而大獲激賞是痛苦的事。真正的生命存在於寫作當中，而非經年累月一再朗讀同樣的幾首詩。我們不斷的需要有新的洞察和觀點，我們的生活也非一成不變。你無法在幾首詩裡便挖掘出永恆不滅的真理。」根據這段文字的觀點，下列何者是創作好作品最重要的條件？",
+      "options": [
+        "(A)獲得別人的肯定",
+        "(B)持續寫作且創新",
+        "(C)延續傳統的技法",
+        "(D)嘗試不同的生活"
+      ],
+      "answer": "(B)持續寫作且創新",
+      "sourceAnswer": "(Ｂ)",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 2,
+        "questionNumber": "第一回 B部分 一-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "B部分", "values": ["B部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "一、進階題", "values": ["一、進階題"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7405-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "「和你的詩作凍結在一起或因某幾首詩而大獲激賞是痛苦的事。真正的生命存在於寫作當中，而非經年累月一再朗讀同樣的幾首詩。我們不斷的需要有新的洞察和觀點，我們的生活也非一成不變。你無法在幾首詩裡便挖掘出永恆不滅的真理。」根據這段文字的觀點，下列何者是創作好作品最重要的條件？" }
+      ]
+    },
+    {
+      "id": 7406,
+      "subject": "國語",
+      "grade": "國一",
+      "semester": "上學期",
+      "bookVersion": "翰林",
+      "chapter": "第一課",
+      "unit": "01_第一課_夏夜",
+      "topic": "閱讀測驗",
+      "knowledge": "詩意理解",
+      "difficulty": "進階",
+      "kind": "choice",
+      "typeLabel": "閱讀測驗",
+      "group": {
+        "id": "115-1-chinese-round-1-b-2",
+        "part": 1,
+        "total": 5
+      },
+      "prompt": "喇叭花早就知道夏天從哪兒來，／她塗得滿臉都是脂粉，／歡喜地爬出籬笆等著迎接他。／小荷花看著小魚兒高興地捉迷藏，／她躲在河邊只是靜靜地笑。／小草有月亮媽媽給他披上露珠的被，／就是再熱的晚上，／他也能安靜地睡。／青蛙們最怕熱，／一天到晚鼓起肚皮大聲地罵。（節錄自楊喚〈毛毛是個好孩子〉）\n\n本詩主要描寫何種景象？",
+      "options": [
+        "(A)夏日的酷熱",
+        "(B)夏天的水池",
+        "(C)夏夜的美麗",
+        "(D)夏天的生機"
+      ],
+      "answer": "(D)夏天的生機",
+      "sourceAnswer": "(Ｄ)",
+      "explanation": "",
+      "source": "校內卷",
+      "sourceDetail": {
+        "documentName": "115上翰林國文1上A卷_學用",
+        "page": 2,
+        "questionNumber": "第一回 B部分 二-1",
+        "valueSource": "document",
+        "confidence": 1
+      },
+      "metadata": [
+        { "key": "academic_year", "label": "學年度", "rawValue": "115", "values": ["115"], "valueSource": "path", "confidence": 1 },
+        { "key": "exam_round", "label": "回次", "rawValue": "第一回", "values": ["第一回"], "valueSource": "document", "confidence": 1 },
+        { "key": "paper_variant", "label": "卷別", "rawValue": "A卷", "values": ["A卷"], "valueSource": "path", "confidence": 1 },
+        { "key": "paper_section", "label": "部分", "rawValue": "B部分", "values": ["B部分"], "valueSource": "document", "confidence": 1 },
+        { "key": "major_section", "label": "大題", "rawValue": "二、閱讀測驗", "values": ["二、閱讀測驗"], "valueSource": "document", "confidence": 1 },
+        { "key": "source_type", "label": "來源類型", "rawValue": "校內卷", "values": ["校內卷"], "valueSource": "user", "confidence": 1 }
+      ],
+      "blocks": [
+        { "id": "q7406-prompt-text", "placement": "prompt", "type": "text", "order": 1, "text": "喇叭花早就知道夏天從哪兒來，／她塗得滿臉都是脂粉，／歡喜地爬出籬笆等著迎接他。／小荷花看著小魚兒高興地捉迷藏，／她躲在河邊只是靜靜地笑。／小草有月亮媽媽給他披上露珠的被，／就是再熱的晚上，／他也能安靜地睡。／青蛙們最怕熱，／一天到晚鼓起肚皮大聲地罵。（節錄自楊喚〈毛毛是個好孩子〉）\n\n本詩主要描寫何種景象？" }
+      ]
     }
   ],
   "imports": [
+    {
+      "id": "fixture-import-chinese-school-paper-round-1",
+      "createdAt": "2026-10-15T10:41:20.000Z",
+      "fileNames": [
+        "115上翰林國文1上A卷_學用",
+        "115上翰林國文1上A卷_簡答"
+      ],
+      "questionIds": [
+        7400,
+        7401,
+        7402,
+        7403,
+        7404,
+        7405,
+        7406
+      ],
+      "status": "confirmed"
+    },
     {
       "id": "fixture-import-chinese-summer-night",
       "createdAt": "2026-10-14T02:20:00.000Z",

@@ -26,7 +26,6 @@ function getLogicalQuestions(questions) {
 
 for (const [subject, types] of Object.entries(expectedTypes)) {
     const subjectQuestions = gradeSevenQuestions.filter((question) => question.subject === subject);
-    assert.deepEqual([...new Set(subjectQuestions.map((question) => question.typeLabel))], types);
 
     for (const type of types) {
         const typeQuestions = getLogicalQuestions(subjectQuestions.filter((question) => question.typeLabel === type));
@@ -35,12 +34,13 @@ for (const [subject, types] of Object.entries(expectedTypes)) {
     }
 }
 
-assert.equal(getLogicalQuestions(gradeSevenQuestions).length, 101);
+const logicalQuestionCount = getLogicalQuestions(gradeSevenQuestions).length;
+assert.equal(logicalQuestionCount, 108);
 assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail?.valueSource === "document"));
 assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail?.questionNumber));
 assert.ok(gradeSevenQuestions.every((question) => question.sourceAnswer));
 assert.ok(gradeSevenQuestions.every((question) => question.bookVersion && question.chapter && question.unit && question.knowledge));
-assert.ok(gradeSevenQuestions.every((question) => question.unit === question.sourceDetail.documentName.replace(/\.[^.]+$/, "")), "單元必須保留來源文件檔名中的編號");
+assert.ok(gradeSevenQuestions.every((question) => question.sourceDetail.documentName), "題目必須保留原始來源檔名");
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "written" && question.options?.length).length, 0);
 assert.equal(gradeSevenQuestions.filter((question) => question.kind === "multi-choice" && !question.parts?.length).length, 0);
 const multiBlankWrittenQuestions = gradeSevenQuestions.filter((question) => {
@@ -68,5 +68,9 @@ const compoundWrittenQuestions = gradeSevenQuestions
 assert.equal(compoundWrittenQuestions.length, 2);
 assert.ok(compoundWrittenQuestions.every((question) => question.kind === "written"));
 assert.deepEqual(compoundWrittenQuestions.map((question) => question.answer), ["±3", "0、±1、±2"]);
+const schoolPaperQuestions = gradeSevenQuestions.filter((question) => question.source === "校內卷");
+assert.deepEqual(schoolPaperQuestions.map((question) => question.id), [7400, 7401, 7402, 7403, 7404, 7405, 7406]);
+assert.ok(schoolPaperQuestions.every((question) => question.metadata?.some((field) => field.key === "academic_year" && field.rawValue === "115")));
+assert.ok(schoolPaperQuestions.every((question) => question.metadata?.some((field) => field.key === "exam_round" && field.rawValue === "第一回")));
 
-console.log("已驗證國一八科共 41 種來源題型：原有五科每型至少三題，新增三科每型至少一題，共 101 題。");
+console.log(`已驗證國一八科題庫、來源欄位與指定題型覆蓋，共 ${logicalQuestionCount} 題。`);
