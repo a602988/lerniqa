@@ -157,6 +157,11 @@ textarea:focus-visible,
     border-bottom: 1px solid var(--color-border);
 }
 
+.sidebar-brand-caption {
+    width: 10.5rem;
+    text-align: center;
+}
+
 .lerniqa-wordmark {
     display: block;
     width: 10.5rem;
