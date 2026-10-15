@@ -17,7 +17,7 @@ import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
-import { LerniqaMark } from "./components/lerniqa-mark";
+import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, CheckMode,
     DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer,
@@ -784,8 +784,7 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
             <Card className="auth-card border-border/80 shadow-sm">
                 <CardHeader className="border-b border-border/80">
                     <Button className="auth-brand" appearance="ghost" tone="muted" onClick={() => router.push(SECTION_PATHS.overview)}>
-                        <span className="sidebar-brand-mark"><LerniqaMark className="h-7 w-7" /></span>
-                        <span><strong>Lerniqa</strong><small>智慧卡牌學習平台</small></span>
+                        <LerniqaLogo className="auth-wordmark" />
                     </Button>
                     {mode !== "login" && <div className="mt-6"><CardTitle>{current.title}</CardTitle><CardDescription>{current.description}</CardDescription></div>}
                 </CardHeader>
@@ -3903,12 +3902,9 @@ export default function Home() {
             </Button>
             <div id="mobile-navigation-panel" className="sidebar-panel-content">
             <div className="sidebar-identity-row">
-                <div className="sidebar-brand flex items-center gap-3">
-                    <div className="sidebar-brand-mark"><LerniqaMark className="h-7 w-7" /></div>
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2"><p className="text-lg font-bold">Lerniqa</p><Badge tone="primary">學習卡</Badge></div>
-                        <p className="text-xs text-muted-foreground">智慧卡牌學習平台</p>
-                    </div>
+                <div className="sidebar-brand">
+                    <div className="flex min-w-0 items-center gap-2"><LerniqaLogo /><Badge tone="primary">學習卡</Badge></div>
+                    <p className="mt-1 text-xs text-muted-foreground">智慧卡牌學習平台</p>
                 </div>
                 <div className="learner-card mt-6">
                     <div className="flex items-center gap-3">

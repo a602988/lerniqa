@@ -3,6 +3,25 @@ interface LerniqaMarkProps {
     className?: string;
 }
 
+interface LerniqaLogoProps {
+    /** 額外尺寸或版面樣式。 */
+    className?: string;
+}
+
+/**
+ * 顯示完整的 Lerniqa 品牌字樣。
+ *
+ * @param props 圖片外框的版面樣式。
+ * @returns 使用品牌原圖的完整 Logo。
+ */
+export function LerniqaLogo({ className }: LerniqaLogoProps) {
+    return (
+        <span className={`lerniqa-wordmark ${className ?? ""}`.trim()}>
+            <img alt="Lerniqa" src="/lerniqa-logo.jpg" />
+        </span>
+    );
+}
+
 /**
  * 顯示 Lerniqa 原創的練習循環品牌標誌。
  *
