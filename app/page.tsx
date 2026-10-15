@@ -28,7 +28,8 @@ import {
     SEMESTER_OPTIONS, StoredState, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
 import {
-    DEFAULT_QUESTION_FILTERS, filterQuestions, normalizeQuestionFilters, QuestionFilters,
+    DEFAULT_QUESTION_FILTERS, filterQuestions, getQuestionSourceCategory, normalizeQuestionFilters,
+    normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
 
 interface QuestionFlowProps {
@@ -178,11 +179,6 @@ function getSelectedAnswers(answer: string) {
 /** 整理題目可供辨識與篩選的條件，避免來源欄位重複顯示同一單元。 */
 function getQuestionConditions(question: Question) {
     const unit = getUnitLabel(question.unit);
-    const sourcePath = question.metadata?.find((field) => field.key === "source_path")?.rawValue;
-    const sourceType = (question.metadata?.find((field) => field.key === "source_type")?.rawValue
-        ?? sourcePath?.split(/[\\/]/)[0]
-        ?? question.source.split(" · ").at(-1)
-        ?? question.source).replace(/^\d+[\s_-]*/, "");
     const normalizeValue = (value: string) => value.replace(/\.[^.]+$/, "").replace(/[\s·_\-/\\]+/g, "").toLowerCase();
     const fixedConditions = [
         { label: "編號", value: question.code ?? question.sourceDetail?.questionNumber ?? String(question.id) },
@@ -196,9 +192,9 @@ function getQuestionConditions(question: Question) {
         { label: "知識點", value: question.knowledge },
         { label: "難度", value: question.difficulty },
         { label: "題型", value: question.typeLabel ?? getQuestionKindLabel(question.kind) },
-        { label: "來源", value: sourceType },
+        { label: "來源", value: getQuestionSourceCategory(question) },
     ];
-    const hiddenMetadata = new Set(["source", "knowledge_point", "source_type", "source_path"]);
+    const hiddenMetadata = new Set(["source", "knowledge_point", "source_category", "source_type", "source_path"]);
     const importedConditions = question.metadata
         ?.filter((field) => !hiddenMetadata.has(field.key))
         .map((field) => ({ label: field.label, value: field.rawValue })) ?? [];
@@ -405,7 +401,7 @@ function createImportDrafts(images: Array<{ name: string; url: string }> = []): 
         topic: question.topic,
         customTopic: "",
         difficulty: question.difficulty,
-        source: question.source,
+        source: normalizeQuestionSourceCategory(question.source),
         customSource: "",
         metadata: question.code ? [
             { key: "source_type", label: "出處", rawValue: "試題", values: ["試題"], valueSource: "document", confidence: 1 },
@@ -1223,7 +1219,9 @@ export default function Home() {
         examSettings: storedPlan?.examSettings?.length ? storedPlan.examSettings : DEFAULT_PLAN.examSettings,
         activeExamId: storedPlan?.activeExamId ?? DEFAULT_PLAN.activeExamId,
         difficultyMix: { ...DEFAULT_DIFFICULTY_MIX, ...storedPlan?.difficultyMix },
-        sourceFilters: storedPlan?.sourceFilters ?? DEFAULT_PLAN.sourceFilters,
+        sourceFilters: storedPlan?.sourceFilters
+            ? [...new Set(storedPlan.sourceFilters.map(normalizeQuestionSourceCategory))]
+            : DEFAULT_PLAN.sourceFilters,
         questionKind: storedPlan?.questionKind ?? DEFAULT_PLAN.questionKind,
         knowledge: storedPlan?.knowledge ?? DEFAULT_PLAN.knowledge,
         metadataFilters: storedPlan?.metadataFilters ?? DEFAULT_PLAN.metadataFilters,
@@ -1285,7 +1283,7 @@ export default function Home() {
         const configuredVersion = activePlan.subject === question.subject && activePlan.bookVersion
             ? activePlan.bookVersion
             : activeLearner.bookVersions[question.subject];
-        return !question.bookVersion || question.bookVersion === configuredVersion;
+        return !questionUsesTextbookVersion(question) || !question.bookVersion || question.bookVersion === configuredVersion;
     }), [activeLearner.bookVersions, activePlan.bookVersion, activePlan.subject, learnerQuestions]);
     const scopeOptions = useMemo(() => {
         const filtered = activePlan.subject === "全部" ? versionedLearnerQuestions : versionedLearnerQuestions.filter((question) => question.subject === activePlan.subject);
@@ -1311,7 +1309,8 @@ export default function Home() {
             const endIndex = options.findIndex((option) => option.value === end);
             return questionIndex >= Math.min(startIndex, endIndex) && questionIndex <= Math.max(startIndex, endIndex);
         }), [activeExam.ranges, activePlan.scope, activePlan.subject, activePlanBasis, assessmentOptionsBySubject, versionedLearnerQuestions]);
-    const sourceOptions = useMemo(() => [...new Set(scopedQuestions.map((question) => question.source))], [scopedQuestions]);
+    const sourceOptions = useMemo(() => QUESTION_SOURCE_CATEGORIES
+        .filter((source) => scopedQuestions.some((question) => getQuestionSourceCategory(question) === source)), [scopedQuestions]);
     const metadataCatalog = useMemo(() => getMetadataCatalog(scopedQuestions), [scopedQuestions]);
     const recentImports = useMemo(() => [...imports]
         .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
@@ -1336,7 +1335,7 @@ export default function Home() {
         ...[...new Set(scopedQuestions.map((question) => question.knowledge))].map((value) => ({ value, label: value })),
     ], [scopedQuestions]);
     const eligibleQuestions = useMemo(() => scopedQuestions
-        .filter((question) => !activePlan.sourceFilters.length || activePlan.sourceFilters.includes(question.source))
+        .filter((question) => !activePlan.sourceFilters.length || activePlan.sourceFilters.includes(getQuestionSourceCategory(question)))
         .filter((question) => activePlan.questionKind === "all" || question.kind === activePlan.questionKind)
         .filter((question) => activePlan.knowledge === ALL_KNOWLEDGE || question.knowledge === activePlan.knowledge)
         .filter((question) => Object.entries(activePlan.metadataFilters).every(([key, values]) => !values.length
@@ -2566,8 +2565,19 @@ export default function Home() {
                     knowledge: draft.topic === CUSTOM_IMPORT_VALUE ? draft.customTopic : draft.topic,
                     difficulty: draft.difficulty,
                     source: draft.source === CUSTOM_IMPORT_VALUE ? draft.customSource : draft.source,
+                    sourceCategory: normalizeQuestionSourceCategory(draft.source === CUSTOM_IMPORT_VALUE ? draft.customSource : draft.source),
                     questionNumber: draft.code || String(index + 1),
-                    metadata: draft.metadata.filter((field) => field.label.trim() && field.rawValue.trim()),
+                    metadata: [
+                        ...draft.metadata.filter((field) => field.key !== "source_category" && field.label.trim() && field.rawValue.trim()),
+                        {
+                            key: "source_category",
+                            label: "來源",
+                            rawValue: normalizeQuestionSourceCategory(draft.source === CUSTOM_IMPORT_VALUE ? draft.customSource : draft.source),
+                            values: [normalizeQuestionSourceCategory(draft.source === CUSTOM_IMPORT_VALUE ? draft.customSource : draft.source)],
+                            valueSource: "user" as const,
+                            confidence: 1,
+                        },
+                    ],
                     blocks: [
                         { placement: "prompt", text: draft.prompt },
                         ...(draft.imageUrl ? [{ placement: "prompt", imageDataUrl: draft.imageUrl, alt: `${draft.prompt}的題目附圖` }] : []),
@@ -3186,6 +3196,8 @@ export default function Home() {
                         idPrefix="question-overview"
                         subjects={availableSubjects}
                         questions={learnerQuestions}
+                        grade={activeLearner.grade}
+                        preferredVersions={activeLearner.bookVersions}
                         collections={activeQuestionCollections}
                         value={questionFilters}
                         onChange={(filters) => { setQuestionFilters(filters); setQuestionPage(1); setSelectedQuestionIds([]); }}
@@ -3211,7 +3223,7 @@ export default function Home() {
                                     return <tr data-active={selectedQuestionId === question.id} key={question.id}>
                                         <td><label className="question-checkbox" aria-label={`選取${question.prompt}`}><Checkbox checked={selected} onChange={(event) => toggleOverviewQuestion(question.id, event.target.checked)} /><span className="sr-only">選取此題</span></label></td>
                                         <td data-label="編號">{question.code ?? question.sourceDetail?.questionNumber ?? question.id}</td>
-                                        <td className="question-overview-title-cell" data-label="題目"><button className="question-overview-title" type="button" onClick={() => openQuestionDetail(question.id)}>{question.prompt}</button><small>{question.source}</small></td>
+                                        <td className="question-overview-title-cell" data-label="題目"><button className="question-overview-title" type="button" onClick={() => openQuestionDetail(question.id)}>{question.prompt}</button><small>{getQuestionSourceCategory(question)}</small></td>
                                         <td data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                         <td data-label="題型">{getQuestionKindLabel(question.kind)}</td>
                                         <td data-label="收藏">{collections.length ? <span className="question-collection-tags">{collections.slice(0, 2).map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</span> : <span className="text-muted-foreground">—</span>}</td>
@@ -3392,7 +3404,7 @@ export default function Home() {
                                     const chapterItems = [draft.chapter, ...matchingQuestions.map((question) => question.chapter ?? "")];
                                     const unitItems = [draft.unit, ...matchingQuestions.map((question) => question.unit)];
                                     const topicItems = [draft.topic, ...matchingQuestions.map((question) => question.topic ?? question.knowledge)];
-                                    const sourceItems = [draft.source, ...matchingQuestions.map((question) => question.source)];
+                                    const sourceItems = [draft.source, ...QUESTION_SOURCE_CATEGORIES];
                                     return (
                                         <section className="rounded-2xl border border-border bg-white p-4 sm:p-5" key={draft.id} aria-labelledby={`${draft.id}-title`}>
                                             <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
@@ -3409,7 +3421,7 @@ export default function Home() {
                                                 <CreatableSelectField label="章節／課次" items={chapterItems} value={draft.chapter} customValue={draft.customChapter} placeholder="例如：第 3 章、第 5 課、Unit 2" onChange={(value) => updateImportDraft(draft.id, "chapter", value)} onCustomChange={(value) => updateImportDraft(draft.id, "customChapter", value)} />
                                                 <CreatableSelectField label="單元" items={unitItems} value={draft.unit} customValue={draft.customUnit} placeholder="例如：角度、分數運算、閱讀理解" onChange={(value) => updateImportDraft(draft.id, "unit", value)} onCustomChange={(value) => updateImportDraft(draft.id, "customUnit", value)} />
                                                 <CreatableSelectField label="主題" items={topicItems} value={draft.topic} customValue={draft.customTopic} placeholder="例如：分數加法、近義詞、過去式" onChange={(value) => updateImportDraft(draft.id, "topic", value)} onCustomChange={(value) => updateImportDraft(draft.id, "customTopic", value)} />
-                                                <CreatableSelectField label="來源" items={sourceItems} value={draft.source} customValue={draft.customSource} placeholder="例如：學校段考、課本第 42 頁、家教講義" onChange={(value) => updateImportDraft(draft.id, "source", value)} onCustomChange={(value) => updateImportDraft(draft.id, "customSource", value)} />
+                                                <CreatableSelectField label="來源" items={sourceItems} value={draft.source} customValue={draft.customSource} placeholder="選擇來源分類" onChange={(value) => updateImportDraft(draft.id, "source", value)} onCustomChange={(value) => updateImportDraft(draft.id, "customSource", value)} />
                                                 <div className="import-metadata-editor sm:col-span-2">
                                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                                         <div><p className="font-semibold">文件欄位</p><p className="mt-1 text-xs text-muted-foreground">文件中出現的項目會原樣保存，並自動成為後續可複選的篩選條件。</p></div>
@@ -3595,6 +3607,8 @@ export default function Home() {
                             idPrefix="mistake-ranking"
                             subjects={availableSubjects}
                             questions={rankingQuestions}
+                            grade={activeLearner.grade}
+                            preferredVersions={activeLearner.bookVersions}
                             collections={activeQuestionCollections}
                             value={mistakeFilters}
                             onChange={changeMistakeFilters}
@@ -3625,7 +3639,7 @@ export default function Home() {
                                         return <tr key={question.id}>
                                             <td className="mistake-select-cell"><label className="mistake-select" aria-label={`選取${question.prompt}`}><Checkbox checked={selected} onChange={(event) => setSelectedMistakes((current) => event.target.checked ? [...new Set([...current, question.id])] : current.filter((id) => id !== question.id))} /><span className="sr-only">選取此錯題</span></label></td>
                                             <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                            <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{question.source}</small></td>
+                                            <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{getQuestionSourceCategory(question)}</small></td>
                                             <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                             <td data-label="最後測驗"><time className="mistake-meta" dateTime={lastAttempt?.date}>{lastAttempt ? formatAttemptDate(lastAttempt.date) : "尚無紀錄"}</time></td>
                                             <td data-label="錯誤次數"><Badge tone={wrongCount > 1 ? "danger" : "muted"}>{wrongCount} 次</Badge></td>
@@ -3642,7 +3656,7 @@ export default function Home() {
                                     <thead><tr><th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">作答次數</th><th scope="col">錯誤次數</th><th scope="col">錯誤率</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
                                     <tbody>{pagedCommunityMistakeRows.map(({ question, total, wrong, wrongRate }, index) => <tr key={question.id}>
                                         <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                        <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{question.source}</small></td>
+                                        <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{getQuestionSourceCategory(question)}</small></td>
                                         <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                         <td data-label="作答次數"><span className="mistake-meta">{total} 次</span></td>
                                         <td data-label="錯誤次數"><Badge tone={wrong > 1 ? "danger" : "muted"}>{wrong} 次</Badge></td>

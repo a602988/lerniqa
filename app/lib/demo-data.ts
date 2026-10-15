@@ -269,6 +269,8 @@ export interface Question {
     explanation: string;
     /** 題目來源。 */
     source: string;
+    /** 可供篩選的來源分類；原始文件與路徑仍由 sourceDetail 保存。 */
+    sourceCategory?: string;
     /** 可追溯到原始文件的來源資訊。 */
     sourceDetail?: QuestionSourceDetail;
     /** 來源文件的完整原始欄位與可篩選值。 */

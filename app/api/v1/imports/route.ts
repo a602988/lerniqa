@@ -50,6 +50,8 @@ interface ImportQuestionInput {
     explanation?: string;
     /** 題目來源。 */
     source: string;
+    /** 可供篩選的來源分類。 */
+    sourceCategory: string;
     /** 原始題號。 */
     questionNumber: string;
     /** 來源文件中需要完整保留的動態欄位。 */
@@ -89,7 +91,7 @@ function parseImportRequest(value: unknown): ImportRequest | null {
 
     const valid = value.questions.every((item) => {
         if (!isRecord(item)) return false;
-        const required = ["prompt", "answer", "subject", "grade", "semester", "version", "chapter", "unit", "topic", "knowledge", "difficulty", "source", "questionNumber"];
+        const required = ["prompt", "answer", "subject", "grade", "semester", "version", "chapter", "unit", "topic", "knowledge", "difficulty", "source", "sourceCategory", "questionNumber"];
         if (!required.every((key) => typeof item[key] === "string" && String(item[key]).trim() && String(item[key]).length <= 4_000)) return false;
         if (!SUBJECTS.some((subject) => subject === item.subject) || !["易", "中", "難"].includes(String(item.difficulty))) return false;
         if (item.kind !== undefined && !["choice", "boolean", "written"].includes(String(item.kind))) return false;
@@ -173,6 +175,7 @@ export async function POST(request: Request) {
                     answer: normalizeQuestionText(input.answer.trim()),
                     explanation: input.explanation?.trim() ? normalizeQuestionText(input.explanation.trim()) : "尚未提供解析。",
                     source: input.source.trim(),
+                    sourceCategory: input.sourceCategory.trim(),
                     sourceDetail: {
                         documentName: payload.fileNames[0],
                         questionNumber: input.questionNumber.trim() || String(index + 1),

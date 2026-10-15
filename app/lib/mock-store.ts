@@ -4,6 +4,7 @@ import fixture from "@/data/fixtures/database.json";
 import { ALL_UNITS, DEFAULT_ROLE_ACCESS, getUnitLabel, SUBJECTS } from "./demo-data";
 import type { AccountRole, AssessmentRange, ExamSetting, ImportBook, MockDatabase, PracticePlan, Question, QuestionCollection, QuestionMetadataField, RoleAccess, ScheduledPractice, StoredState, Subject } from "./demo-data";
 import { normalizeQuestionText } from "./question-text";
+import { getQuestionSourceCategory } from "./question-filters";
 
 const RUNTIME_DIR = process.env.VERCEL
     ? path.join("/tmp", "lerniqa-runtime")
@@ -140,6 +141,7 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
 function migrateQuestion(question: Question): Question {
     const current = {
         ...question,
+        sourceCategory: getQuestionSourceCategory(question),
         subject: migrateSubject(question.subject as LegacySubject),
         prompt: normalizeQuestionText(question.prompt),
         explanation: normalizeQuestionText(question.explanation),

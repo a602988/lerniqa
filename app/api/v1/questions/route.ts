@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDatabase } from "@/app/lib/mock-store";
+import { getQuestionSourceCategory } from "@/app/lib/question-filters";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
             && (!filters.unit || question.unit === filters.unit)
             && (!filters.topic || question.topic === filters.topic)
             && (!filters.difficulty || question.difficulty === filters.difficulty)
-            && (!filters.source || question.source === filters.source)
+            && (!filters.source || getQuestionSourceCategory(question) === filters.source)
             && (!filters.code || question.code === filters.code)
             && metadataFilters.every(([key, values]) => question.metadata?.some((field) => field.key === key
                 && field.values.some((value) => values.includes(value)))));
