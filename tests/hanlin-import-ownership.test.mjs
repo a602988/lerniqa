@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
     deterministicUuid,
+    LOCAL_CATALOG_IDS,
     stripLegacyWordSequenceFieldPrefixes,
 } from "../scripts/lib/hanlin-chinese-import.mjs";
 import {
@@ -10,16 +11,11 @@ import {
     HANLIN_REAL_DATA_OWNERSHIP,
 } from "../scripts/lib/hanlin-postgres-writer.mjs";
 
-const SYNTHETIC_PRACTICE_USER_ID = "10000000-0000-4000-8000-000000000001";
-const SYNTHETIC_PRACTICE_LEARNER_ID = "10000000-0000-4000-8000-000000000002";
-
 test("real curriculum imports use a dedicated, deterministic system principal", () => {
     assert.deepEqual(HANLIN_IMPORT_PRINCIPAL, {
         userId: deterministicUuid("system-user:hanlin-curriculum-import"),
         displayName: "翰林題庫匯入服務",
     });
-    assert.notEqual(HANLIN_IMPORT_PRINCIPAL.userId, SYNTHETIC_PRACTICE_USER_ID);
-    assert.notEqual(HANLIN_IMPORT_PRINCIPAL.userId, SYNTHETIC_PRACTICE_LEARNER_ID);
     assert.equal(Object.isFrozen(HANLIN_IMPORT_PRINCIPAL), true);
 });
 
@@ -30,6 +26,15 @@ test("real curriculum data is system-owned and not scoped to a synthetic learner
         batchLearnerId: null,
     });
     assert.equal(Object.isFrozen(HANLIN_REAL_DATA_OWNERSHIP), true);
+    for (const removedIdentity of [
+        "userId",
+        "learnerId",
+        "roleId",
+        "learnerAccessId",
+        "learnerSubjectSettingId",
+    ]) {
+        assert.equal(removedIdentity in LOCAL_CATALOG_IDS, false);
+    }
 });
 
 test("legacy Word sequence fields are removed without dropping question text", () => {

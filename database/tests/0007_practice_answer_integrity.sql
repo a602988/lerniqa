@@ -457,3 +457,282 @@ SET CONSTRAINTS
 IMMEDIATE;
 
 ROLLBACK;
+
+-- Leave one precise legacy Hanlin row for the next migration to upgrade, an
+-- already-correct native row in the same confirmed batch, and an otherwise
+-- identical legacy row outside that batch. The next migration must repair only
+-- the first row.
+BEGIN;
+
+INSERT INTO users (id, display_name)
+VALUES ('07800000-0000-0000-0000-000000000001', '0008 upgrade fixture principal');
+
+INSERT INTO subjects (
+    id,
+    code,
+    name,
+    normalized_name,
+    subject_kind,
+    origin
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000002',
+    'migration_0008_subject',
+    '0008 upgrade fixture subject',
+    '0008 upgrade fixture subject',
+    'leaf',
+    'system'
+);
+
+INSERT INTO curriculum_units (
+    id,
+    subject_id,
+    unit_type,
+    code,
+    name,
+    position,
+    origin
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000003',
+    '07800000-0000-0000-0000-000000000002',
+    'lesson',
+    'migration-0008-lesson',
+    '0008 upgrade fixture unit',
+    0,
+    'system'
+);
+
+INSERT INTO source_categories (
+    id,
+    code,
+    name,
+    sort_order,
+    origin
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000004',
+    'publisher-test-bank',
+    '0008 upgrade fixture source',
+    0,
+    'system'
+);
+
+INSERT INTO question_types (
+    id,
+    code,
+    name
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000005',
+    'migration-0008-type',
+    '0008 upgrade fixture type'
+);
+
+INSERT INTO question_banks (
+    id,
+    name,
+    origin,
+    is_default
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000006',
+    '0008 upgrade fixture bank',
+    'system',
+    false
+);
+
+INSERT INTO source_documents (
+    id,
+    owner_user_id,
+    input_type,
+    pasted_text,
+    document_title,
+    status
+)
+VALUES (
+    '07800000-0000-0000-0000-000000000007',
+    '07800000-0000-0000-0000-000000000001',
+    'text',
+    '0008 upgrade fixture source',
+    '0008 upgrade fixture source',
+    'ready'
+);
+
+INSERT INTO import_batches (
+    id,
+    question_bank_id,
+    learner_id,
+    created_by_user_id,
+    status,
+    idempotency_key,
+    recognizer_version,
+    confirmed_at
+)
+VALUES (
+    '2d1ff794-f6f4-5e59-baaa-8d1c767438be',
+    '07800000-0000-0000-0000-000000000006',
+    NULL,
+    '07800000-0000-0000-0000-000000000001',
+    'confirmed',
+    'migration-0008-upgrade-fixture',
+    'migration-test',
+    CURRENT_TIMESTAMP
+);
+
+INSERT INTO import_batch_documents (
+    import_batch_id,
+    source_document_id,
+    position
+)
+VALUES (
+    '2d1ff794-f6f4-5e59-baaa-8d1c767438be',
+    '07800000-0000-0000-0000-000000000007',
+    0
+);
+
+INSERT INTO questions (
+    id,
+    origin,
+    status,
+    created_method,
+    created_by_user_id
+)
+VALUES
+    (
+        '07800000-0000-0000-0000-000000000008',
+        'system',
+        'draft',
+        'import',
+        '07800000-0000-0000-0000-000000000001'
+    ),
+    (
+        '07800000-0000-0000-0000-000000000010',
+        'system',
+        'draft',
+        'import',
+        '07800000-0000-0000-0000-000000000001'
+    ),
+    (
+        '07800000-0000-0000-0000-000000000013',
+        'system',
+        'draft',
+        'import',
+        '07800000-0000-0000-0000-000000000001'
+    );
+
+INSERT INTO question_revisions (
+    id,
+    question_id,
+    revision_number,
+    question_type_id,
+    source_category_id,
+    status,
+    created_by_type,
+    created_by_user_id
+)
+VALUES
+    (
+        '07800000-0000-0000-0000-000000000009',
+        '07800000-0000-0000-0000-000000000008',
+        1,
+        '07800000-0000-0000-0000-000000000005',
+        '07800000-0000-0000-0000-000000000004',
+        'draft',
+        'user',
+        '07800000-0000-0000-0000-000000000001'
+    ),
+    (
+        '07800000-0000-0000-0000-000000000011',
+        '07800000-0000-0000-0000-000000000010',
+        1,
+        '07800000-0000-0000-0000-000000000005',
+        '07800000-0000-0000-0000-000000000004',
+        'draft',
+        'user',
+        '07800000-0000-0000-0000-000000000001'
+    ),
+    (
+        '07800000-0000-0000-0000-000000000014',
+        '07800000-0000-0000-0000-000000000013',
+        1,
+        '07800000-0000-0000-0000-000000000005',
+        '07800000-0000-0000-0000-000000000004',
+        'draft',
+        'user',
+        '07800000-0000-0000-0000-000000000001'
+    );
+
+INSERT INTO import_items (
+    id,
+    import_batch_id,
+    source_document_id,
+    source_order,
+    draft_payload,
+    review_status,
+    question_id,
+    question_revision_id,
+    reviewed_by_user_id,
+    reviewed_at
+)
+VALUES
+    (
+        '07800000-0000-0000-0000-000000000012',
+        '2d1ff794-f6f4-5e59-baaa-8d1c767438be',
+        '07800000-0000-0000-0000-000000000007',
+        0,
+        '{}'::jsonb,
+        'approved',
+        '07800000-0000-0000-0000-000000000008',
+        '07800000-0000-0000-0000-000000000009',
+        '07800000-0000-0000-0000-000000000001',
+        CURRENT_TIMESTAMP
+    ),
+    (
+        '07800000-0000-0000-0000-000000000015',
+        '2d1ff794-f6f4-5e59-baaa-8d1c767438be',
+        '07800000-0000-0000-0000-000000000007',
+        1,
+        '{}'::jsonb,
+        'approved',
+        '07800000-0000-0000-0000-000000000013',
+        '07800000-0000-0000-0000-000000000014',
+        '07800000-0000-0000-0000-000000000001',
+        CURRENT_TIMESTAMP
+    );
+
+INSERT INTO question_revision_units (
+    question_revision_id,
+    curriculum_unit_id,
+    assignment_type,
+    is_primary,
+    value_source,
+    confidence
+)
+VALUES
+    (
+        '07800000-0000-0000-0000-000000000009',
+        '07800000-0000-0000-0000-000000000003',
+        'manual_classification',
+        true,
+        'user',
+        1
+    ),
+    (
+        '07800000-0000-0000-0000-000000000011',
+        '07800000-0000-0000-0000-000000000003',
+        'manual_classification',
+        true,
+        'user',
+        1
+    ),
+    (
+        '07800000-0000-0000-0000-000000000014',
+        '07800000-0000-0000-0000-000000000003',
+        'native',
+        true,
+        'document',
+        1
+    );
+
+COMMIT;

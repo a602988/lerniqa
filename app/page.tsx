@@ -10,30 +10,78 @@ import {
 } from "@keel-design/ui";
 import {
     ArrowLeft, ArrowRight, BarChart3, BookOpen, Bookmark, CalendarDays, CheckCircle2, ClipboardCheck,
-    ChevronDown, ChevronRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Library, Link2, LogIn, LogOut, Mail,
-    FolderInput, KeyRound, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
+    ChevronDown, ChevronRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Link2, LogIn, LogOut,
+    FolderInput, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChangeEvent, DragEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
 import { QuestionFilterPanel } from "./components/question-filter-panel";
-import { RolePinKeypad } from "./components/role-pin-keypad";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, BOOK_SETTING_OPTIONS, CheckMode,
     DEFAULT_QUESTION_LIMIT_OPTIONS,
     DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer, getQuestionPartResults,
-    GRADE_OPTIONS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PlanBasis, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
-    PlanQuestionKind, QuestionMetadataField, ROLE_OPTIONS, RoleAccess, ScheduledPractice, Section,
-    SEMESTER_OPTIONS, StoredState, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
+    GRADE_OPTIONS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
+    QuestionMetadataField, RoleAccess, ScheduledPractice, Section,
+    SEMESTER_OPTIONS, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
 import {
     ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getQuestionSourceCategory, normalizeQuestionFilters,
     isSupplementalQuestionMetadata, normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
+import { normalizeSubjectLabel } from "./lib/subject-labels";
+import {
+    broadcastAuthSessionContextChanged,
+    broadcastAuthSessionExpired,
+    isAuthSessionContextStorageEvent,
+    isAuthSessionStorageEvent,
+} from "./lib/auth-session-client";
+import { PersistedQuestionFields } from "./components/persisted-question-fields";
+import { adaptPracticeAttempt, adaptPracticeQuestion, formatPracticeResponse, parsePracticeAnswers, practiceRouteId } from "./lib/practice-catalog-adapter";
+import {
+    clearPracticeSessionHint,
+    createPracticeLearner,
+    createInitialPracticePlan,
+    getPersistedQuestionReferenceAnswers,
+    getPersistedPracticeSession,
+    isDeterministicPracticeApiError,
+    isPracticeSessionExpired,
+    loadPersistedPractice,
+    mapPracticeAccountLearner,
+    normalizeLoadedPracticePlan,
+    PracticeApiError,
+    PRACTICE_AUTH_EXPIRED_EVENT,
+    type PracticeAccount,
+    type PracticeAccountLearner,
+    type PracticeAccountRole,
+    readPracticePreferences,
+    readPracticeSessionHint,
+    shouldAdvanceAfterSubmit,
+    selectPracticeLearner,
+    startPersistedPractice,
+    submitPersistedPracticeAttempt,
+    switchPracticeAccountRole,
+    updatePracticeAccountIdentity,
+    updatePracticeLearner,
+    updatePracticeLearnerSubjectSetting,
+    updatePersistedPracticeSessionStatus,
+    writePracticePreferences,
+    writePracticeSessionHint,
+} from "./lib/practice-client";
+import {
+    LOCAL_PRACTICE_MAX_QUESTIONS,
+    type LocalPracticeQuestion,
+    type LocalPracticeReferenceAnswer,
+    type LocalPracticeScoreSummary,
+    type LocalPracticeSessionHistory,
+} from "./lib/local-practice-types";
 
 interface QuestionFlowProps {
+    serverQuestion?: LocalPracticeQuestion;
+    busy?: boolean;
+    answerLocked?: boolean;
     /** 目前題目。 */
     question: Question;
     /** 目前題號。 */
@@ -92,6 +140,7 @@ interface QuestionLimitControlProps {
 }
 
 interface QuestionReviewProps {
+    serverQuestion?: LocalPracticeQuestion;
     /** 目前檢視的題目。 */
     question: Question;
     /** 目前題目在清單中的索引。 */
@@ -102,12 +151,21 @@ interface QuestionReviewProps {
     title: string;
     /** 標題列的來源頁專屬操作。 */
     headerActions?: ReactNode;
+    /** 以目前題目開始正式練習。 */
+    onStartPractice?: () => void;
     /** 返回來源頁。 */
     onBack: () => void;
     /** 切換到上一題。 */
     onPrevious: () => void;
     /** 切換到下一題。 */
     onNext: () => void;
+}
+
+interface LearnerProfileDraft {
+    learnerId?: string;
+    displayName: string;
+    gradeCode: string;
+    semesterCode: string;
 }
 
 interface QuestionAnswerFieldsProps {
@@ -303,15 +361,6 @@ interface ImportQuestionDraft {
     answerImageName?: string;
 }
 
-interface BootstrapResponse {
-    /** 前端可修改的學習狀態。 */
-    state: StoredState;
-    /** JSON 題庫資料。 */
-    questions: Question[];
-    /** 已確認寫入的匯入批次。 */
-    imports: ImportBatch[];
-}
-
 interface PracticeRecord {
     /** 練習紀錄識別碼。 */
     id: string;
@@ -319,6 +368,14 @@ interface PracticeRecord {
     mode: PracticeSession["mode"];
     /** 該次練習的所有作答。 */
     attempts: Attempt[];
+    /** Server disclosure mode for this completed session. */
+    checkMode: CheckMode;
+    /** Durable item count, including score-only sessions whose attempts stay masked. */
+    itemCount: number;
+    /** Number of items submitted before the session completed. */
+    attemptedItemCount: number;
+    /** Aggregate-only result for score mode; never contains per-question answers. */
+    scoreSummary?: LocalPracticeScoreSummary;
     /** 練習開始時間。 */
     startedAt: string;
     /** 練習結束時間。 */
@@ -341,11 +398,53 @@ const NAV_ITEMS = [
     { id: "overview" as const, label: "總覽", icon: BarChart3 },
     { id: "practice" as const, label: "練習", icon: BookOpen },
     { id: "questions" as const, label: "題目總覽", icon: ListChecks },
-    { id: "bank" as const, label: "題庫", icon: Library },
     { id: "mistakes" as const, label: "錯題", icon: Target },
-    { id: "results" as const, label: "成果", icon: ClipboardCheck },
-    { id: "settings" as const, label: "學習者設定", icon: Settings2 },
+    { id: "settings" as const, label: "學習者設定", icon: UserCheck },
+    { id: "system-settings" as const, label: "系統設定", icon: Settings2 },
 ];
+
+const ACCOUNT_ROLE_LABELS: Record<PracticeAccountRole, AccountRole> = {
+    parent: "家長",
+    learner: "學習者",
+    tutor: "家教",
+};
+const ACCOUNT_ROLE_CODES: Record<AccountRole, PracticeAccountRole> = {
+    家長: "parent",
+    學習者: "learner",
+    家教: "tutor",
+};
+const ACCOUNT_IDENTITY_OPTIONS = (["parent", "learner", "tutor"] satisfies PracticeAccountRole[])
+    .map((value) => ({ value, label: ACCOUNT_ROLE_LABELS[value] }));
+const ACCOUNT_GRADE_OPTIONS = [
+    { value: "elementary-4", label: "小四" },
+    { value: "elementary-5", label: "小五" },
+    { value: "junior-high-1", label: "國一" },
+    { value: "junior-high-2", label: "國二" },
+    { value: "junior-high-3", label: "國三" },
+];
+const ACCOUNT_SEMESTER_OPTIONS = [
+    { value: "semester-1", label: "上學期" },
+    { value: "semester-2", label: "下學期" },
+];
+const EMPTY_LEARNER_PROFILE_DRAFT: LearnerProfileDraft = {
+    displayName: "",
+    gradeCode: "",
+    semesterCode: "",
+};
+
+function roleAccessFromPracticeAccount(account: PracticeAccount): RoleAccess {
+    const learnerIdsByRole: RoleAccess["learnerIdsByRole"] = { 家長: [], 學習者: [], 家教: [] };
+    for (const profile of account.learners ?? []) {
+        learnerIdsByRole[ACCOUNT_ROLE_LABELS[profile.accessRole ?? account.activeRole]].push(profile.id);
+    }
+    return {
+        activeRole: ACCOUNT_ROLE_LABELS[account.activeRole],
+        // The formal workspace never stores account email or legacy role PINs in client state.
+        registrationEmail: "",
+        pinHashes: {},
+        learnerIdsByRole,
+    };
+}
 
 const SECTION_PATHS: Record<Section, string> = {
     overview: "/overview",
@@ -353,11 +452,13 @@ const SECTION_PATHS: Record<Section, string> = {
     questions: "/questions",
     bank: "/bank",
     mistakes: "/mistakes",
-    results: "/results",
+    results: "/overview",
     settings: "/settings",
+    "system-settings": "/system-settings",
 };
 
 const SESSION_PATH = "/practice/session";
+const PRACTICE_SESSION_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const PRACTICE_SCHEDULES_PATH = "/practice/schedules";
 const QUESTION_OVERVIEW_PATH = "/questions";
 const AUTH_PATHS: Record<AuthMode, string> = {
@@ -375,10 +476,6 @@ const IMPORT_DIFFICULTY_OPTIONS = [
     { value: "易", label: "易" },
     { value: "中", label: "中" },
     { value: "難", label: "難" },
-];
-const PLAN_BASIS_OPTIONS = [
-    { value: "chapter", label: "依章節練習" },
-    { value: "assessment", label: "依考試練習" },
 ];
 const DEFAULT_DIFFICULTY_MIX: DifficultyMix = DEFAULT_PLAN.difficultyMix;
 
@@ -463,6 +560,7 @@ function readImage(file: File) {
 
 /** 由目前網址取得工作區，未知路徑回到總覽。 */
 function getSectionFromPath(pathname: string): Section {
+    if (pathname === SECTION_PATHS.bank) return "questions";
     const section = Object.entries(SECTION_PATHS).find(([, path]) => path === pathname)?.[0];
     return section as Section | undefined
         ?? (getSettingsExamId(pathname)
@@ -553,6 +651,11 @@ function getLatestAttempts(attempts: Attempt[]) {
     return [...latest.values()];
 }
 
+/** Pending grading may coexist with an already incorrect part. */
+function needsWrongReview(attempt: Attempt) {
+    return attempt.correct === false || Boolean(attempt.partResults?.some((part) => !part.correct));
+}
+
 /** 取得每一題最新作答中需要再次練習的小題。 */
 function getWrongPartIdsByQuestion(attempts: Attempt[]) {
     return attempts.reduce<Record<number, string[]>>((targets, attempt) => {
@@ -572,7 +675,7 @@ function getWrongPartLabels(question: Question, attempt: Attempt) {
 }
 
 /** 將作答紀錄依每次練習分組；舊資料以相鄰三十分鐘視為同一次。 */
-function getPracticeRecords(attempts: Attempt[]) {
+function getPracticeRecords(attempts: Attempt[], sessions: LocalPracticeSessionHistory[]) {
     const records = new Map<string, PracticeRecord>();
     let legacyId = "";
     let previousLegacyTime = 0;
@@ -586,12 +689,48 @@ function getPracticeRecords(attempts: Attempt[]) {
         const mode = attempt.sessionMode ?? "practice";
         if (existing) {
             existing.attempts.push(attempt);
+            existing.itemCount = existing.attempts.length;
+            existing.attemptedItemCount = existing.attempts.length;
             existing.completedAt = attempt.date;
         }
         else {
-            records.set(id, { id, mode, attempts: [attempt], startedAt: attempt.date, completedAt: attempt.date });
+            records.set(id, {
+                id,
+                mode,
+                attempts: [attempt],
+                checkMode: "instant",
+                itemCount: 1,
+                attemptedItemCount: 1,
+                startedAt: attempt.date,
+                completedAt: attempt.date,
+            });
         }
         if (!attempt.sessionId) previousLegacyTime = attemptTime;
+    });
+
+    sessions.filter((session) => session.status === "completed").forEach((session) => {
+        const existing = records.get(session.id);
+        if (existing) {
+            existing.checkMode = session.checkMode;
+            existing.itemCount = session.itemCount;
+            existing.attemptedItemCount = session.attemptedItemCount;
+            existing.startedAt = session.startedAt;
+            existing.completedAt = session.completedAt ?? existing.completedAt;
+            if (session.summary) existing.scoreSummary = session.summary;
+        }
+        else if (session.disclosure === "score" && session.summary) {
+            records.set(session.id, {
+                id: session.id,
+                mode: session.mode,
+                attempts: [],
+                checkMode: session.checkMode,
+                itemCount: session.itemCount,
+                attemptedItemCount: session.attemptedItemCount,
+                scoreSummary: session.summary,
+                startedAt: session.startedAt,
+                completedAt: session.completedAt ?? session.startedAt,
+            });
+        }
     });
 
     return [...records.values()].sort((left, right) => new Date(right.completedAt).getTime() - new Date(left.completedAt).getTime());
@@ -643,13 +782,6 @@ function formatAttemptDate(value: string) {
     const displayHour = String(hour % 12 || 12).padStart(2, "0");
     const minute = String(taipeiDate.getUTCMinutes()).padStart(2, "0");
     return `${taipeiDate.getUTCFullYear()}/${taipeiDate.getUTCMonth() + 1}/${taipeiDate.getUTCDate()} ${period}${displayHour}:${minute}`;
-}
-
-/** 將六位數角色密碼轉成不直接保存原文的 SHA-256 雜湊。 */
-async function hashRolePin(pin: string) {
-    const bytes = new TextEncoder().encode(pin);
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
 /** 由目前題目建立可擴充的文件欄位篩選目錄。 */
@@ -977,14 +1109,55 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
     </fieldset>;
 }
 
+/** 將伺服器解鎖的固定版本答案轉成人類可讀文字。 */
+function formatReferenceAnswers(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
+    return referenceAnswers.map((reference, index) => {
+        const optionLabels = new Map(reference.options.map((option) => [option.key, option.label]));
+        const values = reference.acceptedValues.length
+            ? reference.acceptedValues
+            : reference.answerKeys.map((key) => optionLabels.get(key) ?? key);
+        const value = values.length ? values.join("、") : "需人工批改";
+        return referenceAnswers.length > 1 ? `第 ${index + 1} 小題：${value}` : value;
+    }).join("；");
+}
+
+/** 將伺服器解鎖的固定版本解析去重後轉成人類可讀文字。 */
+function formatReferenceExplanations(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
+    return [...new Set(referenceAnswers
+        .map((reference) => reference.explanation?.trim())
+        .filter((explanation): explanation is string => Boolean(explanation)))]
+        .join("；");
+}
+
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
-function QuestionReview({ question, index, total, title, headerActions, onBack, onPrevious, onNext }: QuestionReviewProps) {
-    const [answers, setAnswers] = useState<Record<number, string>>({});
-    const [handwriting, setHandwriting] = useState<Record<number, string>>({});
+function QuestionReview({ question, serverQuestion, index, total, title, headerActions, onStartPractice, onBack, onPrevious, onNext }: QuestionReviewProps) {
+    const [referenceAnswers, setReferenceAnswers] = useState<LocalPracticeReferenceAnswer[]>([]);
+    const [referenceAnswerStatus, setReferenceAnswerStatus] = useState("");
     const questionNumber = index >= 0 ? index + 1 : 1;
     const progress = total ? (questionNumber / total) * 100 : 0;
-    const answer = answers[question.id] ?? "";
-    const handwritingValue = handwriting[question.id] ?? "";
+    const referenceExplanation = formatReferenceExplanations(referenceAnswers);
+
+    useEffect(() => {
+        let active = true;
+        if (!serverQuestion) {
+            setReferenceAnswers([]);
+            setReferenceAnswerStatus("");
+            return () => { active = false; };
+        }
+        setReferenceAnswers([]);
+        setReferenceAnswerStatus("正在讀取參考答案…");
+        void getPersistedQuestionReferenceAnswers(serverQuestion.id, serverQuestion.revisionId)
+            .then((result) => {
+                if (!active) return;
+                setReferenceAnswers(result.referenceAnswers);
+                setReferenceAnswerStatus(result.referenceAnswers.length ? "" : "這個版本尚無可顯示的參考答案。");
+            })
+            .catch((error) => {
+                if (!active) return;
+                setReferenceAnswerStatus(error instanceof Error ? error.message : "目前無法讀取參考答案。");
+            });
+        return () => { active = false; };
+    }, [serverQuestion]);
 
     return <main className="practice-focus-shell question-review-shell">
         <div className="practice-focus-frame">
@@ -995,6 +1168,7 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                 </div>
                 <div className="practice-focus-actions">
                     {headerActions}
+                    {onStartPractice && <Button onClick={onStartPractice}><BookOpen />開始練習</Button>}
                     <Button appearance="outline" tone="muted" onClick={onBack}><X />返回</Button>
                     <Button appearance="outline" disabled={index <= 0} onClick={onPrevious}><ArrowLeft />上一題</Button>
                     <Button appearance="outline" disabled={index < 0 || index >= total - 1} onClick={onNext}>下一題<ArrowRight /></Button>
@@ -1008,16 +1182,20 @@ function QuestionReview({ question, index, total, title, headerActions, onBack, 
                             <div className="practice-prompt">
                                 <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
                             </div>
-                            <QuestionAnswerFields question={question} answer={answer} onAnswer={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
+                            <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground" role="note">這裡是題目預覽，不會保存作答；請按「開始練習」正式作答。</p>
+                            {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer="" disabled onAnswer={() => {}} /> : <QuestionAnswerFields question={question} answer="" disabled onAnswer={() => {}} />}
                             <div className="question-review-solution">
                                 <p className="question-detail-label">解答</p>
-                                <strong>{formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong>
+                                <strong>{serverQuestion
+                                    ? referenceAnswers.length ? formatReferenceAnswers(referenceAnswers) : referenceAnswerStatus
+                                    : formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong>
+                                {serverQuestion && referenceExplanation && <p className="mt-2 text-sm text-muted-foreground">{referenceExplanation}</p>}
                                 <ContentImages blocks={question.blocks} placement="answer" />
                             </div>
                             <QuestionConditions question={question} />
                         </section>
                         <aside className="practice-handwriting-pane question-review-handwriting-pane">
-                            <HandwritingPad value={handwritingValue} recognitionStatus={isCharacterHandwritingQuestion(question) ? "預覽模式" : undefined} onChange={(value) => setHandwriting((current) => ({ ...current, [question.id]: value }))} />
+                            <HandwritingPad value="" disabled recognitionStatus="預覽模式" onChange={() => {}} />
                         </aside>
                     </CardContent>
                 </Card>
@@ -1094,7 +1272,7 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 
 /** 顯示單題作答及手寫區。 */
 function QuestionFlow(props: QuestionFlowProps) {
-    const { question, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
+    const { question, serverQuestion, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
     const isLast = index === total - 1;
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
@@ -1104,7 +1282,11 @@ function QuestionFlow(props: QuestionFlowProps) {
         const partIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
         return partIndex >= 0 && Boolean(selectedAnswers[partIndex]);
     });
-    const canSubmit = question.kind === "written"
+    const enteredParts = new Map(parsePracticeAnswers(answer).map((entry) => [entry.partId, entry.value]));
+    const canSubmit = serverQuestion ? serverQuestion.parts.filter((part) => !partIds?.length || partIds.includes(part.id)).every((part) => {
+        const value = enteredParts.get(part.id);
+        return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
+    }) : question.kind === "written"
         ? needsCharacterRecognition
             ? Boolean(handwriting)
             : targetParts.length
@@ -1113,6 +1295,9 @@ function QuestionFlow(props: QuestionFlowProps) {
         : question.kind === "multi-choice"
             ? hasCompletePartAnswers
             : Boolean(answer.trim());
+    const referenceExplanation = feedback?.referenceAnswers?.length
+        ? formatReferenceExplanations(feedback.referenceAnswers)
+        : "";
     return (
         <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
             <CardContent className="practice-question-layout bg-white p-4">
@@ -1120,11 +1305,14 @@ function QuestionFlow(props: QuestionFlowProps) {
                     <div className="practice-prompt">
                         <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                     </div>
-                    <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />
+                    {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
                     {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
-                        <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
+                        <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{serverQuestion ? feedback.correct === true ? "答對了，作答已保存" : feedback.correct === false ? "答案不符標準答案，已加入錯題複習" : "作答已保存，等待批改或補齊標準答案" : feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
+                        {serverQuestion && feedback.referenceAnswers?.length ? <p className="mt-2 text-sm font-semibold">參考答案：{formatReferenceAnswers(feedback.referenceAnswers)}</p> : null}
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
-                        {feedback.correct !== null && <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>}
+                        {feedback.correct !== null && (serverQuestion
+                            ? referenceExplanation ? <p className="mt-2 text-sm text-muted-foreground">解析：{referenceExplanation}</p> : null
+                            : <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>)}
                     </div>}
                     <QuestionConditions question={question} />
                 </section>
@@ -1133,26 +1321,44 @@ function QuestionFlow(props: QuestionFlowProps) {
                 </aside>
                 <div className="practice-question-actions">{feedback
                     ? <Button onClick={props.onNext}>{isLast ? "查看結果" : "下一題"}<ArrowRight /></Button>
-                    : <Button disabled={!canSubmit} onClick={props.onSubmit}>{checkMode === "instant" ? "檢查答案" : isLast ? checkMode === "score" ? "完成並看成績" : "完成並檢核" : "儲存並到下一題"}<ArrowRight /></Button>}
+                    : <Button disabled={!canSubmit || props.busy} onClick={props.onSubmit}>{props.busy ? "正在保存…" : checkMode === "instant" ? "檢查答案" : isLast ? checkMode === "score" ? "完成並看成績" : "完成並檢核" : checkMode === "score" ? "計入成績並到下一題" : "儲存並到下一題"}<ArrowRight /></Button>}
                 </div>
             </CardContent>
         </Card>
     );
 }
 
-/** Lerniqa 完整前端模擬首頁。 */
+/** Lerniqa 多科目學習工作區。 */
 export default function Home() {
     const pathname = usePathname();
     const router = useRouter();
     const [learners, setLearners] = useState<Learner[]>([]);
     const [activeLearnerId, setActiveLearnerId] = useState("");
     const [attemptsByLearner, setAttemptsByLearner] = useState<Record<string, Attempt[]>>({});
+    const [practiceSessionsByLearner, setPracticeSessionsByLearner] = useState<Record<string, LocalPracticeSessionHistory[]>>({});
     const [plansByLearner, setPlansByLearner] = useState<Record<string, PracticePlan>>({});
     const [schedulesByLearner, setSchedulesByLearner] = useState<Record<string, ScheduledPractice[]>>({});
     const [queuedSimilarByLearner, setQueuedSimilarByLearner] = useState<Record<string, number[]>>({});
     const [questionCollectionsByLearner, setQuestionCollectionsByLearner] = useState<Record<string, QuestionCollection[]>>({});
     const [roleAccess, setRoleAccess] = useState<RoleAccess>(DEFAULT_ROLE_ACCESS);
     const [questions, setQuestions] = useState<Question[]>([]);
+    const [persistedQuestions, setPersistedQuestions] = useState<Map<number, LocalPracticeQuestion>>(new Map());
+    const [persistedLearnerId, setPersistedLearnerId] = useState("");
+    const [practiceAccount, setPracticeAccount] = useState<PracticeAccount>();
+    const [practiceReloadToken, setPracticeReloadToken] = useState(0);
+    const [practiceServiceError, setPracticeServiceError] = useState("");
+    const [practiceBusy, setPracticeBusy] = useState(false);
+    const practiceRequestRef = useRef(false);
+    const sessionRequestRef = useRef<{ fingerprint: string; sessionId: string } | undefined>(undefined);
+    const attemptRequestRef = useRef<{
+        questionId: string;
+        sessionId: string;
+        sessionItemId?: string;
+        partId?: string;
+        idempotencyKey: string;
+        answers: ReturnType<typeof parsePracticeAnswers>;
+        durationSeconds: number;
+    } | undefined>(undefined);
     const [imports, setImports] = useState<ImportBatch[]>([]);
     const [importBooks, setImportBooks] = useState<ImportBook[]>([]);
     const [section, setSection] = useState<Section>("overview");
@@ -1219,19 +1425,26 @@ export default function Home() {
     const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
     const [requestedRole, setRequestedRole] = useState<AccountRole>(DEFAULT_ROLE_ACCESS.activeRole);
-    const [rolePin, setRolePin] = useState("");
+    const [rolePassword, setRolePassword] = useState("");
     const [roleStatus, setRoleStatus] = useState("");
-    const [roleResetOpen, setRoleResetOpen] = useState(false);
-    const [roleEmail, setRoleEmail] = useState("");
-    const [roleCode, setRoleCode] = useState("");
-    const [newRolePin, setNewRolePin] = useState("");
-    const [roleCodeSent, setRoleCodeSent] = useState(false);
     const [questionLimitOptionsDraft, setQuestionLimitOptionsDraft] = useState("");
     const [questionLimitOptionsError, setQuestionLimitOptionsError] = useState("");
     const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
     const [subjectChoice, setSubjectChoice] = useState("");
     const [subjectDraft, setSubjectDraft] = useState("");
     const [subjectError, setSubjectError] = useState("");
+    const [learnerProfileDialogOpen, setLearnerProfileDialogOpen] = useState(false);
+    const [learnerProfileDraft, setLearnerProfileDraft] = useState<LearnerProfileDraft>(EMPTY_LEARNER_PROFILE_DRAFT);
+    const [learnerProfileStatus, setLearnerProfileStatus] = useState("");
+    const [learnerProfileBusy, setLearnerProfileBusy] = useState(false);
+    const [subjectSettingBusyCode, setSubjectSettingBusyCode] = useState("");
+    const [subjectSettingStatus, setSubjectSettingStatus] = useState("");
+    const createLearnerRequestRef = useRef<{ fingerprint: string; clientRequestId: string } | undefined>(undefined);
+    const [roleSwitchBusy, setRoleSwitchBusy] = useState(false);
+    const [identityRole, setIdentityRole] = useState<PracticeAccountRole>("learner");
+    const [identityPassword, setIdentityPassword] = useState("");
+    const [identityStatus, setIdentityStatus] = useState("");
+    const [identityBusy, setIdentityBusy] = useState(false);
     const headingRef = useRef<HTMLHeadingElement>(null);
     const overviewHeadingRef = useRef<HTMLHeadingElement>(null);
     const sessionHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -1239,8 +1452,65 @@ export default function Home() {
     const skipNextApiWriteRef = useRef(true);
     const questionOverviewScrollRef = useRef(0);
     const shouldRestoreQuestionScrollRef = useRef(false);
+    const questionFilterBaselineRef = useRef<{
+        learnerId: string;
+        grade: string;
+        filters: QuestionFilters;
+    } | undefined>(undefined);
+
+    const clearAuthenticatedWorkspace = useCallback((message: string) => {
+        // Account, learner, questions, attempts, and the active session are one privacy boundary.
+        // A 401 from any operation must purge all of them before redirecting a shared-device tab.
+        setPracticeAccount(undefined);
+        setPersistedQuestions(new Map());
+        setPersistedLearnerId("");
+        setLearners([]);
+        setActiveLearnerId("");
+        setQuestions([]);
+        setAttemptsByLearner({});
+        setPracticeSessionsByLearner({});
+        setPlansByLearner({});
+        setSchedulesByLearner({});
+        setQueuedSimilarByLearner({});
+        setQuestionCollectionsByLearner({});
+        setRoleAccess(DEFAULT_ROLE_ACCESS);
+        setImports([]);
+        setImportBooks([]);
+        setSession(undefined);
+        setSessionPaused(false);
+        setSessionExitOpen(false);
+        setAnswer("");
+        setHandwriting("");
+        setSelectedQuestionIds([]);
+        setSelectedQuestionId(undefined);
+        setSelectedMistakes([]);
+        setPracticeBusy(false);
+        practiceRequestRef.current = false;
+        sessionRequestRef.current = undefined;
+        attemptRequestRef.current = undefined;
+        setPracticeServiceError("");
+        setStorageError(message);
+        router.replace("/account");
+    }, [router]);
 
     const activeLearner = learners.find((learner) => learner.id === activeLearnerId) ?? learners[0] ?? EMPTY_LEARNER;
+    const accountLearners = practiceAccount?.learners?.length
+        ? practiceAccount.learners
+        : practiceAccount?.learner ? [practiceAccount.learner] : [];
+    const activeAccountLearner = accountLearners.find((learner) => learner.id === activeLearnerId)
+        ?? (practiceAccount?.learner?.id === activeLearnerId ? practiceAccount.learner : undefined);
+    const canAccessSystemSettings = !practiceAccount || Boolean(
+        (practiceAccount.activeRole === "parent" || practiceAccount.activeRole === "tutor")
+        || (practiceAccount.accountRole === "learner"
+            && practiceAccount.activeRole === "learner"
+            && activeAccountLearner?.isSelf)
+    );
+    const canAccessLearnerSettings = !practiceAccount || Boolean(activeAccountLearner);
+    const canManageCurrentLearner = !practiceAccount || Boolean(activeAccountLearner?.canManageSettings);
+    const canCreateLearner = Boolean(practiceAccount
+        && (practiceAccount.activeRole === "parent" || practiceAccount.activeRole === "tutor"));
+    const grantedRoleOptions = (practiceAccount?.roles ?? [])
+        .map((role) => ({ value: ACCOUNT_ROLE_LABELS[role], label: ACCOUNT_ROLE_LABELS[role] }));
     const storedPlan = plansByLearner[activeLearnerId];
     const activePlan: PracticePlan = {
         ...DEFAULT_PLAN,
@@ -1248,17 +1518,19 @@ export default function Home() {
         examSettings: storedPlan?.examSettings?.length ? storedPlan.examSettings : DEFAULT_PLAN.examSettings,
         activeExamId: storedPlan?.activeExamId ?? DEFAULT_PLAN.activeExamId,
         difficultyMix: { ...DEFAULT_DIFFICULTY_MIX, ...storedPlan?.difficultyMix },
+        scopeFilters: [...(storedPlan?.scopeFilters ?? DEFAULT_PLAN.scopeFilters)],
+        difficultyFilters: [...(storedPlan?.difficultyFilters ?? DEFAULT_PLAN.difficultyFilters)],
         sourceFilters: storedPlan?.sourceFilters
             ? [...new Set(storedPlan.sourceFilters.map(normalizeQuestionSourceCategory))]
-            : DEFAULT_PLAN.sourceFilters,
-        questionKind: storedPlan?.questionKind ?? DEFAULT_PLAN.questionKind,
+            : [...DEFAULT_PLAN.sourceFilters],
+        questionKinds: [...(storedPlan?.questionKinds ?? DEFAULT_PLAN.questionKinds)],
         knowledge: storedPlan?.knowledge ?? DEFAULT_PLAN.knowledge,
-        metadataFilters: storedPlan?.metadataFilters ?? DEFAULT_PLAN.metadataFilters,
+        metadataFilters: Object.fromEntries(Object.entries(storedPlan?.metadataFilters ?? DEFAULT_PLAN.metadataFilters)
+            .map(([key, values]) => [key, [...values]])),
     };
     const activeExam = activePlan.examSettings.find((exam) => exam.id === activePlan.activeExamId)
         ?? activePlan.examSettings[0]
         ?? DEFAULT_EXAM_SETTING;
-    const activePlanBasis = activePlan.basis;
     const activeDifficultyMix = activePlan.difficultyMix;
     const difficultyTotal = activeDifficultyMix.easy + activeDifficultyMix.medium + activeDifficultyMix.hard;
     const difficultyMixValid = !activePlan.difficultyMixEnabled || difficultyTotal === 100;
@@ -1269,23 +1541,116 @@ export default function Home() {
         .sort((left, right) => `${left.date}T${left.time ?? "23:59"}`.localeCompare(`${right.date}T${right.time ?? "23:59"}`)), [activeLearnerId, schedulesByLearner]);
     const isScheduleListPage = pathname === PRACTICE_SCHEDULES_PATH;
     const configurableSubjects = useMemo(() => [...new Set([
-        ...SUBJECTS.filter((subject) => Boolean(activeLearner.bookVersions[subject])),
+        ...(persistedLearnerId === activeLearner.id
+            ? Object.keys(activeLearner.bookVersions)
+            : SUBJECTS.filter((subject) => Boolean(activeLearner.bookVersions[subject]))),
         ...activeLearner.customSubjects,
-    ])], [activeLearner.bookVersions, activeLearner.customSubjects]);
+    ])], [activeLearner.bookVersions, activeLearner.customSubjects, activeLearner.id, persistedLearnerId]);
     const unselectedCatalogSubjects = useMemo(
         () => SUBJECTS.filter((subject) => !configurableSubjects.includes(subject)),
         [configurableSubjects],
     );
-    const availableSubjects = useMemo(() => configurableSubjects
-        .filter((subject) => Boolean(activeLearner.bookVersions[subject])), [activeLearner.bookVersions, configurableSubjects]);
+    const availableSubjects = useMemo(() => persistedLearnerId === activeLearner.id
+        ? configurableSubjects
+        : configurableSubjects.filter((subject) => Boolean(activeLearner.bookVersions[subject])), [activeLearner.bookVersions, activeLearner.id, configurableSubjects, persistedLearnerId]);
     const baseQuestions = useMemo(() => questions.filter((question) => !question.generatedFrom), [questions]);
-    const learnerQuestions = useMemo(() => baseQuestions.filter((question) => question.grade === activeLearner.grade
-        && availableSubjects.includes(question.subject)), [activeLearner.grade, availableSubjects, baseQuestions]);
+    const learnerQuestions = useMemo(() => baseQuestions.filter((question) => (!persistedQuestions.has(question.id) || activeLearnerId === persistedLearnerId)
+        && question.grade === activeLearner.grade
+        && availableSubjects.includes(question.subject)), [activeLearner.grade, activeLearnerId, persistedLearnerId, persistedQuestions, availableSubjects, baseQuestions]);
+
+    useEffect(() => {
+        const handleAuthenticationExpired = () => clearAuthenticatedWorkspace(
+            "登入狀態已失效，請重新登入。未保留或載入任何帳號資料。",
+        );
+        const handleAuthenticationStorage = (event: StorageEvent) => {
+            if (isAuthSessionStorageEvent(event)) {
+                handleAuthenticationExpired();
+                return;
+            }
+            if (isAuthSessionContextStorageEvent(event)) window.location.reload();
+        };
+        window.addEventListener(PRACTICE_AUTH_EXPIRED_EVENT, handleAuthenticationExpired);
+        window.addEventListener("storage", handleAuthenticationStorage);
+        return () => {
+            window.removeEventListener(PRACTICE_AUTH_EXPIRED_EVENT, handleAuthenticationExpired);
+            window.removeEventListener("storage", handleAuthenticationStorage);
+        };
+    }, [clearAuthenticatedWorkspace]);
+
+    useEffect(() => {
+        const expiresAt = practiceAccount?.expiresAt;
+        if (!expiresAt) return;
+        let active = true;
+        let revalidating = false;
+        const expireIfNeeded = (): boolean => {
+            if (!isPracticeSessionExpired(expiresAt)) return false;
+            broadcastAuthSessionExpired();
+            return true;
+        };
+        const revalidateAuthentication = async () => {
+            if (expireIfNeeded() || revalidating) return;
+            revalidating = true;
+            try {
+                const response = await fetch("/api/v1/auth/me", { cache: "no-store" });
+                if (!active) return;
+                if (response.status === 401) {
+                    broadcastAuthSessionExpired();
+                    return;
+                }
+                if (response.ok) {
+                    const payload = await response.json().catch(() => null) as {
+                        data?: { account?: PracticeAccount };
+                    } | null;
+                    const currentAccount = payload?.data?.account;
+                    if (!currentAccount
+                        || currentAccount.activeRole !== practiceAccount.activeRole
+                        || currentAccount.accountRole !== practiceAccount.accountRole
+                        || currentAccount.learner?.id !== practiceAccount.learner?.id) {
+                        clearAuthenticatedWorkspace("帳號的角色或學習者已在其他分頁變更；舊工作區資料已清除，請重新進入。");
+                    }
+                }
+            }
+            catch {
+                // A transient network failure must not erase an otherwise valid local workspace.
+            }
+            finally {
+                revalidating = false;
+            }
+        };
+        const expiresAtMillis = new Date(expiresAt).getTime();
+        const delay = Math.max(0, Math.min(expiresAtMillis - Date.now(), 2_147_483_647));
+        const timer = window.setTimeout(expireIfNeeded, delay);
+        const handleFocus = () => { void revalidateAuthentication(); };
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible") void revalidateAuthentication();
+        };
+        window.addEventListener("focus", handleFocus);
+        document.addEventListener("visibilitychange", handleVisibility);
+        expireIfNeeded();
+        return () => {
+            active = false;
+            window.clearTimeout(timer);
+            window.removeEventListener("focus", handleFocus);
+            document.removeEventListener("visibilitychange", handleVisibility);
+        };
+    }, [
+        clearAuthenticatedWorkspace,
+        practiceAccount?.accountRole,
+        practiceAccount?.activeRole,
+        practiceAccount?.expiresAt,
+        practiceAccount?.learner?.id,
+    ]);
 
     useEffect(() => {
         setQuestionLimitOptionsDraft(activeLearner.questionLimitOptions.join(", "));
         setQuestionLimitOptionsError("");
     }, [activeLearner.id, activeLearner.questionLimitOptions]);
+    useEffect(() => {
+        if (!practiceAccount?.accountRole) return;
+        setIdentityRole(practiceAccount.accountRole);
+        setIdentityPassword("");
+        setIdentityStatus("");
+    }, [practiceAccount?.accountRole]);
     const activeQuestionCollections = useMemo(
         () => questionCollectionsByLearner[activeLearnerId] ?? [],
         [activeLearnerId, questionCollectionsByLearner],
@@ -1295,13 +1660,13 @@ export default function Home() {
         semester: activePlan.semester,
         version: activePlan.subject === "全部"
             ? ALL_QUESTION_FILTERS
-            : activePlan.bookVersion ?? activeLearner.bookVersions[activePlan.subject] ?? ALL_QUESTION_FILTERS,
-        scope: activePlanBasis === "chapter" ? activePlan.scope : ALL_UNITS,
+            : activePlan.bookVersion || activeLearner.bookVersions[activePlan.subject] || ALL_QUESTION_FILTERS,
+        scope: activePlan.scopeFilters,
         topic: activePlan.topic,
         knowledge: activePlan.knowledge === ALL_KNOWLEDGE ? ALL_QUESTION_FILTERS : activePlan.knowledge,
-        difficulty: activePlan.difficultyMixEnabled ? ALL_QUESTION_FILTERS : activePlan.difficulty,
-        kind: activePlan.questionKind,
-        source: activePlan.sourceFilters[0] ?? ALL_QUESTION_FILTERS,
+        difficulty: activePlan.difficultyMixEnabled ? [] : activePlan.difficultyFilters,
+        kind: activePlan.questionKinds,
+        source: activePlan.sourceFilters,
         creator: activePlan.creatorFilter,
         metadata: Object.fromEntries(Object.entries(activePlan.metadataFilters).map(([key, values]) => [
             key,
@@ -1309,7 +1674,26 @@ export default function Home() {
         ])),
         collection: activePlan.collection,
         search: activePlan.search,
-    }), [activeLearner.bookVersions, activePlan, activePlanBasis]);
+    }), [activeLearner.bookVersions, activePlan]);
+    const questionFilterBaseline = useMemo<QuestionFilters>(() => {
+        const subject = availableSubjects.find((candidate) => learnerQuestions.some((question) => question.subject === candidate))
+            ?? "全部";
+        const semester = activeLearner.semester
+            && learnerQuestions.some((question) => question.subject === subject && question.semester === activeLearner.semester)
+            ? activeLearner.semester
+            : ALL_QUESTION_FILTERS;
+        const preferredVersion = subject === "全部" ? "" : activeLearner.bookVersions[subject];
+        const version = preferredVersion
+            && learnerQuestions.some((question) => question.subject === subject && question.bookVersion === preferredVersion)
+            ? preferredVersion
+            : ALL_QUESTION_FILTERS;
+        return normalizeQuestionFilters({
+            ...DEFAULT_QUESTION_FILTERS,
+            subject,
+            semester,
+            version,
+        }, learnerQuestions, activeQuestionCollections);
+    }, [activeLearner.bookVersions, activeLearner.semester, activeQuestionCollections, availableSubjects, learnerQuestions]);
     const filteredOverviewQuestions = useMemo(
         () => filterQuestions(learnerQuestions, questionFilters, activeQuestionCollections),
         [activeQuestionCollections, learnerQuestions, questionFilters],
@@ -1336,7 +1720,7 @@ export default function Home() {
         const configuredVersion = activePlan.subject === question.subject && activePlan.bookVersion
             ? activePlan.bookVersion
             : activeLearner.bookVersions[question.subject];
-        return !questionUsesTextbookVersion(question) || !question.bookVersion || question.bookVersion === configuredVersion;
+        return !questionUsesTextbookVersion(question) || !question.bookVersion || !configuredVersion || question.bookVersion === configuredVersion;
     }), [activeLearner.bookVersions, activePlan.bookVersion, activePlan.subject, learnerQuestions]);
     const scopeOptions = useMemo(() => {
         const filtered = activePlan.subject === "全部" ? versionedLearnerQuestions : versionedLearnerQuestions.filter((question) => question.subject === activePlan.subject);
@@ -1349,19 +1733,6 @@ export default function Home() {
             .map((question) => [getUnitScopeValue(question), getUnitLabel(question.unit)]));
         return [subject, [...units].map(([value, label]) => ({ value, label }))];
     })) as Partial<Record<Subject, { value: string; label: string }[]>>, [availableSubjects, versionedLearnerQuestions]);
-    const scopedQuestions = useMemo(() => versionedLearnerQuestions
-        .filter((question) => activePlan.subject === "全部" || question.subject === activePlan.subject)
-        .filter((question) => {
-            if (activePlanBasis === "chapter") return activePlan.scope === ALL_UNITS || getUnitScopeValue(question) === activePlan.scope;
-            const options = assessmentOptionsBySubject[question.subject] ?? [];
-            const storedRange = activeExam.ranges[question.subject] ?? { start: ALL_UNITS, end: ALL_UNITS };
-            const start = options.some((option) => option.value === storedRange.start) ? storedRange.start : options[0]?.value;
-            const end = options.some((option) => option.value === storedRange.end) ? storedRange.end : options.at(-1)?.value;
-            const questionIndex = options.findIndex((option) => option.value === getUnitScopeValue(question));
-            const startIndex = options.findIndex((option) => option.value === start);
-            const endIndex = options.findIndex((option) => option.value === end);
-            return questionIndex >= Math.min(startIndex, endIndex) && questionIndex <= Math.max(startIndex, endIndex);
-        }), [activeExam.ranges, activePlan.scope, activePlan.subject, activePlanBasis, assessmentOptionsBySubject, versionedLearnerQuestions]);
     const recentImports = useMemo(() => [...imports]
         .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
         .slice(0, RECENT_IMPORT_LIMIT), [imports]);
@@ -1380,7 +1751,7 @@ export default function Home() {
         ? bankFilteredQuestions
         : selectedImportQuestions;
     const importReviewIndex = importReviewQuestions.findIndex((question) => question.id === importReviewQuestionId);
-    const practiceCandidateQuestions = activePlanBasis === "assessment" ? scopedQuestions : learnerQuestions;
+    const practiceCandidateQuestions = learnerQuestions;
     const eligibleQuestions = useMemo(
         () => filterQuestions(practiceCandidateQuestions, practiceFilters, activeQuestionCollections),
         [activeQuestionCollections, practiceCandidateQuestions, practiceFilters],
@@ -1401,14 +1772,18 @@ export default function Home() {
     const selectedAccuracy = selectedReviewedAttempts.length
         ? Math.round((selectedCorrectCount / selectedReviewedAttempts.length) * 100)
         : null;
-    const practiceRecords = useMemo(() => getPracticeRecords(activeAttempts), [activeAttempts]);
+    const activePracticeSessions = practiceSessionsByLearner[activeLearnerId] ?? [];
+    const practiceRecords = useMemo(
+        () => getPracticeRecords(activeAttempts, activePracticeSessions),
+        [activeAttempts, activePracticeSessions],
+    );
     const mistakeQuestions = useMemo(() => {
         const wrongCounts = activeAttempts.reduce<Map<number, number>>((counts, attempt) => {
-            if (attempt.correct !== false) return counts;
+            if (!needsWrongReview(attempt)) return counts;
             counts.set(attempt.questionId, (counts.get(attempt.questionId) ?? 0) + 1);
             return counts;
         }, new Map());
-        return latestAttempts.filter((attempt) => attempt.correct === false)
+        return latestAttempts.filter(needsWrongReview)
             .map((attempt) => questions.find((question) => question.id === attempt.questionId))
             .filter((question): question is Question => Boolean(question))
             .sort((left, right) => (wrongCounts.get(right.id) ?? 0) - (wrongCounts.get(left.id) ?? 0));
@@ -1451,40 +1826,209 @@ export default function Home() {
     const pagedCommunityMistakeRows = visibleCommunityMistakeRows.slice((activeMistakePage - 1) * MISTAKE_PAGE_SIZE, activeMistakePage * MISTAKE_PAGE_SIZE);
     const reviewedAttempts = activeAttempts.filter((attempt) => attempt.correct !== null);
     const correctCount = reviewedAttempts.filter((attempt) => attempt.correct === true).length;
-    const accuracy = reviewedAttempts.length ? Math.round((correctCount / reviewedAttempts.length) * 100) : 0;
+    const scoreOnlySummaries = practiceRecords.flatMap((record) => record.scoreSummary ? [record.scoreSummary] : []);
+    const scoreOnlyCorrectCount = scoreOnlySummaries.reduce((total, summary) => total + summary.correct, 0);
+    const scoreOnlyWrongCount = scoreOnlySummaries.reduce((total, summary) => total + summary.wrong, 0);
+    const reviewedCount = reviewedAttempts.length + scoreOnlyCorrectCount + scoreOnlyWrongCount;
+    const totalCorrectCount = correctCount + scoreOnlyCorrectCount;
+    const historyAttemptedCount = activeAttempts.length
+        + practiceRecords.reduce((total, record) => total + (record.scoreSummary ? record.attemptedItemCount : 0), 0);
+    const accuracy = reviewedCount ? Math.round((totalCorrectCount / reviewedCount) * 100) : 0;
     const usableQueue = activeQueue.filter((id) => questions.some((question) => question.id === id && question.generatedFrom && question.grade === activeLearner.grade));
     const currentQuestion = session ? questions.find((question) => question.id === session.questionIds[session.index]) : undefined;
+    const currentPersistedItem = session?.persistedItems?.[session.index];
+    const currentTargetPartIds = currentPersistedItem?.partId
+        ? [currentPersistedItem.partId]
+        : currentQuestion ? session?.partIdsByQuestion?.[currentQuestion.id] : undefined;
     const sessionQuestionLabel = getSessionQuestionLabel(currentQuestion, session, questions);
-    const currentFeedback = currentQuestion && session?.checkMode === "instant" ? session.attempts.find((attempt) => attempt.questionId === currentQuestion.id) : undefined;
+    const currentFeedback = currentQuestion && session?.checkMode === "instant"
+        ? session.attempts.find((attempt) => currentPersistedItem
+            ? attempt.sessionItemId === currentPersistedItem.id
+            : attempt.questionId === currentQuestion.id)
+        : undefined;
     const planSubjectLabel = activeSubject
         ? `${activeSubject} · ${activeBookVersion}版`
         : "全部科目";
+    const subjectsWithoutPreferredVersion = availableSubjects.filter((subject) => !activeLearner.bookVersions[subject]);
+    const learnerFilterSetupNotice = !activeLearner.semester
+        ? "這位學習者尚未設定學期；目前不會自動限制學期。"
+        : subjectsWithoutPreferredVersion.length
+            ? `${subjectsWithoutPreferredVersion.join("、")}尚未設定教材版本；系統不會自行猜選版本。`
+            : "";
 
     useEffect(() => {
         let active = true;
 
         async function loadBootstrap() {
             try {
-                const response = await fetch("/api/v1/bootstrap", { cache: "no-store" });
-                if (!response.ok) throw new Error("BOOTSTRAP_FAILED");
-                const payload = await response.json() as { data: BootstrapResponse };
+                const persisted = await loadPersistedPractice();
                 if (!active) return;
-                const { state, questions: loadedQuestions, imports: loadedImports } = payload.data;
-                setLearners(state.learners);
-                setActiveLearnerId(state.activeLearnerId);
-                setAttemptsByLearner(state.attemptsByLearner);
-                setPlansByLearner(state.plansByLearner);
-                setSchedulesByLearner(state.schedulesByLearner);
-                setQueuedSimilarByLearner(state.queuedSimilarByLearner);
-                setQuestionCollectionsByLearner(state.questionCollectionsByLearner);
-                setRoleAccess(state.roleAccess);
-                setImportBooks(state.importBooks);
-                setQuestions(loadedQuestions);
-                setImports(loadedImports);
+                const mapped = new Map(persisted.questions.map((question) => [practiceRouteId(question.id), question]));
+                if (mapped.size !== persisted.questions.length) throw new Error("題目路徑識別碼重複，請聯絡管理者。");
+                const accountLearner = persisted.account.learner;
+                setPracticeAccount(persisted.account);
+                if (!accountLearner) {
+                    const accessibleLearners = (persisted.account.learners ?? []).map((profile) => mapPracticeAccountLearner(
+                        profile,
+                        readPracticePreferences(profile.id),
+                    ));
+                    setPersistedQuestions(new Map());
+                    setPersistedLearnerId("");
+                    setQuestions([]);
+                    setLearners(accessibleLearners);
+                    setActiveLearnerId("");
+                    setAttemptsByLearner({});
+                    setPracticeSessionsByLearner({});
+                    setPlansByLearner({});
+                    setSchedulesByLearner({});
+                    setQuestionCollectionsByLearner({});
+                    setQueuedSimilarByLearner({});
+                    setRoleAccess(roleAccessFromPracticeAccount(persisted.account));
+                    setImports([]);
+                    setImportBooks([]);
+                    setStorageError("");
+                    setPracticeServiceError("請先在系統設定建立或選擇學習者。");
+                    return;
+                }
+                const preferences = readPracticePreferences(accountLearner.id);
+                const learner = mapPracticeAccountLearner(accountLearner, preferences);
+                const accessibleProfiles = persisted.account.learners?.length
+                    ? persisted.account.learners
+                    : [accountLearner];
+                const accessibleLearners = accessibleProfiles.map((profile) => mapPracticeAccountLearner(
+                    profile,
+                    profile.id === accountLearner.id ? preferences : readPracticePreferences(profile.id),
+                ));
+                const adaptedQuestions = persisted.questions.map(adaptPracticeQuestion);
+                const enabledSubjects = new Set([...Object.keys(learner.bookVersions), ...learner.customSubjects]);
+                const learnerCatalog = adaptedQuestions.filter((question) => (
+                    question.grade === learner.grade && enabledSubjects.has(question.subject)
+                ));
+                const collections = preferences?.collections ?? [];
+                const initialPlan = preferences?.plan ?? createInitialPracticePlan(
+                    learner,
+                    learnerCatalog,
+                    accountLearner.preferences?.defaultCheckMode,
+                );
+                const normalizedPlan = normalizeLoadedPracticePlan(initialPlan, learner, learnerCatalog, collections);
+                setPersistedQuestions(mapped);
+                setPersistedLearnerId(learner.id);
+                setQuestions(adaptedQuestions);
+                setLearners(accessibleLearners);
+                setActiveLearnerId(learner.id);
+                const adaptedAttempts = persisted.attempts.map((attempt) => adaptPracticeAttempt(attempt)).reverse();
+                setAttemptsByLearner({ [learner.id]: adaptedAttempts });
+                setPracticeSessionsByLearner({ [learner.id]: persisted.sessions });
+                setPlansByLearner({ [learner.id]: normalizedPlan });
+                setSchedulesByLearner({ [learner.id]: preferences?.schedules ?? [] });
+                setQuestionCollectionsByLearner({ [learner.id]: collections });
+                setQueuedSimilarByLearner({ [learner.id]: [] });
+                setRoleAccess(roleAccessFromPracticeAccount(persisted.account));
+                setImports([]);
+                setImportBooks([]);
                 setStorageError("");
+                const resumeSessionId = readPracticeSessionHint(learner.id);
+                if (resumeSessionId) {
+                    try {
+                        const restoredResult = await getPersistedPracticeSession(resumeSessionId);
+                        const restored = restoredResult.session;
+                        const restorable = restored.status === "active" || restored.status === "paused";
+                        const restoredItems = "items" in restored ? restored.items : [];
+                        const restoredQuestionIds = restoredItems.map((item) => practiceRouteId(item.questionId));
+                        const currentRevisionsMatch = restoredItems.every((item, index) => (
+                            mapped.get(restoredQuestionIds[index]!)?.revisionId === item.revisionId
+                        ));
+                        if (restorable && restoredQuestionIds.length && currentRevisionsMatch) {
+                            const disclosedAttempts = restoredResult.disclosure === "detailed"
+                                ? restoredResult.attempts.map((attempt) => adaptPracticeAttempt(attempt))
+                                : adaptedAttempts.filter((attempt) => attempt.sessionId === restored.id);
+                            const disclosedByItem = new Map(disclosedAttempts.flatMap((attempt) => (
+                                attempt.sessionItemId ? [[attempt.sessionItemId, attempt] as const] : []
+                            )));
+                            const restoredAttempts = restoredItems.flatMap((item) => {
+                                if (!item.answered) return [];
+                                const questionId = practiceRouteId(item.questionId);
+                                return [disclosedByItem.get(item.id) ?? {
+                                    sessionId: restored.id,
+                                    sessionItemId: item.id,
+                                    sessionMode: restored.mode,
+                                    questionId,
+                                    revisionId: item.revisionId,
+                                    ...(item.partId ? { partId: item.partId } : {}),
+                                    answer: "已保存的作答",
+                                    correct: null,
+                                    date: restored.startedAt,
+                                    durationSeconds: 0,
+                                }];
+                            });
+                            const nextIndex = restoredItems.findIndex((item) => !item.answered);
+                            if (nextIndex >= 0) {
+                                setSession({
+                                    id: restored.id,
+                                    startedAt: restored.startedAt,
+                                    learnerId: learner.id,
+                                    mode: restored.mode,
+                                    checkMode: restored.checkMode,
+                                    phase: "answering",
+                                    questionIds: restoredQuestionIds,
+                                    persistedItems: restoredItems.map((item) => ({
+                                        id: item.id,
+                                        questionId: practiceRouteId(item.questionId),
+                                        partId: item.partId,
+                                    })),
+                                    index: nextIndex,
+                                    attempts: restoredAttempts,
+                                    questionStartedAt: Date.now(),
+                                });
+                                setSessionPaused(true);
+                                if (restored.status === "active") {
+                                    await updatePersistedPracticeSessionStatus(restored.id, "paused");
+                                }
+                            }
+                            else clearPracticeSessionHint(learner.id);
+                        }
+                        else if (!restorable) clearPracticeSessionHint(learner.id);
+                        else {
+                            await updatePersistedPracticeSessionStatus(restored.id, "abandoned");
+                            clearPracticeSessionHint(learner.id);
+                            setPracticeServiceError("這次練習使用的題目版本已更新；舊練習已安全關閉，請重新建立練習。");
+                        }
+                    }
+                    catch {
+                        setPracticeServiceError("尚未能確認先前練習的狀態；保留恢復識別碼，稍後可重新載入。");
+                    }
+                }
+                else setPracticeServiceError("");
             }
-            catch {
-                if (active) setStorageError("無法讀取 JSON 模擬 API，請確認本機開發服務仍在運作。");
+            catch (error) {
+                if (!active) return;
+                // The authenticated API is the sole identity source for this workspace. Clearing every
+                // account-scoped value prevents a previous user or the legacy fixture from surviving a
+                // missing/expired session during refresh, tab restore, or account switching.
+                if (error instanceof PracticeApiError && error.status === 401) {
+                    clearAuthenticatedWorkspace("登入狀態已失效，請重新登入。未載入任何測試帳號或其他帳號資料。");
+                }
+                else {
+                    setPracticeAccount(undefined);
+                    setPersistedQuestions(new Map());
+                    setPersistedLearnerId("");
+                    setLearners([]);
+                    setActiveLearnerId("");
+                    setQuestions([]);
+                    setAttemptsByLearner({});
+                    setPracticeSessionsByLearner({});
+                    setPlansByLearner({});
+                    setSchedulesByLearner({});
+                    setQueuedSimilarByLearner({});
+                    setQuestionCollectionsByLearner({});
+                    setRoleAccess(DEFAULT_ROLE_ACCESS);
+                    setImports([]);
+                    setImportBooks([]);
+                    setSession(undefined);
+                    setPracticeServiceError("");
+                    const practiceFailure = error instanceof Error ? error.message : "目前無法讀取正式題庫。";
+                    setStorageError(`${practiceFailure} 未載入任何帳號資料，請稍後重試。`);
+                }
             }
             finally {
                 if (active) setIsHydrated(true);
@@ -1493,38 +2037,43 @@ export default function Home() {
 
         loadBootstrap();
         return () => { active = false; };
-    }, []);
+    }, [clearAuthenticatedWorkspace, practiceReloadToken]);
 
     useEffect(() => {
-        if (!isHydrated || !learners.length || !questions.length) return;
+        if (!isHydrated || pathname !== "/results") return;
+        setSection("overview");
+        router.replace(SECTION_PATHS.overview);
+    }, [isHydrated, pathname, router]);
+    useEffect(() => {
+        if (!isHydrated) return;
+        if (!persistedLearnerId || !learners.length) return;
         if (skipNextApiWriteRef.current) {
             skipNextApiWriteRef.current = false;
             return;
         }
-        const state: StoredState = { learners, activeLearnerId, attemptsByLearner, plansByLearner, schedulesByLearner, queuedSimilarByLearner, questionCollectionsByLearner, roleAccess, importBooks };
-        const timeout = window.setTimeout(async () => {
+        // Only non-identifying UI preferences remain browser-local. Account, learner,
+        // question, session, and attempt data never fall back to the legacy JSON store.
+        const learner = learners.find((item) => item.id === persistedLearnerId);
+        if (learner) {
             try {
-                const response = await fetch("/api/v1/state", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(state),
+                writePracticePreferences(persistedLearnerId, {
+                    plan: plansByLearner[persistedLearnerId] ?? null,
+                    schedules: schedulesByLearner[persistedLearnerId] ?? [],
+                    collections: questionCollectionsByLearner[persistedLearnerId] ?? [],
+                    questionLimitOptions: learner.questionLimitOptions,
+                    defaultQuestionLimit: learner.defaultQuestionLimit,
                 });
-                if (!response.ok) throw new Error("STATE_WRITE_FAILED");
                 setStorageError("");
             }
-            catch {
-                setStorageError("JSON 模擬 API 無法保存最新資料；請先不要重新整理頁面。");
-            }
-        }, 250);
-        return () => window.clearTimeout(timeout);
-    }, [activeLearnerId, attemptsByLearner, importBooks, isHydrated, learners, plansByLearner, questionCollectionsByLearner, questions.length, queuedSimilarByLearner, roleAccess, schedulesByLearner]);
+            catch { setStorageError("此瀏覽器目前無法保存練習設定；已送出的作答仍保存在資料庫。"); }
+        }
+    }, [isHydrated, learners, persistedLearnerId, plansByLearner, questionCollectionsByLearner, schedulesByLearner]);
 
     useEffect(() => {
         setImportGrade(activeLearner.grade);
         setMistakeFilters(DEFAULT_QUESTION_FILTERS);
         setMistakePage(1);
         setSelectedMistakes([]);
-        setQuestionFilters(DEFAULT_QUESTION_FILTERS);
         setSelectedQuestionIds([]);
         setSelectedQuestionId(undefined);
         setQuestionPage(1);
@@ -1539,6 +2088,37 @@ export default function Home() {
         setCreatingImportBook(false);
         setNewImportBookName("");
     }, [activeLearner.id, activeLearner.grade]);
+
+    useEffect(() => {
+        const previous = questionFilterBaselineRef.current;
+        const mustReset = !previous
+            || previous.learnerId !== activeLearner.id
+            || previous.grade !== activeLearner.grade;
+        setQuestionFilters((current) => {
+            if (mustReset) return questionFilterBaseline;
+
+            // A background reload may update saved learner defaults. Apply only fields that the
+            // user has not overridden since the previous baseline; explicit filter choices win.
+            if (current.subject !== previous.filters.subject) return current;
+            const next = normalizeQuestionFilters({
+                ...current,
+                subject: questionFilterBaseline.subject,
+                semester: current.semester === previous.filters.semester
+                    ? questionFilterBaseline.semester
+                    : current.semester,
+                version: current.version === previous.filters.version
+                    ? questionFilterBaseline.version
+                    : current.version,
+            }, learnerQuestions, activeQuestionCollections);
+            return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+        });
+        if (mustReset) setMistakeFilters(questionFilterBaseline);
+        questionFilterBaselineRef.current = {
+            learnerId: activeLearner.id,
+            grade: activeLearner.grade,
+            filters: questionFilterBaseline,
+        };
+    }, [activeLearner.grade, activeLearner.id, activeQuestionCollections, learnerQuestions, questionFilterBaseline]);
 
     useEffect(() => {
         if (!targetCollectionId || activeQuestionCollections.some((collection) => collection.id === targetCollectionId)) return;
@@ -1568,12 +2148,34 @@ export default function Home() {
         if (activePlan.subject === "全部" || availableSubjects.includes(activePlan.subject as Subject)) return;
         setPlansByLearner((current) => ({
             ...current,
-            [activeLearnerId]: { ...(current[activeLearnerId] ?? DEFAULT_PLAN), subject: "全部", scope: ALL_UNITS },
+            [activeLearnerId]: { ...(current[activeLearnerId] ?? DEFAULT_PLAN), subject: "全部", scopeFilters: [] },
         }));
     }, [activeLearnerId, activePlan.subject, availableSubjects]);
     useEffect(() => {
-        if (!isHydrated || !learners.length || !questions.length) return;
+        if (!isHydrated) return;
         const browserPath = pathname;
+        if (browserPath === SECTION_PATHS["system-settings"]) {
+            if (canAccessSystemSettings) setSection("system-settings");
+            else {
+                setSection("overview");
+                router.replace(SECTION_PATHS.overview);
+            }
+            return;
+        }
+        if (browserPath === SECTION_PATHS.settings || getSettingsExamId(browserPath)) {
+            if (canAccessLearnerSettings) setSection("settings");
+            else {
+                setSection(canAccessSystemSettings ? "system-settings" : "overview");
+                router.replace(canAccessSystemSettings ? SECTION_PATHS["system-settings"] : SECTION_PATHS.overview);
+            }
+            return;
+        }
+        if (browserPath === SECTION_PATHS.bank) {
+            setSection("questions");
+            router.replace(SECTION_PATHS.questions);
+            return;
+        }
+        if (!learners.length || !questions.length) return;
         const routeQuestionId = getSessionQuestionId(browserPath);
         const overviewQuestionId = getOverviewQuestionId(browserPath);
         if (browserPath === "/") {
@@ -1595,6 +2197,10 @@ export default function Home() {
             return;
         }
         if (routeQuestionId !== undefined) {
+            if (persistedQuestions.has(routeQuestionId) && (!session || !session.questionIds.includes(routeQuestionId))) {
+                router.replace(SECTION_PATHS.practice);
+                return;
+            }
             const routeQuestion = questions.find((question) => question.id === routeQuestionId);
             if (!routeQuestion) {
                 router.replace(SECTION_PATHS.practice);
@@ -1603,7 +2209,6 @@ export default function Home() {
             const routeQuestionIds = getQuestionGroupIds(routeQuestion, questions);
             const routeQuestionIndex = routeQuestionIds.indexOf(routeQuestionId);
             setSection("practice");
-            setSessionPaused(false);
             setSession((current) => {
                 const hasCompleteGroup = routeQuestionIds.every((questionId) => current?.questionIds.includes(questionId));
                 const requiresCompleteGroup = !current || current.mode === "practice";
@@ -1631,7 +2236,7 @@ export default function Home() {
         }
         setSection(getSectionFromPath(browserPath));
         if (session?.phase === "answering") setSessionPaused(browserPath !== SESSION_PATH);
-    }, [activeLearnerId, isHydrated, learnerQuestions, learners.length, pathname, questions, router]);
+    }, [activeLearnerId, canAccessLearnerSettings, canAccessSystemSettings, isHydrated, learnerQuestions, learners.length, pathname, questions, router]);
     useEffect(() => {
         if (pathname !== SECTION_PATHS.questions || !shouldRestoreQuestionScrollRef.current) return;
         shouldRestoreQuestionScrollRef.current = false;
@@ -1648,6 +2253,10 @@ export default function Home() {
         const frame = window.requestAnimationFrame(() => sessionHeadingRef.current?.focus());
         return () => window.cancelAnimationFrame(frame);
     }, [session?.index, session?.mode, session?.phase, sessionPaused]);
+    useEffect(() => {
+        if (!session || session.phase !== "complete" || !PRACTICE_SESSION_UUID_PATTERN.test(session.id)) return;
+        clearPracticeSessionHint(session.learnerId);
+    }, [session]);
 
     /** 確認是否可以離開尚未完成的練習。 */
     function canLeaveSession() {
@@ -1665,9 +2274,39 @@ export default function Home() {
         setHandwriting("");
     }
 
+    /** Marks a durable unfinished session as abandoned before removing it from the UI. */
+    async function abandonCurrentSession(): Promise<boolean> {
+        if (!session || session.phase !== "answering" || !PRACTICE_SESSION_UUID_PATTERN.test(session.id)) return true;
+        setPracticeBusy(true);
+        try {
+            await updatePersistedPracticeSessionStatus(session.id, "abandoned");
+            if (!clearPracticeSessionHint(session.learnerId)) {
+                setStorageError("練習已結束，但瀏覽器未能清除恢復識別碼；重新載入時會再次核對伺服器狀態。");
+            }
+            setPracticeServiceError("");
+            return true;
+        }
+        catch (error) {
+            setPracticeServiceError(error instanceof Error ? error.message : "無法結束這次練習，請重試。");
+            return false;
+        }
+        finally { setPracticeBusy(false); }
+    }
+
     /** 切換主要工作區並保護進行中的作答。 */
-    function navigateToSection(nextSection: Section) {
+    async function navigateToSection(nextSection: Section) {
         setMobileNavigationOpen(false);
+        if (nextSection === "system-settings" && !canAccessSystemSettings) {
+            setSection("overview");
+            router.push(SECTION_PATHS.overview);
+            return;
+        }
+        if (nextSection === "settings" && !canAccessLearnerSettings) {
+            const fallback = canAccessSystemSettings ? "system-settings" : "overview";
+            setSection(fallback);
+            router.push(SECTION_PATHS[fallback]);
+            return;
+        }
         if (nextSection === section && pathname === SECTION_PATHS[nextSection]) return;
         if (session && sessionPaused) {
             shouldFocusSectionRef.current = true;
@@ -1676,6 +2315,7 @@ export default function Home() {
             return;
         }
         if (!canLeaveSession()) return;
+        if (!await abandonCurrentSession()) return;
         clearSession();
         shouldFocusSectionRef.current = true;
         setSection(nextSection);
@@ -1698,7 +2338,10 @@ export default function Home() {
      * 前往完整練習計劃頁並關閉暫時顯示的安排介面。
      * @returns 無回傳值。
      */
-    function openScheduleList() {
+    async function openScheduleList() {
+        if (!sessionPaused && !canLeaveSession()) return;
+        if (!sessionPaused && !await abandonCurrentSession()) return;
+        if (!sessionPaused) clearSession();
         setScheduleDialogOpen(false);
         setSchedulePanelOpen(false);
         setMobileNavigationOpen(false);
@@ -1706,94 +2349,204 @@ export default function Home() {
     }
 
     /** 切換學習者並保護進行中的作答。 */
-    function changeLearner(nextLearnerId: string) {
+    async function changeLearner(nextLearnerId: string) {
         if (nextLearnerId === activeLearnerId || !canLeaveSession()) return;
+        if (!await abandonCurrentSession()) return;
         clearSession();
+        if (practiceAccount) {
+            setPracticeBusy(true);
+            try {
+                const { account } = await selectPracticeLearner(nextLearnerId);
+                setPracticeAccount(account);
+                broadcastAuthSessionContextChanged();
+                setPracticeServiceError("");
+                setIsHydrated(false);
+                setPracticeReloadToken((current) => current + 1);
+            }
+            catch (error) {
+                setPracticeServiceError(error instanceof Error ? error.message : "無法切換學習者，請重試。");
+            }
+            finally { setPracticeBusy(false); }
+            return;
+        }
         setActiveLearnerId(nextLearnerId);
         setMobileNavigationOpen(false);
     }
 
+    function openCreateLearner() {
+        if (!canCreateLearner) return;
+        setLearnerProfileDraft({
+            displayName: "",
+            gradeCode: activeAccountLearner?.gradeCode ?? ACCOUNT_GRADE_OPTIONS[0].value,
+            semesterCode: activeAccountLearner?.semesterCode ?? ACCOUNT_SEMESTER_OPTIONS[0].value,
+        });
+        setLearnerProfileStatus("");
+        setLearnerProfileDialogOpen(true);
+    }
+
+    function openEditLearner(profile: PracticeAccountLearner) {
+        if (!profile.canManageSettings) return;
+        setLearnerProfileDraft({
+            learnerId: profile.id,
+            displayName: profile.displayName,
+            gradeCode: profile.gradeCode ?? "",
+            semesterCode: profile.semesterCode ?? "",
+        });
+        setLearnerProfileStatus("");
+        setLearnerProfileDialogOpen(true);
+    }
+
+    async function saveLearnerProfile() {
+        const displayName = learnerProfileDraft.displayName.trim();
+        if (!displayName || !learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode || learnerProfileBusy) {
+            setLearnerProfileStatus("請填寫稱呼、年級與學期。");
+            return;
+        }
+        setLearnerProfileBusy(true);
+        setLearnerProfileStatus("");
+        try {
+            let response: { account: PracticeAccount };
+            if (learnerProfileDraft.learnerId) {
+                response = await updatePracticeLearner({
+                    learnerId: learnerProfileDraft.learnerId,
+                    displayName,
+                    gradeCode: learnerProfileDraft.gradeCode,
+                    semesterCode: learnerProfileDraft.semesterCode,
+                }, section === "settings" && practiceAccount?.activeRole === "learner"
+                    ? "update-current"
+                    : "update");
+            }
+            else {
+                const fingerprint = JSON.stringify({ displayName, gradeCode: learnerProfileDraft.gradeCode, semesterCode: learnerProfileDraft.semesterCode });
+                const pending = createLearnerRequestRef.current?.fingerprint === fingerprint
+                    ? createLearnerRequestRef.current
+                    : { fingerprint, clientRequestId: crypto.randomUUID() };
+                createLearnerRequestRef.current = pending;
+                response = await createPracticeLearner({
+                    clientRequestId: pending.clientRequestId,
+                    displayName,
+                    gradeCode: learnerProfileDraft.gradeCode,
+                    semesterCode: learnerProfileDraft.semesterCode,
+                });
+                createLearnerRequestRef.current = undefined;
+            }
+            setPracticeAccount(response.account);
+            broadcastAuthSessionContextChanged();
+            setLearnerProfileDialogOpen(false);
+            setLearnerProfileDraft(EMPTY_LEARNER_PROFILE_DRAFT);
+            setPracticeServiceError("");
+            setIsHydrated(false);
+            setPracticeReloadToken((current) => current + 1);
+        }
+        catch (error) {
+            if (!learnerProfileDraft.learnerId && isDeterministicPracticeApiError(error)) {
+                createLearnerRequestRef.current = undefined;
+            }
+            setLearnerProfileStatus(error instanceof Error ? error.message : "學習者設定未能保存，請重試。");
+        }
+        finally { setLearnerProfileBusy(false); }
+    }
+
+    /** 保存目前學習者單一科目的教材版本，不改動其他科目設定。 */
+    async function saveLearnerSubjectSetting(
+        setting: PracticeAccountLearner["subjectSettings"][number],
+        bookVersionId: string,
+    ) {
+        if (!activeAccountLearner?.canManageSettings || subjectSettingBusyCode) return;
+        const currentBookVersionId = setting.bookVersion?.id ?? "";
+        if (bookVersionId === currentBookVersionId) return;
+        setSubjectSettingBusyCode(setting.subject.code);
+        setSubjectSettingStatus("");
+        try {
+            const { account } = await updatePracticeLearnerSubjectSetting({
+                learnerId: activeAccountLearner.id,
+                subjectCode: setting.subject.code,
+                bookVersionId: bookVersionId || null,
+                lockVersion: setting.lockVersion,
+            });
+            setPracticeAccount(account);
+            broadcastAuthSessionContextChanged();
+            setSubjectSettingStatus(`${normalizeSubjectLabel(setting.subject.name)}的教材版本已保存。`);
+            setPracticeServiceError("");
+            setIsHydrated(false);
+            setPracticeReloadToken((current) => current + 1);
+        }
+        catch (error) {
+            setSubjectSettingStatus(error instanceof Error ? error.message : "教材版本未能保存，請重試。");
+        }
+        finally { setSubjectSettingBusyCode(""); }
+    }
+
     /** 開啟角色切換並清除上一次輸入。 */
     function openRoleSwitch() {
+        if (!practiceAccount) {
+            router.push("/account");
+            return;
+        }
         setRequestedRole(roleAccess.activeRole);
-        setRolePin("");
+        setRolePassword("");
         setRoleStatus("");
-        setRoleResetOpen(false);
-        setRoleEmail(roleAccess.registrationEmail);
-        setRoleCode("");
-        setNewRolePin("");
-        setRoleCodeSent(false);
         setRoleDialogOpen(true);
     }
 
-    /** 驗證角色密碼後切換目前操作角色。 */
+    /** 以目前帳號密碼重新確認後，切換已授權的操作角色。 */
     async function switchRole() {
         if (requestedRole === roleAccess.activeRole) {
             setRoleDialogOpen(false);
             return;
         }
-        if (!roleAccess.learnerIdsByRole[requestedRole].includes(activeLearnerId)) {
-            setRoleStatus(`「${requestedRole}」尚未被設定為可管理目前的學習者。`);
+        if (!practiceAccount) return;
+        const targetRole = ACCOUNT_ROLE_CODES[requestedRole];
+        if (targetRole !== "learner" && !rolePassword) {
+            setRoleStatus("請輸入目前帳號密碼。");
             return;
         }
-        if (requestedRole !== "學習者") {
-            if (!/^\d{6}$/.test(rolePin)) {
-                setRoleStatus("角色密碼必須是 6 位數字。");
-                return;
-            }
-            const expected = roleAccess.pinHashes[requestedRole];
-            if (!expected || await hashRolePin(rolePin) !== expected) {
-                setRoleStatus("角色密碼不正確。");
-                return;
-            }
+        setRoleSwitchBusy(true);
+        setRoleStatus("");
+        try {
+            const { account } = await switchPracticeAccountRole(targetRole, rolePassword || undefined);
+            setPracticeAccount(account);
+            broadcastAuthSessionContextChanged();
+            setRoleAccess((current) => ({ ...current, activeRole: ACCOUNT_ROLE_LABELS[account.activeRole] }));
+            setRolePassword("");
+            setRoleDialogOpen(false);
+            setIsHydrated(false);
+            setPracticeReloadToken((current) => current + 1);
         }
-        setRoleAccess((current) => ({ ...current, activeRole: requestedRole }));
-        setRoleDialogOpen(false);
+        catch (error) {
+            setRoleStatus(error instanceof Error ? error.message : "無法切換角色，請重試。");
+        }
+        finally { setRoleSwitchBusy(false); }
     }
 
-    /** 更新角色可以管理的學習者，不改變目前選取的學習者。 */
-    function updateRoleLearner(role: AccountRole, learnerId: string, checked: boolean) {
-        setRoleAccess((current) => {
-            const assigned = current.learnerIdsByRole[role];
-            const learnerIds = checked ? [...new Set([...assigned, learnerId])] : assigned.filter((id) => id !== learnerId);
-            return { ...current, learnerIdsByRole: { ...current.learnerIdsByRole, [role]: learnerIds } };
-        });
-    }
-
-    /** 模擬向註冊信箱寄送角色密碼驗證碼。 */
-    function sendRoleCode() {
-        if (roleEmail.trim().toLocaleLowerCase() !== roleAccess.registrationEmail.toLocaleLowerCase()) {
-            setRoleStatus("輸入的信箱與註冊信箱不符。");
+    async function saveAccountIdentity() {
+        if (!practiceAccount || identityBusy || identityRole === practiceAccount.accountRole) return;
+        if (identityRole !== "learner" && !identityPassword) {
+            setIdentityStatus("切換為家長或家教本人身分時，請輸入目前帳號密碼。");
             return;
         }
-        setRoleCodeSent(true);
-        setRoleStatus("示範驗證碼為 246810；目前尚未連接郵件服務。");
-    }
-
-    /** 驗證信箱代碼並更新指定角色的六位數密碼。 */
-    async function resetRolePin() {
-        if (roleCode !== "246810") {
-            setRoleStatus("驗證碼不正確。");
-            return;
+        setIdentityBusy(true);
+        setIdentityStatus("");
+        try {
+            const { account } = await updatePracticeAccountIdentity(identityRole, identityPassword || undefined);
+            setPracticeAccount(account);
+            broadcastAuthSessionContextChanged();
+            setRoleAccess((current) => ({ ...current, activeRole: ACCOUNT_ROLE_LABELS[account.activeRole] }));
+            setIdentityPassword("");
+            setIsHydrated(false);
+            setPracticeReloadToken((current) => current + 1);
         }
-        if (!/^\d{6}$/.test(newRolePin)) {
-            setRoleStatus("新角色密碼必須是 6 位數字。");
-            return;
+        catch (error) {
+            setIdentityStatus(error instanceof Error ? error.message : "本人身分未能更新，請重試。");
         }
-        const pinHash = await hashRolePin(newRolePin);
-        setRoleAccess((current) => ({ ...current, pinHashes: { ...current.pinHashes, [requestedRole]: pinHash } }));
-        setRolePin("");
-        setRoleCode("");
-        setNewRolePin("");
-        setRoleCodeSent(false);
-        setRoleResetOpen(false);
-        setRoleStatus("角色密碼已更新，請使用新密碼切換角色。");
+        finally { setIdentityBusy(false); }
     }
 
     /** 更新目前學習者資料。 */
-    function updateLearner<K extends keyof Omit<Learner, "id">>(field: K, value: Learner[K]) {
+    async function updateLearner<K extends keyof Omit<Learner, "id">>(field: K, value: Learner[K]) {
         if (field === "grade" && value !== activeLearner.grade) {
             if (!canLeaveSession()) return;
+            if (!await abandonCurrentSession()) return;
             clearSession();
             const nextSubjects = getSubjectsForGrade(String(value), questions, activeLearner.customSubjects);
             const nextSubject = activePlan.subject === "全部" || nextSubjects.includes(activePlan.subject as Subject)
@@ -1801,7 +2554,7 @@ export default function Home() {
                 : "全部";
             setPlansByLearner((current) => ({
                 ...current,
-                [activeLearnerId]: { ...(current[activeLearnerId] ?? DEFAULT_PLAN), subject: nextSubject, scope: ALL_UNITS },
+                [activeLearnerId]: { ...(current[activeLearnerId] ?? DEFAULT_PLAN), subject: nextSubject, scopeFilters: [] },
             }));
         }
         setLearners((current) => current.map((learner) => learner.id === activeLearnerId ? { ...learner, [field]: value } : learner));
@@ -1816,7 +2569,7 @@ export default function Home() {
 
     /** 新增目前學習者可使用的目錄科目或自訂科目。 */
     function addSubject() {
-        const subject = subjectChoice === CUSTOM_SUBJECT_VALUE ? subjectDraft.trim() : subjectChoice;
+        const subject = normalizeSubjectLabel(subjectChoice === CUSTOM_SUBJECT_VALUE ? subjectDraft : subjectChoice);
         if (!subject) {
             setSubjectError(subjectChoice === CUSTOM_SUBJECT_VALUE ? "請輸入科目名稱。" : "請選擇科目或自訂新增。");
             return;
@@ -1883,7 +2636,7 @@ export default function Home() {
                 [activeLearnerId]: {
                     ...plan,
                     subject: plan.subject === subject ? "全部" : plan.subject,
-                    scope: plan.subject === subject ? ALL_UNITS : plan.scope,
+                    scopeFilters: plan.subject === subject ? [] : plan.scopeFilters,
                     examSettings: plan.examSettings.map((exam) => {
                         const { [subject]: _removedRange, ...ranges } = exam.ranges;
                         const nextRanges = isSystemSubject
@@ -1941,14 +2694,14 @@ export default function Home() {
         const dependentReset = field === "subject"
             ? {
                 bookVersion: value === "全部" ? undefined : activeLearner.bookVersions[value as Subject],
-                scope: ALL_UNITS,
+                scopeFilters: [],
                 sourceFilters: [],
                 knowledge: ALL_KNOWLEDGE,
                 metadataFilters: {},
             }
             : field === "bookVersion"
-                ? { scope: ALL_UNITS, sourceFilters: [], knowledge: ALL_KNOWLEDGE, metadataFilters: {} }
-                : field === "scope" || field === "examSettings"
+                ? { scopeFilters: [], sourceFilters: [], knowledge: ALL_KNOWLEDGE, metadataFilters: {} }
+                : field === "scopeFilters" || field === "examSettings"
                 ? { sourceFilters: [], knowledge: ALL_KNOWLEDGE, metadataFilters: {} }
                 : {};
         setPlansByLearner((current) => ({
@@ -1959,18 +2712,12 @@ export default function Home() {
 
     /** 取得目前練習設定在排程清單中使用的範圍摘要。 */
     function getCurrentPlanScopeLabel() {
-        if (activePlanBasis === "chapter") {
-            if (activePlan.scope === ALL_UNITS) return "全部單元";
-            return activePlan.scope.split("::")[1] ?? scopeOptions.find((option) => option.value === activePlan.scope)?.label ?? "全部單元";
-        }
-        if (activePlan.subject === "全部") return `${activeExam.name} · ${availableSubjects.length} 科範圍`;
-        const subject = activePlan.subject as Subject;
-        const options = assessmentOptionsBySubject[subject] ?? [];
-        const range = getAssessmentRange(activeExam, subject);
-        const start = options.find((option) => option.value === range.start)?.label ?? "尚未設定";
-        const end = options.find((option) => option.value === range.end)?.label ?? "尚未設定";
-        const rangeLabel = start === end ? start : `${start}～${end}`;
-        return `${activeExam.name} · ${rangeLabel}`;
+        if (!activePlan.scopeFilters.length) return "全部單元";
+        if (activePlan.scopeFilters.length > 1) return `已選 ${activePlan.scopeFilters.length} 個單元`;
+        const selectedScope = activePlan.scopeFilters[0];
+        return selectedScope.split("::")[1]
+            ?? scopeOptions.find((option) => option.value === selectedScope)?.label
+            ?? "全部單元";
     }
 
     /** 將目前出題設定保存為指定學習者的預約練習。 */
@@ -2149,15 +2896,15 @@ export default function Home() {
                 creatorRole: roleAccess.activeRole,
                 subject: filters.subject,
                 bookVersion: filters.version === ALL_QUESTION_FILTERS ? undefined : filters.version,
-                scope: activePlanBasis === "assessment" ? activePlan.scope : filters.scope,
+                scopeFilters: filters.scope,
                 semester: filters.semester,
                 topic: filters.topic,
-                difficulty: activePlan.difficultyMixEnabled ? ALL_QUESTION_FILTERS : filters.difficulty,
+                difficultyFilters: activePlan.difficultyMixEnabled ? activePlan.difficultyFilters : filters.difficulty,
                 creatorFilter: filters.creator,
                 collection: filters.collection,
                 search: filters.search,
-                sourceFilters: filters.source === ALL_QUESTION_FILTERS ? [] : [filters.source],
-                questionKind: filters.kind as PlanQuestionKind,
+                sourceFilters: filters.source,
+                questionKinds: filters.kind,
                 knowledge: filters.knowledge === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : filters.knowledge,
                 metadataFilters,
             },
@@ -2171,7 +2918,7 @@ export default function Home() {
             [activeLearnerId]: {
                 ...(current[activeLearnerId] ?? DEFAULT_PLAN),
                 difficultyMixEnabled: enabled,
-                difficulty: enabled ? ALL_QUESTION_FILTERS : activePlan.difficulty,
+                difficultyFilters: activePlan.difficultyFilters,
             },
         }));
     }
@@ -2187,32 +2934,43 @@ export default function Home() {
 
     /** 將低頻篩選與本輪題數恢復為學習者的預設值。 */
     function resetAdvancedPlan() {
+        const normalizedDefaults = normalizeQuestionFilters({
+            ...DEFAULT_QUESTION_FILTERS,
+            subject: activePlan.subject as Subject | "全部",
+            semester: activeLearner.semester || ALL_QUESTION_FILTERS,
+            version: activeSubject && activeLearner.bookVersions[activeSubject]
+                ? activeLearner.bookVersions[activeSubject]
+                : ALL_QUESTION_FILTERS,
+        }, learnerQuestions, activeQuestionCollections);
         setPlansByLearner((current) => ({
             ...current,
             [activeLearnerId]: {
                 ...(current[activeLearnerId] ?? DEFAULT_PLAN),
                 difficultyMix: { ...DEFAULT_PLAN.difficultyMix },
                 difficultyMixEnabled: DEFAULT_PLAN.difficultyMixEnabled,
-                sourceFilters: [],
+                subject: normalizedDefaults.subject,
+                sourceFilters: normalizedDefaults.source,
                 metadataFilters: {},
-                questionKind: "all",
+                questionKinds: normalizedDefaults.kind,
                 knowledge: ALL_KNOWLEDGE,
-                semester: ALL_QUESTION_FILTERS,
-                topic: ALL_QUESTION_FILTERS,
-                difficulty: ALL_QUESTION_FILTERS,
+                semester: normalizedDefaults.semester,
+                topic: normalizedDefaults.topic,
+                difficultyFilters: normalizedDefaults.difficulty,
                 creatorFilter: ALL_QUESTION_FILTERS,
                 collection: ALL_QUESTION_FILTERS,
                 search: "",
-                scope: ALL_UNITS,
+                scopeFilters: normalizedDefaults.scope,
                 questionLimit: activeLearner.defaultQuestionLimit,
-                bookVersion: activeSubject ? activeLearner.bookVersions[activeSubject] : undefined,
+                bookVersion: normalizedDefaults.version === ALL_QUESTION_FILTERS
+                    ? undefined
+                    : normalizedDefaults.version,
             },
         }));
     }
 
     /** 清除題目總覽的所有篩選與勾選狀態。 */
     function resetQuestionFilters() {
-        setQuestionFilters(DEFAULT_QUESTION_FILTERS);
+        setQuestionFilters(questionFilterBaseline);
         setSelectedQuestionIds([]);
         setQuestionPage(1);
     }
@@ -2329,32 +3087,105 @@ export default function Home() {
     }
 
     /** 開始指定題目的練習。 */
-    function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string, partIdsByQuestion?: Record<number, string[]>) {
-        if (!ids.length) return;
+    async function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string, partIdsByQuestion?: Record<number, string[]>) {
+        if (!ids.length || practiceRequestRef.current) return;
         if (session?.phase === "answering" && sessionPaused) {
-            setSessionPaused(false);
-            setSection(session.mode === "practice" ? "practice" : "mistakes");
-            router.push(getSessionQuestionPath(session.questionIds[session.index]));
+            await resumeSession();
             return;
         }
-        const startedAt = new Date().toISOString();
-        const validPartIdsByQuestion = ids.reduce<Record<number, string[]>>((targets, questionId) => {
+        let sessionId = `session-${crypto.randomUUID()}`;
+        let startedAt = new Date().toISOString();
+        let effectiveQuestionIds = [...ids];
+        let persistedItems: PracticeSession["persistedItems"];
+        const serverQuestions = ids.map((id) => persistedQuestions.get(id));
+        if (serverQuestions.some(Boolean)) {
+            if (activeLearnerId !== persistedLearnerId || serverQuestions.some((question) => !question)) {
+                setPracticeServiceError("請使用登入帳號所屬的學習者開始正式題庫練習。");
+                return;
+            }
+            if (ids.length > LOCAL_PRACTICE_MAX_QUESTIONS) {
+                setPracticeServiceError(`每輪最多 ${LOCAL_PRACTICE_MAX_QUESTIONS} 題，請調整本輪題數。`);
+                return;
+            }
+            practiceRequestRef.current = true;
+            setPracticeBusy(true);
+            try {
+                const targets = serverQuestions.flatMap((question, index) => {
+                    const routeId = ids[index];
+                    const requestedPartIds = partIdsByQuestion?.[routeId] ?? [];
+                    if (!requestedPartIds.length) return [{
+                        questionId: question!.id,
+                        revisionId: question!.revisionId,
+                    }];
+                    const validPartIds = question!.parts
+                        .filter((part) => part.isIndependentlyGradable && requestedPartIds.includes(part.id))
+                        .map((part) => part.id);
+                    if (validPartIds.length !== new Set(requestedPartIds).size) {
+                        throw new Error("錯題的小題版本已更新，請重新載入練習紀錄。");
+                    }
+                    return validPartIds.map((partId) => ({
+                        questionId: question!.id,
+                        revisionId: question!.revisionId,
+                        partId,
+                    }));
+                });
+                const fingerprint = JSON.stringify({ targets, mode, checkMode });
+                const pending = sessionRequestRef.current?.fingerprint === fingerprint
+                    ? sessionRequestRef.current
+                    : { fingerprint, sessionId: crypto.randomUUID() };
+                sessionRequestRef.current = pending;
+                const response = await startPersistedPractice(targets, { mode, checkMode }, pending.sessionId);
+                if (response.session.status !== "active" && response.session.status !== "paused") {
+                    throw new Error("這次練習已結束，請重新建立練習。");
+                }
+                sessionId = response.session.id;
+                startedAt = response.session.startedAt;
+                effectiveQuestionIds = response.session.items.map((item) => practiceRouteId(item.questionId));
+                persistedItems = response.session.items.map((item) => ({
+                    id: item.id,
+                    questionId: practiceRouteId(item.questionId),
+                    partId: item.partId,
+                }));
+                sessionRequestRef.current = undefined;
+                if (!writePracticeSessionHint(activeLearnerId, sessionId)) {
+                    setStorageError("此瀏覽器無法保存練習恢復識別碼；請完成本輪後再關閉頁面。");
+                }
+                setPracticeServiceError("");
+            }
+            catch (error) {
+                if (isDeterministicPracticeApiError(error)) sessionRequestRef.current = undefined;
+                setPracticeServiceError(error instanceof Error ? error.message : "無法開始練習，請重試。");
+                return;
+            }
+            finally {
+                practiceRequestRef.current = false;
+                setPracticeBusy(false);
+            }
+        }
+        const validPartIdsByQuestion = effectiveQuestionIds.reduce<Record<number, string[]>>((targets, questionId) => {
+            // Formal sessions carry the exact part target on each durable session item.
+            if (persistedQuestions.has(questionId)) return targets;
             const question = questions.find((item) => item.id === questionId);
             const requestedIds = partIdsByQuestion?.[questionId] ?? [];
             const validIds = question?.parts?.filter((part) => requestedIds.includes(part.id)).map((part) => part.id) ?? [];
             if (validIds.length) targets[questionId] = validIds;
             return targets;
         }, {});
-        setSession({ id: `session-${crypto.randomUUID()}`, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: ids, ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
+        attemptRequestRef.current = undefined;
+        setSession({ id: sessionId, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: effectiveQuestionIds, ...(persistedItems ? { persistedItems } : {}), ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
         setSessionPaused(false); setSessionExitOpen(false); setAnswer(""); setHandwriting(""); setSection(mode === "practice" ? "practice" : "mistakes");
-        router.push(getSessionQuestionPath(ids[0]));
+        router.push(getSessionQuestionPath(effectiveQuestionIds[0]));
     }
 
     /** 將完整作答結果保存到原始練習計劃。 */
     function saveScheduledPracticeResult(currentSession: PracticeSession, attempts: Attempt[]) {
         if (!currentSession.scheduleId || attempts.length !== currentSession.questionIds.length) return;
-        const wrongQuestions = attempts.filter((attempt) => attempt.correct === false).length;
-        const correctQuestions = attempts.filter((attempt) => attempt.correct === true).length;
+        const wrongQuestions = currentSession.scoreSummary?.wrong
+            ?? attempts.filter((attempt) => attempt.correct === false).length;
+        const correctQuestions = currentSession.scoreSummary?.correct
+            ?? attempts.filter((attempt) => attempt.correct === true).length;
+        const accuracy = currentSession.scoreSummary?.accuracy
+            ?? Math.round(correctQuestions / attempts.length * 100);
         setSchedulesByLearner((current) => ({
             ...current,
             [currentSession.learnerId]: (current[currentSession.learnerId] ?? []).map((schedule) => schedule.id === currentSession.scheduleId ? {
@@ -2364,15 +3195,30 @@ export default function Home() {
                     completedAt: new Date().toISOString(),
                     totalQuestions: attempts.length,
                     wrongQuestions,
-                    accuracy: Math.round(correctQuestions / attempts.length * 100),
+                    accuracy,
                 },
             } : schedule),
         }));
     }
 
     /** 暫時收起專注練習並保留目前頁面狀態。 */
-    function pauseSession() {
+    async function pauseSession() {
         if (!session || session.phase !== "answering") return;
+        if (PRACTICE_SESSION_UUID_PATTERN.test(session.id)) {
+            setPracticeBusy(true);
+            try {
+                await updatePersistedPracticeSessionStatus(session.id, "paused");
+                if (!writePracticeSessionHint(session.learnerId, session.id)) {
+                    setStorageError("練習已暫停，但瀏覽器無法保存恢復識別碼；請勿關閉頁面。");
+                }
+                setPracticeServiceError("");
+            }
+            catch (error) {
+                setPracticeServiceError(error instanceof Error ? error.message : "無法暫停這次練習，請重試。");
+                return;
+            }
+            finally { setPracticeBusy(false); }
+        }
         setSessionPaused(true);
         setSessionExitOpen(false);
         shouldFocusSectionRef.current = true;
@@ -2381,8 +3227,23 @@ export default function Home() {
     }
 
     /** 返回尚未完成的專注練習。 */
-    function resumeSession() {
+    async function resumeSession() {
         if (!session || session.phase !== "answering") return;
+        if (PRACTICE_SESSION_UUID_PATTERN.test(session.id)) {
+            setPracticeBusy(true);
+            try {
+                await updatePersistedPracticeSessionStatus(session.id, "active");
+                if (!writePracticeSessionHint(session.learnerId, session.id)) {
+                    setStorageError("練習已恢復，但瀏覽器無法保存恢復識別碼；請完成本輪後再關閉頁面。");
+                }
+                setPracticeServiceError("");
+            }
+            catch (error) {
+                setPracticeServiceError(error instanceof Error ? error.message : "無法恢復這次練習，請重試。");
+                return;
+            }
+            finally { setPracticeBusy(false); }
+        }
         setMobileNavigationOpen(false);
         setSessionPaused(false);
         setSessionExitOpen(false);
@@ -2391,8 +3252,9 @@ export default function Home() {
     }
 
     /** 結束目前練習並保留已送出的作答。 */
-    function endSession() {
+    async function endSession() {
         if (!session) return;
+        if (!await abandonCurrentSession()) return;
         setSessionExitOpen(false);
         setAnswer("");
         setHandwriting("");
@@ -2411,20 +3273,104 @@ export default function Home() {
     /** 關閉結果並回到這一輪原本的工作區。 */
     function leaveSession() {
         const nextSection = session?.mode === "practice" ? "practice" : "mistakes";
+        if (session && PRACTICE_SESSION_UUID_PATTERN.test(session.id)) clearPracticeSessionHint(session.learnerId);
         clearSession();
         setSection(nextSection);
         router.push(SECTION_PATHS[nextSection]);
     }
 
     /** 保存目前答案並依模式前進。 */
-    function submitAnswer() {
-        if (!currentQuestion || !session) return;
+    async function submitAnswer() {
+        if (!currentQuestion || !session || practiceRequestRef.current) return;
+        const serverQuestion = persistedQuestions.get(currentQuestion.id);
+        if (serverQuestion && session.attempts.some((attempt) => currentPersistedItem
+            ? attempt.sessionItemId === currentPersistedItem.id
+            : attempt.questionId === currentQuestion.id)) return;
         const hasWrittenResponse = Boolean(answer.trim() || handwriting);
-        if (isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
+        if (!serverQuestion && isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
         if (currentQuestion.kind === "written" ? !hasWrittenResponse : !answer.trim()) return;
-        const targetPartIds = session.partIdsByQuestion?.[currentQuestion.id];
-        const partResults = currentQuestion.parts?.length ? getQuestionPartResults(currentQuestion, answer, targetPartIds) : [];
-        const attempt: Attempt = {
+        const targetPartIds = currentTargetPartIds;
+        const partResults = !serverQuestion && currentQuestion.parts?.length ? getQuestionPartResults(currentQuestion, answer, targetPartIds) : [];
+        let attempt: Attempt;
+        let disclosedAttempts: Attempt[] | undefined;
+        let scoreSummary: PracticeSession["scoreSummary"];
+        let persistedCompletedAt: string | null = null;
+        let persistedSessionStatus: LocalPracticeSessionHistory["status"] | undefined;
+        if (serverQuestion) {
+            practiceRequestRef.current = true;
+            setPracticeBusy(true);
+            try {
+                // Keep the same payload and idempotency key after an uncertain network response.
+                const snapshot = attemptRequestRef.current?.questionId === serverQuestion.id
+                    && attemptRequestRef.current.sessionId === session.id
+                    && attemptRequestRef.current.sessionItemId === currentPersistedItem?.id
+                    ? attemptRequestRef.current
+                    : {
+                        sessionId: session.id,
+                        questionId: serverQuestion.id,
+                        ...(currentPersistedItem ? { sessionItemId: currentPersistedItem.id } : {}),
+                        ...(currentPersistedItem?.partId ? { partId: currentPersistedItem.partId } : {}),
+                        idempotencyKey: crypto.randomUUID(),
+                        answers: parsePracticeAnswers(answer),
+                        durationSeconds: Math.min(86400, Math.max(1, Math.round((Date.now() - session.questionStartedAt) / 1000))),
+                    };
+                attemptRequestRef.current = snapshot;
+                const result = await submitPersistedPracticeAttempt(snapshot);
+                persistedCompletedAt = result.session.completedAt;
+                persistedSessionStatus = result.session.status;
+                const localAttempt: Attempt = {
+                    sessionId: session.id,
+                    ...(currentPersistedItem ? { sessionItemId: currentPersistedItem.id } : {}),
+                    sessionMode: session.mode,
+                    questionId: currentQuestion.id,
+                    revisionId: serverQuestion.revisionId,
+                    ...(currentPersistedItem?.partId ? { partId: currentPersistedItem.partId } : {}),
+                    answer: formatPracticeResponse(serverQuestion, answer),
+                    correct: null,
+                    date: result.disclosure === "masked" ? result.receipt.submittedAt : new Date().toISOString(),
+                    durationSeconds: snapshot.durationSeconds ?? 0,
+                    ...(handwriting ? { handwriting } : {}),
+                };
+                if (result.disclosure === "detailed") {
+                    const localAttempts = [...session.attempts, localAttempt];
+                    const localByItem = new Map(localAttempts.flatMap((item) => (
+                        item.sessionItemId ? [[item.sessionItemId, item] as const] : []
+                    )));
+                    disclosedAttempts = (result.attempts ?? [result.attempt]).map((storedAttempt) => {
+                        const adapted = adaptPracticeAttempt(storedAttempt);
+                        const local = adapted.sessionItemId
+                            ? localByItem.get(adapted.sessionItemId)
+                            : localAttempts.find((item) => item.questionId === adapted.questionId);
+                        return {
+                            ...adapted,
+                            sessionMode: session.mode,
+                            answer: local?.answer ?? adapted.answer,
+                            ...(local?.handwriting ? { handwriting: local.handwriting } : {}),
+                        };
+                    });
+                    attempt = disclosedAttempts.find((item) => currentPersistedItem
+                        ? item.sessionItemId === currentPersistedItem.id
+                        : item.questionId === currentQuestion.id)
+                        ?? { ...adaptPracticeAttempt(result.attempt, localAttempt.answer), sessionMode: session.mode };
+                }
+                else {
+                    attempt = localAttempt;
+                    if (result.disclosure === "score") scoreSummary = result.summary;
+                }
+                attemptRequestRef.current = undefined;
+                setPracticeServiceError("");
+            }
+            catch (error) {
+                if (isDeterministicPracticeApiError(error)) attemptRequestRef.current = undefined;
+                setPracticeServiceError(error instanceof Error ? error.message : "作答尚未確認保存，請重試。");
+                return;
+            }
+            finally {
+                practiceRequestRef.current = false;
+                setPracticeBusy(false);
+            }
+        }
+        else attempt = {
             sessionId: session.id,
             sessionMode: session.mode,
             questionId: currentQuestion.id,
@@ -2435,20 +3381,54 @@ export default function Home() {
             durationSeconds: Math.max(1, Math.round((Date.now() - session.questionStartedAt) / 1000)),
             ...(handwriting ? { handwriting } : {}),
         };
-        const attempts = [...session.attempts, attempt];
-        const completesSession = session.checkMode !== "instant" && session.index === session.questionIds.length - 1;
-        if (completesSession) saveScheduledPracticeResult(session, attempts);
-        setAttemptsByLearner((current) => ({ ...current, [session.learnerId]: [...(current[session.learnerId] ?? []), attempt] }));
+        const attempts = disclosedAttempts && session.checkMode === "complete"
+            ? disclosedAttempts
+            : [...session.attempts, attempt];
+        const nextQuestionIndex = session.index + 1 < session.questionIds.length ? session.index + 1 : -1;
+        const nextQuestionId = nextQuestionIndex >= 0 ? session.questionIds[nextQuestionIndex] : undefined;
+        const allLocalQuestionsAnswered = nextQuestionId === undefined;
+        const completesSession = session.checkMode !== "instant" && (serverQuestion
+            ? persistedSessionStatus === "completed"
+            : allLocalQuestionsAnswered);
+        const completedSession = { ...session, attempts, ...(scoreSummary ? { scoreSummary } : {}) };
+        if (completesSession) saveScheduledPracticeResult(completedSession, attempts);
+        if (completesSession && scoreSummary) {
+            const scoreHistory: LocalPracticeSessionHistory = {
+                id: session.id,
+                mode: session.mode,
+                checkMode: "score",
+                status: "completed",
+                startedAt: session.startedAt,
+                completedAt: persistedCompletedAt ?? new Date().toISOString(),
+                itemCount: session.questionIds.length,
+                attemptedItemCount: scoreSummary.total,
+                disclosure: "score",
+                summary: scoreSummary,
+            };
+            setPracticeSessionsByLearner((current) => ({
+                ...current,
+                [session.learnerId]: [
+                    scoreHistory,
+                    ...(current[session.learnerId] ?? []).filter((item) => item.id !== session.id),
+                ],
+            }));
+        }
+        if (!serverQuestion || disclosedAttempts) {
+            setAttemptsByLearner((current) => ({
+                ...current,
+                [session.learnerId]: serverQuestion && session.checkMode === "complete"
+                    ? [...(current[session.learnerId] ?? []).filter((item) => item.sessionId !== session.id), ...attempts]
+                    : [...(current[session.learnerId] ?? []), attempt],
+            }));
+        }
         setSession((current) => {
             if (!current) return current;
-            const nextAttempts = [...current.attempts, attempt];
-            if (current.checkMode === "instant") return { ...current, attempts: nextAttempts };
-            return current.index === current.questionIds.length - 1
-                ? { ...current, attempts: nextAttempts, phase: "complete" }
-                : { ...current, attempts: nextAttempts, index: current.index + 1, questionStartedAt: Date.now() };
+            if (current.checkMode === "instant") return { ...current, attempts };
+            return completesSession
+                ? { ...current, attempts, ...(scoreSummary ? { scoreSummary } : {}), phase: "complete" }
+                : { ...current, attempts, index: nextQuestionIndex, questionStartedAt: Date.now() };
         });
-        if (session.checkMode === "complete") {
-            const nextQuestionId = session.questionIds[session.index + 1];
+        if (shouldAdvanceAfterSubmit(session.checkMode)) {
             setAnswer("");
             setHandwriting("");
             if (nextQuestionId !== undefined) router.push(getSessionQuestionPath(nextQuestionId));
@@ -2457,12 +3437,14 @@ export default function Home() {
 
     /** 逐題檢核後前往下一題。 */
     function moveNext() {
-        const nextQuestionId = session?.questionIds[(session?.index ?? 0) + 1];
-        if (session && session.index === session.questionIds.length - 1) saveScheduledPracticeResult(session, session.attempts);
+        const nextIndex = session && session.index + 1 < session.questionIds.length ? session.index + 1 : -1;
+        const nextQuestionId = session && nextIndex >= 0 ? session.questionIds[nextIndex] : undefined;
+        const completesSession = Boolean(session && nextIndex < 0);
+        if (session && completesSession) saveScheduledPracticeResult(session, session.attempts);
         setAnswer(""); setHandwriting("");
-        setSession((current) => !current ? current : current.index === current.questionIds.length - 1
+        setSession((current) => !current ? current : completesSession
             ? { ...current, phase: "complete" }
-            : { ...current, index: current.index + 1, questionStartedAt: Date.now() });
+            : { ...current, index: nextIndex, questionStartedAt: Date.now() });
         if (nextQuestionId !== undefined) router.push(getSessionQuestionPath(nextQuestionId));
     }
 
@@ -2791,8 +3773,8 @@ export default function Home() {
 
     const sessionCorrect = session?.attempts.filter((attempt) => attempt.correct === true).length ?? 0;
     const pendingCount = session?.attempts.filter((attempt) => attempt.correct === null).length ?? 0;
-    const wrongIds = session?.attempts.filter((attempt) => attempt.correct === false).map((attempt) => attempt.questionId) ?? [];
-    const wrongPartIdsByQuestion = getWrongPartIdsByQuestion(session?.attempts.filter((attempt) => attempt.correct === false) ?? []);
+    const wrongIds = [...new Set(session?.attempts.filter(needsWrongReview).map((attempt) => attempt.questionId) ?? [])];
+    const wrongPartIdsByQuestion = getWrongPartIdsByQuestion(session?.attempts.filter(needsWrongReview) ?? []);
     const similarIds = questions.filter((question) => question.generatedFrom && wrongIds.includes(question.generatedFrom)).map((question) => question.id);
     const dayDifference = getDayDifference(activeExam.date);
     const examCountdownLabel = getExamCountdownLabel(dayDifference);
@@ -2803,11 +3785,16 @@ export default function Home() {
         if (!session) return null;
         if (session.phase === "answering" && currentQuestion) {
             return (
+                <>
+                {practiceServiceError && <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm" role="alert">{practiceServiceError}</p>}
                 <QuestionFlow
                     question={currentQuestion}
+                    serverQuestion={persistedQuestions.get(currentQuestion.id)}
+                    busy={practiceBusy}
+                    answerLocked={Boolean(attemptRequestRef.current)}
                     index={session.index}
                     total={session.questionIds.length}
-                    partIds={session.partIdsByQuestion?.[currentQuestion.id]}
+                    partIds={currentTargetPartIds}
                     checkMode={session.checkMode}
                     answer={answer}
                     handwriting={handwriting}
@@ -2817,12 +3804,19 @@ export default function Home() {
                     onSubmit={submitAnswer}
                     onNext={moveNext}
                 />
+                </>
             );
         }
-        const reviewedInSession = session.attempts.length - pendingCount;
-        const sessionAccuracy = reviewedInSession ? Math.round(sessionCorrect / reviewedInSession * 100) : null;
-        const sessionWrong = session.attempts.filter((attempt) => attempt.correct === false).length;
         const scoreOnly = session.checkMode === "score";
+        const reviewedInSession = session.attempts.length - pendingCount;
+        const sessionAccuracy = scoreOnly
+            ? session.scoreSummary?.accuracy ?? null
+            : reviewedInSession ? Math.round(sessionCorrect / reviewedInSession * 100) : null;
+        const sessionWrong = scoreOnly
+            ? session.scoreSummary?.wrong ?? 0
+            : session.attempts.filter((attempt) => attempt.correct === false).length;
+        const sessionPending = scoreOnly ? session.scoreSummary?.pending ?? session.attempts.length : pendingCount;
+        const sessionTotal = scoreOnly ? session.scoreSummary?.total ?? session.attempts.length : session.attempts.length;
         return (
             <Card className="practice-result-card workspace-card border-border/80 shadow-sm">
                 <CardHeader className="border-b border-border/80 sm:flex-row sm:items-center sm:justify-between">
@@ -2830,7 +3824,9 @@ export default function Home() {
                         <Badge tone="success"><CheckCircle2 />本輪完成</Badge>
                         <h2 className="mt-3 text-2xl font-bold">練習結果</h2>
                         <CardDescription>{scoreOnly
-                            ? `共 ${session.attempts.length} 題，答錯 ${sessionWrong} 題${pendingCount ? `，待檢視 ${pendingCount} 題` : ""}。本模式不顯示解答。`
+                            ? session.scoreSummary
+                                ? `共 ${sessionTotal} 題，答錯 ${sessionWrong} 題${sessionPending ? `，待檢視 ${sessionPending} 題` : ""}。本模式不顯示逐題結果。`
+                                : "本輪尚未完成，因此不提供成績或逐題結果。"
                             : `共 ${session.attempts.length} 題，答對 ${sessionCorrect} 題${pendingCount ? `，待檢視 ${pendingCount} 題` : ""}。`}</CardDescription>
                     </div>
                     <div className="workspace-stat px-6 py-4 text-center">
@@ -2839,19 +3835,21 @@ export default function Home() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 p-5 sm:p-7">
-                    {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">本輪答錯 {sessionWrong} 題</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式不顯示逐題結果、答案或解析。</p></div>}
+                    {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">{session.scoreSummary ? `本輪答對 ${session.scoreSummary.correct} 題、答錯 ${sessionWrong} 題` : "本輪未產生成績"}</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式只顯示整體統計，不顯示逐題結果、答案或解析。</p></div>}
                     {!scoreOnly && session.attempts.map((attempt, index) => {
                         const question = questions.find((item) => item.id === attempt.questionId);
                         const wrongPartLabels = question ? getWrongPartLabels(question, attempt) : [];
                         return question ? (
-                            <div className={`workspace-surface grid gap-4 rounded-xl p-4 ${attempt.handwriting ? "md:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]" : ""}`} key={`${attempt.questionId}-${index}`}>
+                            <div className={`workspace-surface grid gap-4 rounded-xl p-4 ${attempt.handwriting ? "md:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]" : ""}`} key={attempt.sessionItemId ?? `${attempt.questionId}-${index}`}>
                                 <div className="flex min-w-0 items-start justify-between gap-3">
                                     <div>
                                         <p className="font-semibold">{index + 1}.</p>
                                         <QuestionPrompt question={question} className="whitespace-pre-line font-semibold" />
                                         <p className="mt-1 text-sm text-muted-foreground">你的答案：{formatAnswer(question, attempt.answer)}</p>
                                         {wrongPartLabels.length > 0 && <p className="text-sm text-rose-700">答錯小題：{wrongPartLabels.join("、")}</p>}
-                                        {session.checkMode === "complete" && <><p className="text-sm text-muted-foreground">參考答案：{formatAnswer(question, question.answer)}</p><ContentImages blocks={question.blocks} placement="answer" /></>}
+                                        <p className="text-sm text-muted-foreground">{persistedQuestions.has(question.id)
+                                            ? attempt.referenceAnswers?.length ? `參考答案：${formatReferenceAnswers(attempt.referenceAnswers)}` : "這個題目版本尚無可顯示的參考答案。"
+                                            : `參考答案：${formatAnswer(question, question.answer)}`}</p><ContentImages blocks={question.blocks} placement="answer" />
                                     </div>
                                     <Badge className="shrink-0" tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "待加強" : "待檢視"}</Badge>
                                 </div>
@@ -2881,7 +3879,8 @@ export default function Home() {
         if (section === "bank") return renderBank();
         if (section === "mistakes") return renderMistakes();
         if (section === "settings") return renderSettings();
-        return renderResults();
+        if (section === "system-settings") return renderSystemSettings();
+        return renderOverview();
     }
 
     /** 顯示考前總覽。 */
@@ -2913,14 +3912,9 @@ export default function Home() {
                                     : dayDifference === 0
                                         ? `${activeExam.name}就是今天，先完成最後一輪練習。`
                                         : `${activeExam.name}已結束，可切換到其他考試繼續安排。`}</p>
-                            <div className="mt-5 flex max-w-xl flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p className="text-xs font-bold tracking-[0.12em] text-primary">正式 PostgreSQL 題庫</p>
-                                    <p className="mt-1 font-bold">國一國文／翰林／第一冊／第四課</p>
-                                    <p className="mt-1 text-sm text-muted-foreground">共 279 題，登入後作答與進度會依學習者保存。</p>
-                                </div>
-                                <Button className="button-blue shrink-0" onClick={() => router.push("/local-practice")}>第四課練習（279 題）<ArrowRight /></Button>
-                            </div>
+                            <Button className="button-blue mt-5" disabled={!plannedQuestions.length} onClick={() => beginSession("practice", plannedQuestions.map((question) => question.id))}>
+                                {sessionPaused ? "繼續目前練習" : "開始今日練習"}<ArrowRight />
+                            </Button>
                         </div>
                         <LearningScene />
                     </div>
@@ -2951,6 +3945,7 @@ export default function Home() {
                         </Card>
                     </div>
                 </div>
+                {renderLearningHistory()}
             </div>
         );
     }
@@ -2963,16 +3958,6 @@ export default function Home() {
             { value: "score" as const, title: "只顯示成績", description: "完成後只顯示分數與答錯題數，不提供解答。" },
         ];
         const selectedLimit = activePlan.questionLimit;
-        const assessmentScopeLabel = activePlan.subject === "全部"
-            ? `${availableSubjects.length} 科範圍`
-            : (() => {
-                const subject = activePlan.subject as Subject;
-                const options = assessmentOptionsBySubject[subject] ?? [];
-                const range = getAssessmentRange(activeExam, subject);
-                const start = options.find((option) => option.value === range.start)?.label ?? "尚未設定";
-                const end = options.find((option) => option.value === range.end)?.label ?? "尚未設定";
-                return start === end ? start : `${start}～${end}`;
-            })();
         return (
             <Card className="workspace-card practice-card border-border/80 shadow-sm">
                 <CardHeader className="practice-card-header">
@@ -2991,7 +3976,7 @@ export default function Home() {
                         <Button appearance="outline" aria-expanded={schedulePanelOpen || scheduleDialogOpen} onClick={openScheduleComposer}><CalendarDays />安排練習</Button>
                         <Button
                             className="practice-header-action"
-                            disabled={!sessionPaused && (!plannedQuestions.length || !difficultyMixValid)}
+                            disabled={practiceBusy || (!sessionPaused && (!plannedQuestions.length || !difficultyMixValid))}
                             onClick={sessionPaused ? resumeSession : () => beginSession("practice", plannedQuestions.map((question) => question.id))}
                         >
                             {sessionPaused ? "繼續目前練習" : "開始練習"}<ArrowRight />
@@ -2999,30 +3984,27 @@ export default function Home() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-8 p-5 sm:p-7">
+                    {practiceServiceError && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{practiceServiceError}</p>}
+                    {persistedLearnerId && <p className="text-sm text-muted-foreground">作答與錯題紀錄保存在資料庫；篩選、練習計劃與個人顯示設定保存在目前瀏覽器。</p>}
+                    {learnerFilterSetupNotice && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status"><span>{learnerFilterSetupNotice}</span>{canAccessLearnerSettings && <Button appearance="outline" size="sm" onClick={() => navigateToSection("settings")}>前往學習者設定</Button>}</div>}
                     <div className="practice-plan-editor contents">
-                    <section className="practice-filter-basis grid gap-4">
-                        <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={Target} label="篩選方式" />}><NativeSelect options={PLAN_BASIS_OPTIONS} value={activePlanBasis} onChange={(event) => updatePlan("basis", event.target.value as PlanBasis)} /></FormField>
-                        {activePlanBasis === "assessment" && <div className="workspace-surface grid gap-3 rounded-2xl p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                            <div><p className="font-semibold">{activeExam.name}</p><p className="mt-1 text-sm text-muted-foreground">{activeExam.date || "尚未設定日期"} · {assessmentScopeLabel}</p></div>
-                            <Button appearance="outline" tone="muted" onClick={() => navigateToSection("settings")}><Settings2 />前往學習者設定</Button>
-                        </div>}
-                    </section>
                     <QuestionFilterPanel
                         idPrefix="practice"
                         subjects={availableSubjects}
                         questions={learnerQuestions}
                         grade={activeLearner.grade}
+                        preferredSemester={activeLearner.semester}
                         preferredVersions={activeLearner.bookVersions}
                         collections={activeQuestionCollections}
                         value={practiceFilters}
                         expanded={advancedPlanOpen}
                         disabledFields={{
                             difficulty: activePlan.difficultyMixEnabled,
-                            scope: activePlanBasis === "assessment",
                         }}
                         onChange={updatePracticeFilters}
                         onExpandedChange={setAdvancedPlanOpen}
                         onReset={resetAdvancedPlan}
+                        resetLabel="還原學習者預設"
                     >
                         <section className="practice-difficulty-mix">
                             <label className="practice-difficulty-toggle">
@@ -3083,7 +4065,7 @@ export default function Home() {
                                 <span>{selectedReviewedAttempts.length ? `答對 ${selectedCorrectCount}／${selectedReviewedAttempts.length} 題` : "尚無紀錄"}</span>
                             </div>
                         </div>
-                        {(!plannedQuestions.length || !difficultyMixValid) && <div className="practice-selection-context">{!plannedQuestions.length && <p className="practice-footer-error" role="status">目前設定沒有可用的示範題，請調整科目、範圍或篩選條件。</p>}{!difficultyMixValid && <p className="practice-footer-error" role="status">難易度占比合計需為 100% 才能開始。</p>}</div>}
+                        {(!plannedQuestions.length || !difficultyMixValid) && <div className="practice-selection-context">{!plannedQuestions.length && <p className="practice-footer-error" role="status">目前設定尚無已匯入的可用題目，請調整科目、年級、版本或範圍。</p>}{!difficultyMixValid && <p className="practice-footer-error" role="status">難易度占比合計需為 100% 才能開始。</p>}</div>}
                     </section>
                 </CardContent>
             </Card>
@@ -3303,11 +4285,13 @@ export default function Home() {
             <Card className="workspace-card question-overview-card border-border/80 shadow-sm">
                 <CardHeader><WorkspaceHeading icon={ListChecks} title="題目總覽" description="篩選全部題目、整理收藏清單，或將目前結果建立為練習計劃。" /></CardHeader>
                 <CardContent className="question-overview-content">
+                    {learnerFilterSetupNotice && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status"><span>{learnerFilterSetupNotice}</span>{canAccessLearnerSettings && <Button appearance="outline" size="sm" onClick={() => navigateToSection("settings")}>前往學習者設定</Button>}</div>}
                     <QuestionFilterPanel
                         idPrefix="question-overview"
                         subjects={availableSubjects}
                         questions={learnerQuestions}
                         grade={activeLearner.grade}
+                        preferredSemester={activeLearner.semester}
                         preferredVersions={activeLearner.bookVersions}
                         collections={activeQuestionCollections}
                         value={questionFilters}
@@ -3315,6 +4299,7 @@ export default function Home() {
                         onChange={(filters) => { setQuestionFilters(filters); setQuestionPage(1); setSelectedQuestionIds([]); }}
                         onExpandedChange={setQuestionFiltersOpen}
                         onReset={resetQuestionFilters}
+                        resetLabel="還原學習者預設"
                     />
 
                     <section className="question-list-section" aria-labelledby="question-list-title">
@@ -3403,11 +4388,13 @@ export default function Home() {
             headerActions={headerActions}
             index={selectedOverviewIndex}
             question={selectedOverviewQuestion}
+            serverQuestion={persistedQuestions.get(selectedOverviewQuestion.id)}
             title="題目總覽"
             total={detailOverviewQuestions.length}
             onBack={closeQuestionDetail}
             onNext={() => navigateOverviewQuestion(selectedOverviewIndex + 1)}
             onPrevious={() => navigateOverviewQuestion(selectedOverviewIndex - 1)}
+            onStartPractice={() => void beginSession("practice", [selectedOverviewQuestion.id])}
         />;
     }
 
@@ -3417,6 +4404,7 @@ export default function Home() {
         return <QuestionReview
             index={importReviewIndex}
             question={importReviewQuestion}
+            serverQuestion={persistedQuestions.get(importReviewQuestion.id)}
             title="匯入題目"
             total={importReviewQuestions.length}
             onBack={() => setImportReviewQuestionId(undefined)}
@@ -3589,8 +4577,9 @@ export default function Home() {
                                 })}
                             </div>
                             <div className="border-t border-border pt-4">
-                                <Button className="w-full" disabled={!importDrafts.length || isImporting} onClick={finishImportDemo}>{isImporting ? "正在寫入…" : `確認全部 ${importDrafts.length} 題並寫入 JSON`}</Button>
-                                <p className="mt-2 text-center text-xs text-muted-foreground">資料會由模擬 API 寫入本機 runtime JSON；OCR 與 AI 分析仍未連接。</p>
+                                <Button className="w-full" disabled title="正式匯入需先完成帳號授權與來源檔案管線">正式匯入尚未開放</Button>
+                                <p className="text-sm text-muted-foreground">目前可校正預覽，但不會把題目寫入未隔離的 JSON。既有 PostgreSQL 題庫與作答不受影響。</p>
+                                <p className="mt-2 text-center text-xs text-muted-foreground">這項匯入工具將資料寫入本機 JSON，尚未接入正式 PostgreSQL 題庫；OCR 與 AI 分析仍未連接。</p>
                             </div>
                         </div>
                     )}
@@ -3679,7 +4668,7 @@ export default function Home() {
 
         /** 清除錯題英雄榜的所有篩選與勾選狀態。 */
         function resetMistakeFilters() {
-            setMistakeFilters(DEFAULT_QUESTION_FILTERS);
+            setMistakeFilters(normalizeQuestionFilters(questionFilterBaseline, rankingQuestions, activeQuestionCollections));
             setMistakePage(1);
             setSelectedMistakes([]);
         }
@@ -3721,6 +4710,7 @@ export default function Home() {
                             subjects={availableSubjects}
                             questions={rankingQuestions}
                             grade={activeLearner.grade}
+                            preferredSemester={activeLearner.semester}
                             preferredVersions={activeLearner.bookVersions}
                             collections={activeQuestionCollections}
                             value={mistakeFilters}
@@ -3728,6 +4718,7 @@ export default function Home() {
                             onChange={changeMistakeFilters}
                             onExpandedChange={setMistakeFiltersOpen}
                             onReset={resetMistakeFilters}
+                            resetLabel="還原學習者預設"
                         />
                         <div className="mistake-list-heading">
                             <div className="question-list-title"><h3>{mistakeRankingView === "personal" ? "個人錯題清單" : "社群錯題清單"}</h3><span>共 {mistakeResultCount} 題</span></div>
@@ -3794,7 +4785,85 @@ export default function Home() {
         );
     }
 
-    /** 顯示目前學習者的完整設定頁。 */
+    /** 顯示建立或編輯學習者的共用資料庫表單。 */
+    function renderLearnerProfileDialog() {
+        return (
+            <Dialog open={learnerProfileDialogOpen} onOpenChange={(open) => {
+                if (learnerProfileBusy) return;
+                setLearnerProfileDialogOpen(open);
+                if (!open) {
+                    setLearnerProfileDraft(EMPTY_LEARNER_PROFILE_DRAFT);
+                    setLearnerProfileStatus("");
+                }
+            }}>
+                <DialogContent size="sm" closeLabel="關閉學習者設定">
+                    <DialogHeader><DialogTitle>{learnerProfileDraft.learnerId ? "編輯學習者" : "新增學習者"}</DialogTitle><DialogDescription>稱呼、年級與學期會保存到帳號資料庫，並套用到正式題庫與練習。</DialogDescription></DialogHeader>
+                    <DialogBody className="grid gap-4">
+                        <FormField label="稱呼"><Input autoFocus maxLength={80} required value={learnerProfileDraft.displayName} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, displayName: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                        <FormField label="年級"><NativeSelect options={[{ value: "", label: "請選擇年級" }, ...ACCOUNT_GRADE_OPTIONS]} required value={learnerProfileDraft.gradeCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, gradeCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                        <FormField label="學期"><NativeSelect options={[{ value: "", label: "請選擇學期" }, ...ACCOUNT_SEMESTER_OPTIONS]} required value={learnerProfileDraft.semesterCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, semesterCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                        {learnerProfileStatus && <p className="text-sm font-semibold text-danger" role="alert">{learnerProfileStatus}</p>}
+                    </DialogBody>
+                    <DialogFooter><Button appearance="ghost" tone="muted" disabled={learnerProfileBusy} onClick={() => setLearnerProfileDialogOpen(false)}>取消</Button><Button disabled={learnerProfileBusy || !learnerProfileDraft.displayName.trim() || !learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode} onClick={saveLearnerProfile}><Save />{learnerProfileBusy ? "正在保存…" : "保存"}</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
+    /** 顯示登入帳號、使用身分與可管理學習者；不混入目前學習者的個人偏好。 */
+    function renderSystemSettings() {
+        if (!practiceAccount) return null;
+        return (
+            <div className="grid gap-5">
+                <Card className="workspace-card settings-card border-border/80 shadow-sm">
+                    <CardHeader><WorkspaceHeading icon={Settings2} title="系統設定" description="管理登入帳號、本人身分與這個帳號可管理的學習者。" /></CardHeader>
+                    <CardContent className="grid gap-8 p-5 sm:p-7">
+                        <section className="settings-section">
+                            <div className="settings-section-heading">
+                                <div><h3>學習者管理</h3><p>切換、編輯或新增這個帳號可管理的學習者；個人的科目、考試與練習偏好請到「學習者設定」。</p></div>
+                                {canCreateLearner && <Button appearance="outline" onClick={openCreateLearner}><UserPlus />新增學習者</Button>}
+                            </div>
+                            <div className="grid gap-3">
+                                {!accountLearners.length && <div className="workspace-surface rounded-2xl p-5 text-sm text-muted-foreground">目前尚無學習者。{canCreateLearner ? "請新增第一位學習者。" : "目前身分沒有新增學習者的權限。"}</div>}
+                                {accountLearners.map((profile) => (
+                                    <article className="workspace-surface flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between" key={profile.id}>
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className="learner-avatar" aria-hidden="true">{profile.displayName.slice(0, 1)}</div>
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2"><strong className="truncate">{profile.displayName}</strong>{profile.id === practiceAccount.learner?.id && <Badge tone="primary">目前使用</Badge>}{profile.isSelf && <Badge tone="muted">本人</Badge>}</div>
+                                                <p className="mt-1 text-sm text-muted-foreground">{profile.gradeName ?? "未設定年級"} · {profile.semesterName ?? "未設定學期"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {profile.id !== practiceAccount.learner?.id && <Button appearance="outline" size="sm" disabled={practiceBusy} onClick={() => changeLearner(profile.id)}>切換使用</Button>}
+                                            {canCreateLearner && profile.canManageSettings && <Button size="sm" disabled={learnerProfileBusy} onClick={() => openEditLearner(profile)}><Pencil />編輯</Button>}
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+                        <section className="settings-section">
+                            <div className="settings-section-heading"><div><h3>帳號身分與使用角色</h3><p>本人身分是帳號層設定；目前模式只決定這次操作情境。系統管理員權限不在此清單，也不會由一般帳號自行取得。</p></div><Badge tone={practiceAccount.emailVerified ? "success" : "warning"}>{practiceAccount.emailVerified ? "信箱已驗證" : "信箱尚未驗證"}</Badge></div>
+                            <div className="role-access-summary">
+                                <div><span>帳號信箱</span><strong>{practiceAccount.email ?? "帳號資訊已隱藏"}</strong></div>
+                                <div><span>本人身分</span><strong>{practiceAccount.accountRole ? ACCOUNT_ROLE_LABELS[practiceAccount.accountRole] : "尚未設定"}</strong></div>
+                                <div><span>目前模式</span><strong>{ACCOUNT_ROLE_LABELS[practiceAccount.activeRole]}</strong></div>
+                            </div>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                <FormField label="本人身分"><NativeSelect options={ACCOUNT_IDENTITY_OPTIONS} value={identityRole} onChange={(event) => { setIdentityRole(event.target.value as PracticeAccountRole); setIdentityPassword(""); setIdentityStatus(""); }} /></FormField>
+                                {identityRole !== "learner" && identityRole !== practiceAccount.accountRole && <FormField label="目前帳號密碼"><Input type="password" autoComplete="current-password" value={identityPassword} onChange={(event) => { setIdentityPassword(event.target.value); setIdentityStatus(""); }} /></FormField>}
+                            </div>
+                            {identityStatus && <p className="mt-3 text-sm font-semibold text-danger" role="alert">{identityStatus}</p>}
+                            <div className="mt-4 flex justify-end"><Button disabled={identityBusy || identityRole === practiceAccount.accountRole || (identityRole !== "learner" && !identityPassword)} onClick={saveAccountIdentity}>{identityBusy ? "正在更新…" : "更新本人身分"}</Button></div>
+                        </section>
+                        {renderLearnerProfileDialog()}
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    /** 顯示目前使用中學習者的個人、科目、考試與練習偏好。 */
     function renderSettings() {
         const selectedExamId = getSettingsExamId(pathname);
         const selectedExam = activePlan.examSettings.find((exam) => exam.id === selectedExamId);
@@ -3807,6 +4876,8 @@ export default function Home() {
                         <Button appearance="outline" onClick={() => router.push(SECTION_PATHS.settings)}><ArrowLeft />返回考試清單</Button>
                     </CardHeader>
                     <CardContent className="grid gap-6 p-5 sm:p-7">
+                        {!canManageCurrentLearner && <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">目前只有檢視權限；需要學習者設定權限才能修改考試內容。</p>}
+                        <fieldset className="contents" disabled={!canManageCurrentLearner}>
                         <div className="exam-detail-status">
                             <div><p className="text-sm font-semibold">考試狀態</p><p className="text-xs text-muted-foreground">目前套用的考試會帶入依考試練習與摘要。</p></div>
                             {selectedExam.id === activePlan.activeExamId
@@ -3835,6 +4906,7 @@ export default function Home() {
                         <div className="exam-detail-actions">
                             <Button appearance="ghost" tone="danger" disabled={activePlan.examSettings.length <= 1} onClick={() => removeExamSetting(selectedExam.id)}><Trash2 />刪除此考試</Button>
                         </div>
+                        </fieldset>
                     </CardContent>
                 </Card>
             );
@@ -3843,47 +4915,62 @@ export default function Home() {
         return (
             <div className="grid gap-5">
                 <Card className="workspace-card settings-card border-border/80 shadow-sm">
-                    <CardHeader><WorkspaceHeading icon={UserCheck} title="基本設定" description="切換學習者後，每位學習者的資料、各科版本與練習偏好會分開保存。" /></CardHeader>
+                    <CardHeader><WorkspaceHeading icon={UserCheck} title="學習者設定" description="只調整目前使用中學習者的個人資料、各科版本與練習偏好。" /></CardHeader>
                     <CardContent className="grid gap-8 p-5 sm:p-7">
+                        {!canManageCurrentLearner && <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">目前只有檢視權限；個人資料、考試與練習偏好不會被修改。</p>}
                         <section className="settings-section">
                             <div className="settings-section-heading"><div><h3>基本資料</h3><p>稱呼會顯示在首頁，年級會自動帶入題庫與複習計畫。</p></div><Badge className="tag-purple" tone="primary">個人資料</Badge></div>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            {practiceAccount && activeAccountLearner ? <div className="workspace-surface flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="learner-avatar" aria-hidden="true">{activeAccountLearner.displayName.slice(0, 1)}</div>
+                                    <div className="min-w-0"><strong className="truncate">{activeAccountLearner.displayName}</strong><p className="mt-1 text-sm text-muted-foreground">{activeAccountLearner.gradeName ?? "未設定年級"} · {activeAccountLearner.semesterName ?? "未設定學期"}</p></div>
+                                </div>
+                                {canManageCurrentLearner
+                                    ? <Button disabled={learnerProfileBusy} onClick={() => openEditLearner(activeAccountLearner)}><Pencil />編輯自己的資料</Button>
+                                    : <Badge tone="muted">僅供檢視</Badge>}
+                            </div> : <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="workspace-surface flex items-center gap-4 rounded-2xl p-4 sm:col-span-2">
                                     <div className="learner-avatar overflow-hidden" aria-hidden="true">{activeLearner.avatar ? <img className="h-full w-full object-cover" src={activeLearner.avatar} alt="" /> : activeLearner.name.slice(0, 1)}</div>
-                                    <div className="min-w-0 flex-1">
-                                        <FormField label="代表圖片" description="支援 JPG、PNG、WebP，檔案需小於 1 MB。"><Input accept={AVATAR_FILE_TYPES.join(",")} type="file" onChange={updateLearnerAvatar} /></FormField>
-                                        {avatarError && <p className="mt-2 text-sm font-semibold text-danger" role="alert">{avatarError}</p>}
-                                    </div>
+                                    <div className="min-w-0 flex-1"><FormField label="代表圖片" description="支援 JPG、PNG、WebP，檔案需小於 1 MB。"><Input accept={AVATAR_FILE_TYPES.join(",")} type="file" onChange={updateLearnerAvatar} /></FormField>{avatarError && <p className="mt-2 text-sm font-semibold text-danger" role="alert">{avatarError}</p>}</div>
                                     {activeLearner.avatar && <Button appearance="ghost" tone="muted" size="sm" onClick={() => { updateLearner("avatar", ""); setAvatarError(""); }}>移除圖片</Button>}
                                 </div>
                                 <FormField className="field-dot field-dot-violet" label="稱呼"><Input value={activeLearner.name} onChange={(event) => updateLearner("name", event.target.value)} /></FormField>
                                 <FormField className="field-dot field-dot-blue" label="學校"><Input value={activeLearner.school} onChange={(event) => updateLearner("school", event.target.value)} /></FormField>
                                 <FormField className="field-dot field-dot-coral" label="年級"><NativeSelect options={GRADE_OPTIONS} value={activeLearner.grade} onChange={(event) => updateLearner("grade", event.target.value)} /></FormField>
                                 <FormField className="field-dot field-dot-gold" label="學期"><NativeSelect options={SEMESTER_OPTIONS} value={activeLearner.semester} onChange={(event) => updateLearner("semester", event.target.value)} /></FormField>
-                            </div>
+                            </div>}
+                            {renderLearnerProfileDialog()}
                         </section>
-                        <section className="settings-section">
-                            <div className="settings-section-heading">
-                                <div><h3>帳號與角色</h3><p>切換角色時會保留目前學習者；可在這裡設定每個角色能管理哪些學習者。</p></div>
-                                <Button appearance="outline" onClick={() => router.push(AUTH_PATHS["account-link"])}><Link2 />帳號綁定</Button>
+                        {practiceAccount ? <section className="settings-section">
+                            <div className="settings-section-heading"><div><h3>啟用科目與版本</h3><p>每個科目的教材版本分開保存；未指定版本不會停用該科目。</p></div><Badge tone="muted">資料庫設定</Badge></div>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {!activeAccountLearner?.subjectSettings.length && <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未啟用科目。</p><p className="mt-1">請由有管理權限的帳號完成科目設定。</p></div>}
+                                {activeAccountLearner?.subjectSettings.map((setting) => {
+                                    const subjectName = normalizeSubjectLabel(setting.subject.name);
+                                    const options = [
+                                        { value: "", label: "未指定教材版本" },
+                                        ...setting.availableBookVersions.map((bookVersion) => ({
+                                            value: bookVersion.id,
+                                            label: [bookVersion.publisher?.name, bookVersion.name]
+                                                .filter(Boolean)
+                                                .join(" · "),
+                                        })),
+                                    ];
+                                    return <article className="workspace-surface rounded-2xl p-4" key={setting.subject.code}>
+                                        <FormField label={`${subjectName}教材版本`} description="只更新這一科，不影響其他科目。">
+                                            <NativeSelect
+                                                disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
+                                                options={options}
+                                                value={setting.bookVersion?.id ?? ""}
+                                                onChange={(event) => void saveLearnerSubjectSetting(setting, event.target.value)}
+                                            />
+                                        </FormField>
+                                        {subjectSettingBusyCode === setting.subject.code && <p className="mt-2 text-sm text-muted-foreground" role="status">正在保存…</p>}
+                                    </article>;
+                                })}
                             </div>
-                            <div className="role-access-summary">
-                                <div><span>註冊信箱</span><strong>{roleAccess.registrationEmail}</strong></div>
-                                <div><span>目前角色</span><strong>{roleAccess.activeRole}</strong></div>
-                                <div><span>目前年級</span><strong>{activeLearner.grade}</strong></div>
-                            </div>
-                            <div className="role-access-grid">
-                                {ROLE_OPTIONS.map(({ value: role }) => (
-                                    <article className="role-access-card" key={role}>
-                                        <div><h4>{role}</h4><p>{role === "學習者" ? "可使用自己的練習與成果" : "可替指定學習者建立資料與安排練習"}</p></div>
-                                        <div className="role-access-learners">
-                                            {learners.map((learner) => <label key={learner.id}><Checkbox checked={roleAccess.learnerIdsByRole[role].includes(learner.id)} onChange={(event) => updateRoleLearner(role, learner.id, event.target.checked)} />{learner.name}</label>)}
-                                        </div>
-                                    </article>
-                                ))}
-                            </div>
-                        </section>
-                        <section className="settings-section">
+                            {subjectSettingStatus && <p className="mt-3 text-sm font-semibold" role="status">{subjectSettingStatus}</p>}
+                        </section> : <section className="settings-section">
                             <div className="settings-section-heading">
                                 <div><h3>各科書籍版本</h3><p>系統預設科目不可刪除；也可自行新增其他科目。版本選擇「無」時，該科不會出現在題目、練習與篩選介面。</p></div>
                                 <Button appearance="outline" onClick={() => setSubjectDialogOpen(true)}><Plus />新增科目</Button>
@@ -3932,8 +5019,9 @@ export default function Home() {
                                 ))}
                                 {!configurableSubjects.length && <p className="text-sm text-muted-foreground">目前年級尚無可設定版本的科目。</p>}
                             </div>
-                        </section>
-                        <section className="settings-section" id="exam-settings">
+                        </section>}
+                        <fieldset className="contents" disabled={!canManageCurrentLearner}>
+                        {(!practiceAccount || activeAccountLearner) && <><section className="settings-section" id="exam-settings">
                             <div className="settings-section-heading">
                                 <div><h3>考試設定</h3><p>先選擇考試，再進入內頁設定日期與各科範圍。</p></div>
                                 <Button appearance="outline" disabled={activePlan.examSettings.length >= 20} onClick={addExamSetting}><Plus />新增考試</Button>
@@ -3954,8 +5042,8 @@ export default function Home() {
                                     </article>
                                 ))}
                             </div>
-                        </section>
-                        <section className="settings-section">
+                        </section></>}
+                        {(!practiceAccount || activeAccountLearner) && <section className="settings-section">
                             <div className="settings-section-heading"><div><h3>練習偏好</h3><p>預設題數會用於新計畫；複習計畫中的「本輪題數」仍可臨時更改。</p></div><Badge className="tag-gold" tone="warning">預設值</Badge></div>
                             <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
                                 <FormField className="field-dot field-dot-gold" label="可選題數" description="使用逗號分隔，例如：5, 10, 15。">
@@ -3979,7 +5067,8 @@ export default function Home() {
                                     />
                                 </FormField>
                             </div>
-                        </section>
+                        </section>}
+                        </fieldset>
                     </CardContent>
                 </Card>
             </div>
@@ -3987,7 +5076,7 @@ export default function Home() {
     }
 
     /** 顯示每次練習紀錄，展開後可切換查看錯題或全部題目。 */
-    function renderResults() {
+    function renderLearningHistory() {
         /**
          * 顯示單筆作答題目與答案。
          * @param record 練習紀錄。
@@ -3996,10 +5085,25 @@ export default function Home() {
          * @returns 作答題目卡片；題目不存在時不顯示。
          */
         function renderResultAttempt(record: PracticeRecord, attempt: Attempt, index: number) {
-            const question = questions.find((item) => item.id === attempt.questionId);
-            if (!question) return null;
             const resultLabel = attempt.correct === true ? "答對" : attempt.correct === false ? "錯題" : "待檢視";
             const resultTone = attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning";
+            const currentServerRevision = persistedQuestions.get(attempt.questionId)?.revisionId;
+            const revisionUnavailable = Boolean(
+                attempt.revisionId && currentServerRevision !== attempt.revisionId,
+            );
+            const question = revisionUnavailable
+                ? undefined
+                : questions.find((item) => item.id === attempt.questionId);
+            if (!question) {
+                return <article className="result-wrong-item" data-result={attempt.correct === true ? "correct" : attempt.correct === false ? "wrong" : "pending"} key={`${record.id}-${attempt.questionId}-${index}`}>
+                    <div>
+                        <div className="result-question-heading"><p className="result-wrong-number">第 {index + 1} 題</p><Badge tone={resultTone}>{resultLabel}</Badge></div>
+                        <h5>作答當時的題目版本目前無法安全顯示</h5>
+                        <p>已保留原始作答結果與時間；系統不會用目前題目版本冒充當時內容。</p>
+                    </div>
+                    <time dateTime={attempt.date}>{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</time>
+                </article>;
+            }
             const relatedIds = attempt.correct === false ? getRelatedQuestionIds(question.id) : [];
             const wrongPartLabels = getWrongPartLabels(question, attempt);
             return <article className="result-wrong-item" data-result={attempt.correct === true ? "correct" : attempt.correct === false ? "wrong" : "pending"} key={`${record.id}-${attempt.questionId}-${index}`}>
@@ -4013,7 +5117,9 @@ export default function Home() {
                         <Button size="sm" disabled={!relatedIds.length} onClick={() => beginSession("similar", relatedIds, "instant")}><Sparkles />相關題目練習{relatedIds.length ? `（${relatedIds.length}）` : ""}</Button>
                     </div>}
                 </div>
-                <div className="result-wrong-answer"><p><span>你的答案</span>{formatAnswer(question, attempt.answer)}</p><p><span>參考答案</span>{formatAnswer(question, question.answer)}</p></div>
+                <div className="result-wrong-answer"><p><span>你的答案</span>{formatAnswer(question, attempt.answer)}</p><p><span>參考答案</span>{persistedQuestions.has(question.id)
+                    ? attempt.referenceAnswers?.length ? formatReferenceAnswers(attempt.referenceAnswers) : "這個題目版本尚無可顯示的參考答案。"
+                    : formatAnswer(question, question.answer)}</p></div>
             </article>;
         }
 
@@ -4023,13 +5129,13 @@ export default function Home() {
                     <CardHeader><WorkspaceHeading icon={BarChart3} title="成果摘要" description="依每次練習累積的作答紀錄計算。" /></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
                         { label: "練習次數", value: practiceRecords.length },
-                        { label: "已作答", value: activeAttempts.length },
-                        { label: "錯題", value: reviewedAttempts.length - correctCount },
-                        { label: "已檢核正確率", value: reviewedAttempts.length ? `${accuracy}%` : "—" },
+                        { label: "已作答", value: historyAttemptedCount },
+                        { label: "錯題", value: reviewedAttempts.length - correctCount + scoreOnlyWrongCount },
+                        { label: "已檢核正確率", value: reviewedCount ? `${accuracy}%` : "—" },
                     ].map((stat) => <div className="workspace-stat rounded-xl p-4 text-center" key={stat.label}><p className="text-2xl font-bold">{stat.value}</p><p className="text-xs text-muted-foreground">{stat.label}</p></div>)}</CardContent>
                 </Card>
                 <Card className="workspace-card border-border/80 shadow-sm">
-                    <CardHeader><WorkspaceHeading icon={ClipboardCheck} title="練習紀錄" description="依練習日期由新到舊排列；展開後可切換查看錯題或全部題目。" /></CardHeader>
+                    <CardHeader><WorkspaceHeading icon={ClipboardCheck} title="練習紀錄" description="依練習日期由新到舊排列；成績模式只保留整體統計，其他模式可展開查看題目。" /></CardHeader>
                     <CardContent>
                         {!practiceRecords.length && <div className="workspace-surface rounded-2xl p-8 text-center"><p className="font-bold">尚未有練習紀錄</p><p className="mt-1 text-sm text-muted-foreground">完成一輪練習後，練習項目與錯題數會顯示在這裡。</p></div>}
                         {practiceRecords.length > 0 && <div className="result-record-table-wrap">
@@ -4043,21 +5149,29 @@ export default function Home() {
                                     const pendingAttempts = record.attempts.filter((attempt) => attempt.correct === null);
                                     const reviewed = record.attempts.filter((attempt) => attempt.correct !== null);
                                     const correct = reviewed.filter((attempt) => attempt.correct === true).length;
-                                    const score = reviewed.length ? `${Math.round(correct / reviewed.length * 100)} 分` : "待檢視";
+                                    const scoreOnly = Boolean(record.scoreSummary);
+                                    const wrongCount = record.scoreSummary?.wrong ?? wrongAttempts.length;
+                                    const score = record.scoreSummary
+                                        ? `${record.scoreSummary.accuracy} 分`
+                                        : reviewed.length ? `${Math.round(correct / reviewed.length * 100)} 分` : "待檢視";
                                     const modeLabel = record.mode === "review" ? "錯題複習" : record.mode === "similar" ? "相關題目練習" : "考前練習";
-                                    const subjectLabel = subjects.length === 1 ? subjects[0] : subjects.length ? subjects.join("、") : "練習";
+                                    const subjectLabel = scoreOnly ? "成績模式" : subjects.length === 1 ? subjects[0] : subjects.length ? subjects.join("、") : "練習";
                                     const unitLabels = units.map(getUnitLabel);
                                     const unitLabel = unitLabels.length > 2 ? `${unitLabels.slice(0, 2).join("、")}等 ${unitLabels.length} 個單元` : unitLabels.join("、");
                                     const title = `${modeLabel} · ${subjectLabel}${unitLabel ? ` · ${unitLabel}` : ""}`;
-                                    const expanded = selectedPracticeRecordId === record.id;
+                                    const expanded = !scoreOnly && selectedPracticeRecordId === record.id;
                                     return <Fragment key={record.id}>
                                         <tr>
-                                            <td data-label="練習項目"><button className="result-record-title" type="button" aria-expanded={expanded} onClick={() => setSelectedPracticeRecordId(expanded ? "" : record.id)}>{title}</button></td>
+                                            <td data-label="練習項目">{scoreOnly
+                                                ? <span className="result-record-title">{title}</span>
+                                                : <button className="result-record-title" type="button" aria-expanded={expanded} onClick={() => setSelectedPracticeRecordId(expanded ? "" : record.id)}>{title}</button>}</td>
                                             <td data-label="日期"><time dateTime={record.completedAt}>{formatAttemptDate(record.completedAt)}</time></td>
-                                            <td data-label="題數">{record.attempts.length} 題</td>
-                                            <td data-label="錯題"><Badge tone={wrongAttempts.length ? "danger" : "success"}>{wrongAttempts.length} 題</Badge></td>
+                                            <td data-label="題數">{record.itemCount} 題</td>
+                                            <td data-label="錯題"><Badge tone={wrongCount ? "danger" : "success"}>{wrongCount} 題</Badge></td>
                                             <td data-label="成績">{score}</td>
-                                            <td className="result-record-action"><Button appearance="outline" size="sm" aria-expanded={expanded} onClick={() => setSelectedPracticeRecordId(expanded ? "" : record.id)}>{expanded ? "收起" : "查看題目"}<ChevronDown className={expanded ? "rotate-180" : ""} /></Button></td>
+                                            <td className="result-record-action">{scoreOnly
+                                                ? <Badge>僅顯示成績</Badge>
+                                                : <Button appearance="outline" size="sm" aria-expanded={expanded} onClick={() => setSelectedPracticeRecordId(expanded ? "" : record.id)}>{expanded ? "收起" : "查看題目"}<ChevronDown className={expanded ? "rotate-180" : ""} /></Button>}</td>
                                         </tr>
                                         {expanded && <tr className="result-record-detail-row"><td colSpan={6}>
                                             <section className="result-record-detail" aria-label={`${title}題目明細`}>
@@ -4090,8 +5204,8 @@ export default function Home() {
     const authMode = getAuthMode(pathname);
     if (authMode) return <AuthScreen mode={authMode} />;
 
-    if (!isHydrated) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">正在讀取模擬資料</p><p className="mt-2 text-sm text-muted-foreground">前端正在透過 API 載入 runtime JSON。</p></CardContent></Card></main>;
-    if (!learners.length || !questions.length) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">無法顯示學習資料</p><p className="mt-2 text-sm text-muted-foreground">{storageError || "模擬 API 沒有回傳可用資料。"}</p></CardContent></Card></main>;
+    if (!isHydrated) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">正在讀取學習資料</p><p className="mt-2 text-sm text-muted-foreground">正在載入學習設定、正式題庫與已保存的作答紀錄。</p></CardContent></Card></main>;
+    if (!learners.length && !practiceAccount) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">無法顯示學習資料</p><p className="mt-2 text-sm text-muted-foreground">{storageError || "尚無可用的學習者資料。"}</p></CardContent></Card></main>;
 
     if (section === "questions" && getOverviewQuestionId(pathname) !== undefined) return renderQuestionOverviewDetail();
     if (section === "bank" && importReviewQuestion) return renderImportQuestionReview();
@@ -4148,28 +5262,12 @@ export default function Home() {
                 </DialogHeader>
                 <DialogBody className="grid gap-4">
                     {roleStatus && <p className="role-status" role="status">{roleStatus}</p>}
-                    <FormField label="要切換的角色"><NativeSelect options={ROLE_OPTIONS} value={requestedRole} onChange={(event) => { setRequestedRole(event.target.value as AccountRole); setRoleStatus(""); setRoleResetOpen(false); setRolePin(""); }} /></FormField>
-                    {requestedRole !== "學習者" && requestedRole !== roleAccess.activeRole && !roleResetOpen && <>
-                        <div className="role-pin-field">
-                            <div><p>六位數角色密碼</p></div>
-                            <RolePinKeypad value={rolePin} onChange={(value) => { setRolePin(value); setRoleStatus(""); }} />
-                        </div>
-                        <Button appearance="ghost" tone="muted" onClick={() => { setRoleResetOpen(true); setRoleStatus(""); }}>忘記角色密碼</Button>
-                    </>}
-                    {requestedRole !== "學習者" && roleResetOpen && <div className="role-reset-panel">
-                        <div className="flex items-center gap-2 font-semibold"><Mail size={18} />註冊信箱驗證</div>
-                        <FormField label="註冊信箱"><Input type="email" autoComplete="email" value={roleEmail} onChange={(event) => setRoleEmail(event.target.value)} /></FormField>
-                        <Button appearance="outline" onClick={sendRoleCode}>寄送驗證碼</Button>
-                        {roleCodeSent && <>
-                            <FormField label="六位數驗證碼"><Input inputMode="numeric" maxLength={6} value={roleCode} onChange={(event) => setRoleCode(event.target.value.replace(/\D/g, "").slice(0, 6))} /></FormField>
-                            <FormField label="新六位數角色密碼"><Input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={newRolePin} onChange={(event) => setNewRolePin(event.target.value.replace(/\D/g, "").slice(0, 6))} /></FormField>
-                            <Button onClick={resetRolePin}><ShieldCheck />驗證並更新密碼</Button>
-                        </>}
-                    </div>}
+                    <FormField label="目前模式"><NativeSelect options={grantedRoleOptions} value={requestedRole} onChange={(event) => { setRequestedRole(event.target.value as AccountRole); setRoleStatus(""); setRolePassword(""); }} /></FormField>
+                    {requestedRole !== "學習者" && requestedRole !== roleAccess.activeRole && <FormField label="目前帳號密碼" description="切換到家長或家教模式前，需要重新確認目前帳號密碼。"><Input type="password" autoComplete="current-password" value={rolePassword} onChange={(event) => { setRolePassword(event.target.value); setRoleStatus(""); }} /></FormField>}
                 </DialogBody>
                 <DialogFooter>
                     <DialogClose asChild><Button appearance="ghost" tone="muted">取消</Button></DialogClose>
-                    {!roleResetOpen && <Button onClick={switchRole}><KeyRound />切換角色</Button>}
+                    <Button disabled={roleSwitchBusy || requestedRole === roleAccess.activeRole || (requestedRole !== "學習者" && !rolePassword)} onClick={switchRole}><ShieldCheck />{roleSwitchBusy ? "正在切換…" : "切換模式"}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -4232,16 +5330,17 @@ export default function Home() {
                             <DropdownTrigger asChild><Button className="learner-settings-button" appearance="outline" tone="primary" size="sm" aria-label="開啟個人與帳號設定" title="個人與帳號設定"><Settings2 /></Button></DropdownTrigger>
                             <DropdownContent align="end" className="w-60">
                                 <DropdownLabel>{activeLearner.name}</DropdownLabel>
-                                <DropdownItem onSelect={() => navigateToSection("settings")}><UserCheck />個人設定</DropdownItem>
+                                {canAccessLearnerSettings && <DropdownItem onSelect={() => navigateToSection("settings")}><UserCheck />學習者設定</DropdownItem>}
+                                {canAccessSystemSettings && <DropdownItem onSelect={() => navigateToSection("system-settings")}><Settings2 />系統設定</DropdownItem>}
                                 <DropdownItem onSelect={openRoleSwitch}><ShieldCheck />切換角色</DropdownItem>
-                                <DropdownSub>
+                                {practiceAccount?.activeRole !== "learner" && <DropdownSub>
                                     <DropdownSubTrigger><GraduationCap />切換學習者</DropdownSubTrigger>
                                     <DropdownSubContent className="w-48">
                                         <DropdownRadioGroup value={activeLearnerId} onValueChange={changeLearner}>
                                             {learners.map((learner) => <DropdownRadioItem value={learner.id} key={learner.id}><DropdownIndicator>✓</DropdownIndicator>{learner.name}</DropdownRadioItem>)}
                                         </DropdownRadioGroup>
                                     </DropdownSubContent>
-                                </DropdownSub>
+                                </DropdownSub>}
                                 <DropdownSeparator />
                                 <DropdownItem onSelect={() => router.push(AUTH_PATHS["account-link"])}><Link2 />帳號綁定</DropdownItem>
                                 <DropdownItem onSelect={() => router.push(AUTH_PATHS.login)}><LogIn />切換帳號</DropdownItem>
@@ -4252,16 +5351,17 @@ export default function Home() {
                 </div>
             </div>
             <div className="sidebar-action-scroll" tabIndex={0} aria-label="主要功能選單，可左右捲動">
-                <Button className="sidebar-practice-button mt-6 w-full" data-section="local-practice" onClick={() => router.push("/local-practice")}><BookOpen />第四課練習（279 題）</Button>
+                <Button className="sidebar-practice-button mt-6 w-full" data-section="practice" aria-current={section === "practice" && !isScheduleListPage ? "page" : undefined} onClick={sessionPaused ? resumeSession : () => navigateToSection("practice")}><BookOpen />{sessionPaused ? "繼續練習" : "開始練習"}</Button>
                 <nav className="sidebar-nav mt-4 grid gap-1" aria-label="主要導覽">
                     <Button data-section="practice-schedules" appearance="ghost" tone="muted" aria-current={isScheduleListPage ? "page" : undefined} onClick={openScheduleList}><span className="sidebar-nav-icon sidebar-nav-icon-schedules"><ClipboardCheck /></span>練習計劃</Button>
-                    {NAV_ITEMS.filter((item) => item.id !== "practice" && item.id !== "settings").map((item) => {
+                    {NAV_ITEMS.filter((item) => item.id !== "practice" && item.id !== "settings" && item.id !== "system-settings").map((item) => {
                         const Icon = item.icon;
-                        const sidebarLabel = item.id === "overview" ? "學習總覽" : item.id === "questions" ? "題目總覽" : item.id === "bank" ? "題目匯入" : item.id === "mistakes" ? "錯題英雄榜" : "學習成果";
+                        const sidebarLabel = item.id === "overview" ? "學習總覽" : item.id === "questions" ? "題目總覽" : item.id === "mistakes" ? "錯題英雄榜" : "學習成果";
                         return <Button key={item.id} data-section={item.id} appearance="ghost" tone="muted" aria-current={section === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><span className={`sidebar-nav-icon sidebar-nav-icon-${item.id}`}><Icon /></span>{sidebarLabel}</Button>;
                     })}
                 </nav>
-                <Button className="sidebar-settings mt-1 w-full" data-section="settings" appearance="ghost" tone="muted" aria-current={section === "settings" ? "page" : undefined} onClick={() => navigateToSection("settings")}><span className="sidebar-nav-icon sidebar-nav-icon-settings"><Settings2 /></span>學習者設定</Button>
+                {canAccessLearnerSettings && <Button className="sidebar-settings mt-1 w-full" data-section="settings" appearance="ghost" tone="muted" aria-current={section === "settings" ? "page" : undefined} onClick={() => navigateToSection("settings")}><span className="sidebar-nav-icon sidebar-nav-icon-settings"><UserCheck /></span>學習者設定</Button>}
+                {canAccessSystemSettings && <Button className="sidebar-settings mt-1 w-full" data-section="system-settings" appearance="ghost" tone="muted" aria-current={section === "system-settings" ? "page" : undefined} onClick={() => navigateToSection("system-settings")}><span className="sidebar-nav-icon sidebar-nav-icon-settings"><Settings2 /></span>系統設定</Button>}
             </div>
             <div className="sidebar-tip mt-6"><Sparkles size={18} /><p>每天 15 分鐘，穩定累積練習進度。</p></div>
             </div>
@@ -4280,7 +5380,7 @@ export default function Home() {
                 }}
             >
                 {section === "practice" ? <CalendarDays /> : <BarChart3 />}
-                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "練習計劃與日曆" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : `${activeAttempts.length} 題 · 正確率 ${reviewedAttempts.length ? `${accuracy}%` : "—"}`}</small></span>
+                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "練習計劃與日曆" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : `${historyAttemptedCount} 題 · 正確率 ${reviewedCount ? `${accuracy}%` : "—"}`}</small></span>
                 <ChevronDown className="mobile-panel-chevron" />
             </Button>
             <div id="mobile-summary-panel" className={`summary-panel-content sticky top-6 grid gap-5 ${section === "practice" ? "practice-schedule-panel" : ""}`}>
@@ -4309,7 +5409,7 @@ export default function Home() {
                         </div>
                         <div className="summary-metric summary-metric-pink">
                             <div className="summary-metric-icon"><CheckCircle2 size={19} /></div>
-                            <div className="min-w-0 flex-1"><p>已檢核正確率</p><strong>{reviewedAttempts.length ? `${accuracy}%` : "—"}</strong></div>
+                            <div className="min-w-0 flex-1"><p>已檢核正確率</p><strong>{reviewedCount ? `${accuracy}%` : "—"}</strong></div>
                             <Badge className="tag-pink" tone="danger">正確率</Badge>
                         </div>
                         <div className="summary-metric summary-metric-gold">
@@ -4322,8 +5422,10 @@ export default function Home() {
                 </section>
                 <div className="summary-note">
                     <div className="flex items-center gap-2 font-semibold text-foreground"><UserCheck size={16} />資料說明</div>
-                    <p>目前為前端示範。帳號、OCR、AI 題目與分享權限尚未連接正式服務。</p>
-                    <div className="flex items-center gap-2"><Clock3 size={15} />資料由模擬 API 寫入本機 JSON</div>
+                    <p>{persistedLearnerId
+                        ? "帳號、正式匯入題庫、作答與錯題已連接本機 PostgreSQL；OCR、AI 題目生成與跨帳號分享仍未開放。"
+                        : "登入後可讀取正式匯入題庫並保存作答；OCR、AI 題目生成與跨帳號分享仍未開放。"}</p>
+                    <div className="flex items-center gap-2"><Clock3 size={15} />{persistedLearnerId ? "作答紀錄保存於 PostgreSQL" : "登入後可讀取正式題庫與作答紀錄"}</div>
                 </div>
                 </>}
             </div>

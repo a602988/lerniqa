@@ -8,12 +8,15 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
     try {
         const account = await getAuthenticatedAccount(request);
+        const exposedAccount = publicAccount(account);
         return NextResponse.json(
             {
-                data: { account: publicAccount(account) },
+                data: { account: exposedAccount },
                 meta: {
                     persistence: "local-postgresql",
-                    emailVerification: account.emailVerified ? "verified" : "pending",
+                    emailVerification: exposedAccount.emailVerified === null
+                        ? "hidden"
+                        : exposedAccount.emailVerified ? "verified" : "pending",
                 },
             },
             { headers: { "Cache-Control": "no-store" } },

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import os from "node:os";
+import { lstat, readFile, realpath } from "node:fs/promises";
+import { userInfo } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -17,13 +18,110 @@ import {
 } from "../scripts/lib/hanlin-postgres-writer.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const socketDirectory = path.join(repositoryRoot, "local-data", "postgres-socket");
+const ISOLATED_ROOT_PATTERN = /^lerniqa-import-ownership-test\.[A-Za-z0-9_-]+$/u;
+const ISOLATED_DATABASE_PATTERN = /^lerniqa_import_ownership_test_[a-z0-9_]+$/u;
+const ISOLATION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/u;
+const ISOLATION_MARKER_FILE = ".lerniqa-import-ownership-test";
+const SYSTEM_TEMPORARY_DIRECTORY = "/tmp";
+const DATABASE_OWNERSHIP_COMMENT_PREFIX = "lerniqa-import-ownership-test:";
+
+function requiredEnvironment(name) {
+    const value = process.env[name]?.trim();
+    assert.ok(value, `${name} is required; run the isolated ownership harness instead of this test directly`);
+    return value;
+}
+
+async function isolatedDatabaseConfig() {
+    const configuredRoot = requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_ROOT");
+    assert.equal(path.isAbsolute(configuredRoot), true);
+    const isolatedTestRoot = path.resolve(configuredRoot);
+    assert.match(path.basename(isolatedTestRoot), ISOLATED_ROOT_PATTERN);
+    assert.notEqual(isolatedTestRoot, repositoryRoot);
+    assert.equal(isolatedTestRoot.startsWith(`${repositoryRoot}${path.sep}`), false);
+
+    const [canonicalRoot, canonicalTemporaryDirectory] = await Promise.all([
+        realpath(isolatedTestRoot),
+        realpath(SYSTEM_TEMPORARY_DIRECTORY),
+    ]);
+    assert.equal(canonicalRoot, isolatedTestRoot);
+    assert.equal(path.dirname(canonicalRoot), canonicalTemporaryDirectory);
+
+    const rootMetadata = await lstat(canonicalRoot);
+    assert.equal(rootMetadata.isDirectory(), true);
+    assert.equal(rootMetadata.isSymbolicLink(), false);
+    assert.equal(rootMetadata.mode & 0o077, 0);
+
+    const token = requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_TOKEN");
+    assert.match(token, ISOLATION_TOKEN_PATTERN);
+    const markerPath = path.join(canonicalRoot, ISOLATION_MARKER_FILE);
+    const markerMetadata = await lstat(markerPath);
+    assert.equal(markerMetadata.isFile(), true);
+    assert.equal(markerMetadata.isSymbolicLink(), false);
+    assert.equal(markerMetadata.mode & 0o077, 0);
+    assert.equal((await readFile(markerPath, "utf8")).trim(), token);
+
+    const existingServerMode = process.env.LERNIQA_IMPORT_OWNERSHIP_TEST_EXISTING?.trim() ?? "0";
+    assert.ok(["0", "1"].includes(existingServerMode),
+        "LERNIQA_IMPORT_OWNERSHIP_TEST_EXISTING must be 0 or 1");
+    const borrowedExistingServer = existingServerMode === "1";
+    const socketDirectory = path.resolve(requiredEnvironment("LOCAL_PG_SOCKET"));
+    let dataDirectory = path.join(canonicalRoot, "postgres");
+    let isolatedDirectories = [socketDirectory, dataDirectory];
+    if (borrowedExistingServer) {
+        const approvedSocket = requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_SOCKET");
+        const approvedDataDirectory = requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_DATA_DIRECTORY");
+        const approvedPort = requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_PORT");
+        assert.equal(path.isAbsolute(approvedSocket), true);
+        assert.equal(path.isAbsolute(approvedDataDirectory), true);
+        assert.match(approvedPort, /^\d+$/u);
+        assert.equal(socketDirectory, path.resolve(approvedSocket));
+        dataDirectory = path.resolve(approvedDataDirectory);
+        isolatedDirectories = [];
+    }
+    else {
+        assert.equal(socketDirectory, path.join(canonicalRoot, "socket"));
+    }
+    assert.equal(await realpath(socketDirectory), socketDirectory);
+    assert.equal(await realpath(dataDirectory), dataDirectory);
+    for (const directory of isolatedDirectories) {
+        const metadata = await lstat(directory);
+        assert.equal(metadata.isDirectory(), true);
+        assert.equal(metadata.isSymbolicLink(), false);
+        assert.equal(metadata.mode & 0o077, 0);
+    }
+    for (const directory of [socketDirectory, dataDirectory]) {
+        const metadata = await lstat(directory);
+        assert.equal(metadata.isDirectory(), true);
+        assert.equal(metadata.isSymbolicLink(), false);
+    }
+
+    const database = requiredEnvironment("LOCAL_PG_DATABASE");
+    assert.match(database, ISOLATED_DATABASE_PATTERN);
+    const user = requiredEnvironment("LOCAL_PG_USER");
+    assert.equal(user, userInfo().username);
+    const rawPort = requiredEnvironment("LOCAL_PG_PORT");
+    assert.match(rawPort, /^\d+$/u);
+    const port = Number(rawPort);
+    assert.ok(Number.isInteger(port) && port >= 1 && port <= 65_535);
+    if (borrowedExistingServer) {
+        assert.equal(String(port), requiredEnvironment("LERNIQA_IMPORT_OWNERSHIP_TEST_PORT"));
+    }
+
+    return {
+        borrowedExistingServer,
+        dataDirectory,
+        database,
+        isolatedTestRoot,
+        ownershipComment: borrowedExistingServer
+            ? `${DATABASE_OWNERSHIP_COMMENT_PREFIX}${token}`
+            : null,
+        port,
+        socketDirectory,
+        user,
+    };
+}
 
 const ids = Object.freeze({
-    userId: "10000000-0000-4000-8000-000000000001",
-    learnerId: "10000000-0000-4000-8000-000000000002",
-    roleId: deterministicUuid("local-practice:role:learner"),
-    learnerAccessId: deterministicUuid("local-practice:learner-access"),
     gradeId: deterministicUuid("catalog:grade:junior-high-1"),
     semesterId: deterministicUuid("catalog:semester:semester-1"),
     publisherId: deterministicUuid("catalog:publisher:hanlin"),
@@ -32,7 +130,6 @@ const ids = Object.freeze({
     bookVersionId: deterministicUuid("catalog:book:chinese:junior-high-1:hanlin:volume-1"),
     volumeUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1"),
     targetUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1:lesson-4"),
-    learnerSubjectSettingId: deterministicUuid("local-practice:learner-subject:chinese"),
     questionBankId: deterministicUuid("local-practice:question-bank:default"),
     sourceCategoryId: deterministicUuid("catalog:source-category:publisher-test-bank"),
     questionTypeChoiceId: deterministicUuid("catalog:question-type:single-choice"),
@@ -50,11 +147,15 @@ const plan = Object.freeze({
 });
 
 test("system-owned import rows satisfy deferred audit constraints without fixture ownership", async (context) => {
+    const config = await isolatedDatabaseConfig();
     const client = new Client({
-        host: socketDirectory,
-        port: 55432,
-        database: "lerniqa_local",
-        user: os.userInfo().username,
+        host: config.socketDirectory,
+        port: config.port,
+        database: config.database,
+        user: config.user,
+        password: async () => {
+            throw new Error("isolated ownership PostgreSQL must not request a password");
+        },
         ssl: false,
         connectionTimeoutMillis: 5_000,
         application_name: "lerniqa-hanlin-ownership-test",
@@ -71,16 +172,37 @@ test("system-owned import rows satisfy deferred audit constraints without fixtur
             current_setting('data_directory') AS data_directory,
             current_setting('listen_addresses') AS listen_addresses,
             current_setting('unix_socket_directories') AS socket_directories,
+            current_setting('unix_socket_permissions') AS socket_permissions,
+            current_setting('port') AS server_port,
             inet_server_addr() IS NULL AS uses_unix_socket,
-            current_database() AS database_name
+            current_database() AS database_name,
+            current_user AS database_user,
+            session_user AS session_user,
+            pg_catalog.pg_is_in_recovery() AS in_recovery,
+            (
+                SELECT pg_catalog.shobj_description(oid, 'pg_database')
+                FROM pg_catalog.pg_database
+                WHERE datname = current_database()
+            ) AS database_comment
     `);
-    assert.deepEqual(identity.rows[0], {
-        data_directory: path.join(repositoryRoot, "local-data", "postgres"),
-        listen_addresses: "",
-        socket_directories: socketDirectory,
-        uses_unix_socket: true,
-        database_name: "lerniqa_local",
-    });
+    const actualIdentity = identity.rows[0];
+    const [actualDataDirectory, actualSocketDirectory] = await Promise.all([
+        realpath(actualIdentity.data_directory).catch(() => null),
+        realpath(actualIdentity.socket_directories).catch(() => null),
+    ]);
+    assert.equal(actualDataDirectory, config.dataDirectory);
+    assert.equal(actualSocketDirectory, config.socketDirectory);
+    assert.equal(actualIdentity.server_port, String(config.port));
+    assert.equal(actualIdentity.uses_unix_socket, true);
+    assert.equal(actualIdentity.database_name, config.database);
+    assert.equal(actualIdentity.database_user, config.user);
+    assert.equal(actualIdentity.session_user, config.user);
+    assert.equal(actualIdentity.in_recovery, false);
+    assert.equal(actualIdentity.database_comment, config.ownershipComment);
+    if (!config.borrowedExistingServer) {
+        assert.equal(actualIdentity.listen_addresses, "");
+        assert.equal(actualIdentity.socket_permissions, "0700");
+    }
 
     await client.query("BEGIN");
     transactionOpen = true;
@@ -102,21 +224,37 @@ test("system-owned import rows satisfy deferred audit constraints without fixtur
 
     const boundary = await client.query(`
         SELECT bank.origin, bank.owner_user_id, bank.created_role,
-               membership.learner_id,
-               learner.display_name AS learner_name
+               count(membership.learner_id)::integer AS membership_count
         FROM question_banks AS bank
-        JOIN question_bank_learners AS membership
+        LEFT JOIN question_bank_learners AS membership
           ON membership.question_bank_id = bank.id
-        JOIN learners AS learner ON learner.id = membership.learner_id
         WHERE bank.id = $1
-          AND membership.learner_id = $2
-    `, [ids.questionBankId, ids.learnerId]);
+        GROUP BY bank.id
+    `, [ids.questionBankId]);
     assert.deepEqual(boundary.rows, [{
         origin: "system",
         owner_user_id: null,
         created_role: null,
-        learner_id: ids.learnerId,
-        learner_name: "合成驗證學習者",
+        membership_count: 0,
+    }]);
+
+    const fixtureIdentityRows = await client.query(`
+        SELECT
+            (SELECT count(*)::integer FROM users
+                WHERE id <> $1) AS non_import_users,
+            (SELECT count(*)::integer FROM learners) AS learners,
+            (SELECT count(*)::integer FROM learner_access) AS learner_access,
+            (SELECT count(*)::integer FROM learner_preferences) AS learner_preferences,
+            (SELECT count(*)::integer FROM learner_subject_settings) AS learner_subject_settings,
+            (SELECT count(*)::integer FROM question_bank_learners) AS bank_memberships
+    `, [HANLIN_IMPORT_PRINCIPAL.userId]);
+    assert.deepEqual(fixtureIdentityRows.rows, [{
+        non_import_users: 0,
+        learners: 0,
+        learner_access: 0,
+        learner_preferences: 0,
+        learner_subject_settings: 0,
+        bank_memberships: 0,
     }]);
 
     const questionId = deterministicUuid("test:hanlin-real-data-ownership:question");

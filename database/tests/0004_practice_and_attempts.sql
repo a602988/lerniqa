@@ -293,7 +293,8 @@ INSERT INTO answer_attempts (
     idempotency_key,
     overall_result,
     grading_source,
-    duration_seconds
+    duration_seconds,
+    submitted_at
 )
 VALUES (
     'b9000000-0000-0000-0000-000000000001',
@@ -303,7 +304,8 @@ VALUES (
     'attempt-1',
     'wrong',
     'automatic',
-    18
+    18,
+    '2026-01-15 01:00:00+00'::timestamptz
 );
 
 INSERT INTO answer_part_results (
@@ -334,15 +336,25 @@ INSERT INTO assets (
     purpose,
     scan_status
 )
-VALUES (
-    'bb000000-0000-0000-0000-000000000001',
-    'tests/handwriting.png',
-    'image/png',
-    400,
-    'handwriting-checksum',
-    'handwriting',
-    'clean'
-);
+VALUES
+    (
+        'bb000000-0000-0000-0000-000000000001',
+        'tests/handwriting.png',
+        'image/png',
+        400,
+        'handwriting-checksum',
+        'handwriting',
+        'clean'
+    ),
+    (
+        'bb000000-0000-0000-0000-000000000011',
+        'tests/score-only-handwriting.png',
+        'image/png',
+        401,
+        'score-only-handwriting-checksum',
+        'handwriting',
+        'clean'
+    );
 
 INSERT INTO answer_part_assets (
     answer_part_result_id,
@@ -402,6 +414,139 @@ VALUES (
     'ba000000-0000-0000-0000-000000000001',
     'bd000000-0000-0000-0000-000000000001',
     'wrong_review'
+);
+
+-- Legacy score detail used by 0011's forward data migration test. These rows
+-- deliberately exercise every score artifact that must be removed later.
+INSERT INTO practice_sessions (
+    id,
+    learner_id,
+    created_by_user_id,
+    mode,
+    check_mode,
+    status,
+    completed_at
+)
+VALUES (
+    'b7000000-0000-0000-0000-000000000011',
+    '30000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'practice',
+    'score',
+    'completed',
+    CURRENT_TIMESTAMP
+);
+
+INSERT INTO practice_session_items (
+    id,
+    practice_session_id,
+    question_id,
+    question_revision_id,
+    question_part_id,
+    position,
+    selection_reason
+)
+VALUES (
+    'b8000000-0000-0000-0000-000000000011',
+    'b7000000-0000-0000-0000-000000000011',
+    '83000000-0000-0000-0000-000000000001',
+    '84000000-0000-0000-0000-000000000001',
+    '85000000-0000-0000-0000-000000000001',
+    0,
+    'fixed'
+);
+
+INSERT INTO answer_attempts (
+    id,
+    practice_session_item_id,
+    learner_id,
+    attempt_number,
+    idempotency_key,
+    overall_result,
+    grading_source,
+    duration_seconds,
+    submitted_at
+)
+VALUES (
+    'b9000000-0000-0000-0000-000000000011',
+    'b8000000-0000-0000-0000-000000000011',
+    '30000000-0000-0000-0000-000000000001',
+    1,
+    '0011-legacy-score-attempt',
+    'wrong',
+    'automatic',
+    11,
+    '2026-01-15 01:05:00+00'::timestamptz
+);
+
+INSERT INTO answer_part_results (
+    id,
+    answer_attempt_id,
+    question_part_id,
+    answer_payload,
+    initial_result,
+    current_result,
+    grading_source
+)
+VALUES (
+    'ba000000-0000-0000-0000-000000000011',
+    'b9000000-0000-0000-0000-000000000011',
+    '85000000-0000-0000-0000-000000000001',
+    '{"optionKey":"B"}'::jsonb,
+    'wrong',
+    'wrong',
+    'automatic'
+);
+
+INSERT INTO answer_part_assets (
+    answer_part_result_id,
+    asset_id,
+    asset_role
+)
+VALUES
+    (
+        'ba000000-0000-0000-0000-000000000011',
+        'bb000000-0000-0000-0000-000000000001',
+        'handwriting'
+    ),
+    (
+        'ba000000-0000-0000-0000-000000000011',
+        'bb000000-0000-0000-0000-000000000011',
+        'handwriting'
+    );
+
+INSERT INTO answer_reviews (
+    id,
+    answer_part_result_id,
+    reviewer_user_id,
+    result,
+    reason
+)
+VALUES (
+    'bc000000-0000-0000-0000-000000000011',
+    'ba000000-0000-0000-0000-000000000011',
+    '00000000-0000-0000-0000-000000000001',
+    'wrong',
+    'legacy score detail'
+);
+
+INSERT INTO learner_practice_queue_items (
+    id,
+    learner_id,
+    question_id,
+    question_revision_id,
+    question_part_id,
+    reason,
+    source_answer_part_result_id
+)
+VALUES (
+    'bd000000-0000-0000-0000-000000000011',
+    '30000000-0000-0000-0000-000000000001',
+    '83000000-0000-0000-0000-000000000001',
+    '84000000-0000-0000-0000-000000000001',
+    '85000000-0000-0000-0000-000000000001',
+    'wrong_review',
+    'ba000000-0000-0000-0000-000000000011'
 );
 
 DO $$

@@ -16,17 +16,21 @@ socket_directory="$local_data_directory/postgres-socket"
 postgres_log="$local_data_directory/postgres.log"
 cluster_marker="$cluster_directory/.lerniqa-local-postgres"
 migration_directory="$repository_root/database/migrations"
-migration_lock_directory="$local_data_directory/.migration-lock"
+lifecycle_lock_directory="$local_data_directory/.postgres-lifecycle-lock"
+lifecycle_lock_owner_file="$lifecycle_lock_directory/owner"
 database_name="lerniqa_local"
 database_user="$(id -un)"
 database_port="55432"
+frontend_port="3500"
 marker_value="lerniqa-local-postgres-v1"
 
-migration_lock_acquired=0
+lifecycle_lock_acquired=0
+lifecycle_lock_token=""
 migration_paths_file=""
 expected_records_file=""
 actual_records_file=""
 expected_prefix_file=""
+frontend_lsof_error_file=""
 
 cleanup()
 {
@@ -37,7 +41,8 @@ cleanup()
         "$migration_paths_file" \
         "$expected_records_file" \
         "$actual_records_file" \
-        "$expected_prefix_file"
+        "$expected_prefix_file" \
+        "$frontend_lsof_error_file"
     do
         if [ -n "$temporary_file" ] && [ -f "$temporary_file" ]; then
             if ! rm -f "$temporary_file"; then
@@ -47,10 +52,43 @@ cleanup()
         fi
     done
 
-    if [ "$migration_lock_acquired" -eq 1 ]; then
-        if ! rmdir "$migration_lock_directory"; then
-            echo "無法釋放 migration 鎖：$migration_lock_directory" >&2
+    if [ "$lifecycle_lock_acquired" -eq 1 ]; then
+        if [ -L "$lifecycle_lock_directory" ] \
+            || [ ! -d "$lifecycle_lock_directory" ] \
+            || [ -L "$lifecycle_lock_owner_file" ] \
+            || [ ! -f "$lifecycle_lock_owner_file" ]
+        then
+            echo "PostgreSQL 生命週期鎖形態已改變，保留現場供人工檢查：$lifecycle_lock_directory" >&2
             cleanup_status=1
+        else
+            lifecycle_lock_contents_match=1
+            for lifecycle_lock_entry in \
+                "$lifecycle_lock_directory"/* \
+                "$lifecycle_lock_directory"/.[!.]* \
+                "$lifecycle_lock_directory"/..?*
+            do
+                if [ ! -e "$lifecycle_lock_entry" ] && [ ! -L "$lifecycle_lock_entry" ]; then
+                    continue
+                fi
+                if [ "$lifecycle_lock_entry" != "$lifecycle_lock_owner_file" ]; then
+                    lifecycle_lock_contents_match=0
+                fi
+            done
+
+            actual_lifecycle_lock_token="$(sed -n '1p' "$lifecycle_lock_owner_file")"
+            if [ "$lifecycle_lock_contents_match" -ne 1 ]; then
+                echo "PostgreSQL 生命週期鎖包含非本次建立的內容，保留現場供人工檢查：$lifecycle_lock_directory" >&2
+                cleanup_status=1
+            elif [ "$actual_lifecycle_lock_token" != "$lifecycle_lock_token" ]; then
+                echo "PostgreSQL 生命週期鎖 owner 不符，保留現場供人工檢查：$lifecycle_lock_directory" >&2
+                cleanup_status=1
+            elif ! rm -f "$lifecycle_lock_owner_file"; then
+                echo "無法移除 PostgreSQL 生命週期鎖 owner：$lifecycle_lock_owner_file" >&2
+                cleanup_status=1
+            elif ! rmdir "$lifecycle_lock_directory"; then
+                echo "無法釋放 PostgreSQL 生命週期鎖：$lifecycle_lock_directory" >&2
+                cleanup_status=1
+            fi
         fi
     fi
 
@@ -66,6 +104,38 @@ require_command()
 {
     command -v "$1" >/dev/null 2>&1 \
         || fail "缺少必要指令：$1（請先安裝本機 PostgreSQL 工具）"
+}
+
+prepare_lifecycle_lock_parent()
+{
+    [ ! -L "$local_data_directory" ] \
+        || fail "拒絕使用符號連結作為 local-data：$local_data_directory"
+    mkdir -p "$local_data_directory"
+    chmod 700 "$local_data_directory"
+}
+
+acquire_lifecycle_lock()
+{
+    if [ "$lifecycle_lock_acquired" -eq 1 ]; then
+        return
+    fi
+
+    prepare_lifecycle_lock_parent
+    if ! mkdir "$lifecycle_lock_directory" 2>/dev/null; then
+        fail "另一個 PostgreSQL 生命週期操作正在執行，或存在待人工檢查的 stale lock；拒絕自動移除 $lifecycle_lock_directory"
+    fi
+    if ! chmod 700 "$lifecycle_lock_directory"; then
+        rmdir "$lifecycle_lock_directory" 2>/dev/null || true
+        fail "無法保護 PostgreSQL 生命週期鎖目錄：$lifecycle_lock_directory"
+    fi
+
+    lifecycle_lock_token="lerniqa-postgres-lifecycle-v1:pid=$$:command=$command_name"
+    if ! (umask 077 && printf '%s\n' "$lifecycle_lock_token" > "$lifecycle_lock_owner_file")
+    then
+        rmdir "$lifecycle_lock_directory" 2>/dev/null || true
+        fail "無法寫入 PostgreSQL 生命週期鎖 owner：$lifecycle_lock_owner_file"
+    fi
+    lifecycle_lock_acquired=1
 }
 
 prepare_environment()
@@ -166,6 +236,7 @@ verify_server_identity()
 
 initialize_cluster()
 {
+    acquire_lifecycle_lock
     require_command initdb
     prepare_environment
 
@@ -202,6 +273,7 @@ initialize_cluster()
 
 start_cluster()
 {
+    acquire_lifecycle_lock
     require_command pg_ctl
     require_command pg_isready
     require_command psql
@@ -214,18 +286,48 @@ start_cluster()
         return
     fi
 
-    pg_ctl \
+    if ! pg_ctl \
         -D "$cluster_directory" \
         -l "$postgres_log" \
         -o "-h '' -k $socket_directory -p $database_port -c unix_socket_permissions=0700" \
         -w start >/dev/null
+    then
+        if tail -n 40 "$postgres_log" 2>/dev/null \
+            | grep -q 'could not create shared memory segment'
+        then
+            fail "macOS PostgreSQL shared-memory 資源已滿；請先盤點仍在執行的 cluster，勿直接停止其他專案服務，再重試啟動 Lerniqa"
+        fi
+        fail "無法啟動 Lerniqa PostgreSQL；請檢查 $postgres_log"
+    fi
 
     verify_server_identity
     echo "已啟動本機 PostgreSQL（Unix socket only，port $database_port）"
 }
 
+assert_frontend_allows_stop()
+{
+    if [ "${LERNIQA_POSTGRES_MAINTENANCE:-}" = "1" ]; then
+        return
+    fi
+
+    require_command lsof
+    require_command mktemp
+    frontend_lsof_error_file="$(mktemp "$local_data_directory/.frontend-lsof-error.XXXXXX")"
+    if lsof -nP -iTCP:"$frontend_port" -sTCP:LISTEN \
+        >/dev/null 2>"$frontend_lsof_error_file"
+    then
+        fail "偵測到前台仍在監聽 port $frontend_port；為避免中斷帳號與練習資料，拒絕停止 PostgreSQL。請先停止前台，或在明確維護時使用 LERNIQA_POSTGRES_MAINTENANCE=1 npm run db:local:stop"
+    else
+        lsof_status=$?
+        if [ "$lsof_status" -ne 1 ] || [ -s "$frontend_lsof_error_file" ]; then
+            fail "無法確認 port $frontend_port 是否仍有前台服務，基於資料安全拒絕停止 PostgreSQL"
+        fi
+    fi
+}
+
 stop_cluster()
 {
+    acquire_lifecycle_lock
     require_command pg_ctl
     prepare_environment
 
@@ -240,6 +342,7 @@ stop_cluster()
         return
     fi
 
+    assert_frontend_allows_stop
     pg_ctl -D "$cluster_directory" -m fast -w stop >/dev/null
     echo "已停止本機 PostgreSQL；資料保留於 $cluster_directory"
 }
@@ -395,6 +498,7 @@ run_migration_file()
 
 migrate_database()
 {
+    acquire_lifecycle_lock
     require_command cmp
     require_command createdb
     require_command mktemp
@@ -411,11 +515,6 @@ migrate_database()
     cluster_is_running \
         || fail "本機 PostgreSQL 尚未啟動；請先執行 npm run db:local:start"
     verify_server_identity
-
-    if ! mkdir "$migration_lock_directory" 2>/dev/null; then
-        fail "另一個 migration 可能正在執行；若確認沒有，請人工移除 $migration_lock_directory"
-    fi
-    migration_lock_acquired=1
 
     ensure_database
     build_migration_manifest

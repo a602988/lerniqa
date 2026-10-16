@@ -1,4 +1,6 @@
-export type Section = "overview" | "practice" | "questions" | "bank" | "mistakes" | "results" | "settings";
+import type { LocalPracticeReferenceAnswer, LocalPracticeScoreSummary } from "./local-practice-types";
+
+export type Section = "overview" | "practice" | "questions" | "bank" | "mistakes" | "results" | "settings" | "system-settings";
 export type CheckMode = "complete" | "instant" | "score";
 export type PlanBasis = "chapter" | "assessment";
 export type SessionMode = "practice" | "review" | "similar";
@@ -160,14 +162,14 @@ export interface PracticePlan {
     subject: string;
     /** 本次練習暫時使用的書籍版本；未設定時沿用學習者設定。 */
     bookVersion?: string;
-    /** 單元篩選。 */
-    scope: string;
+    /** 單元篩選；空陣列代表全部單元。 */
+    scopeFilters: string[];
     /** 學期篩選。 */
     semester: string;
     /** 主題篩選。 */
     topic: string;
-    /** 一般難易度篩選。 */
-    difficulty: string;
+    /** 一般難易度篩選；空陣列代表全部難度。 */
+    difficultyFilters: string[];
     /** 題目建立者篩選。 */
     creatorFilter: string;
     /** 收藏清單篩選。 */
@@ -190,8 +192,8 @@ export interface PracticePlan {
     difficultyMixEnabled: boolean;
     /** 指定題目來源；空陣列代表全部來源。 */
     sourceFilters: string[];
-    /** 指定題型；all 代表全部題型。 */
-    questionKind: PlanQuestionKind;
+    /** 指定題型；空陣列代表全部題型。 */
+    questionKinds: QuestionKind[];
     /** 指定知識點；all-knowledge 代表全部知識點。 */
     knowledge: string;
     /** 依來源文件動態欄位篩選；空陣列代表不限制該欄位。 */
@@ -316,6 +318,12 @@ export interface Attempt {
     sessionMode?: SessionMode;
     /** 題目識別碼。 */
     questionId: number;
+    /** 作答當時的題目版本；正式資料用來避免以目前版本冒充歷史題目。 */
+    revisionId?: string;
+    /** 正式練習中的固定題目項目；同一題分開複習多個小題時用來區分。 */
+    sessionItemId?: string;
+    /** 此作答只涵蓋的正式小題；未提供代表整題。 */
+    partId?: string;
     /** 學習者輸入的答案。 */
     answer: string;
     /** 是否答對；純手寫且未輸入文字時為待檢視。 */
@@ -330,6 +338,8 @@ export interface Attempt {
     handwriting?: string;
     /** 鍵盤輸入的計算或書寫筆記。 */
     handwritingNote?: string;
+    /** 伺服器依檢核政策解鎖、且固定在作答版本的參考答案。 */
+    referenceAnswers?: LocalPracticeReferenceAnswer[];
 }
 
 export interface PracticeSession {
@@ -349,12 +359,20 @@ export interface PracticeSession {
     phase: "answering" | "complete";
     /** 開始時固定的題目順序。 */
     questionIds: number[];
+    /** 正式練習固定的項目順序；可讓同一題的多個錯誤小題各自成為一項。 */
+    persistedItems?: Array<{
+        id: string;
+        questionId: number;
+        partId: string | null;
+    }>;
     /** 錯題複習時，各題只需再次作答的小題識別碼。 */
     partIdsByQuestion?: Record<number, string[]>;
     /** 目前題號。 */
     index: number;
     /** 本輪作答結果。 */
     attempts: Attempt[];
+    /** 計分模式完成後唯一可揭露的彙總結果。 */
+    scoreSummary?: LocalPracticeScoreSummary;
     /** 目前題目開始作答時間。 */
     questionStartedAt: number;
 }
@@ -431,11 +449,8 @@ export const REVIEWER_OPTIONS = ["家長 · 林小姐", "家教 · 陳老師", "
 
 export const DEFAULT_ROLE_ACCESS: RoleAccess = {
     activeRole: "學習者",
-    registrationEmail: "parent@example.com",
-    pinHashes: {
-        家長: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-        家教: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-    },
+    registrationEmail: "",
+    pinHashes: {},
     learnerIdsByRole: {
         家長: [],
         學習者: [],
@@ -464,10 +479,10 @@ export const DEFAULT_EXAM_SETTING: ExamSetting = {
 export const DEFAULT_PLAN: PracticePlan = {
     creatorRole: "家長",
     subject: "數學",
-    scope: ALL_UNITS,
+    scopeFilters: [],
     semester: "all",
     topic: "all",
-    difficulty: "all",
+    difficultyFilters: [],
     creatorFilter: "all",
     collection: "all",
     search: "",
@@ -479,7 +494,7 @@ export const DEFAULT_PLAN: PracticePlan = {
     difficultyMix: { easy: 40, medium: 40, hard: 20 },
     difficultyMixEnabled: false,
     sourceFilters: [],
-    questionKind: "all",
+    questionKinds: [],
     knowledge: ALL_KNOWLEDGE,
     metadataFilters: {},
 };

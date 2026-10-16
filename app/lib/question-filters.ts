@@ -1,7 +1,5 @@
-import {
-    ALL_UNITS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, Question,
-    QuestionCollection, QuestionKind, Subject,
-} from "./demo-data";
+import { ALL_UNITS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue } from "./demo-data";
+import type { Question, QuestionCollection, QuestionKind, Subject } from "./demo-data";
 
 export const ALL_QUESTION_FILTERS = "all";
 export const QUESTION_SOURCE_CATEGORIES = [
@@ -46,18 +44,18 @@ export interface QuestionFilters {
     semester: string;
     /** 書籍版本條件。 */
     version: string;
-    /** 章節與單元條件。 */
-    scope: string;
+    /** 章節與單元條件；空陣列代表不限制。 */
+    scope: string[];
     /** 主題條件。 */
     topic: string;
     /** 知識點條件。 */
     knowledge: string;
-    /** 難易度條件。 */
-    difficulty: string;
-    /** 題型條件。 */
-    kind: QuestionKind | typeof ALL_QUESTION_FILTERS;
-    /** 題目來源分類條件。 */
-    source: string;
+    /** 難易度條件；空陣列代表不限制。 */
+    difficulty: string[];
+    /** 題型條件；空陣列代表不限制。 */
+    kind: QuestionKind[];
+    /** 題目來源分類條件；空陣列代表不限制。 */
+    source: string[];
     /** 題目建立者條件。 */
     creator: string;
     /** 來源專屬的動態條件。 */
@@ -112,12 +110,12 @@ export const DEFAULT_QUESTION_FILTERS: QuestionFilters = {
     subject: "全部",
     semester: ALL_QUESTION_FILTERS,
     version: ALL_QUESTION_FILTERS,
-    scope: ALL_UNITS,
+    scope: [],
     topic: ALL_QUESTION_FILTERS,
     knowledge: ALL_QUESTION_FILTERS,
-    difficulty: ALL_QUESTION_FILTERS,
-    kind: ALL_QUESTION_FILTERS,
-    source: ALL_QUESTION_FILTERS,
+    difficulty: [],
+    kind: [],
+    source: [],
     creator: ALL_QUESTION_FILTERS,
     metadata: {},
     collection: ALL_QUESTION_FILTERS,
@@ -178,6 +176,24 @@ export function sourceUsesTextbookVersion(source: string) {
 }
 
 /**
+ * 只在目前科目真的有該學期題目時，套用學習者已保存的學期。
+ * @param questions 目前學習者可使用的題目。
+ * @param subject 即將切換到的科目。
+ * @param preferredSemester 學習者已保存的學期。
+ * @returns 可安全套用的學期；沒有候選時不限制。
+ */
+export function getPreferredQuestionSemester(
+    questions: Question[],
+    subject: Subject | "全部",
+    preferredSemester?: string,
+) {
+    if (subject === "全部" || !preferredSemester) return ALL_QUESTION_FILTERS;
+    return questions.some((question) => (
+        question.subject === subject && question.semester === preferredSemester
+    )) ? preferredSemester : ALL_QUESTION_FILTERS;
+}
+
+/**
  * 取得題目建立者欄位。
  * @param question 題目資料。
  * @returns 題目建立者；沒有欄位時不顯示建立者篩選。
@@ -195,6 +211,36 @@ function getQuestionCreator(question: Question) {
 function getValueOptions(values: Array<string | undefined>, allLabel: string) {
     const unique = [...new Set(values.filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right, "zh-Hant"));
     return [{ value: ALL_QUESTION_FILTERS, label: allLabel }, ...unique.map((value) => ({ value, label: value }))];
+}
+
+/**
+ * 將複選條件整理成不重複的陣列，並相容舊版保存的單一字串。
+ * @param value 目前保存的條件。
+ * @param legacyAllValue 舊版用來表示「全部」的字串。
+ * @returns 空陣列表示不限制的複選值。
+ */
+export function normalizeQuestionFilterSelection(
+    value: readonly string[] | string | null | undefined,
+    legacyAllValue = ALL_QUESTION_FILTERS,
+) {
+    const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+    return [...new Set(values.map((item) => item.trim()).filter((item) => (
+        Boolean(item) && item !== legacyAllValue && item !== ALL_QUESTION_FILTERS
+    )))];
+}
+
+/**
+ * 只保留目前候選集合中仍存在的複選值。
+ * @param selected 目前選取值。
+ * @param options 目前可用選項。
+ * @returns 保留使用者選取順序的有效值。
+ */
+function retainAvailableSelections(
+    selected: readonly string[],
+    options: { value: string }[],
+) {
+    const available = new Set(options.map((option) => option.value));
+    return selected.filter((value) => available.has(value));
 }
 
 /**
@@ -219,19 +265,25 @@ export function getQuestionFilterOptions(
     filters: QuestionFilters,
     collections: QuestionCollection[],
 ): QuestionFilterOptions {
+    const selectedSources = normalizeQuestionFilterSelection(filters.source);
     const subjectQuestions = questions.filter((question) => filters.subject === "全部" || question.subject === filters.subject);
-    const versionQuestions = subjectQuestions.filter((question) => matchesVersion(question, filters.version));
-    const sourceQuestions = versionQuestions.filter((question) => filters.source === ALL_QUESTION_FILTERS
-        || getQuestionSourceCategory(question) === filters.source);
-    const selectedSource = filters.source === ALL_QUESTION_FILTERS ? undefined : filters.source;
-    const showVersion = !selectedSource || !SOURCE_WITHOUT_TEXTBOOK_VERSION.has(selectedSource);
-    const showTopic = !selectedSource || !SOURCE_WITHOUT_KNOWLEDGE.has(selectedSource);
-    const showKnowledge = !selectedSource || !SOURCE_WITHOUT_KNOWLEDGE.has(selectedSource);
+    const semesterQuestions = subjectQuestions.filter((question) => filters.semester === ALL_QUESTION_FILTERS
+        || question.semester === filters.semester);
+    const versionQuestions = semesterQuestions.filter((question) => matchesVersion(question, filters.version));
+    const availableSources = QUESTION_SOURCE_CATEGORIES.filter((source) => (
+        versionQuestions.some((question) => getQuestionSourceCategory(question) === source)
+    ));
+    const sourceQuestions = versionQuestions.filter((question) => !selectedSources.length
+        || selectedSources.includes(getQuestionSourceCategory(question)));
+    const capabilitySources = selectedSources.length ? selectedSources : availableSources;
+    const showVersion = capabilitySources.some(sourceUsesTextbookVersion);
+    const showTopic = capabilitySources.some((source) => !SOURCE_WITHOUT_KNOWLEDGE.has(source));
+    const showKnowledge = capabilitySources.some((source) => !SOURCE_WITHOUT_KNOWLEDGE.has(source));
     const scopes = new Map(sourceQuestions.map((question) => [
         getUnitScopeValue(question),
         filters.subject === "全部" ? `${question.subject} · ${getUnitLabel(question.unit)}` : getUnitLabel(question.unit),
     ]));
-    const facets = selectedSource ? [...sourceQuestions.reduce((catalog, question) => {
+    const facets = selectedSources.length ? [...sourceQuestions.reduce((catalog, question) => {
         question.metadata?.forEach((field) => {
             if (!isSupplementalQuestionMetadata(field.key) || !field.values.length) return;
             const current = catalog.get(field.key) ?? { key: field.key, label: field.label, values: new Set<string>() };
@@ -246,26 +298,15 @@ export function getQuestionFilterOptions(
     })) : [];
 
     return {
-        semesters: getValueOptions(sourceQuestions.map((question) => question.semester), "全部學期"),
-        versions: getValueOptions(subjectQuestions.filter(questionUsesTextbookVersion).map((question) => question.bookVersion), "全部版本"),
-        scopes: [
-            { value: ALL_UNITS, label: "全部單元" },
-            ...[...scopes].map(([value, label]) => ({ value, label })),
-        ],
+        semesters: getValueOptions(subjectQuestions.map((question) => question.semester), "全部學期"),
+        versions: getValueOptions(semesterQuestions.filter(questionUsesTextbookVersion).map((question) => question.bookVersion), "全部版本"),
+        scopes: [...scopes].map(([value, label]) => ({ value, label })),
         topics: getValueOptions(sourceQuestions.map((question) => question.topic), "全部主題"),
         knowledge: getValueOptions(sourceQuestions.map((question) => question.knowledge), "全部知識點"),
-        difficulties: getValueOptions(sourceQuestions.map((question) => question.difficulty), "全部難度"),
-        kinds: [
-            { value: ALL_QUESTION_FILTERS, label: "全部題型" },
-            ...([...new Set(sourceQuestions.map((question) => question.kind))] as QuestionKind[])
-                .map((kind) => ({ value: kind, label: getQuestionKindLabel(kind) })),
-        ],
-        sources: [
-            { value: ALL_QUESTION_FILTERS, label: "全部來源" },
-            ...QUESTION_SOURCE_CATEGORIES
-                .filter((source) => versionQuestions.some((question) => getQuestionSourceCategory(question) === source))
-                .map((source) => ({ value: source, label: source })),
-        ],
+        difficulties: getValueOptions(sourceQuestions.map((question) => question.difficulty), "全部難度").slice(1),
+        kinds: ([...new Set(sourceQuestions.map((question) => question.kind))] as QuestionKind[])
+            .map((kind) => ({ value: kind, label: getQuestionKindLabel(kind) })),
+        sources: availableSources.map((source) => ({ value: source, label: source })),
         creators: getValueOptions(sourceQuestions.map(getQuestionCreator), "全部建立者"),
         facets,
         collections: [
@@ -293,6 +334,10 @@ export function filterQuestions(
     filters: QuestionFilters,
     collections: QuestionCollection[],
 ) {
+    const scopes = normalizeQuestionFilterSelection(filters.scope, ALL_UNITS);
+    const difficulties = normalizeQuestionFilterSelection(filters.difficulty);
+    const kinds = normalizeQuestionFilterSelection(filters.kind) as QuestionKind[];
+    const sources = normalizeQuestionFilterSelection(filters.source);
     const collectionIds = collections.find((collection) => collection.id === filters.collection)?.questionIds;
     const keyword = filters.search.trim().toLocaleLowerCase();
 
@@ -300,12 +345,12 @@ export function filterQuestions(
         .filter((question) => filters.subject === "全部" || question.subject === filters.subject)
         .filter((question) => filters.semester === ALL_QUESTION_FILTERS || question.semester === filters.semester)
         .filter((question) => matchesVersion(question, filters.version))
-        .filter((question) => filters.scope === ALL_UNITS || getUnitScopeValue(question) === filters.scope)
+        .filter((question) => !scopes.length || scopes.includes(getUnitScopeValue(question)))
         .filter((question) => filters.topic === ALL_QUESTION_FILTERS || question.topic === filters.topic)
         .filter((question) => filters.knowledge === ALL_QUESTION_FILTERS || question.knowledge === filters.knowledge)
-        .filter((question) => filters.difficulty === ALL_QUESTION_FILTERS || question.difficulty === filters.difficulty)
-        .filter((question) => filters.kind === ALL_QUESTION_FILTERS || question.kind === filters.kind)
-        .filter((question) => filters.source === ALL_QUESTION_FILTERS || getQuestionSourceCategory(question) === filters.source)
+        .filter((question) => !difficulties.length || difficulties.includes(question.difficulty))
+        .filter((question) => !kinds.length || kinds.includes(question.kind))
+        .filter((question) => !sources.length || sources.includes(getQuestionSourceCategory(question)))
         .filter((question) => filters.creator === ALL_QUESTION_FILTERS || getQuestionCreator(question) === filters.creator)
         .filter((question) => Object.entries(filters.metadata).every(([key, value]) => value === ALL_QUESTION_FILTERS
             || question.metadata?.some((field) => field.key === key && field.values.includes(value))))
@@ -334,11 +379,38 @@ export function normalizeQuestionFilters(
 ): QuestionFilters {
     const subjects = new Set(questions.map((question) => question.subject));
     const subject = filters.subject === "全部" || subjects.has(filters.subject) ? filters.subject : "全部";
-    const normalized = { ...filters, subject };
-    const options = getQuestionFilterOptions(questions, normalized, collections);
-    const source = options.sources.some((option) => option.value === filters.source) ? filters.source : ALL_QUESTION_FILTERS;
-    const sourceNormalized = source === filters.source ? normalized : { ...normalized, source, metadata: {} };
-    const nextOptions = source === filters.source ? options : getQuestionFilterOptions(questions, sourceNormalized, collections);
+    const normalized: QuestionFilters = {
+        ...filters,
+        subject,
+        scope: normalizeQuestionFilterSelection(filters.scope, ALL_UNITS),
+        difficulty: normalizeQuestionFilterSelection(filters.difficulty),
+        kind: normalizeQuestionFilterSelection(filters.kind) as QuestionKind[],
+        source: normalizeQuestionFilterSelection(filters.source),
+    };
+
+    // 先校正學期與版本，再以有效的上游條件決定來源。
+    let nextOptions = getQuestionFilterOptions(questions, normalized, collections);
+    const semester = nextOptions.semesters.some((option) => option.value === normalized.semester)
+        ? normalized.semester
+        : ALL_QUESTION_FILTERS;
+    let sourceNormalized = semester === normalized.semester ? normalized : { ...normalized, semester };
+    nextOptions = getQuestionFilterOptions(questions, sourceNormalized, collections);
+    const version = nextOptions.versions.some((option) => option.value === normalized.version)
+        ? normalized.version
+        : ALL_QUESTION_FILTERS;
+    sourceNormalized = version === sourceNormalized.version ? sourceNormalized : { ...sourceNormalized, version };
+    nextOptions = getQuestionFilterOptions(questions, sourceNormalized, collections);
+
+    const source = retainAvailableSelections(sourceNormalized.source, nextOptions.sources);
+    sourceNormalized = { ...sourceNormalized, source };
+    nextOptions = getQuestionFilterOptions(questions, sourceNormalized, collections);
+
+    // 當選取的來源全部不綁教材版本時，隱藏並清除舊版本條件。
+    if (!nextOptions.showVersion && sourceNormalized.version !== ALL_QUESTION_FILTERS) {
+        sourceNormalized = { ...sourceNormalized, version: ALL_QUESTION_FILTERS };
+        nextOptions = getQuestionFilterOptions(questions, sourceNormalized, collections);
+    }
+
     const metadata = Object.fromEntries(nextOptions.facets.map((facet) => [
         facet.key,
         facet.options.some((option) => option.value === filters.metadata[facet.key])
@@ -349,20 +421,18 @@ export function normalizeQuestionFilters(
     return {
         ...sourceNormalized,
         semester: nextOptions.semesters.some((option) => option.value === filters.semester) ? filters.semester : ALL_QUESTION_FILTERS,
-        version: nextOptions.showVersion && nextOptions.versions.some((option) => option.value === filters.version)
-            ? filters.version
+        version: nextOptions.showVersion && nextOptions.versions.some((option) => option.value === sourceNormalized.version)
+            ? sourceNormalized.version
             : ALL_QUESTION_FILTERS,
-        scope: nextOptions.scopes.some((option) => option.value === filters.scope) ? filters.scope : ALL_UNITS,
+        scope: retainAvailableSelections(sourceNormalized.scope, nextOptions.scopes),
         topic: nextOptions.showTopic && nextOptions.topics.some((option) => option.value === filters.topic)
             ? filters.topic
             : ALL_QUESTION_FILTERS,
         knowledge: nextOptions.showKnowledge && nextOptions.knowledge.some((option) => option.value === filters.knowledge)
             ? filters.knowledge
             : ALL_QUESTION_FILTERS,
-        difficulty: nextOptions.difficulties.some((option) => option.value === filters.difficulty)
-            ? filters.difficulty
-            : ALL_QUESTION_FILTERS,
-        kind: nextOptions.kinds.some((option) => option.value === filters.kind) ? filters.kind : ALL_QUESTION_FILTERS,
+        difficulty: retainAvailableSelections(sourceNormalized.difficulty, nextOptions.difficulties),
+        kind: retainAvailableSelections(sourceNormalized.kind, nextOptions.kinds) as QuestionKind[],
         source,
         creator: nextOptions.creators.some((option) => option.value === filters.creator)
             ? filters.creator

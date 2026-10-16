@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
     submitLocalPracticeAttempt,
     type SubmitLocalPracticeAttemptInput,
@@ -12,6 +11,7 @@ import {
     errorResponse,
     handleLocalPracticeError,
     isRecord,
+    localPracticeJsonResponse,
     localPracticeMeta,
     requireLocalPracticeAccount,
     UUID_PATTERN,
@@ -23,7 +23,7 @@ function parseAnswer(value: unknown): LocalPracticeAnswerInput | null {
     if (!isRecord(value) || typeof value.partId !== "string" || !UUID_PATTERN.test(value.partId)) return null;
     if (typeof value.value === "string") {
         return value.value.length <= LOCAL_PRACTICE_MAX_ANSWER_LENGTH
-            ? { partId: value.partId, value: value.value }
+            ? { partId: value.partId.toLowerCase(), value: value.value }
             : null;
     }
     if (
@@ -31,7 +31,7 @@ function parseAnswer(value: unknown): LocalPracticeAnswerInput | null {
         && value.value.length <= 20
         && value.value.every((entry) => typeof entry === "string" && entry.length <= 120)
     ) {
-        return { partId: value.partId, value: value.value as string[] };
+        return { partId: value.partId.toLowerCase(), value: value.value as string[] };
     }
     return null;
 }
@@ -43,6 +43,14 @@ function parseAttemptRequest(value: unknown): SubmitLocalPracticeAttemptInput | 
         || !UUID_PATTERN.test(value.sessionId)
         || typeof value.questionId !== "string"
         || !UUID_PATTERN.test(value.questionId)
+        || (
+            value.sessionItemId !== undefined
+            && (typeof value.sessionItemId !== "string" || !UUID_PATTERN.test(value.sessionItemId))
+        )
+        || (
+            value.partId !== undefined
+            && (typeof value.partId !== "string" || !UUID_PATTERN.test(value.partId))
+        )
         || typeof value.idempotencyKey !== "string"
         || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u.test(value.idempotencyKey)
         || !Array.isArray(value.answers)
@@ -66,8 +74,10 @@ function parseAttemptRequest(value: unknown): SubmitLocalPracticeAttemptInput | 
     ) return null;
 
     return {
-        sessionId: value.sessionId,
-        questionId: value.questionId,
+        sessionId: value.sessionId.toLowerCase(),
+        questionId: value.questionId.toLowerCase(),
+        ...(typeof value.sessionItemId === "string" ? { sessionItemId: value.sessionItemId.toLowerCase() } : {}),
+        ...(typeof value.partId === "string" ? { partId: value.partId.toLowerCase() } : {}),
         idempotencyKey: value.idempotencyKey,
         durationSeconds,
         answers: parsedAnswers,
@@ -92,10 +102,11 @@ export async function POST(request: Request) {
             userId: account.userId,
             learnerId: account.learner.id,
         });
-        return NextResponse.json({
-            data: { attempt: result.attempt, session: result.session },
-            meta: localPracticeMeta({ replayed: result.replayed }),
-        }, { status: result.replayed ? 200 : 201 });
+        const { replayed, ...data } = result;
+        return localPracticeJsonResponse({
+            data,
+            meta: localPracticeMeta({ replayed }),
+        }, { status: replayed ? 200 : 201 });
     }
     catch (error) {
         return handleLocalPracticeError(error);

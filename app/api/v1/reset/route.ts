@@ -1,18 +1,8 @@
-import { NextResponse } from "next/server";
-import { resetDatabase } from "@/app/lib/mock-store";
+import { legacyFixtureApiGone } from "../_legacy-fixture";
 
 export const runtime = "nodejs";
 
-/** 將可寫入 JSON 還原為 repository 內的 fixture。 */
+/** 重設只可由隔離測試程序直接操作 fixture，不提供 HTTP 清除入口。 */
 export async function POST() {
-    try {
-        const database = await resetDatabase();
-        return NextResponse.json({
-            data: { state: database.state, questions: database.questions, imports: database.imports },
-            meta: { mock: true, persistence: "runtime-json", version: database.version },
-        });
-    }
-    catch {
-        return NextResponse.json({ error: { code: "MOCK_STORE_RESET_FAILED", message: "目前無法重設模擬資料。" } }, { status: 500 });
-    }
+    return legacyFixtureApiGone();
 }

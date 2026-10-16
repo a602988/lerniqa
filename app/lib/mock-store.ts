@@ -5,6 +5,7 @@ import { ALL_UNITS, DEFAULT_QUESTION_LIMIT_OPTIONS, DEFAULT_ROLE_ACCESS, getUnit
 import type { AccountRole, AssessmentRange, ExamSetting, ImportBook, Learner, MockDatabase, PracticePlan, Question, QuestionCollection, QuestionMetadataField, RoleAccess, ScheduledPractice, StoredState, Subject } from "./demo-data";
 import { normalizeQuestionText } from "./question-text";
 import { getQuestionSourceCategory } from "./question-filters";
+import { normalizeSubjectDisplayLabel, normalizeSubjectLabel, normalizeSubjectLabels, normalizeSubjectRecord } from "./subject-labels";
 
 const RUNTIME_DIR = process.env.VERCEL
     ? path.join("/tmp", "lerniqa-runtime")
@@ -15,15 +16,22 @@ const FIXTURE_ASSETS = path.join(process.cwd(), "data", "fixtures", "assets");
 const MAX_STATE_BYTES = 5 * 1024 * 1024;
 let writeQueue: Promise<unknown> = Promise.resolve();
 
-type LegacySubject = Subject | "自然" | "社會";
+type LegacySubject = Subject | "自然" | "社會" | "國文";
 type LegacyRanges = Partial<Record<LegacySubject, AssessmentRange>>;
 
-type LegacyPracticePlan = Omit<PracticePlan, "examSettings" | "activeExamId" | "semester" | "topic" | "difficulty" | "creatorFilter" | "collection" | "search" | "difficultyMixEnabled"> & {
+type LegacyPracticePlan = Omit<PracticePlan,
+    "examSettings" | "activeExamId" | "semester" | "topic" | "creatorFilter" | "collection" | "search"
+    | "difficultyMixEnabled" | "scopeFilters" | "difficultyFilters" | "questionKinds"> & {
     examSettings?: ExamSetting[];
     activeExamId?: string;
     semester?: string;
     topic?: string;
+    scopeFilters?: string[];
+    difficultyFilters?: string[];
+    questionKinds?: PracticePlan["questionKinds"];
+    scope?: string;
     difficulty?: string;
+    questionKind?: string;
     creatorFilter?: string;
     collection?: string;
     search?: string;
@@ -65,7 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function migrateSubject(subject: LegacySubject): Subject {
     if (subject === "自然") return "生物";
     if (subject === "社會") return "地理";
-    return subject;
+    return normalizeSubjectLabel(subject) as Subject;
 }
 
 /**
@@ -81,24 +89,38 @@ function migrateScope(value: string, legacySubject: LegacySubject, subject: Subj
     return scopeAliases.get(value) ?? scopeAliases.get(subjectScope) ?? subjectScope;
 }
 
+/** 將單選舊值與目前多選值合併為去重後的 canonical 陣列。 */
+function migrateFilterList(values: string[] | undefined, legacyValue: string | undefined, allValue: string) {
+    const source = values ?? (legacyValue === undefined ? [] : [legacyValue]);
+    if (source.includes(allValue)) return [];
+    return [...new Set(source)];
+}
+
 /**
  * 補齊拆分後各科目的書籍版本。
  * @param versions 舊版或目前的科目版本資料。
  * @returns 包含所有目前科目的版本資料。
  */
 function migrateBookVersions(versions: Partial<Record<LegacySubject, string>>, customSubjects: string[]) {
+    const normalizedVersions = normalizeSubjectRecord(versions as Record<string, string>);
     const legacySubjects: Partial<Record<Subject, LegacySubject>> = {
+        國語: "國文",
         理化: "自然",
         生物: "自然",
         歷史: "社會",
         地理: "社會",
         公民: "社會",
     };
-    const systemVersions = SUBJECTS.map((subject) => [
-        subject,
-        versions[subject] ?? versions[legacySubjects[subject] as LegacySubject] ?? "",
-    ]);
-    const customVersions = customSubjects.map((subject) => [subject, versions[subject] ?? ""]);
+    const systemVersions = SUBJECTS.map((subject) => {
+        const legacySubject = legacySubjects[subject];
+        const currentVersion = normalizedVersions[subject];
+        const legacyVersion = legacySubject ? versions[legacySubject] : undefined;
+        return [subject, currentVersion || legacyVersion || ""];
+    });
+    const systemSubjects = new Set<string>(SUBJECTS);
+    const customVersions = customSubjects
+        .filter((subject) => !systemSubjects.has(subject))
+        .map((subject) => [subject, normalizedVersions[subject] ?? ""]);
     return Object.fromEntries([...systemVersions, ...customVersions]) as Record<Subject, string>;
 }
 
@@ -108,9 +130,16 @@ function migrateBookVersions(versions: Partial<Record<LegacySubject, string>>, c
  * @returns 包含所有目前科目的考試範圍。
  */
 function migrateRanges(ranges: LegacyRanges, scopeAliases: Map<string, string>) {
+    const normalizedRanges = normalizeSubjectRecord(ranges as Record<string, AssessmentRange>);
     return Object.fromEntries(SUBJECTS.map((subject) => {
-        const legacySubject = subject === "生物" ? "自然" : subject === "地理" ? "社會" : subject;
-        const range = ranges[subject] ?? ranges[legacySubject] ?? { start: ALL_UNITS, end: ALL_UNITS };
+        const legacySubject = subject === "國語" ? "國文" : subject === "生物" ? "自然" : subject === "地理" ? "社會" : subject;
+        const currentRange = ranges[subject];
+        const legacyRange = ranges[legacySubject];
+        const currentRangeIsConfigured = currentRange
+            && (currentRange.start !== ALL_UNITS || currentRange.end !== ALL_UNITS);
+        const range = currentRangeIsConfigured
+            ? currentRange
+            : legacyRange ?? normalizedRanges[subject] ?? { start: ALL_UNITS, end: ALL_UNITS };
         return [subject, {
             start: migrateScope(range.start, legacySubject, subject, scopeAliases),
             end: migrateScope(range.end, legacySubject, subject, scopeAliases),
@@ -120,25 +149,37 @@ function migrateRanges(ranges: LegacyRanges, scopeAliases: Map<string, string>) 
 
 /** 將舊版單一考試資料轉成可保存多筆的考試設定。 */
 function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>): PracticePlan {
-    const { assessment: _assessment, assessmentRanges, assessmentScope, examDate: _examDate, ...current } = plan;
+    const {
+        assessment: _assessment,
+        assessmentRanges,
+        assessmentScope,
+        examDate: _examDate,
+        scope: legacyScope,
+        difficulty: legacyDifficulty,
+        questionKind: legacyQuestionKind,
+        scopeFilters: storedScopeFilters,
+        difficultyFilters: storedDifficultyFilters,
+        questionKinds: storedQuestionKinds,
+        ...current
+    } = plan;
     const creatorRole = ["家長", "學習者", "家教"].includes(current.creatorRole) ? current.creatorRole : "家長";
-    const subject = current.subject === "自然" ? "生物" : current.subject === "社會" ? "地理" : current.subject;
-    const subjectScope = current.scope
-        .replace("自然::", "生物::")
-        .replace("社會::", "地理::");
-    const scope = scopeAliases.get(current.scope) ?? scopeAliases.get(subjectScope) ?? subjectScope;
+    const subject = migrateSubject(current.subject as LegacySubject);
+    const scopeFilters = [...new Set(migrateFilterList(storedScopeFilters, legacyScope, ALL_UNITS)
+        .map((scope) => migrateScope(scope, current.subject as LegacySubject, subject, scopeAliases)))];
     const normalized = {
         ...current,
         subject,
-        scope,
+        scopeFilters,
         creatorRole,
         semester: plan.semester ?? "all",
         topic: plan.topic ?? "all",
-        difficulty: plan.difficulty ?? "all",
+        difficultyFilters: migrateFilterList(storedDifficultyFilters, legacyDifficulty, "all"),
         creatorFilter: plan.creatorFilter ?? "all",
         collection: plan.collection ?? "all",
         search: plan.search ?? "",
         difficultyMixEnabled: plan.difficultyMixEnabled ?? false,
+        sourceFilters: migrateFilterList(current.sourceFilters, undefined, "all"),
+        questionKinds: migrateFilterList(storedQuestionKinds, legacyQuestionKind, "all") as PracticePlan["questionKinds"],
         metadataFilters: plan.metadataFilters ?? {},
     };
     if (plan.examSettings?.length) {
@@ -151,7 +192,7 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
         }));
         return { ...normalized, examSettings, activeExamId };
     }
-    const legacySubjects: LegacySubject[] = [...SUBJECTS, "自然", "社會"];
+    const legacySubjects: LegacySubject[] = [...SUBJECTS, "國文", "自然", "社會"];
     const legacySubject = legacySubjects.find((candidate) => assessmentScope?.startsWith(`${candidate}::`));
     const legacyRanges = assessmentRanges ?? (legacySubject ? {
         [legacySubject]: { start: assessmentScope ?? ALL_UNITS, end: assessmentScope ?? ALL_UNITS },
@@ -256,9 +297,8 @@ function migrateDatabase(database: MockDatabase) {
     const plansByLearner = Object.fromEntries(Object.entries(state.plansByLearner)
         .map(([learnerId, plan]) => [learnerId, migratePlan(plan as LegacyPracticePlan, scopeAliases)]));
     const learners = state.learners.map((learner) => {
-        const customSubjects = [...new Set((learner.customSubjects ?? [])
-            .map((subject) => subject.trim())
-            .filter((subject) => subject && subject.length <= 40))]
+        const customSubjects = normalizeSubjectLabels(learner.customSubjects ?? [])
+            .filter((subject) => subject && subject.length <= 40)
             .slice(0, 20);
         const defaultQuestionLimit = Number.isInteger(learner.defaultQuestionLimit)
             && learner.defaultQuestionLimit >= 1
@@ -296,7 +336,7 @@ function migrateDatabase(database: MockDatabase) {
     const schedulesByLearner = Object.fromEntries(Object.entries(scheduleSource)
         .map(([learnerId, schedules]) => [learnerId, schedules.map((schedule) => ({
             ...schedule,
-            subjectLabel: schedule.subjectLabel
+            subjectLabel: normalizeSubjectDisplayLabel(schedule.subjectLabel)
                 .replace(/^自然(?=\s*·)/, "生物")
                 .replace(/^社會(?=\s*·)/, "地理"),
             scopeLabel: (() => {
@@ -406,7 +446,10 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             || !learner.questionLimitOptions.includes(learner.defaultQuestionLimit)
             || !Array.isArray(customSubjects) || customSubjects.length > 20
             || new Set(customSubjects).size !== customSubjects.length
-            || !customSubjects.every((subject) => typeof subject === "string" && subject.trim() === subject && subject.length > 0 && subject.length <= 40)
+            || !customSubjects.every((subject) => typeof subject === "string"
+                && normalizeSubjectLabel(subject) === subject
+                && subject.length > 0
+                && subject.length <= 40)
             || !isRecord(bookVersions)
             || ![...SUBJECTS, ...customSubjects].every((subject) => typeof bookVersions[subject] === "string" && String(bookVersions[subject]).length <= 80)) return null;
         learnerIds.push(learner.id);
@@ -476,10 +519,12 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
         const examSettings = plan.examSettings;
         if (typeof plan.creatorRole !== "string"
             || typeof plan.subject !== "string"
-            || typeof plan.scope !== "string"
+            || !Array.isArray(plan.scopeFilters) || plan.scopeFilters.length > 100
+            || !plan.scopeFilters.every((item) => typeof item === "string" && item.length <= 240)
             || typeof plan.semester !== "string"
             || typeof plan.topic !== "string"
-            || typeof plan.difficulty !== "string"
+            || !Array.isArray(plan.difficultyFilters) || plan.difficultyFilters.length > 100
+            || !plan.difficultyFilters.every((item) => typeof item === "string" && item.length <= 80)
             || typeof plan.creatorFilter !== "string"
             || typeof plan.collection !== "string"
             || typeof plan.search !== "string" || plan.search.length > 240
@@ -493,9 +538,10 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             || !isRecord(plan.difficultyMix)
             || ![plan.difficultyMix.easy, plan.difficultyMix.medium, plan.difficultyMix.hard].every((item) => typeof item === "number" && item >= 0 && item <= 100)
             || typeof plan.difficultyMixEnabled !== "boolean"
-            || !Array.isArray(plan.sourceFilters)
+            || !Array.isArray(plan.sourceFilters) || plan.sourceFilters.length > 100
             || !plan.sourceFilters.every((item) => typeof item === "string" && item.length <= 240)
-            || !["all", "choice", "boolean", "written", "multi-choice"].includes(String(plan.questionKind))
+            || !Array.isArray(plan.questionKinds) || plan.questionKinds.length > 4
+            || !plan.questionKinds.every((item) => ["choice", "boolean", "written", "multi-choice"].includes(String(item)))
             || typeof plan.knowledge !== "string"
             || !isRecord(plan.metadataFilters)
             || !Object.entries(plan.metadataFilters).every(([key, items]) => /^[a-z][a-z0-9_]{0,79}$/.test(key)

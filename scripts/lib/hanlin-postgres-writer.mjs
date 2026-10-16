@@ -24,6 +24,10 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0005", "similarity_analytics_and_audit"],
     ["0006", "source_documents_word"],
     ["0007", "practice_answer_integrity"],
+    ["0008", "auth_and_import_integrity"],
+    ["0009", "automatic_answer_completeness"],
+    ["0010", "account_role_and_self_learner"],
+    ["0011", "score_session_aggregates"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -33,6 +37,11 @@ const TABLE_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 const COLUMN_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 const LOCAL_SOCKET = path.join(REPOSITORY_ROOT, "local-data", "postgres-socket");
 const LOCAL_ASSET_ROOT = path.join(REPOSITORY_ROOT, "local-data", "assets");
+const ISOLATED_TEST_ROOT_PATTERN = /^lerniqa-practice-test\.[A-Za-z0-9_-]+$/u;
+const ISOLATED_TEST_DATABASE_PATTERN = /^lerniqa_practice_test_[a-z0-9_]+$/u;
+const ISOLATED_TEST_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,128}$/u;
+const ISOLATED_TEST_MARKER = ".lerniqa-isolated-practice-test";
+const ISOLATED_DATABASE_OWNERSHIP_COMMENT_PREFIX = "lerniqa-isolated-practice-test:";
 
 export const HANLIN_IMPORT_PRINCIPAL = Object.freeze({
     userId: deterministicUuid("system-user:hanlin-curriculum-import"),
@@ -177,10 +186,6 @@ function assertCatalogPlan(plan) {
     }
 
     const requiredIds = [
-        "userId",
-        "learnerId",
-        "roleId",
-        "learnerAccessId",
         "gradeId",
         "semesterId",
         "publisherId",
@@ -189,7 +194,6 @@ function assertCatalogPlan(plan) {
         "bookVersionId",
         "volumeUnitId",
         "targetUnitId",
-        "learnerSubjectSettingId",
         "questionBankId",
         "sourceCategoryId",
         "questionTypeChoiceId",
@@ -201,10 +205,6 @@ function assertCatalogPlan(plan) {
     ];
     for (const field of requiredIds) assertUuid(ids[field], `plan.ids.${field}`);
     const expectedIds = {
-        userId: "10000000-0000-4000-8000-000000000001",
-        learnerId: "10000000-0000-4000-8000-000000000002",
-        roleId: deterministicUuid("local-practice:role:learner"),
-        learnerAccessId: deterministicUuid("local-practice:learner-access"),
         gradeId: deterministicUuid("catalog:grade:junior-high-1"),
         semesterId: deterministicUuid("catalog:semester:semester-1"),
         publisherId: deterministicUuid("catalog:publisher:hanlin"),
@@ -213,7 +213,6 @@ function assertCatalogPlan(plan) {
         bookVersionId: deterministicUuid("catalog:book:chinese:junior-high-1:hanlin:volume-1"),
         volumeUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1"),
         targetUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1:lesson-4"),
-        learnerSubjectSettingId: deterministicUuid("local-practice:learner-subject:chinese"),
         questionBankId: deterministicUuid("local-practice:question-bank:default"),
         sourceCategoryId: deterministicUuid("catalog:source-category:publisher-test-bank"),
         questionTypeChoiceId: deterministicUuid("catalog:question-type:single-choice"),
@@ -566,6 +565,66 @@ function connectionConfig(pgConfig = {}, pgEnv = process.env) {
     const user = options.user ?? environment.LOCAL_PG_USER ?? os.userInfo().username;
     assertString(database, "PostgreSQL database", 63);
     assertString(user, "PostgreSQL user", 63);
+    const isolatedRootValue = environment.LERNIQA_ISOLATED_TEST_ROOT;
+    if (isolatedRootValue !== undefined) {
+        if (typeof isolatedRootValue !== "string"
+            || isolatedRootValue.trim() === ""
+            || !path.isAbsolute(isolatedRootValue)) {
+            fail("UNSAFE_DATABASE_CONFIG", "LERNIQA_ISOLATED_TEST_ROOT 必須是非空的絕對路徑。");
+        }
+        const isolatedTestRoot = path.resolve(isolatedRootValue);
+        const isolatedTestToken = environment.LERNIQA_ISOLATED_TEST_TOKEN;
+        const existingServerMode = environment.LERNIQA_PRACTICE_TEST_EXISTING ?? "0";
+        if (!["0", "1"].includes(existingServerMode)) {
+            fail("UNSAFE_DATABASE_CONFIG", "LERNIQA_PRACTICE_TEST_EXISTING 只接受 0 或 1。");
+        }
+        const borrowingExistingServer = existingServerMode === "1";
+        let expectedSocket = path.join(isolatedTestRoot, "socket");
+        let expectedDataDirectory = path.join(isolatedTestRoot, "postgres");
+        if (borrowingExistingServer) {
+            const approvedSocket = environment.LERNIQA_PRACTICE_TEST_SOCKET;
+            const approvedPort = environment.LERNIQA_PRACTICE_TEST_PORT;
+            const approvedDataDirectory = environment.LERNIQA_PRACTICE_TEST_DATA_DIRECTORY;
+            if (typeof approvedSocket !== "string"
+                || !path.isAbsolute(approvedSocket)
+                || typeof approvedPort !== "string"
+                || !/^\d+$/u.test(approvedPort)
+                || Number(approvedPort) !== port
+                || typeof approvedDataDirectory !== "string"
+                || !path.isAbsolute(approvedDataDirectory)) {
+                fail("UNSAFE_DATABASE_CONFIG", "existing-local-server 隔離匯入缺少明確且一致的 socket、port 或 data_directory 核准設定。");
+            }
+            expectedSocket = path.resolve(approvedSocket);
+            expectedDataDirectory = path.resolve(approvedDataDirectory);
+        }
+        if (!ISOLATED_TEST_ROOT_PATTERN.test(path.basename(isolatedTestRoot))
+            || isolatedTestRoot === REPOSITORY_ROOT
+            || isolatedTestRoot.startsWith(`${REPOSITORY_ROOT}${path.sep}`)
+            || path.resolve(host) !== expectedSocket
+            || !ISOLATED_TEST_DATABASE_PATTERN.test(database)
+            || typeof isolatedTestToken !== "string"
+            || !ISOLATED_TEST_TOKEN_PATTERN.test(isolatedTestToken)
+            || user !== os.userInfo().username) {
+            fail(
+                "UNSAFE_DATABASE_CONFIG",
+                "隔離匯入只允許本次臨時目錄的 Unix socket、lerniqa_practice_test_* 資料庫與目前使用者。",
+            );
+        }
+        return {
+            host,
+            port,
+            database,
+            user,
+            isolatedTestRoot,
+            isolatedTestToken,
+            borrowingExistingServer,
+            expectedSocket,
+            expectedDataDirectory,
+        };
+    }
+    if (environment.LERNIQA_PRACTICE_TEST_EXISTING !== undefined) {
+        fail("UNSAFE_DATABASE_CONFIG", "existing-local-server 模式只能搭配具一次性 marker 的隔離練習 runner。 ");
+    }
     if (path.resolve(host) !== path.resolve(LOCAL_SOCKET)
         || port !== 55432
         || database !== "lerniqa_local"
@@ -575,7 +634,17 @@ function connectionConfig(pgConfig = {}, pgEnv = process.env) {
             "匯入器只允許 repository 管理的 lerniqa_local Unix socket 與目前作業系統使用者。",
         );
     }
-    return { host, port, database, user };
+    return {
+        host,
+        port,
+        database,
+        user,
+        isolatedTestRoot: null,
+        isolatedTestToken: null,
+        borrowingExistingServer: false,
+        expectedSocket: path.resolve(LOCAL_SOCKET),
+        expectedDataDirectory: path.join(REPOSITORY_ROOT, "local-data", "postgres"),
+    };
 }
 
 async function assertSchema(client) {
@@ -584,7 +653,7 @@ async function assertSchema(client) {
     if (JSON.stringify(actual) !== JSON.stringify(EXPECTED_MIGRATIONS)) {
         fail(
             "SCHEMA_VERSION_MISMATCH",
-            `本機資料庫 migration 必須精確為 0001–0007；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
+            `本機資料庫 migration 必須精確為 0001–0011；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
         );
     }
 }
@@ -592,27 +661,89 @@ async function assertSchema(client) {
 async function assertIsolatedServer(client, config) {
     const result = await client.query(`
         SELECT
+            current_user AS current_user_name,
+            session_user AS session_user_name,
             current_setting('listen_addresses') AS listen_addresses,
             current_setting('unix_socket_directories') AS socket_directories,
             current_setting('unix_socket_permissions') AS socket_permissions,
             current_setting('port') AS port,
             current_setting('data_directory') AS data_directory,
             inet_server_addr() IS NULL AS uses_unix_socket,
-            current_database() AS database_name
+            current_database() AS database_name,
+            pg_catalog.pg_is_in_recovery() AS in_recovery,
+            (
+                SELECT pg_catalog.shobj_description(oid, 'pg_database')
+                FROM pg_catalog.pg_database
+                WHERE datname = current_database()
+            ) AS database_comment
     `);
     const server = result.rows[0];
-    const expectedDataDirectory = path.join(path.dirname(config.host), "postgres");
-    if (!server
-        || server.listen_addresses !== ""
-        || server.socket_directories !== config.host
-        || server.socket_permissions !== "0700"
+    const expectedDataDirectory = config.expectedDataDirectory;
+    let canonicalExpectedSocket = await realpath(config.expectedSocket).catch(() => null);
+    let canonicalExpectedDataDirectory = await realpath(expectedDataDirectory).catch(() => null);
+    if (config.isolatedTestRoot !== null) {
+        const markerPath = path.join(config.isolatedTestRoot, ISOLATED_TEST_MARKER);
+        const [canonicalTempRoot, canonicalRoot, canonicalMarker] = await Promise.all([
+            realpath(os.tmpdir()).catch(() => null),
+            realpath(config.isolatedTestRoot).catch(() => null),
+            realpath(markerPath).catch(() => null),
+        ]);
+        const [rootMetadata, markerMetadata, markerToken] = await Promise.all([
+            stat(config.isolatedTestRoot).catch(() => null),
+            stat(markerPath).catch(() => null),
+            readFile(markerPath, "utf8").catch(() => null),
+        ]);
+        if (canonicalTempRoot === null
+            || canonicalRoot !== config.isolatedTestRoot
+            || path.dirname(canonicalRoot) !== canonicalTempRoot
+            || canonicalMarker !== markerPath
+            || !rootMetadata?.isDirectory()
+            || !markerMetadata?.isFile()
+            || (rootMetadata.mode & 0o077) !== 0
+            || (markerMetadata.mode & 0o077) !== 0
+            || markerToken?.trim() !== config.isolatedTestToken) {
+            fail("UNSAFE_DATABASE_TARGET", "隔離 runner 必須位於系統臨時目錄、使用私有真實目錄，並附帶本次正確 marker。");
+        }
+        if (!config.borrowingExistingServer) {
+            const [socketMetadata, dataMetadata] = await Promise.all([
+                stat(config.host).catch(() => null),
+                stat(expectedDataDirectory).catch(() => null),
+            ]);
+            if (canonicalExpectedSocket !== config.host
+                || canonicalExpectedDataDirectory !== expectedDataDirectory
+                || !socketMetadata?.isDirectory()
+                || !dataMetadata?.isDirectory()
+                || (socketMetadata.mode & 0o077) !== 0
+                || (dataMetadata.mode & 0o077) !== 0) {
+                fail("UNSAFE_DATABASE_TARGET", "自建隔離 PostgreSQL 必須位於本次私有暫存目錄。 ");
+            }
+        }
+    }
+    const [canonicalServerSocket, canonicalServerDataDirectory] = await Promise.all([
+        realpath(server?.socket_directories).catch(() => null),
+        realpath(server?.data_directory).catch(() => null),
+    ]);
+    const commonIdentityMismatch = !server
+        || server.current_user_name !== config.user
+        || server.session_user_name !== config.user
         || Number(server.port) !== config.port
         || server.uses_unix_socket !== true
         || server.database_name !== config.database
-        || path.resolve(server.data_directory) !== path.resolve(expectedDataDirectory)) {
+        || server.in_recovery !== false
+        || canonicalExpectedSocket === null
+        || canonicalServerSocket !== canonicalExpectedSocket
+        || canonicalExpectedDataDirectory === null
+        || canonicalServerDataDirectory !== canonicalExpectedDataDirectory;
+    const modeSpecificMismatch = config.borrowingExistingServer
+        ? server?.database_comment !== `${ISOLATED_DATABASE_OWNERSHIP_COMMENT_PREFIX}${config.isolatedTestToken}`
+        : server?.listen_addresses !== ""
+            || server?.socket_permissions !== "0700";
+    if (commonIdentityMismatch || modeSpecificMismatch) {
         fail(
             "UNSAFE_DATABASE_TARGET",
-            "PostgreSQL 不是指定的私有 Unix-socket-only Lerniqa 隔離資料庫。",
+            config.borrowingExistingServer
+                ? "PostgreSQL existing-local-server 身分或隔離資料庫 ownership marker 不符。"
+                : "PostgreSQL 不是指定的私有 Unix-socket-only Lerniqa 隔離資料庫。",
         );
     }
 }
@@ -623,21 +754,6 @@ export async function seedHanlinCatalog(client, plan) {
         id: HANLIN_IMPORT_PRINCIPAL.userId,
         display_name: HANLIN_IMPORT_PRINCIPAL.displayName,
         status: "active",
-    }, ["id"]);
-    await ensureRow(client, "users", {
-        id: ids.userId,
-        display_name: "合成驗證學習者",
-        status: "active",
-    }, ["id"]);
-    await ensureRow(client, "user_roles", {
-        id: ids.roleId,
-        user_id: ids.userId,
-        role: "learner",
-        granted_by_type: "bootstrap_admin",
-        granted_by_user_id: null,
-        revoked_by_type: null,
-        revoked_by_user_id: null,
-        revoked_at: null,
     }, ["id"]);
     await ensureRow(client, "grades", {
         id: ids.gradeId,
@@ -696,54 +812,6 @@ export async function seedHanlinCatalog(client, plan) {
         owner_user_id: null,
         status: "active",
     }, ["id"]);
-    await ensureRow(client, "learners", {
-        id: ids.learnerId,
-        display_name: "合成驗證學習者",
-        education_status: "enrolled",
-        grade_id: ids.gradeId,
-        semester_id: ids.semesterId,
-        school_name: null,
-        avatar_asset_id: null,
-        status: "active",
-    }, ["id"]);
-    await ensureRow(client, "learner_access", {
-        id: ids.learnerAccessId,
-        learner_id: ids.learnerId,
-        user_id: ids.userId,
-        access_role: "learner",
-        can_view_results: true,
-        can_create_plans: true,
-        can_review_answers: true,
-        can_manage_settings: true,
-        invited_by_user_id: null,
-        revoked_at: null,
-    }, ["id"], [
-        "id", "learner_id", "user_id", "access_role", "can_view_results", "can_create_plans",
-        "can_review_answers", "can_manage_settings", "invited_by_user_id", "revoked_at",
-    ]);
-    await client.query(
-        "UPDATE learner_access SET accepted_at = COALESCE(accepted_at, transaction_timestamp()) WHERE id = $1",
-        [ids.learnerAccessId],
-    );
-    await ensureRow(client, "learner_preferences", {
-        learner_id: ids.learnerId,
-        question_limit_options: [5, 10, 20, 50],
-        default_question_limit: 10,
-        default_check_mode: "complete",
-        lock_version: 1,
-    }, ["learner_id"]);
-    await ensureRow(client, "learner_subject_settings", {
-        id: ids.learnerSubjectSettingId,
-        learner_id: ids.learnerId,
-        subject_id: ids.subjectId,
-        book_version_id: ids.bookVersionId,
-        enabled: true,
-        is_default_subject: true,
-        position: 0,
-        lock_version: 1,
-    }, ["id"], [
-        "id", "learner_id", "subject_id", "book_version_id", "enabled", "is_default_subject", "position", "lock_version",
-    ]);
     await ensureRow(client, "curriculum_units", {
         id: ids.volumeUnitId,
         subject_id: ids.subjectId,
@@ -837,10 +905,6 @@ export async function seedHanlinCatalog(client, plan) {
         is_default: true,
         status: "active",
     }, ["id"]);
-    await ensureRow(client, "question_bank_learners", {
-        question_bank_id: ids.questionBankId,
-        learner_id: ids.learnerId,
-    }, ["question_bank_id", "learner_id"]);
 }
 
 function safeDraftPayload(plan, document, record) {
@@ -1457,9 +1521,9 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
     await ensureRow(client, "question_revision_units", {
         question_revision_id: revisionId,
         curriculum_unit_id: plan.ids.targetUnitId,
-        assignment_type: "manual_classification",
+        assignment_type: "native",
         is_primary: true,
-        value_source: "user",
+        value_source: "document",
         confidence: 1,
     }, ["question_revision_id", "curriculum_unit_id"]);
 
@@ -1715,8 +1779,13 @@ async function prepareAssetCommit(beforeCommit, plan, reusedBatch, assetRoot) {
 }
 
 function createDatabaseClient(config, applicationName) {
+    const {
+        isolatedTestRoot: _isolatedTestRoot,
+        isolatedTestToken: _isolatedTestToken,
+        ...connection
+    } = config;
     return new Client({
-        ...config,
+        ...connection,
         password: async () => {
             fail("UNSAFE_DATABASE_CONFIG", "隔離本機 PostgreSQL 不應要求密碼。 ");
         },

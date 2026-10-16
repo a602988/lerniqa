@@ -1,40 +1,52 @@
-# 完整前端模擬系統開發計畫
+# 多科目產品開發計畫
 
-狀態：施工中。前端模擬流程可用；`0001` 至 `0007` 已建立 PostgreSQL schema。主應用仍主要讀寫 JSON；獨立的 `/account` 與 `/local-practice` 已接上持久的本機 PostgreSQL，使用合成電子郵件帳號與 session 驗證題庫、作答與錯題隔離。這不是 production 帳號或主應用資料來源切換。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
+正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
+
+信箱驗證已接上 `verification_challenges`、寄送／確認 API、`/account` 與一次性確認頁，並以注入式 mail adapter 完成不連網測試。寄件地址已指定為 `jean@mail.minmax.biz`，但 SMTP host、登入帳號、secret、測試收件人與真實投遞仍未核實或設定；密碼重設只有樣板與密碼規則，尚未接上 challenge、API 與介面。OCR、AI 拆題、手寫辨識與相近題生成仍未串接，不得把測試替代結果視為已交付服務。
+
+狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0011` 共十一個 migration 已建立 PostgreSQL schema，合計 96 張業務資料表；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程和錯題流程已接上本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的練習 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。舊 JSON API 已封閉。279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
 
 ## 目標與範圍
 
-依 `docs/PRODUCT_SPEC.md` 維持可操作的主應用模擬系統，並以獨立入口驗證本機 PostgreSQL 流程。主應用透過 `/api/v1` 讀寫本機 JSON；`/account` 提供本機電子郵件與密碼登入，`/local-practice` 透過 `/api/v1/local-practice/*` 依登入 session 讀寫本機 PostgreSQL。OAuth、寄送驗證信、分享權限、OCR、AI 手寫辨識與相近題生成不連接外部服務。介面必須清楚區分 JSON 模擬資料、本機 PostgreSQL 資料與未完成的外部服務，不得讓使用者誤認為已完成 production 帳號、權限或雲端保存。
+註冊新密碼已採至少 8 字元，不要求大小寫、數字或符號混用，拒絕常見弱密碼、全空白及首尾空白。前後端共用新密碼驗證規則，登入保留既有密碼相容；不批次修改既有密碼。密碼重設僅備妥可共用的驗證函式及郵件樣板，重設 API、介面與 challenge 尚未串接。
 
-主要導覽分為總覽、練習、題庫、錯題、成果與學習者設定。題目匯入放在題庫內，考試設定與練習方式放在練習流程內；會持續擴充的學習者資料與偏好集中在獨立設定頁。
+依 `docs/PRODUCT_SPEC.md` 維持可操作的多科目主應用，並把本機 PostgreSQL 能力接入既有學習者、科目與練習流程。`/account`、`/system-settings`、`/settings` 與 `/practice` 依登入 session 讀寫本機 PostgreSQL。尚未資料庫化的非識別性 UI 設定、計畫、排程與收藏才依學習者保存在瀏覽器；舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`。信箱驗證使用本機 PostgreSQL challenge，實際郵件只能由設定完成的 SMTP 環境寄出；OAuth、密碼重設、分享權限、OCR、正式匯入、AI 手寫辨識與相近題生成不連接外部服務。介面必須清楚區分瀏覽器設定、本機 PostgreSQL 資料與未完成的外部服務，不得讓使用者誤認為已完成 production 帳號、權限或雲端保存。
+
+主要導覽分為總覽、練習、題目、錯題、學習者設定與系統設定。`/system-settings` 集中處理登入帳號身分、有效一般角色與學習者關係；`/settings` 處理目前學習者的個人資料與學習設定。題目入口使用 `/questions`；舊 mock `/bank` 已從主導覽移除，直接開啟時轉址到 `/questions`。正式 PostgreSQL 匯入 API／介面尚未交付；成果內容合併到總覽，舊 `/results` 轉址到總覽。
 
 ## 施工就緒查核
 
-- 需求來源：`docs/PRODUCT_SPEC.md`，介面範圍已確認採完整前端模擬系統。
-- 既有基線：單頁 Next.js 前端、Keel 元件、模擬題庫、學習者切換、本機作答紀錄及 Vercel production 部署均可使用。
-- 資料來源：主應用的初始題庫、學習者、考試設定、角色、成果與相近題由 `data/fixtures/database.json` 的合成資料提供，執行期寫入 `runtime-data`。本機試行的題庫、文件、session、已送出作答、錯題佇列與 outbox 則寫入 `local-data/postgres`；asset 寫入 `local-data/assets`。兩個資料來源都不進版控，也不做雙寫。
-- 外部依賴：PostgreSQL schema、migration、本機執行環境、電子郵件密碼 session 與試行 API 已納入本輪；驗證信服務、遠端 HTTPS 與 rate limit、OAuth、主應用後端／ORM、分享權限、託管式物件儲存、OCR、AI 與手寫辨識仍不在本輪 production 串接範圍。
+- 需求來源：`docs/PRODUCT_SPEC.md`，介面範圍已確認採多科目產品介面。
+- 既有基線：Next.js 前端、Keel 元件、多科目題庫介面、學習者切換及本機作答紀錄可用。文件保留過往 Vercel 驗收紀錄，但本輪未重新部署或驗證 production，不能據此判定目前正式網址狀態。
+- 資料來源：正式主流程的帳號、角色、學習者、題庫、文件與 session 寫入 `local-data/postgres`。`instant`／`complete` 另保存已送出作答、錯題佇列與 outbox；`score` 只保存 session aggregate 與不含答案／判定的冪等收據。asset 寫入 `local-data/assets`。PostgreSQL auth DTO 提供年級、學期、預設檢核方式、已啟用科目與書籍版本；`/practice` 不保存瀏覽器學習者快照。練習畫面的非識別性 UI 設定、計畫、排程及收藏依學習者保存在瀏覽器。`data/fixtures` 與 `runtime-data` 只供隔離測試或歷史相容程式使用，不是正式主流程的備援資料來源。
+- 外部依賴：PostgreSQL schema、migration、本機執行環境、電子郵件密碼 session、本機信箱驗證 challenge、本機練習 API，以及私有 tailnet HTTPS 已納入本輪；SMTP 真實投遞、公開／production HTTPS、密碼重設、rate limit、OAuth、主應用後端／ORM、分享權限、託管式物件儲存、OCR、AI 與手寫辨識仍不在本輪 production 串接範圍。
 - 部署條件：介面改動通過型別檢查、production build、桌面與手機操作驗證後保留在本機；只有使用者另行允許時才部署至 Vercel production。
 
 ## 架構契約
 
 - 學習者是所有練習計畫、作答紀錄、錯題與成果的資料邊界；切換學習者後只讀取該學習者的本機資料。
-- 書籍版本依科目保存在學習者設定中；可選科目由該年級實際存在的題目產生，練習與錯題選單會配對顯示各科版本。每輪預設題數屬於學習者偏好，可輸入任意正整數。複習計畫可另存本輪題數且不覆寫預設值；題庫不足時以全部可用題目建立練習。
+- `/system-settings` 直接從 PostgreSQL 管理帳號身分、有效一般角色與可存取學習者。`accountRole` 是主要身分，`activeRole` 是目前能力；只要仍有有效的 parent／tutor 授權，即使 `accountRole=learner`，切到相應 `activeRole` 後也可建立、選取及管理學習者。切入受管 learner mode 後，帳號身分、建立、帳號層更新與選取端點回 `403`。只有 self learner 能力的帳號仍可查看自己的系統設定，但不能新增受管學習者。
+- `/settings` 獨立管理 session 目前選取的學習者。成人切入受管 learner mode 後仍可進入；寫入只允許目前 learner 且有效、已接受、未撤銷的 `learner_access.can_manage_settings=true`。目前正式寫入涵蓋顯示名稱、年級、學期與各科書籍版本；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊。`learner_access` 是這項關係的唯一正式資料表名稱，不另建平行表。
+- 一般帳號的 `accountRole` 只表示主要身分，不會覆蓋帳號另外持有的有效一般角色；session 的 `activeRole` 與 `activeLearner` 是可切換的操作情境，能力由 `activeRole` 及其有效授權決定，`system_admin` 則是分開的管理授權。快速切換只改目前 session；本人身分設定只允許三種一般產品身分，不能建立或修改 `system_admin` 授權。
+- 每個帳號只有一位名稱與帳號顯示名稱同步的 self learner；`0010` 以每帳號唯一的未撤銷 learner 關係、名稱同步與 `can_manage_settings=true` 限制交易最終狀態。
+- 書籍版本依科目保存在學習者設定中。切換學習者時，題目總覽與練習從新學習者的學期及各科已保存版本重建基準篩選；未設定或不可用的版本不自動猜測，也不沿用上一位學習者的選擇。同一學習者的背景重新載入不覆寫使用者當下手動選擇。每輪預設題數屬於學習者偏好，可輸入任意正整數。複習計畫可另存本輪題數且不覆寫預設值；題庫不足時以全部可用題目建立練習。
 - 考試設定可保存多筆考試名稱、日期，以及各科目的開始與結束範圍；練習題目由目前套用的考試條件篩選結果產生。
-- 題目總覽、錯題英雄榜與開始練習共用同一個可展開的題目篩選元件。開始練習另提供依章節／依考試的範圍、答案檢核方式、本輪題數及可選的難易度比例；啟用比例後，一般難易度條件停用，比例合計需為 100%。
-- 練習方式包含「全部作答後檢核」、「逐題檢核」與「只顯示成績」。只顯示成績模式不得顯示個別答案、參考答案或解析。
+- 題目總覽、錯題英雄榜與開始練習共用同一個可展開的題目篩選元件。單元、來源、題型與難易度都可複選；同欄多值為 OR，跨欄為 AND，空陣列表示該欄不限定。開始練習不另設「篩選方式」選擇器，只額外提供本輪題數及難易度比例；啟用比例後，一般難易度條件停用，比例合計需為 100%。
+- 練習方式包含「全部作答後檢核」、「逐題檢核」與「只顯示成績」。`instant` 送出後可看逐題結果；`complete` 在整份完成前遮住結果、完成後才顯示明細；`score` 進行中只確認送出，完成後保存並只顯示總題數、答對、答錯、待檢視與正確率，重載後仍可讀回整體統計。`score` 只另存不含答案／判定的冪等收據，不保存逐題作答、附件、審核、錯題／相近題佇列、來源追溯或 outbox。歷程與錯題佇列不得繞過這些揭露規則。
 - 練習流程使用不含工作區側欄與摘要的專注版面；每一題皆顯示大型手寫板，桌面為左右配置，窄螢幕改為上下排列。
-- 原始手寫內容與輸入答案分開保存，不提供鍵盤計算筆記。手寫板支援畫筆、橡皮擦與清除；AI 辨識尚未串接時只顯示狀態，不產生模擬辨識結果。
+- 需要逐題明細的 `instant`／`complete` 會分開保存原始手寫內容與輸入答案，不提供鍵盤計算筆記；`score` 不保存逐題附件。手寫板支援畫筆、橡皮擦與清除；AI 辨識尚未串接時只顯示狀態，不產生模擬辨識結果。
 - 主應用題目匯入接受圖片、PDF 與貼上文字，須完整保留 AI 拆分後的題目順序並逐題校正；科目、版本、單元、主題、難易度與來源採選填設計。單元保存教材位置，主題保存可跨版本共用的學習內容；版本、單元、主題與來源可從選單底部新增。空值由 AI 提出建議，圖片可替換、移除或移到其他題目，全部確認後才可寫入。
-- 本機 PostgreSQL 試行另支援授權的舊版 Word 題庫。原始 `.doc` 含 VBA，只能隔離並標記為 `rejected`；只有在本機關閉巨集轉換並通過 VBA、Macro 與 ActiveX 檢查的 DOCX 衍生檔可作為 `clean` 來源。本輪只允許第四課原檔寫入國一／國文／翰林／第一冊／第四課，其他 14 份文件尚未匯入。
-- 主應用前端資料由 `/api/v1/bootstrap` 載入，學習者設定、計畫與作答透過 `/api/v1/state` 寫入；題目匯入透過 `/api/v1/imports` 寫入。初始資料保存在 `data/fixtures`。本機執行期資料與圖片保存在 `runtime-data`，Vercel 則使用執行個體的暫存目錄，執行個體更換後可能重設。這條 JSON 流程不會與本機 PostgreSQL 雙寫。
-- `/local-practice` 只從 `/api/v1/local-practice/*` 讀寫本機 PostgreSQL。題目 API 不回傳答案；作答送出後由伺服器使用完整標準答案判分，缺少答案或需要人工／AI 輔助確認時保持待核對。session、作答、錯題佇列與 outbox 使用單一交易保存，並可在重啟後讀回。
+- 本機 PostgreSQL 整合另支援授權的舊版 Word 題庫。原始 `.doc` 含 VBA，只能隔離並標記為 `rejected`；只有在本機關閉巨集轉換並通過 VBA、Macro 與 ActiveX 檢查的 DOCX 衍生檔可作為 `clean` 來源。本輪只允許第四課原檔寫入國語／國一／翰林版／第一冊／第四課，其他 14 份文件尚未匯入。
+- 舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`。正式頁面不以 fixture 或 runtime JSON 補上登入帳號、學習者、題目或答案；正式 PostgreSQL 匯入 API／介面尚未交付，Hanlin CLI 與隔離匯入測試不算產品匯入入口。
+- `/practice` 從 `/api/v1/local-practice/*` 讀寫本機 PostgreSQL，`/local-practice` 只保留內部診斷與相容。題目 API 單頁最多回傳 500 題，知識點讀自正式 revision 關聯，且不回傳答案；三種答案檢核方式都建立持久 session，作答送出後由伺服器使用完整標準答案判分，需要人工／AI 輔助確認時保持待核對。`instant` 與 `complete` 以交易保存需要的作答、錯題佇列與 outbox；`score` 只保存 session aggregate 與不含答案／判定的冪等收據。
+- 歷程只使用建立 session 時固定的 revision。缺少可安全顯示的舊 revision 快照時，只顯示結果、時間與題目內容無法安全顯示的提示，不拿目前題目代替。resume 發現 revision mismatch 時，把舊 session 標記為 `abandoned` 並要求建立新練習。從任意題直接作答時會尋找下一道尚未送出的題目，只有全部 item 都完成才結束 session。
+- 未登入、cookie 無效或 session 到期時，當頁清除帳號範圍狀態並導回 `/account`。登出或到期時，其他已開分頁同步清除工作區；角色或目前學習者改變時，其他分頁重新載入操作情境。頁面重新取得焦點或恢復可見時也會重新驗證 `auth/me`。
 - 題目內容使用有序區塊保存，題幹與答案均可包含圖片。每題同時保存版本、章節或課次、單元、主題、難易度、來源與原始題號，供未來資料庫沿用同一份 API 契約。
 - 題目不得為了符合既有介面而改寫。來源文件的題型名稱另存於 `typeLabel`；書寫題不建立選項，配合題、選詞測驗與題組使用 `parts` 保存各小題與答案。
-- 練習可暫時關閉並保留目前頁面狀態，也可結束本輪；結束時捨棄尚未送出的本題內容並保留已送出的作答。
-- 錯題保存原題關聯與相近題統計；有固定相近示範題時可立即練習或加入後續練習。
+- 練習可暫時關閉，也可結束本輪；瀏覽器只保存伺服器 session UUID。重新整理後從資料庫恢復可安全恢復的進度並先暫停；revision 不一致時把舊 session 標記為 `abandoned` 並要求建立新練習。尚未送出的文字答案與手寫內容不保存。
+- 錯題保存原題關聯與相近題統計。只有已確認的正式相近題關聯可供立即練習或加入後續練習；隔離測試中的固定關係不能當成已交付的正式關聯。
 - 所有可操作控制以 Keel 元件為基底。手寫畫布由瀏覽器 Canvas 提供，畫筆、橡皮擦、清除與保存操作仍使用 Keel Button；多行文字輸入沿用 Keel token（設計變數）與表單外觀。
-- 總覽、練習設定、題庫匯入、錯題、成果、學習者設定，以及登入、註冊、登出確認、忘記密碼、快速註冊與帳號綁定各自使用固定路徑；瀏覽器重新整理與上一頁／下一頁需維持路徑對應的畫面。
+- 總覽、練習設定、題目總覽、錯題、系統設定，以及登入、註冊、登出確認、忘記密碼、快速註冊與帳號綁定各自使用固定路徑；題目總覽使用 `/questions`，舊 `/bank` 轉址到此頁。正式匯入功能交付時需另行定義受權限路徑。成果內容由總覽承接，舊 `/results` 轉址到總覽；瀏覽器重新整理與上一頁／下一頁需維持路徑對應的畫面。
 
 ## 本輪未部署調整（2026-10-14）
 
@@ -43,39 +55,45 @@
 - 新增只顯示成績模式，結果頁不揭露個別答案與解析。
 - 手寫板新增橡皮擦並縮減說明區；結果有手寫內容時改為題目與手寫左右排列。
 - 題目匯入新增文字貼上，以及圖片與題目的預覽、替換、移除及重新指派。
-- 當時新增六個帳號流程網址與前端操作介面；目前 `/login` 與 `/register` 的主要動作已導向 `/account`，由本機 PostgreSQL 實際處理電子郵件密碼註冊與登入。OAuth、忘記密碼、寄送驗證信及其餘帳號綁定流程仍未串接。
+- 當時新增六個帳號流程網址與前端操作介面；目前 `/login` 與 `/register` 的主要動作已導向 `/account`，由本機 PostgreSQL 實際處理電子郵件密碼註冊與登入。本機信箱驗證 challenge、寄送／確認 API 與介面現已完成，SMTP 真實投遞仍待設定；OAuth、忘記密碼及其餘帳號綁定流程尚未串接。
 - 本機驗證：`npm run lint`、`npm run build`、`git diff --check` 均通過；build 只有 Keel 文件預覽器既有的選用套件警告。
 - 瀏覽器驗證：六個帳號網址可直接開啟；已完成題數控制、只顯示成績、多題文字匯入、圖片配對、手寫橡皮擦及結果右側手寫操作。登入頁與題庫頁在 390 × 844 無水平溢出，Console 沒有應用程式錯誤。
-- 練習設定驗證：`/practice` 重新整理後會回到練習頁；預設與進階設定分層正常，來源篩選會同步更新可用題數，390 × 844 沒有水平溢出，Console 沒有應用程式錯誤。
+- 練習設定驗證：`/practice` 重新整理後會回到練習頁；進行中的持久 session 則恢復已送出進度並暫停，不恢復尚未送出的文字與手寫。預設與進階設定分層正常，來源篩選會同步更新可用題數，390 × 844 沒有水平溢出，Console 沒有應用程式錯誤。
 - 題目匯入驗證：科目選為數學後會帶入學習者的康軒版本；版本、單元、主題與來源選單的最後一項可切換到新增模式，新增的單元與主題會保留在該題校正資料中。390 × 844 沒有水平溢出，Console 沒有應用程式錯誤。
 - 狀態：本機調整及驗證完成；依使用者指示暫不上傳 Vercel，等待另行授權。
 
-## JSON 模擬 API（2026-10-14）
+## JSON API 歷史實作（2026-10-14，已封閉）
 
-- 建立可重設的 fixture 與可實際寫入的 runtime JSON；前端不再以 `localStorage` 作為主要資料來源。
-- 建立啟動資料、狀態寫入、題庫查詢、題目匯入、圖片讀取與資料重設 API。所有外部輸入在 API 邊界驗證，JSON 寫入先寫暫存檔再替換正式檔案。
+- 歷史實作建立隔離測試用的合成 fixture 與可寫入 runtime JSON。正式 `/practice` 的題庫與作答，以及帳號、角色與學習者基本資料，現在以 PostgreSQL 為權威來源；頁面不保留學習者快照。只有非識別性 UI 設定、計畫、排程及收藏以 learner ID 分區保存在瀏覽器。
+- 歷史實作曾提供啟動資料、狀態寫入、題庫查詢、題目匯入、圖片讀取與資料重設 API。這些 `/bootstrap`、`state`、`questions`、`imports`、storage-key asset 與 `reset` 路徑現在固定回 HTTP `410`，不得作用於持久題庫、帳號、角色、學習者與練習紀錄。
 - 題目加入版本、章節、單元、主題、來源明細及有序內容區塊。題幹與答案圖片分開保存，畫面依所在區域顯示。
-- 題目匯入確認後會實際新增 runtime JSON 題目與匯入批次；OCR 與 AI 拆題仍使用模擬內容。
+- 歷史匯入曾新增 runtime JSON 題目與匯入批次；正式 UI 現已停用，不再提供這條寫入路徑。OCR、AI 拆題與 PostgreSQL 正式匯入仍待完成。
 - 階段驗證：`npm run lint`、`git diff --check` 通過；API 已驗證狀態寫入、題目寫入、條件查詢、圖片回傳與重設。瀏覽器已完成貼上文字、產生四題校正資料與寫入 JSON 的流程。
-- 狀態：已部署至 Vercel；正式環境的暫存 JSON 不具跨執行個體持久性。
+- 歷史狀態：此 JSON 功能曾部署至 Vercel，暫存 JSON 不具跨執行個體持久性，不代表目前 production 持久服務已完成。
 
-## 本機 PostgreSQL 練習試行（2026-10-16）
+## 本機 PostgreSQL 操作與診斷（2026-10-16）
 
 - `npm run db:local:ensure` 在 `local-data/postgres` 維護可保留資料的 cluster，只開啟權限為 `0700` 的私有 Unix socket，不監聽 TCP，也不建立新密碼或長期憑證。migration 只向前執行，版本記錄不是 repository manifest 的完整前綴時會停止。
 - `0006_source_documents_word` 讓 `source_documents.input_type` 接受 `document`。含 VBA 的原始 `.doc` 保留為隔離且拒絕的 asset，不被 `source_documents` 引用；只有在本機關閉巨集轉換、並通過 VBA、Macro 與 ActiveX 檢查的 DOCX 衍生檔可標記為 `clean`。
 - `0007_practice_answer_integrity` 在交易結束前檢查選擇類題目的答案鍵值與同一小題選項一致，並要求 ready 的 document 來源只引用 private、clean、未刪除且 MIME 為 DOCX 的 asset。
-- 本輪只允許匯入 `05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc`，使用「國中一年級／國文／翰林版／第一冊／第四課」作為試行目標分類，並保留原始檔名、雜湊、原始課次／單元與來源 metadata。已驗證的 dry-run 為 279 題，279 題可核准，待核對與拒絕項目均為 0。其餘 14 份文件尚未匯入。
-- `/account` 以電子郵件與密碼建立或登入合成帳號。密碼使用 scrypt 雜湊；瀏覽器持有 HttpOnly session cookie，資料庫只保存不透明 token 的 SHA-256 雜湊。`/local-practice` 從 session 取得學習者，先檢查 `learner_access` 與 `question_bank_learners`；`questions` API 只回傳題幹、小題與選項，`sessions` 固定題目版本，`attempts` 在伺服器判分並以單一交易保存作答、逐小題結果、錯題佇列與 `analytics_outbox`，`history` 不回傳作答 payload 或標準答案。
+- `0008_auth_and_import_integrity` 要求有效 session 指定的學習者保持啟用，封存學習者時需在同一交易撤銷相關 session，並依帳號後學習者的順序取得 transaction advisory lock。這個 migration 也只把指定 confirmed Hanlin 批次的教材關聯修正為 `native/document`，不改寫其他批次或人工分類。
+- `0009_automatic_answer_completeness` 要求 published／superseded 的自動判分小題有可用參考答案：選擇類題目需有同一小題的有效答案鍵，文字題需有非空白可接受答案；人工與 AI 輔助檢視可無答案。升級前發現既有缺漏會停止，不補造資料，down 只移除新限制。
+- `0010_account_role_and_self_learner` 加入 `users.account_role`，限制有效登入身份必須有相符的一般角色授權，並要求 learner 帳號具有有效 self learner。`learner_access` 原有 `(learner_id, user_id, access_role)` 未撤銷關係唯一性之外，另加每帳號唯一未撤銷 self learner 索引，並強制名稱同步與 `can_manage_settings=true`。既有 self 名稱與建立者持有的設定權限修正只向前；down 不猜測舊值。
+- `0011_score_session_aggregates` 為 `practice_sessions` 加入五個計分彙總欄位，並新增 `practice_score_receipts` 與 `asset_object_cleanup_jobs`。升級會由既有 `score` 明細回填 aggregate 與收據，再清除該模式的 attempt、part result、附件關聯、審核、錯題／相近題佇列、來源追溯與 outbox；五張統計表只從剩餘 `instant` 與已完成 `complete` 明細重建。只由舊 `score` 作答引用的 private 手寫／一般答案 asset 會標記刪除並排入 pending 工作，共用 asset 保留。down 只移除 `0011` schema，不能重建逐題資料，也不反向取消 asset 的邏輯刪除；實際 storage 物件尚待受控 worker 確認刪除。
+- 本輪只允許匯入 `05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc`，使用「國語／國一／翰林版／第一冊／第四課（舊來源科目別名：國文）」作為正式教材分類，並保留原始檔名、雜湊、原始課次／單元與來源 metadata。parser v2 confirmed 批次 `2d1ff794-f6f4-5e59-baaa-8d1c767438be` 已正式寫入並發布 279 題，失敗與待核對均為 0；279 題的目前版本均為 revision 2，相同輸入重跑會重用既有批次。其餘 14 份文件尚未匯入。
+- `/account` 以電子郵件與密碼建立或登入合成帳號。密碼使用 scrypt 雜湊；瀏覽器持有 HttpOnly session cookie，資料庫只保存不透明 token 的 SHA-256 雜湊。auth 公開 DTO 提供練習所需的年級、學期、偏好、已啟用科目與版本，不包含學校或 private asset。`/practice` 從 session 取得學習者，先檢查 `learner_access` 與 `question_bank_learners`；`questions` API 只回傳題幹、小題、選項與正式知識點，`sessions` 固定題目版本，`attempts` 由伺服器判分。`instant`／`complete` 以單一交易保存作答明細、允許的錯題佇列與 `analytics_outbox`；`score` 只保存 aggregate 與不含答案／判定的冪等收據。
+- `/system-settings` 已把帳號身分與學習者關係接上 PostgreSQL，`/settings` 則獨立管理目前學習者。角色 API 僅切換目前 session 至已授予角色，不是 `system_admin` 授權 API；成人角色切換以帳號密碼重新確認，尚未使用資料模型中的角色 PIN。
 - 只有判分政策為自動判分，且標準答案完整的小題可以判為對或錯。未作答、缺少標準答案或需要人工／AI 輔助確認的小題保持 `pending`，不產生模擬答案。
-- 未驗證電子郵件只允許在 localhost 試行登入。寄送驗證信、遠端 HTTPS、登入 rate limit、跨帳號分享、RLS、production GRANT、正式角色授權、託管式物件儲存與真實兒童資料保存政策尚未完成。本輪不連接 production 資料庫、不執行 production migration、不部署到 Vercel。
+- 未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口使用，驗證帳號與自動化測試只使用隔離合成資料，不得因此清除已保存的資料。本機信箱驗證 challenge、API 與介面已完成；SMTP 真實投遞、公開／production HTTPS、登入 rate limit、跨帳號分享、RLS、production GRANT、正式角色授權、託管式物件儲存與真實兒童資料保存政策尚未完成。本輪不連接 production 資料庫、不執行 production migration、不部署到 Vercel。
 - 完整啟動、匯入與重啟後持久性驗收步驟見 `docs/local-practice-pilot.md`。
+- `npm run db:test`、`npm run test:import-ownership` 與 `npm run test:local-practice` 預設在 `/tmp` 建立短命 cluster，也各自提供明確 opt-in 的 existing-local-server 模式。這些模式會核對本機 Unix socket、port、實際 data directory、目前作業系統使用者及 non-recovery 狀態，只建立具隨機名稱與本次 ownership comment 的隔離資料庫，清理前再次核對後只刪除該資料庫，不停止共用 server。兩種模式都不碰 `local-data`，也不得指向 production。
 
 ## 國文原始題型 fixture（2026-10-14）
 
 - `01_第一課_夏夜.doc` 取八種原始題型各一題：寫出國字、注音、改錯題、填充題、配合題、單一選擇題、選詞測驗與題組。
 - 題幹、選項、答案、解析、原始題號、難易度、來源、版本、章節與單元均寫入 fixture。書寫題沒有選項；配合題、選詞測驗與題組逐小題保存及作答。
 - `npm test`、`npm run lint`、`git diff --check` 與 `npm run build` 通過。當時部署中的 mock API 回傳八種題型，書寫題的選項數為 0；mock 介面已驗證第 1 題書寫流程及第 5 題五小題配合題，桌面與 390 × 844 手機寬度均可操作。
-- Vercel production 部署為 `dpl_EzyuewPNWD9TixjZYusD6MvwYuCM`，`https://lerniqa.vercel.app/` 回傳 HTTP 200。
+- 當時紀錄曾以 Vercel deployment `dpl_EzyuewPNWD9TixjZYusD6MvwYuCM` 驗證 mock 介面；本輪未重新驗證，這筆歷史紀錄不代表目前 production 狀態。
 - Vercel 的模擬狀態寫入暫存目錄後不再回報唯讀錯誤，但不同 serverless 執行個體不共享暫存資料，重新整理可能讀回 fixture。正式持久保存仍需資料庫。
 
 ## 任務
@@ -83,13 +101,13 @@
 ### 規劃正式題目資料庫
 
 - 角色：架構師。
-- 輸入：`docs/PRODUCT_SPEC.md`、`docs/system-admin-plan.md`、目前 JSON 契約與 `/api/v1` 模擬 API。
+- 輸入：`docs/PRODUCT_SPEC.md`、`docs/system-admin-plan.md`、歷史 JSON 契約與目前 PostgreSQL API。
 - 產出：`docs/question-database-design.md`，涵蓋題目身份與版本、標準題型、內容、答案、分類、來源、題庫、相近題群組、逐次作答、日期彙總、錯題排行、搬移規則及施工順序；`docs/database-completion-matrix.md` 對照需求、資料表、正式 API／表單、完成狀態與安全切換邊界。
 - 完成條件：目前八種題型、音訊與動態欄位都有單一搬移來源；題目可跨版本歸入多個教材單元，正式課綱代碼與平台知識點分開保存；歷史作答固定引用題目版本且每次送出不可覆寫；每題作答及答錯次數可依學習者與日期查詢；相近題群組與相同題型分開建模；統計及排行榜可由明細重建；未來多帳號共享、家教題庫、OCR、AI 類題與手寫答案不需另建平行題目模型。排序、拖曳配對、圖片熱區、繪圖、錄音作答及通用版面系統不列入首版，需在產品確認後另以 migration 擴充。
 - 驗證：對照目前 TypeScript 型別、匯入 API、題庫查詢及管理員權限規劃；執行 `git diff --check`。
-- 實作結果：`0001` 至 `0007` 已以原生 SQL 完成並通過獨立 PostgreSQL 驗證。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
+- 實作結果：`0001` 至 `0011` 已以原生 SQL 完成，合計 96 張業務資料表。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
 - 回滾點：刪除本規劃與本任務段落，不修改既有 JSON、API 或介面。
-- 狀態：已確認；七個 migration 已依本文件施工。`/local-practice` 已接上本機 PostgreSQL，主應用尚未切換
+- 狀態：已確認；十一個 migration 已依本文件施工。`/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL；計畫、排程與收藏尚未切換
 
 ### 建立身份與目錄 migration
 
@@ -170,16 +188,56 @@
 - 回滾點：down migration 只移除 `0007` 新增的 final-state trigger 與函式，不修改題目、答案、選項、來源文件或 asset 資料。正式資料庫仍以新的向前 migration 修正，不直接執行 down。
 - 狀態：已驗證；`npm run db:test` 已通過七組 migration 的兩次前進、限制測試、逐階段反向回滾與 schema parity，`npm run lint` 與本機練習 verifier 語法檢查也已通過
 
+### 補強 session 與匯入所有權完整性
+
+- 角色：後端工程師、安全審查員。
+- 輸入：`0001` 至 `0007` schema、本機 session 查詢及 Hanlin confirmed 批次。
+- 產出：`0008_auth_and_import_integrity` 前進與回滾 migration、限制測試、匯入 ownership 隔離測試及本機練習隔離驗收。
+- 完成條件：有效 session 指定的學習者必須保持啟用；封存學習者時須在同一交易撤銷相關有效 session；應用角色與 `learner_access.access_role` 不做錯誤的字面相等判斷；帳號及學習者異動依固定順序取得鎖。指定 confirmed Hanlin 批次的教材單元關聯改為 `native/document`，其他批次與人工分類不受影響；匯入器不得建立固定合成帳號、角色、學習者或偏好。
+- 驗證：`npm run db:test` 驗證 migration 前進、限制、回滾與再次前進；`npm run test:import-ownership` 與 `npm run test:local-practice` 在 `/tmp` 私有 PostgreSQL cluster 使用合成資料，不接觸 `local-data`。
+- 回滾點：持久資料庫不執行 down；若 session 前置檢查失敗，先找出並撤銷指向封存學習者的有效 session，再重新執行向前 migration。`0008` down 只移除 schema 物件，不把 `native/document` 反向改回舊分類。
+- 狀態：已驗證；八組 migration 往返、import ownership 與 279 題隔離練習／重啟驗證均已通過。
+
+### 補強自動判分答案完整性
+
+- 角色：後端工程師、安全審查員。
+- 輸入：`0001` 至 `0008` schema，以及 published／superseded 題目版本的既有小題、選項與參考答案。
+- 產出：`0009_automatic_answer_completeness` 前進與回滾 migration，以及答案完整性限制測試。
+- 完成條件：published／superseded 的 `automatic` 選擇類小題至少有一個同小題有效選項鍵，`automatic` 文字題至少有一個非空白 `accepted_value`；`manual_review` 與 `ai_assisted_review` 可無參考答案。既有資料不合規時，升級直接停止，不猜測或補造答案。
+- 驗證：在一次性 PostgreSQL cluster 驗證既有資料 preflight、可延後的交易最終狀態、選項／答案刪改拒絕、manual／AI 例外、down 只移除新增物件，以及 `0001` 至 `0009` 再次前進與 schema parity。
+- 回滾點：down 只移除 `0009` 的 trigger、函式與 migration 紀錄，不修改題目、選項或答案資料；持久資料庫仍以向前修正為原則。
+- 狀態：已驗證；完整 `db:test` 已涵蓋 `0009` preflight、子資料異動併發、逐層 down、第二次 up 與 schema parity。
+
+### 補強帳號本人角色與 self learner 完整性
+
+- 角色：後端工程師、安全審查員。
+- 輸入：`0001` 至 `0009` schema、目前 auth session 與學習者設定契約。
+- 產出：`0010_account_role_and_self_learner` 前進與回滾 migration，以及帳號角色、self learner 與併發完整性測試。
+- 完成條件：有效登入身份必須有 `parent`、`tutor` 或 `learner` 本人角色與相符有效授權；learner 本人角色必須具有一位已接受、未撤銷且啟用中的 self learner。每個帳號至多一筆未撤銷的 self learner 關係，名稱與帳號同步且可管理自己的設定。舊資料無法確定時停止，不猜測身分。
+- 驗證：完整 `db:test` 已涵蓋 deterministic backfill、learner-role-only preflight、archived learner race、`account_role` 與 grant 撤銷的雙連線競爭、self access 與 learner rename 的雙連線競爭、逐層 down、第二次 up 與 schema parity。
+- 回滾點：down 移除 `0010` 的欄位、索引、trigger、函式與 migration 紀錄；名稱與權限修正無法與後續合法修改區分，因此保持只向前，不反向猜測舊值。
+- 狀態：已驗證。
+
+### 補強計分模式資料隱私
+
+- 角色：後端工程師、安全審查員。
+- 輸入：`0001` 至 `0010` schema、三種檢核模式的既有作答、統計與附件引用。
+- 產出：`0011_score_session_aggregates` 前進與回滾 migration、`practice_score_receipts`、`asset_object_cleanup_jobs`、session 計分彙總欄位及完整性測試。
+- 完成條件：`score` 只留下 session aggregate 與不含答案／逐題判定的冪等收據；舊明細、衍生佇列與 outbox 清除。五張統計表從合格的非 `score` 明細重建。只屬於舊 `score` 的 private 作答 asset 解除引用、標記刪除並排入 pending 工作，共用 asset 保留；外部物件未經實際確認不得標記完成。
+- 驗證：完整 `db:test` 涵蓋舊資料回填與隱私清理、統計確定性重建、exclusive／shared asset 分流、清理工作狀態、aggregate／receipt 完整性、逐層 down、第二次 up 與 schema parity。
+- 回滾點：down 移除 `0011` schema 與 migration 產生的資產清理稽核，但不虛構已刪除的 `score` 明細，也不取消已排程資產的邏輯刪除。這只供可丟棄的隔離資料庫做 schema 往返；有 pending 物件工作的環境必須先完成或受控移交工作、另留操作稽核，不得用 DDL down 當營運回滾。
+- 狀態：資料庫隱私清理與排程已驗證；真實 storage 物件沒有在 migration 中刪除，受控清理 worker 仍待交付。
+
 ### 串接正式後端與安全切換 PostgreSQL
 
 - 角色：後端工程師、安全審查員、驗收員。
-- 輸入：`0001` 至 `0007` PostgreSQL schema、現有 JSON API／fixture、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
+- 輸入：`0001` 至 `0011` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
 - 產出：正式 repository 與交易服務、依資源拆分的 `/api/v1`、可重跑的 JSON 搬移工具，以及 PostgreSQL 單一寫入來源的切換程序。
 - 完成條件：伺服器從可信 session 決定帳號、角色與學習者權限；題目查詢、匯入、考試、計畫、作答、審核、附件與統計均讀寫 PostgreSQL；搬移工具輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告；JSON 與 PostgreSQL 不同時接受寫入。
 - 驗證：空庫與既有資料升級、正式 API 授權和表單讀寫、跨帳號拒絕、併發衝突、附件權限、作答不可變性、型別檢查、lint、build 及桌面／手機核心流程。
 - 依賴：production 後端與 PostgreSQL、ORM／查詢層、驗證信服務、遠端 HTTPS 與 rate limit、物件儲存、Secret Manager 與資料保存／刪除政策都須先決定；保存政策未核准前不得搬入真實兒童資料。
-- 回滾點：正式切換前保持 JSON 為唯一權威來源；切換窗口失敗時停止新寫入並依已演練程序回到前一個單一來源，不啟用無一致性保證的雙寫。
-- 狀態：待決策與施工；`/account` 與 `/local-practice` 已完成合成帳號的本機 session 與學習者隔離試行，現有 mock API、主應用表單與 fixture 尚未切換 PostgreSQL
+- 回滾點：依功能維持目前單一權威來源，已匯入題庫與持久練習以 PostgreSQL 為準；切換窗口失敗時停止新寫入並依已演練程序回到前一個單一來源，不啟用無一致性保證的雙寫。
+- 狀態：部分完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 已完成本機 session、一般角色、學習者及作答隔離；登入失效不回退 fixture，舊 JSON HTTP 端點固定回 `410`。目前學習者已完成顯示名稱、年級、學期與各科書籍版本的正式寫入；其他學習者欄位、偏好、考試、計畫、排程、收藏、正式匯入、`practice_session_item_origins` 完整來源及相近題審核／查詢仍待施工
 
 ### 建立資料契約與主要導覽
 
@@ -194,19 +252,19 @@
 ### 完成考試設定與三種練習方式
 
 - 角色：前端工程師
-- 輸入：新的資料契約與示範題庫。
+- 輸入：新的資料契約與隔離合成題庫。
 - 產出：可新增多筆的考試設定、全部作答後檢核、逐題檢核、只顯示成績、完成結果及相近題入口。
-- 完成條件：三種方式產生符合文件的回饋與答案揭露時機；只顯示成績不揭露個別答案或解析，範圍、題數、摘要與實際題目一致。
+- 完成條件：三種方式產生符合文件的回饋與答案揭露時機；只顯示成績不揭露或保存個別答案內容，只保存 session aggregate 與不含答案／判定的冪等收據，重載後仍可讀回範圍、題數與摘要。
 - 驗證：三種方式各完成一輪練習，核對作答順序、回饋、答案揭露、結果與錯題。
 - 回滾點：只撤回新檢核模式，保留原有逐題練習。
 - 狀態：已驗證
 
-### 完成手寫、題庫匯入與答案檢視模擬
+### 完成手寫與答案檢視介面，停用舊匯入寫入
 
 - 角色：前端工程師
 - 輸入：題目資料與作答流程。
-- 產出：數學／書寫題手寫板、題目校正表單示範、檢視者身份與答案比對顯示設定。
-- 完成條件：手寫內容跟隨作答保存並可在成果中重現；匯入表單可修改帶入年級，全部確認後會把題目與圖片寫入 runtime JSON／assets，但 OCR 與 AI 拆題仍使用模擬內容；成果頁不聲稱能保存人工判定。
+- 產出：數學／書寫題手寫板、停用狀態的題目校正入口、檢視者身份與答案比對顯示設定。
+- 完成條件：`instant`／`complete` 的手寫內容跟隨作答保存並可在成果中重現，`score` 不保存逐題附件；舊 JSON 匯入不再可提交，正式匯入 API、OCR 與 AI 拆題完成前維持停用；成果頁不聲稱能保存人工判定。
 - 驗證：手寫、清除、儲存、切換檢視者、顯示／隱藏參考答案與檔案限制。
 - 回滾點：撤回手寫與校正區塊，不修改既有題目及作答紀錄。
 - 狀態：已驗證
@@ -214,12 +272,12 @@
 ### 完成錯題、相近題與學習成果
 
 - 角色：前端工程師
-- 輸入：作答紀錄與相近題模擬資料。
+- 輸入：作答紀錄與隔離測試中的固定相近關係。
 - 產出：錯題勾選、相近題累計結果、立即練習／加入後續練習，以及考前總覽與成果頁。
 - 完成條件：資料依學習者隔離；相近題可追溯原始錯題；總覽顯示考試倒數、弱點、單元進度與最近練習。
 - 驗證：建立錯題、加入相近題、切換學習者、檢查成果統計。
 - 回滾點：撤回新工作區，保留一般練習紀錄。
-- 狀態：已驗證
+- 狀態：介面已用隔離合成資料驗證；相近題候選審核、正式關聯、授權查詢與 `practice_session_item_origins` 完整來源仍未交付
 
 ### 審查、優化、安全與驗收
 
@@ -228,24 +286,26 @@
 - 產出：介面品質檢查、資料隔離與檔案輸入安全檢查及核心流程驗收證據；只有使用者在當次明確要求時才執行 Vercel production 部署。
 - 完成條件：沒有已知阻擋問題；桌面與手機均能完成核心流程。若當次要求部署，正式網址還需回傳成功狀態。
 - 驗證：型別檢查、production build、`git diff --check` 及瀏覽器操作；只有當次要求部署時才驗證 HTTP 狀態與 production 實際畫面。
-- 回滾點：撤回本輪完整前端模擬系統變更，回到既有首頁。
+- 回滾點：撤回本輪多科目產品介面變更，回到既有首頁。
 - 狀態：已驗證
 
-## 驗收紀錄
+## 歷史介面驗收紀錄（2026-10-14）
+
+以下內容只保存當時介面調整的驗收脈絡，不是本輪分支的部署證據。這些紀錄中的 Vercel 狀態未在本輪重驗；目前改動仍只在本機，除非使用者當次明確要求，否則不得據此部署或宣稱 production 已更新。
 
 - `npm run lint`：通過。
 - `npm run build`：通過；Keel 文件預覽器的選用套件缺少警告不影響本頁功能。
 - `git diff --check`：通過。
-- 正式環境：桌面與 390 × 844 手機寬度均完成操作驗證。
-- 核心流程：學習者切換、年級自動帶入、考試設定、三種練習方式、逐題回饋、手寫板、錯題、固定相近題、匯入校正示範及成果檢視設定均可操作。
-- Vercel production：`https://lerniqa.vercel.app/` 已部署，HTTP 狀態為 200。
+- 當時的正式環境紀錄：桌面與 390 × 844 手機寬度均完成操作驗證。
+- 當時核心流程：學習者切換、年級自動帶入、考試設定、三種練習方式、逐題回饋、手寫板、錯題、隔離測試中的固定相近關係、舊 mock 匯入校正及成果檢視設定均可操作。這筆歷史驗收不代表目前已有正式匯入 API／介面。
+- 當時紀錄的 Vercel production 回應為 HTTP 200；本輪未重驗。
 
 ### 青少年視覺調整（2026-10-14）
 
 - 按鈕依工作區使用藍、紫、珊瑚橘與金色，保留 Keel 元件的焦點、停用與操作狀態。
 - 卡片維持淡灰白底，只在圖示、卡片上緣與小型幾何圖形使用低飽和色彩，避免大面積色塊與幼兒化角色。
 - `npm run lint`、`npm run build`、`git diff --check` 均通過。
-- Vercel production 已更新；桌面與 390 × 844 手機寬度均完成視覺與響應式檢查，正式網址回傳 HTTP 200。
+- 當時紀錄顯示 Vercel production 已更新，並完成桌面與 390 × 844 手機寬度的視覺與響應式檢查；本輪未重驗。
 
 ### 冷紫色票調整（2026-10-14）
 
@@ -253,7 +313,7 @@
 - 粉紅、天藍與暖黃只用於功能識別及小面積裝飾，卡片保留白色與淡灰底。
 - 深色互動色與白字的對比至少為 4.5:1，焦點狀態沿用 Keel 元件與全站語意色票。
 - `npm run lint`、`npm run build`、`git diff --check` 均通過；桌面與手機寬度皆完成操作及溢出檢查，瀏覽器 Console 無錯誤。
-- Vercel production 已更新，正式網址回傳 HTTP 200。
+- 當時紀錄顯示 Vercel production 回傳 HTTP 200；本輪未重驗。
 
 ### 三欄卡片版面調整（2026-10-14）
 
@@ -262,31 +322,31 @@
 - 首頁「嗨，學習者」區塊保留原有文字、圖形、間距與背景，只把主要按鈕改為靛紫色。
 - 手機版維持單欄排列，390 像素寬度無水平溢出；五個工作區均可切換。
 - 作答時間改用確定性的台北時間字串，避免伺服器與瀏覽器格式差異造成 hydration error（水合錯誤）。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；正式環境 Console 無錯誤，Vercel production 回傳 HTTP 200。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過；當時正式環境 Console 無錯誤、Vercel production 回傳 HTTP 200。本輪未重驗該部署。
 
 ### 側欄視覺調整（2026-10-14）
 
 - 左側導覽改為品牌區、學習者卡片、主要練習入口、次要功能列與每日提示卡，主工作區與右側摘要不變。
 - 保留總覽、練習、題庫、錯題、成果、學習者切換及學習者設定功能；介面控制元件持續使用 Keel。
 - 390 像素手機寬度無水平溢出；已驗證切換學習者、題庫導覽與設定視窗，瀏覽器 Console 無錯誤。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；Vercel production 已更新。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過，並記錄 Vercel production 已更新；本輪未重驗該部署。
 
 ### 學習者設定頁與練習偏好（2026-10-14）
 
-- 學習者設定由彈跳視窗改為獨立工作區，集中管理基本資料、各科書籍版本、每輪預設題數與示範資料重設。
+- 學習者設定由彈跳視窗改為獨立工作區，集中管理基本資料、各科書籍版本、每輪預設題數與隔離合成測試資料重設（不對持久資料開放）。
 - 書籍版本改為數學、國語、英文各自保存；舊版單一版本資料會安全轉換到三個科目。
 - 複習計畫保留「本輪題數」設定，可針對單次計畫臨時調整，不覆寫學習者預設題數。
 - 設定頁與側欄入口沿用 Keel 元件及既有三欄視覺系統。
 - `npm run lint`、`npm run build`、`git diff --check` 均通過；build 只有 Keel 文件預覽器既有的選用套件警告。
-- 正式環境已驗證設定頁導覽、舊資料轉換、各科版本欄位、預設題數與單次計畫互不覆寫；390 × 844 手機寬度無水平溢出，Console 無錯誤。
-- Vercel production：`https://lerniqa.vercel.app/` 已更新，HTTP 狀態為 200。
+- 當時正式環境已驗證設定頁導覽、舊資料轉換、各科版本欄位、預設題數與單次計畫互不覆寫；390 × 844 手機寬度無水平溢出，Console 無錯誤。
+- 當時紀錄顯示 Vercel production 回傳 HTTP 200；本輪未重驗。
 
 ### 中等寬度資訊密度修正（2026-10-14）
 
 - 1024–1399 像素改為側欄與主內容兩欄；練習摘要及成果指標移到主內容下方，避免三欄同時壓縮。
 - 1400 像素以上才使用完整三欄，成果頁的摘要、檢視設定與最近作答改為垂直內容流，不再把統計數字擠成窄直欄。
 - 已驗證 1280、1440 與 390 像素寬度；沒有水平溢出，成果摘要最窄統計格仍有 152 像素，Console 無錯誤。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；Vercel production 已更新。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過，並記錄 Vercel production 已更新；本輪未重驗該部署。
 
 ### 錯題科目切換（2026-10-14）
 
@@ -294,22 +354,22 @@
 - 錯題列表、已選錯題複習與後續相近題佇列都依目前科目篩選；切換科目時會清除跨科勾選。
 - 沒有錯題的科目顯示專屬空狀態，可返回全部錯題；所有控制沿用 Keel 元件。
 - 已驗證數學錯題、國語空狀態、跨科勾選清除，以及 1280 與 390 像素寬度；Console 無錯誤。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；Vercel production 已更新。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過，並記錄 Vercel production 已更新；本輪未重驗該部署。
 
-### 題庫頁精簡（2026-10-14）
+### 題庫頁精簡（2026-10-14，歷史紀錄）
 
-- 題庫頁移除「目前題庫」展示卡，只保留考卷匯入與校正流程，匯入介面改用完整主內容寬度。
-- 示範題目資料仍供練習、錯題與成果功能使用，這次只移除重複的題庫列表介面。
+- 當時的題庫頁移除「目前題庫」展示卡，只保留考卷匯入與校正流程，匯入介面改用完整主內容寬度。這個 mock 入口現已移除，不是目前可操作功能。
+- 當時的隔離合成題目仍供練習、錯題與成果介面驗證，這次只移除重複的題庫列表介面。
 - 已驗證 1280 與 390 像素寬度，沒有水平溢出，Console 無錯誤。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；Vercel production 已更新。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過，並記錄 Vercel production 已更新；本輪未重驗該部署。
 
-### 多題匯入校正與分類（2026-10-14）
+### 多題匯入校正與分類（2026-10-14，歷史紀錄）
 
-- 匯入圖片或 PDF 後，校正區依原始順序列出全部辨識題目與參考答案；示範資料以四題驗證，不再只顯示單題。
+- 匯入圖片或 PDF 後，校正區依原始順序列出全部辨識題目與參考答案；當時以四題隔離合成資料驗證，不再只顯示單題。
 - 每題可分別選擇科目、章節／第幾課／主題、難易度與來源；章節、課次、主題及來源支援自行新增，所有選填欄位留白時標示由 AI 分析。
 - 全部題目確認後才顯示準備寫入結果；目前介面階段不執行 OCR、AI 分析或正式保存。
-- 修正 production rewrite 在直接開啟工作區網址時造成的 hydration mismatch（水合不一致）；`/bank` 重新整理後維持題庫頁，Console 無錯誤。
-- `npm run lint`、`npm run build`、`git diff --check` 均通過；桌面與 390 × 844 手機寬度已驗證，正式網址回傳 HTTP 200。
-- Vercel production：`https://lerniqa.vercel.app/bank` 已更新。
+- 當時曾修正 production rewrite 在直接開啟工作區網址時造成的 hydration mismatch（水合不一致）；該版 `/bank` 重新整理後維持題庫頁，Console 無錯誤。現在 `/bank` 會轉址到 `/questions`，不能再用這筆舊驗證表示匯入介面可用。
+- 當時的 `npm run lint`、`npm run build`、`git diff --check` 均通過，桌面與 390 × 844 手機寬度已驗證；本輪未重驗正式網址。
+- 當時紀錄顯示 Vercel production 的 `/bank` 已更新；這只是歷史紀錄，本輪未部署或重驗。
 
 驗證失敗時先固定重現步驟、找出根因再修正；同一方案連續失敗兩次後停止重試並重新評估。
