@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { getLocalPracticeHistory } from "@/app/lib/local-practice-store";
 import {
     errorResponse,
     handleLocalPracticeError,
+    localPracticeJsonResponse,
     localPracticeMeta,
     parseBoundedInteger,
     requireLocalPracticeAccount,
@@ -15,13 +15,15 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
     try {
         const account = await requireLocalPracticeAccount(request);
-        const limit = parseBoundedInteger(new URL(request.url).searchParams.get("limit"), 50, 1, 100);
-        if (limit === null) return errorResponse("INVALID_HISTORY_LIMIT", "歷史紀錄筆數必須介於 1 到 100。", 400);
+        const params = new URL(request.url).searchParams;
+        const limit = parseBoundedInteger(params.get("limit"), 50, 1, 100);
+        const page = parseBoundedInteger(params.get("page"), 1, 1, 10_000);
+        if (limit === null || page === null) return errorResponse("INVALID_HISTORY_LIMIT", "歷史紀錄筆數或頁碼格式不正確。", 400);
         const history = await getLocalPracticeHistory(limit, {
             userId: account.userId,
             learnerId: account.learner.id,
-        });
-        return NextResponse.json({ data: history, meta: localPracticeMeta({ limit }) });
+        }, (page - 1) * limit);
+        return localPracticeJsonResponse({ data: history, meta: localPracticeMeta({ limit, page }) });
     }
     catch (error) {
         return handleLocalPracticeError(error);

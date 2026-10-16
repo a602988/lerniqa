@@ -45,6 +45,7 @@ import {
     type LocalPracticeSessionHistory,
     type LocalPracticeWrongQueueItem,
 } from "../lib/local-practice-types";
+import { CHINESE_SUBJECT_LABEL } from "../lib/subject-labels";
 import styles from "./local-practice.module.css";
 
 const CATALOG_PAGE_SIZE = 50;
@@ -712,14 +713,14 @@ export default function LocalPracticePage() {
                 <header className={styles.topbar}>
                     <Link className={styles.brand} href="/overview" aria-label="返回 Lerniqa 首頁">
                         <span className={styles.brandMark}><LerniqaMark /></span>
-                        <span><strong>Lerniqa</strong><small>第四課題庫</small></span>
+                        <span><strong>Lerniqa</strong><small>{CHINESE_SUBJECT_LABEL}第四課題庫</small></span>
                     </Link>
                     <Link className={styles.accountLink} href="/account">帳號中心<ArrowRight aria-hidden="true" /></Link>
                 </header>
                 <section className={styles.authGate} aria-live="polite">
                     <ShieldCheck aria-hidden="true" />
                     <span className={styles.eyebrow}>個人練習紀錄</span>
-                    <h1>{accountLoading ? "正在確認登入狀態" : "登入後開始第四課練習"}</h1>
+                    <h1>{accountLoading ? "正在確認登入狀態" : `登入後開始${CHINESE_SUBJECT_LABEL}第四課練習`}</h1>
                     <p>{accountLoading ? "請稍候，正在讀取你的學習帳號。" : accountError || "題目、作答與錯題會依目前學習者分開保存。"}</p>
                     {!accountLoading && <Link className={styles.authGateAction} href="/account">登入或建立帳號<ArrowRight aria-hidden="true" /></Link>}
                 </section>
@@ -732,18 +733,18 @@ export default function LocalPracticePage() {
             <header className={styles.topbar}>
                 <Link className={styles.brand} href="/overview" aria-label="返回 Lerniqa 首頁">
                     <span className={styles.brandMark}><LerniqaMark /></span>
-                    <span><strong>Lerniqa</strong><small>第四課題庫</small></span>
+                    <span><strong>Lerniqa</strong><small>{CHINESE_SUBJECT_LABEL}第四課題庫</small></span>
                 </Link>
                 <div className={styles.topbarBadges}>
                     <Link className={styles.accountLink} href="/account">{account.learner.displayName}<ArrowRight aria-hidden="true" /></Link>
-                    <Badge tone="primary"><BookOpenCheck aria-hidden="true" />第四課練習</Badge>
+                    <Badge tone="primary"><BookOpenCheck aria-hidden="true" />{CHINESE_SUBJECT_LABEL}・第四課</Badge>
                     <Badge tone="success"><ShieldCheck aria-hidden="true" />作答自動保存</Badge>
                 </div>
             </header>
 
             <section className={styles.hero} aria-labelledby="local-practice-title">
                 <div className={styles.heroCopy}>
-                    <span className={styles.eyebrow}><BookOpenCheck aria-hidden="true" />國一國文題庫</span>
+                    <span className={styles.eyebrow}><BookOpenCheck aria-hidden="true" />國一{CHINESE_SUBJECT_LABEL}題庫</span>
                     <h1 id="local-practice-title">第四課，開始練習</h1>
                     <p>挑選題目後即可開始作答。標準答案完整的題目會自動判分；需要進一步核對的題目會標成待處理，作答與錯題紀錄都會保存。</p>
                     <div className={styles.filterTrail} aria-label="目前題庫範圍">

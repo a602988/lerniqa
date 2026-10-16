@@ -12,6 +12,9 @@ import {
   buildPasswordResetMessage,
   sendEmailVerification,
 } from "../app/lib/mail/account-mail.ts";
+import {
+  createNodemailerSmtpTransportFactory,
+} from "../app/lib/mail/nodemailer-transport.ts";
 
 const COMPLETE_ENV = Object.freeze({
   [MAIL_ENV_NAMES.host]: "mail.internal.example",
@@ -123,6 +126,66 @@ test("uses STARTTLS semantics on a non-465 TLS port", async () => {
 
   assert.equal(seenOptions.secure, false);
   assert.equal(seenOptions.requireTLS, true);
+});
+
+test("the Nodemailer bridge forwards SMTP options and messages without network access", async () => {
+  let seenOptions;
+  let seenMessage;
+  let verifyCalls = 0;
+  const factory = createNodemailerSmtpTransportFactory((options) => {
+    seenOptions = options;
+    return {
+      async verify() {
+        verifyCalls += 1;
+      },
+      async sendMail(message) {
+        seenMessage = message;
+        return {
+          messageId: "mock-nodemailer-id",
+          accepted: ["learner@example.net"],
+          rejected: [],
+        };
+      },
+    };
+  });
+  const options = {
+    host: "mail.internal.example",
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: { user: "mailer", pass: "synthetic-secret" },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+  };
+  const transport = factory(options);
+
+  await transport.verify();
+  const result = await transport.sendMail({
+    from: { name: "Lerniqa", address: "no-reply@example.com" },
+    to: [{ name: "測試學習者", address: "learner@example.net" }],
+    subject: "合成通知",
+    text: "不會送出網路的測試內容。",
+  });
+
+  assert.equal(verifyCalls, 1);
+  assert.deepEqual(seenOptions, {
+    ...options,
+    disableFileAccess: true,
+    disableUrlAccess: true,
+  });
+  assert.notEqual(seenOptions, options);
+  assert.deepEqual(seenMessage, {
+    from: { name: "Lerniqa", address: "no-reply@example.com" },
+    to: [{ name: "測試學習者", address: "learner@example.net" }],
+    subject: "合成通知",
+    text: "不會送出網路的測試內容。",
+  });
+  assert.deepEqual(result, {
+    messageId: "mock-nodemailer-id",
+    accepted: ["learner@example.net"],
+    rejected: [],
+  });
 });
 
 test("does not leak an upstream SMTP error", async () => {

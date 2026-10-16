@@ -1,0 +1,125 @@
+.page {
+    display: grid;
+    min-height: 100svh;
+    place-items: center;
+    padding: 1rem;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(221, 212, 255, 0.72), transparent 26rem),
+        radial-gradient(circle at 82% 84%, rgba(249, 213, 228, 0.48), transparent 24rem),
+        #f2eff9;
+    color: #24263a;
+}
+
+.card {
+    display: grid;
+    width: min(100%, 30rem);
+    gap: 1.35rem;
+    padding: clamp(1.5rem, 5vw, 2.5rem);
+    border: 1px solid rgba(217, 218, 232, 0.92);
+    border-radius: 1.75rem;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 24px 65px rgba(58, 56, 111, 0.15);
+    text-align: center;
+}
+
+.brand {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0 auto;
+    color: inherit;
+    text-decoration: none;
+}
+
+.brand span,
+.icon {
+    display: grid;
+    place-items: center;
+}
+
+.brand span {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid rgba(123, 103, 222, 0.18);
+    border-radius: 0.9rem;
+    background: #fff;
+}
+
+.brand svg {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.icon {
+    width: 4.25rem;
+    height: 4.25rem;
+    margin: 0 auto;
+    border-radius: 1.3rem;
+    background: #eef0ff;
+    color: #5e63d3;
+}
+
+.icon[data-state="success"] {
+    background: #eaf9f2;
+    color: #23775c;
+}
+
+.icon[data-state="error"] {
+    background: #fff0f6;
+    color: #94365e;
+}
+
+.icon svg {
+    width: 2rem;
+    height: 2rem;
+}
+
+.icon[data-state="working"] svg {
+    animation: spin 900ms linear infinite;
+}
+
+.copy {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.copy > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: #5e63d3;
+    font-size: 0.76rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+}
+
+.copy > span svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.copy h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 6vw, 2.35rem);
+    letter-spacing: -0.04em;
+}
+
+.copy p {
+    margin: 0;
+    color: #686b80;
+    line-height: 1.65;
+}
+
+.card > a:last-child {
+    width: 100%;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icon[data-state="working"] svg { animation: none; }
+}

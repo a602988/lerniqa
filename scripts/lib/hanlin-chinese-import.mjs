@@ -53,14 +53,6 @@ export const TARGET_CLASSIFICATION = Object.freeze({
 
 const UUID_NAMESPACE = "a14dc152-b0c8-4c88-93e6-17c4e5171cc9";
 
-/**
- * 固定本機練習身份；API 串接必須使用相同的 user/learner UUID。
- */
-export const LOCAL_PRACTICE_IDS = Object.freeze({
-    userId: "10000000-0000-4000-8000-000000000001",
-    learnerId: "10000000-0000-4000-8000-000000000002",
-});
-
 function namespaceBytes(namespace) {
     return Buffer.from(namespace.replaceAll("-", ""), "hex");
 }
@@ -79,8 +71,6 @@ export function deterministicUuid(name) {
 }
 
 export const LOCAL_CATALOG_IDS = Object.freeze({
-    roleId: deterministicUuid("local-practice:role:learner"),
-    learnerAccessId: deterministicUuid("local-practice:learner-access"),
     gradeId: deterministicUuid("catalog:grade:junior-high-1"),
     semesterId: deterministicUuid("catalog:semester:semester-1"),
     publisherId: deterministicUuid("catalog:publisher:hanlin"),
@@ -89,7 +79,6 @@ export const LOCAL_CATALOG_IDS = Object.freeze({
     bookVersionId: deterministicUuid("catalog:book:chinese:junior-high-1:hanlin:volume-1"),
     volumeUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1"),
     targetUnitId: deterministicUuid("catalog:unit:hanlin:chinese:volume-1:lesson-4"),
-    learnerSubjectSettingId: deterministicUuid("local-practice:learner-subject:chinese"),
     questionBankId: deterministicUuid("local-practice:question-bank:default"),
     sourceCategoryId: deterministicUuid("catalog:source-category:publisher-test-bank"),
     questionTypeChoiceId: deterministicUuid("catalog:question-type:single-choice"),
@@ -1225,7 +1214,7 @@ export async function prepareHanlinChineseImport(sourceInput, { allowDirectory =
             parserVersion: PARSER_VERSION,
             target: TARGET_CLASSIFICATION,
             sourceKind,
-            ids: { ...LOCAL_PRACTICE_IDS, ...LOCAL_CATALOG_IDS },
+            ids: { ...LOCAL_CATALOG_IDS },
             idempotencyKey,
             batchId,
             sourceSetHash,

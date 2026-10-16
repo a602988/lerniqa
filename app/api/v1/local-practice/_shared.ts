@@ -21,12 +21,18 @@ export function localPracticeMeta(extra: Record<string, unknown> = {}) {
     };
 }
 
+export function localPracticeJsonResponse(body: unknown, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    headers.set("Cache-Control", "private, no-store");
+    return NextResponse.json(body, { ...init, headers });
+}
+
 export async function requireLocalPracticeAccount(request: Request): Promise<AuthenticatedAccount> {
     return getAuthenticatedAccount(request);
 }
 
 export function errorResponse(code: string, message: string, status: number) {
-    return NextResponse.json({ error: { code, message } }, { status });
+    return localPracticeJsonResponse({ error: { code, message } }, { status });
 }
 
 export function handleLocalPracticeError(error: unknown) {

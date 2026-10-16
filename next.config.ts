@@ -5,10 +5,13 @@ const nextConfig: NextConfig = {
     // dev and next build mutate their output directory and cannot safely share
     // it while the browser is using compiled chunks.
     distDir: process.env.LERNIQA_NEXT_DIST_DIR ?? ".next",
+    async redirects() {
+        return [{ source: "/local-practice", destination: "/practice", permanent: false }];
+    },
     async rewrites() {
         return [
             {
-                source: "/:path(overview|practice|questions|bank|mistakes|results|settings)",
+                source: "/:path(overview|practice|questions|bank|mistakes|results|settings|system-settings)",
                 destination: "/",
             },
             {

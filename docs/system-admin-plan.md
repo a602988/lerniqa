@@ -1,8 +1,8 @@
 # 系統管理員與題目異動規劃
 
-狀態：資料庫 schema 與完整性限制已實作；正式登入、授權 API、可信資料庫 caller 與管理介面尚未串接
+狀態：資料庫 schema、本機一般帳號登入與學習者授權已實作；`system_admin` 登入、授權 API、可信 production 資料庫 caller 與管理介面尚未串接
 
-這份文件定義正式帳號、系統管理員及題目異動權限。`0001` 至 `0005` 已建立帳號、角色、題目版本與稽核的 PostgreSQL schema；正式架構中的 Vercel 專案仍只負責前端介面，登入、授權、PostgreSQL runtime 及預設系統管理員都要由正式後端服務提供。現有 `/api/v1` 模擬 API 是過渡用途，不得延用為正式帳號或權限服務。後端部署環境與登入服務尚未選定，因此不得把前端示範資料或資料列中的 actor 類型當成正式權限來源。
+這份文件定義正式帳號、系統管理員及題目異動權限。`0001` 至 `0011` 已建立帳號、角色、題目版本、作答隱私與稽核的 PostgreSQL schema；本機 `/account`、`/system-settings`、`/settings` 與 `/practice` 已使用 session 與 PostgreSQL，但不包含 `system_admin` 的正式登入與管理流程。舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`，不得延用為帳號或權限服務。production 後端、預設系統管理員與可信資料庫 caller 尚未建立，因此不得把前端資料或資料列中的 actor 類型當成正式管理權限來源。
 
 ## 已確認的產品規則
 
@@ -54,11 +54,11 @@ Migration 會檢查 `user` actor 是當下有效的 `system_admin`，並要求�
 
 ## 資料契約
 
-正式資料庫以 `database/migrations/0001` 至 `0005` 的原生 SQL schema 為權威來源，`docs/question-database-design.md` 負責說明其資料契約。日後採用的 ORM（物件關聯對映工具）必須映射既有資料表、欄位、關聯與限制；需要改名或改變契約時，必須另寫 migration，不能只改 ORM 模型。
+正式資料庫以 `database/migrations/0001` 至 `0011` 的原生 SQL schema 為權威來源，`docs/question-database-design.md` 負責說明其資料契約。日後採用的 ORM（物件關聯對映工具）必須映射既有資料表、欄位、關聯與限制；需要改名或改變契約時，必須另寫 migration，不能只改 ORM 模型。
 
 ### `users` 與 `user_roles`
 
-- `users.id` 保存帳號不可變識別碼，不保存系統管理員旗標。
+- `users.id` 保存帳號不可變識別碼；`users.account_role` 只保存 `parent`、`learner` 或 `tutor` 的一般主要身分，不保存系統管理員旗標，也不會覆蓋帳號另外持有的有效一般角色。session 的 `active_role` 必須對應有效 `user_roles` 授權，並決定目前能力；因此 `account_role=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `active_role` 後仍可使用成人管理能力。
 - 每一次系統管理員授權在 `user_roles` 建立 `role=system_admin` 的紀錄，並保存授權者類型、授權帳號與時間。
 - 移除權限時填入原授權紀錄的 `revoked_by_type`、`revoked_by_user_id` 與 `revoked_at`，不刪除歷史授權。
 - 預設系統管理員授權時使用 `granted_by_type=bootstrap_admin`，`granted_by_user_id` 保持空值。它不是資料庫帳號，不能建立一筆假的 `users` 資料替代。
@@ -70,7 +70,7 @@ Migration 會檢查 `user` actor 是當下有效的 `system_admin`，並要求�
 - `owner_user_id`：帳號建立題目時必填；系統題目為 `null`。
 - `current_revision_id`：目前顯示的題目版本。
 
-題目匯入時，後端依登入身分寫入 `owner_user_id`，不得接受前端指定其他帳號。一般匯入固定建立 `account` 題目；只有系統管理員使用系統題庫匯入入口時，才能建立 `system` 題目。既有 fixture 搬入正式資料庫時標記為 `system`，不得依題號、來源文字或檔名推測。
+未來正式題目匯入時，後端依登入身分寫入 `owner_user_id`，不得接受前端指定其他帳號。一般匯入固定建立 `account` 題目；只有系統管理員經尚待交付的系統題庫匯入入口，才能建立 `system` 題目。既有 fixture 搬入正式資料庫時標記為 `system`，不得依題號、來源文字或檔名推測。舊 mock `/bank` 已移除並轉址 `/questions`，舊 `/api/v1/imports` 固定回 `410`，都不是這個正式入口。
 
 ### QuestionRevision
 
@@ -108,7 +108,7 @@ Migration 會檢查 `user` actor 是當下有效的 `system_admin`，並要求�
 - 輸入：後端部署候選、登入服務候選、Secret Manager、正式網域與資料庫方案。
 - 產出：後端與前端的網路邊界、身分來源、session 方式、MFA 方式及 Secret 輪替流程。
 - 完成條件：具名責任人確認正式環境的登入服務、後端部署位置與 Secret 管理方式；沒有證據前不得開始正式帳號施工。
-- 回滾點：保留現有前端示範登入，不加入假的正式權限。
+- 回滾點：保留現有本機 PostgreSQL 電子郵件密碼 session，不把它擴稱為 production 管理員授權。
 
 ### 建立帳號與題目資料模型
 
@@ -116,10 +116,10 @@ Migration 會檢查 `user` actor 是當下有效的 `system_admin`，並要求�
 - 輸入：已確認的正式環境與本文件的資料契約。
 - 產出：migration（資料庫遷移）、資料限制與索引；既有 fixture（初始資料）／JSON 搬移工具是另一項獨立產出。
 - 完成條件：帳號題目一定有所有者，系統題目沒有帳號所有者；歷史作答能連結題目版本；migration 能在一次性隔離資料庫完成前進、逐階段回退及再次前進，且前後 schema 一致。
-- 驗證：資料庫限制測試與 migration 往返測試已完成。fixture 全量搬移、重跑及數量核對要等搬移工具完成後另行驗證。
+- 驗證：`0001` 至 `0011` 的資料庫限制、併發案例、逐層 down、第二次 up 與 schema parity 已在隔離資料庫通過。通用 fixture／JSON 全量搬移仍需另行驗證。
 - 回滾點：down migration 只供空白或合成資料的 disposable DB（一次性資料庫）驗證。已有正式資料的環境應使用向前修正或經核准的備份還原程序，不直接執行 down；原始 fixture 維持唯讀。
-- Schema／migration 狀態：`0001` 至 `0005` 的 schema、限制與 migration 往返已通過本機隔離驗證。
-- 資料搬移狀態：fixture／JSON 搬移工具、正式資料搬移、重跑及數量核對尚未實作。
+- Schema／migration 狀態：`0001` 至 `0011` 的 schema、限制與 migration 往返已通過本機隔離驗證，合計 96 張業務資料表。
+- 資料搬移狀態：第四課 279 題已有可重跑的受控匯入與數量核對；通用 fixture／JSON 搬移工具及 production 資料搬移尚未實作。
 
 ### 建立登入與集中授權
 

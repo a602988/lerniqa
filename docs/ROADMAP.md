@@ -1,23 +1,48 @@
 # 開發路線圖
 
+正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
+
+Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」，不另建單科替代流程。
+
 ## P0 專案啟動（本次）
 - [x] 建立 Next.js / TypeScript / Tailwind 基礎
-- [x] 建立首頁與示範練習
+- [x] 建立首頁與多科目練習介面
 - [x] 建立產品規格與任務規劃
 - [ ] 完成 GitHub Actions CI、正式測試環境
 
 ## P1 資料與練習
 - [x] `/account` 本機電子郵件密碼註冊、登入、登出與 session
-- [ ] 電子郵件驗證與寄信、密碼重設、遠端 HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
+- [x] 註冊新密碼至少 8 字元、不強制字元種類混用、阻擋常見弱密碼；共用新密碼驗證函式供未來重設使用，既有密碼不變更
+- [x] 帳號郵件樣板、Synology MailPlus adapter、Nodemailer transport 與不連網測試
+- [x] 本機信箱驗證 challenge、寄送／確認 API、帳號介面與注入式 mock 驗證
+- [x] 合成資料驗證的私有 tailnet HTTPS 入口
+- [ ] 實際 SMTP 執行環境設定、真實寄送驗證、密碼重設流程、公開／production HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
 - [ ] 後端預設系統管理員、MFA 與 Secret 輪替
 - [ ] 系統管理員授權、稽核紀錄與帳號管理介面
-- [ ] 單一帳號管理多位學習者與資料隔離
+- [x] `/system-settings` 以 PostgreSQL 管理帳號身分、有效角色與可存取學習者；`accountRole` 是主要身分，持有有效 parent／tutor 授權的 session 切到相應 `activeRole` 後可管理學習者，即使 `accountRole=learner`
+- [x] `/settings` 獨立管理目前學習者；寫入只允許目前 learner 且有效 `learner_access.can_manage_settings=true`
+- [x] 驗證目前 session 只能切換至既有有效角色；不得藉此新增或授予角色
+- [x] 分開一般帳號本身的 `accountRole`、session 的目前角色／學習者與 `system_admin` 授權；每個帳號只保留一位名稱同步的 self learner
+- [x] session 切到受管學習者的 learner mode 時隱藏 `/system-settings`，帳號層 API 回傳 `403`；只有 self learner 能力的帳號仍可查看自己的系統設定
+- [x] 當頁登入狀態遺失或失效時清除帳號範圍狀態並導回帳號頁，不回退到 fixture 或預設測試身分
+- [x] 登出或 session 到期時同步清除其他已開分頁的帳號工作區；角色與目前學習者改變時重新載入其他分頁，頁面取得焦點或恢復可見時重新驗證 `auth/me`
+- [ ] 單一帳號管理多位學習者的完整生命週期與跨頁資料隔離
 - [ ] 學習者跨帳號分享、權限檢查與成果共用
 - [ ] 家長／學習者／家教／審核者角色
-- [x] PostgreSQL schema 與 `0001` 至 `0007` 原生 SQL migration
+- [ ] 將成果統計併入總覽，移除獨立成果導覽，並把舊 `/results` 轉址到總覽
+- [x] PostgreSQL schema 與 `0001` 至 `0011` 共十一個原生 SQL migration；合計 96 張業務資料表
+- [x] `0009` 限制 published／superseded 的自動判分小題必須有可用參考答案，升級前發現缺漏就停止，不補造資料
+- [x] `0010` 加入 `users.account_role`、self learner 唯一性、名稱／設定權限一致性與只向前修正
+- [x] `0011` 讓 `score` 只保存 session aggregate 與不含答案／逐題判定的冪等收據；既有逐題明細、錯題／相近題佇列與 outbox 會在升級時清除，五張統計表從剩餘非 `score` 明細重建，exclusive 私有作答 asset 會標記刪除並建立 pending 清理工作，共用 asset 與非 `score` 明細保留
 - [x] 私有 Unix socket 的持久本機 PostgreSQL 執行環境與只向前 migration 指令
-- [x] `/local-practice` 本機試行：依 session、`learner_access` 與題庫成員關係隔離題庫查詢、選題、作答、錯題佇列及持久歷程
-- [ ] ORM／查詢層、正式 repository 與 JSON 搬移及單一來源切換
+- [x] 既有 `/practice` 接上本機 PostgreSQL 的題庫、session、作答、歷程與錯題流程；`/local-practice` 僅供內部診斷與相容
+- [x] 三種答案檢核方式都可建立 PostgreSQL session；`instant` 逐題揭露、`complete` 完成前遮罩、`score` 進行中遮罩且完成後保存可重載的整體統計與不含答案／判定的冪等收據，不保存逐題作答／判定或建立錯題佇列，歷程遵守相同規則
+- [x] 重新整理進行中的練習時，以伺服器 session UUID 恢復已送出的進度並暫停；尚未送出的文字與手寫內容不保存
+- [x] 歷程缺少安全 revision 快照時只顯示結果、時間與不可安全顯示提示；resume 發現 revision mismatch 時關閉舊 session 並要求建立新練習
+- [x] 帳號 API 提供練習所需的年級、學期、偏好、已啟用科目與書籍版本；題庫 API 支援單頁最多 500 題並讀取正式知識點關聯
+- [x] 匯入 ownership 與本機練習端到端驗證使用 `/tmp` 私有 PostgreSQL cluster，不接觸持久資料
+- [x] 封閉舊 `/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑；HTTP 固定回 `410`
+- [ ] ORM／查詢層、正式 repository 與歷史 JSON 搬移
 - [ ] 年級、科目、學期、可新增多筆的考試設定
 - [ ] 家教個人題庫與學習者練習計畫
 - [ ] 學習者自行建立練習計畫
@@ -25,14 +50,16 @@
 - [ ] 系統題目與帳號題目的所有權、版本及異動權限
 - [x] 相近題群組、候選、成員與生成來源資料模型及 migration
 - [ ] 相近題候選審核、正式關聯與共用查詢 API
-- [ ] 全部作答後檢核與逐題檢核模式
-- [ ] 練習歷程、錯題簿、作答狀態篩選、相近題成效與複習排程
+- [ ] 作答狀態進階篩選、相近題成效與複習排程
+- [ ] 複習與相近題 session 將實際選入來源完整寫入 `practice_session_item_origins`
 - [ ] 非選項題與數學題的手寫板作答、保存及重現
 - [ ] 審核者身份設定與答案／手寫內容比對
 - [x] 作答統計、隱私政策、管理員稽核與資料刪除 schema
 - [ ] 統計 worker、重算工具、管理稽核與資料刪除 API
+- [ ] 執行 `asset_object_cleanup_jobs` 的受控 storage worker；確認實際物件刪除後才標記 completed／`object_deleted_at`，不得把 migration 排程當成實體物件已刪除
 
 ## P2 題目匯入
+- [ ] 受權限、可追溯的 PostgreSQL 匯入 API 與產品介面；舊 mock `/bank` 已移除並轉址 `/questions`，舊 `/api/v1/imports` 固定回 `410`
 - [ ] 安全檔案上傳與物件儲存
 - [ ] 圖片／掃描 PDF OCR 與逐題切分
 - [ ] 人工校對、答案核對、頁碼與來源追溯
@@ -51,4 +78,4 @@
 
 決策原則：避免過早綁定特定雲端供應商；所有 AI 與 OCR 服務經由可替換的 adapter。
 
-勾選 schema／migration 只代表資料庫結構與限制已在本機隔離環境驗證，不代表相同列的正式 API、表單或 production 切換已完成。`/account` 與 `/local-practice` 已接上本機 PostgreSQL，並以合成帳號實際驗證 session 與學習者隔離；其他主要畫面仍使用 JSON mock API。正式切換條件見 `docs/database-completion-matrix.md`。
+勾選 schema／migration 代表程式庫已具備對應結構與限制，不代表同列的全部表單、production 權限或部署已完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 的正式主流程已改用本機 PostgreSQL，不保留瀏覽器學習者快照，也不在登入失效時回退到 fixture。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入 PostgreSQL；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊正式寫入 API。本機信箱驗證 challenge／API／介面已完成；真實匯入、SMTP 真實投遞、密碼重設 challenge、OAuth、正式相近題關聯與查詢、`practice_session_item_origins` 完整來源、production 權限與部署仍未完成；正式切換條件見 `docs/database-completion-matrix.md`。

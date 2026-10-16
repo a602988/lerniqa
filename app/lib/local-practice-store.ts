@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import {
+    canDiscloseLocalPracticeReferenceAnswers,
     deriveLocalPracticeGradingSource,
     deriveLocalPracticeOverallResult,
     gradeLocalPracticePart,
@@ -9,20 +10,29 @@ import {
     type LocalPracticeAnswerInput,
     type LocalPracticeAttempt,
     type LocalPracticeAttemptPartResult,
+    type LocalPracticeAttemptReceipt,
+    type LocalPracticeAttemptSubmission,
     type LocalPracticeContentBlock,
     type LocalPracticeFilters,
     type LocalPracticeGradingSource,
     type LocalPracticeQuestion,
     type LocalPracticeQuestionPart,
+    type LocalPracticeReferenceAnswer,
     type LocalPracticeResult,
+    type LocalPracticeHistory,
+    type LocalPracticeScoreSummary,
     type LocalPracticeSession,
+    type LocalPracticeSessionMetadata,
+    type LocalPracticeSessionRead,
+    type LocalPracticeSessionSettings,
+    type LocalPracticeSessionTarget,
     type LocalPracticeSessionHistory,
-    type LocalPracticeWrongQueueItem,
 } from "@/app/lib/local-practice-types";
 import {
     queryLocalPostgres,
     withLocalPostgresTransaction,
 } from "@/app/lib/local-postgres";
+import { getSubjectLookupLabels } from "@/app/lib/subject-labels";
 
 export interface LocalPracticeActor {
     userId: string;
@@ -38,6 +48,37 @@ export class LocalPracticeRequestError extends Error {
         this.name = "LocalPracticeRequestError";
         this.code = code;
         this.status = status;
+    }
+}
+
+async function requireLocalPracticeResultAccess(
+    client: PoolClient,
+    actor: LocalPracticeActor,
+): Promise<void> {
+    const result = await client.query<{ id: string } & QueryResultRow>(`
+        SELECT access.id
+        FROM learner_access AS access
+        JOIN users AS app_user
+            ON app_user.id = access.user_id
+            AND app_user.status = 'active'
+        JOIN learners AS learner
+            ON learner.id = access.learner_id
+            AND learner.status = 'active'
+        WHERE access.user_id = $1
+            AND access.learner_id = $2
+            AND access.can_view_results = true
+            AND access.accepted_at IS NOT NULL
+            AND access.revoked_at IS NULL
+        ORDER BY access.id
+        LIMIT 1
+        FOR SHARE OF access
+    `, [actor.userId, actor.learnerId]);
+    if (result.rows.length === 0) {
+        throw new LocalPracticeRequestError(
+            "RESULT_ACCESS_DENIED",
+            "目前帳號沒有查看這位學習者成果的權限。",
+            403,
+        );
     }
 }
 
@@ -109,22 +150,33 @@ interface SessionItemRow extends QueryResultRow {
     id: string;
     question_id: string;
     question_revision_id: string;
+    question_part_id: string | null;
     position: number;
+    answered: boolean;
 }
 
 interface SessionRow extends QueryResultRow {
     id: string;
+    learner_id: string;
+    created_by_user_id: string;
+    mode: LocalPracticeSessionSettings["mode"];
+    check_mode: LocalPracticeSessionSettings["checkMode"];
     status: LocalPracticeSession["status"];
     started_at: Date | string;
     completed_at: Date | string | null;
 }
 
 interface AttemptRow extends QueryResultRow {
+    session_mode?: LocalPracticeSessionSettings["mode"];
+    session_check_mode?: LocalPracticeSessionSettings["checkMode"];
+    session_status?: LocalPracticeSession["status"];
+    session_created_by_user_id?: string;
     id: string;
     practice_session_item_id: string;
     practice_session_id: string;
     question_id: string;
     question_revision_id: string;
+    session_item_part_id?: string | null;
     overall_result: LocalPracticeResult;
     grading_source: LocalPracticeGradingSource;
     duration_seconds: number | null;
@@ -140,6 +192,19 @@ interface AttemptPartRow extends QueryResultRow {
     grading_source: LocalPracticeGradingSource;
 }
 
+interface ScoreReceiptRow extends QueryResultRow {
+    id: string;
+    practice_session_item_id: string;
+    practice_session_id: string;
+    session_check_mode: LocalPracticeSessionSettings["checkMode"];
+    session_status: LocalPracticeSession["status"];
+    session_created_by_user_id: string;
+    question_id: string;
+    question_revision_id: string;
+    session_item_part_id: string | null;
+    submitted_at: Date | string;
+}
+
 interface GradePartRow extends QueryResultRow {
     id: string;
     answer_mode: LocalPracticeQuestionPart["answerMode"];
@@ -150,13 +215,29 @@ interface GradePartRow extends QueryResultRow {
     valid_option_keys: string[];
 }
 
+interface ReferenceAnswerRow extends QueryResultRow {
+    answer_attempt_id: string;
+    part_id: string;
+    answer_mode: LocalPracticeQuestionPart["answerMode"];
+    answer_key: string | null;
+    accepted_value: string | null;
+    option_key: string | null;
+    option_label: string | null;
+    explanation: string | null;
+}
+
 interface SessionHistoryRow extends QueryResultRow {
     id: string;
+    mode: LocalPracticeSessionSettings["mode"];
+    check_mode: LocalPracticeSessionSettings["checkMode"];
     status: LocalPracticeSession["status"];
     started_at: Date | string;
     completed_at: Date | string | null;
     item_count: number;
     attempted_item_count: number;
+    correct_count: number;
+    wrong_count: number;
+    pending_count: number;
 }
 
 interface WrongQueueRow extends QueryResultRow {
@@ -178,11 +259,6 @@ export interface LocalPracticeAssetRecord {
 
 function asIso(value: Date | string): string {
     return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
-function subjectAliases(subject: string): string[] {
-    const normalized = subject.normalize("NFKC").trim();
-    return normalized === "國文" || normalized === "國語" ? ["國文", "國語"] : [normalized];
 }
 
 function toContentBlock(row: BlockRow, filters: LocalPracticeFilters): LocalPracticeContentBlock {
@@ -308,7 +384,7 @@ export async function listLocalPracticeQuestions(
     const offset = (page - 1) * limit;
     const params = [
         filters.grade,
-        subjectAliases(filters.subject),
+        getSubjectLookupLabels(filters.subject),
         filters.publisher,
         filters.volume,
         filters.lesson,
@@ -348,7 +424,15 @@ export async function listLocalPracticeQuestions(
             difficulty.name AS difficulty_name,
             count(*) OVER () AS total_count
         ${TARGET_QUESTION_FROM_SQL}
-        ORDER BY question_identifier.value NULLS LAST, question.created_at, question.id
+        ORDER BY
+            CASE
+                WHEN regexp_replace(question_identifier.value, '^[0-9A-Fa-f]{16}:', '') ~ '^[0-9]+$'
+                    THEN regexp_replace(question_identifier.value, '^[0-9A-Fa-f]{16}:', '')::numeric
+                ELSE NULL
+            END NULLS LAST,
+            regexp_replace(question_identifier.value, '^[0-9A-Fa-f]{16}:', '') NULLS LAST,
+            question.created_at,
+            question.id
         LIMIT $7 OFFSET $8
     `, params);
 
@@ -494,16 +578,30 @@ async function readSession(
 ): Promise<LocalPracticeSession> {
     const [sessionResult, itemsResult] = await Promise.all([
         client.query<SessionRow>(`
-            SELECT id, status, started_at, completed_at
+            SELECT id, learner_id, created_by_user_id, mode, check_mode, status,
+                started_at, completed_at
             FROM practice_sessions
-            WHERE id = $1 AND learner_id = $2
-        `, [sessionId, actor.learnerId]),
+            WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+        `, [sessionId, actor.learnerId, actor.userId]),
         client.query<SessionItemRow>(`
-            SELECT id, question_id, question_revision_id, position
-            FROM practice_session_items
-            WHERE practice_session_id = $1
-            ORDER BY position, id
-        `, [sessionId]),
+            SELECT item.id, item.question_id, item.question_revision_id, item.question_part_id,
+                item.position,
+                EXISTS (
+                    SELECT 1
+                    FROM answer_attempts AS attempt
+                    WHERE attempt.practice_session_item_id = item.id
+                ) OR EXISTS (
+                    SELECT 1
+                    FROM practice_score_receipts AS receipt
+                    WHERE receipt.practice_session_item_id = item.id
+                ) AS answered
+            FROM practice_session_items AS item
+            JOIN practice_sessions AS session ON session.id = item.practice_session_id
+            WHERE item.practice_session_id = $1
+                AND session.learner_id = $2
+                AND session.created_by_user_id = $3
+            ORDER BY item.position, item.id
+        `, [sessionId, actor.learnerId, actor.userId]),
     ]);
     const session = sessionResult.rows[0];
     if (!session) {
@@ -511,6 +609,8 @@ async function readSession(
     }
     return {
         id: session.id,
+        mode: session.mode,
+        checkMode: session.check_mode,
         status: session.status,
         startedAt: asIso(session.started_at),
         completedAt: session.completed_at ? asIso(session.completed_at) : null,
@@ -518,53 +618,215 @@ async function readSession(
             id: item.id,
             questionId: item.question_id,
             revisionId: item.question_revision_id,
+            partId: item.question_part_id,
             position: item.position,
+            answered: item.answered,
         })),
     };
 }
 
+export interface CreateLocalPracticeSessionResult {
+    session: LocalPracticeSession;
+    replayed: boolean;
+}
+
+function sameSessionTargets(
+    items: readonly SessionItemRow[],
+    targets: readonly LocalPracticeSessionTarget[],
+): boolean {
+    return items.length === targets.length && items.every((item, index) => {
+        const target = targets[index];
+        return target !== undefined
+            && item.question_id === target.questionId
+            && (target.revisionId === undefined || item.question_revision_id === target.revisionId)
+            && item.question_part_id === (target.partId ?? null);
+    });
+}
+
+/** Reads one session only for the account and learner that created it. */
+export async function getLocalPracticeSession(
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeSessionRead> {
+    return withLocalPostgresTransaction(async (client) => {
+        const session = await readSession(client, sessionId, actor);
+        const disclosesResults = session.checkMode === "instant"
+            || (session.checkMode === "complete" && session.status === "completed")
+            || (session.checkMode === "score" && session.status === "completed");
+        if (disclosesResults) await requireLocalPracticeResultAccess(client, actor);
+        return readSessionDisclosure(client, session, actor);
+    });
+}
+
 /** Creates an ad-hoc session owned by the authenticated learner. */
 export async function createLocalPracticeSession(
-    questionIds: readonly string[],
+    requestedTargets: readonly (string | LocalPracticeSessionTarget)[],
     actor: LocalPracticeActor,
-): Promise<LocalPracticeSession> {
+    settings: LocalPracticeSessionSettings = { mode: "practice", checkMode: "instant" },
+    requestedSessionId: string = randomUUID(),
+): Promise<CreateLocalPracticeSessionResult> {
+    requestedSessionId = requestedSessionId.toLowerCase();
+    const targets = requestedTargets.map<LocalPracticeSessionTarget>((target) => {
+        const value = typeof target === "string" ? { questionId: target } : target;
+        return {
+            questionId: value.questionId.toLowerCase(),
+            ...(value.revisionId ? { revisionId: value.revisionId.toLowerCase() } : {}),
+            ...(value.partId ? { partId: value.partId.toLowerCase() } : {}),
+        };
+    });
+    const questionIds = targets.map((target) => target.questionId);
+    const targetIdentities = targets.map((target) => `${target.questionId}:${target.partId ?? "all"}`);
+    const targetPartsByQuestion = new Map<string, Array<string | null>>();
+    for (const target of targets) {
+        const parts = targetPartsByQuestion.get(target.questionId) ?? [];
+        parts.push(target.partId ?? null);
+        targetPartsByQuestion.set(target.questionId, parts);
+    }
+    const hasOverlappingWholeQuestionTarget = [...targetPartsByQuestion.values()].some((parts) => (
+        parts.length > 1 && parts.includes(null)
+    ));
+    if (
+        new Set(targetIdentities).size !== targetIdentities.length
+        || hasOverlappingWholeQuestionTarget
+    ) {
+        throw new LocalPracticeRequestError(
+            "DUPLICATE_SESSION_TARGET",
+            "同一道題或同一小題不能重複加入同一輪練習。",
+            400,
+        );
+    }
     return withLocalPostgresTransaction(async (client) => {
-        const targetResult = await client.query<{ question_id: string; revision_id: string }>(`
-            SELECT question.id AS question_id, revision.id AS revision_id
-            ${TARGET_QUESTION_FROM_SQL}
-                AND question.id = ANY($7::uuid[])
-                AND EXISTS (
-                    SELECT 1
-                    FROM question_parts AS part
-                    WHERE part.question_revision_id = revision.id
-                        AND part.is_independently_gradable = true
-                )
-            ORDER BY array_position($7::uuid[], question.id)
-            FOR SHARE OF question, revision
+        await client.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+            [`practice-session:${requestedSessionId}`],
+        );
+
+        const existingSessionResult = await client.query<SessionRow>(`
+            SELECT id, learner_id, created_by_user_id, mode, check_mode, status,
+                started_at, completed_at
+            FROM practice_sessions
+            WHERE id = $1
+            FOR UPDATE
+        `, [requestedSessionId]);
+        const existingSession = existingSessionResult.rows[0];
+        if (existingSession) {
+            if (
+                existingSession.learner_id !== actor.learnerId
+                || existingSession.created_by_user_id !== actor.userId
+                || existingSession.mode !== settings.mode
+                || existingSession.check_mode !== settings.checkMode
+            ) {
+                throw new LocalPracticeRequestError(
+                    "SESSION_IDEMPOTENCY_CONFLICT",
+                    "這個練習識別碼已用於不同的練習內容。",
+                    409,
+                );
+            }
+            const existingItems = await client.query<SessionItemRow>(`
+                SELECT id, question_id, question_revision_id, question_part_id, position
+                FROM practice_session_items
+                WHERE practice_session_id = $1
+                ORDER BY position, id
+            `, [requestedSessionId]);
+            if (!sameSessionTargets(existingItems.rows, targets)) {
+                throw new LocalPracticeRequestError(
+                    "SESSION_IDEMPOTENCY_CONFLICT",
+                    "這個練習識別碼已用於不同的練習內容。",
+                    409,
+                );
+            }
+            return {
+                session: await readSession(client, requestedSessionId, actor),
+                replayed: true,
+            };
+        }
+
+        const targetResult = await client.query<{
+            question_id: string;
+            revision_id: string;
+            requested_revision_id: string | null;
+            requested_part_id: string | null;
+            part_is_valid: boolean;
+        }>(`
+            WITH requested AS (
+                SELECT question_id, requested_revision_id, requested_part_id, position
+                FROM unnest($7::uuid[], $8::uuid[], $9::uuid[])
+                    WITH ORDINALITY AS input(
+                        question_id,
+                        requested_revision_id,
+                        requested_part_id,
+                        position
+                    )
+            ), target_questions AS (
+                SELECT question.id AS question_id, revision.id AS revision_id
+                ${TARGET_QUESTION_FROM_SQL}
+                    AND question.id = ANY($7::uuid[])
+                    AND EXISTS (
+                        SELECT 1
+                        FROM question_parts AS part
+                        WHERE part.question_revision_id = revision.id
+                            AND part.is_independently_gradable = true
+                    )
+                FOR SHARE OF question, revision
+            )
+            SELECT
+                target.question_id,
+                target.revision_id,
+                requested.requested_revision_id,
+                requested.requested_part_id,
+                (
+                    requested.requested_part_id IS NULL
+                    OR selected_part.id IS NOT NULL
+                ) AS part_is_valid
+            FROM requested
+            JOIN target_questions AS target ON target.question_id = requested.question_id
+            LEFT JOIN question_parts AS selected_part
+                ON selected_part.id = requested.requested_part_id
+                AND selected_part.question_revision_id = target.revision_id
+                AND selected_part.is_independently_gradable = true
+            ORDER BY requested.position
         `, [
             LOCAL_PRACTICE_DEFAULT_FILTERS.grade,
-            subjectAliases(LOCAL_PRACTICE_DEFAULT_FILTERS.subject),
+            getSubjectLookupLabels(LOCAL_PRACTICE_DEFAULT_FILTERS.subject),
             LOCAL_PRACTICE_DEFAULT_FILTERS.publisher,
             LOCAL_PRACTICE_DEFAULT_FILTERS.volume,
             LOCAL_PRACTICE_DEFAULT_FILTERS.lesson,
             actor.learnerId,
             questionIds,
+            targets.map((target) => target.revisionId ?? null),
+            targets.map((target) => target.partId ?? null),
         ]);
-        if (targetResult.rows.length !== questionIds.length) {
+        if (targetResult.rows.length !== targets.length) {
             throw new LocalPracticeRequestError(
                 "QUESTION_TARGET_INVALID",
-                "部分題目不存在、尚未發布，或沒有可作答的小題。請重新整理題庫。",
+                "部分題目或小題不存在、尚未發布，或目前不可作答。請重新整理題庫。",
+                409,
+            );
+        }
+        const staleRevision = targetResult.rows.some((row) => (
+            row.requested_revision_id !== null && row.requested_revision_id !== row.revision_id
+        ));
+        if (staleRevision) {
+            throw new LocalPracticeRequestError(
+                "QUESTION_REVISION_STALE",
+                "題目內容已有更新，請重新整理題庫後再開始練習。",
+                409,
+            );
+        }
+        if (targetResult.rows.some((row) => !row.part_is_valid)) {
+            throw new LocalPracticeRequestError(
+                "QUESTION_TARGET_INVALID",
+                "部分題目或小題不存在、尚未發布，或目前不可作答。請重新整理題庫。",
                 409,
             );
         }
 
-        const sessionId = randomUUID();
         await client.query(`
             INSERT INTO practice_sessions (
                 id, learner_id, created_by_user_id, mode, check_mode, status
             )
-            VALUES ($1, $2, $3, 'practice', 'instant', 'active')
-        `, [sessionId, actor.learnerId, actor.userId]);
+            VALUES ($1, $2, $3, $4, $5, 'active')
+        `, [requestedSessionId, actor.learnerId, actor.userId, settings.mode, settings.checkMode]);
 
         const itemIds = targetResult.rows.map(() => randomUUID());
         await client.query(`
@@ -573,6 +835,7 @@ export async function createLocalPracticeSession(
                 practice_session_id,
                 question_id,
                 question_revision_id,
+                question_part_id,
                 position,
                 selection_reason
             )
@@ -581,17 +844,72 @@ export async function createLocalPracticeSession(
                 $1::uuid,
                 requested.question_id,
                 requested.revision_id,
+                requested.part_id,
                 requested.position - 1,
-                'fixed'
-            FROM unnest($2::uuid[], $3::uuid[], $4::uuid[])
-                WITH ORDINALITY AS requested(item_id, question_id, revision_id, position)
+                CASE WHEN requested.part_id IS NULL THEN 'fixed' ELSE 'wrong_review' END
+            FROM unnest($2::uuid[], $3::uuid[], $4::uuid[], $5::uuid[])
+                WITH ORDINALITY AS requested(
+                    item_id,
+                    question_id,
+                    revision_id,
+                    part_id,
+                    position
+                )
         `, [
-            sessionId,
+            requestedSessionId,
             itemIds,
             targetResult.rows.map((row) => row.question_id),
             targetResult.rows.map((row) => row.revision_id),
+            targetResult.rows.map((row) => row.requested_part_id),
         ]);
 
+        if (settings.checkMode === "score") {
+            await client.query(`
+                UPDATE practice_sessions
+                SET score_total_count = $2,
+                    score_pending_count = $2
+                WHERE id = $1 AND check_mode = 'score'
+            `, [requestedSessionId, targetResult.rows.length]);
+        }
+
+        return {
+            session: await readSession(client, requestedSessionId, actor),
+            replayed: false,
+        };
+    });
+}
+
+export type LocalPracticeMutableSessionStatus = "active" | "paused" | "abandoned";
+
+/** Applies an idempotent, owner-scoped lifecycle transition to an unfinished session. */
+export async function updateLocalPracticeSessionStatus(
+    sessionId: string,
+    status: LocalPracticeMutableSessionStatus,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeSession> {
+    return withLocalPostgresTransaction(async (client) => {
+        const sessionResult = await client.query<SessionRow>(`
+            SELECT id, learner_id, created_by_user_id, mode, check_mode, status,
+                started_at, completed_at
+            FROM practice_sessions
+            WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+            FOR UPDATE
+        `, [sessionId, actor.learnerId, actor.userId]);
+        const session = sessionResult.rows[0];
+        if (!session) {
+            throw new LocalPracticeRequestError("SESSION_NOT_FOUND", "找不到這次練習。", 404);
+        }
+        if (session.status === "completed" || session.status === "abandoned") {
+            if (session.status !== status) {
+                throw new LocalPracticeRequestError("SESSION_NOT_ACTIVE", "這次練習已結束，不能變更狀態。", 409);
+            }
+            return readSession(client, sessionId, actor);
+        }
+        await client.query(`
+            UPDATE practice_sessions
+            SET status = $4
+            WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+        `, [sessionId, actor.learnerId, actor.userId, status]);
         return readSession(client, sessionId, actor);
     });
 }
@@ -626,10 +944,15 @@ function feedbackFromStored(row: AttemptPartRow): LocalPracticeAttemptPartResult
     return "missing_answer_key";
 }
 
-function toAttempt(row: AttemptRow, partRows: readonly AttemptPartRow[]): LocalPracticeAttempt {
+function toAttempt(
+    row: AttemptRow,
+    partRows: readonly AttemptPartRow[],
+    referenceAnswers: readonly LocalPracticeReferenceAnswer[],
+): LocalPracticeAttempt {
     return {
         id: row.id,
         sessionId: row.practice_session_id,
+        ...(row.session_mode ? { sessionMode: row.session_mode } : {}),
         sessionItemId: row.practice_session_item_id,
         questionId: row.question_id,
         revisionId: row.question_revision_id,
@@ -643,6 +966,7 @@ function toAttempt(row: AttemptRow, partRows: readonly AttemptPartRow[]): LocalP
             gradingSource: part.grading_source,
             feedbackCode: feedbackFromStored(part),
         })),
+        referenceAnswers: [...referenceAnswers],
     };
 }
 
@@ -659,6 +983,313 @@ async function getAttemptParts(client: PoolClient, attemptIds: readonly string[]
     return result.rows;
 }
 
+function groupReferenceAnswerRows(
+    rows: readonly ReferenceAnswerRow[],
+): Map<string, LocalPracticeReferenceAnswer[]> {
+    const grouped = new Map<string, Map<string, LocalPracticeReferenceAnswer>>();
+    for (const row of rows) {
+        const byPart = grouped.get(row.answer_attempt_id) ?? new Map<string, LocalPracticeReferenceAnswer>();
+        const answer = byPart.get(row.part_id) ?? {
+            partId: row.part_id,
+            answerMode: row.answer_mode,
+            answerKeys: [],
+            acceptedValues: [],
+            options: [],
+            explanation: row.explanation,
+        };
+        if (row.answer_key !== null && !answer.answerKeys.includes(row.answer_key)) {
+            answer.answerKeys.push(row.answer_key);
+        }
+        if (row.accepted_value !== null && !answer.acceptedValues.includes(row.accepted_value)) {
+            answer.acceptedValues.push(row.accepted_value);
+        }
+        if (
+            row.option_key !== null
+            && !answer.options.some((option) => option.key === row.option_key)
+        ) {
+            answer.options.push({ key: row.option_key, label: row.option_label ?? row.option_key });
+        }
+        byPart.set(row.part_id, answer);
+        grouped.set(row.answer_attempt_id, byPart);
+    }
+    return new Map(
+        [...grouped].map(([attemptId, byPart]) => [attemptId, [...byPart.values()]]),
+    );
+}
+
+/** Reads answer material through the submitted item so the pinned revision is authoritative. */
+async function getAttemptReferenceAnswers(
+    client: PoolClient,
+    attemptIds: readonly string[],
+): Promise<Map<string, LocalPracticeReferenceAnswer[]>> {
+    if (attemptIds.length === 0) return new Map();
+    const result = await client.query<ReferenceAnswerRow>(`
+        SELECT
+            attempt.id AS answer_attempt_id,
+            part.id AS part_id,
+            part.answer_mode,
+            answer.answer_key,
+            answer.accepted_value,
+            disclosed_option.option_key,
+            option_content.label AS option_label,
+            explanation.text AS explanation
+        FROM answer_attempts AS attempt
+        JOIN practice_session_items AS item
+            ON item.id = attempt.practice_session_item_id
+        JOIN answer_part_results AS part_result
+            ON part_result.answer_attempt_id = attempt.id
+        JOIN question_parts AS part
+            ON part.id = part_result.question_part_id
+            AND part.question_revision_id = item.question_revision_id
+        LEFT JOIN question_answers AS answer ON answer.question_part_id = part.id
+        LEFT JOIN question_options AS disclosed_option ON disclosed_option.question_part_id = part.id
+        LEFT JOIN LATERAL (
+            SELECT COALESCE(
+                NULLIF(
+                    string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                    ''
+                ),
+                disclosed_option.option_key
+            ) AS label
+            FROM question_content_blocks AS block
+            WHERE block.question_option_id = disclosed_option.id
+                AND block.placement = 'option'
+                AND (block.text_content IS NOT NULL OR block.alt_text IS NOT NULL)
+        ) AS option_content ON true
+        LEFT JOIN LATERAL (
+            SELECT NULLIF(
+                string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                ''
+            ) AS text
+            FROM question_content_blocks AS block
+            WHERE block.question_revision_id = item.question_revision_id
+                AND block.placement = 'explanation'
+                AND (block.text_content IS NOT NULL OR block.alt_text IS NOT NULL)
+                AND (block.question_part_id IS NULL OR block.question_part_id = part.id)
+        ) AS explanation ON true
+        WHERE attempt.id = ANY($1::uuid[])
+        ORDER BY attempt.id, part.position, part.id,
+            answer.position, answer.id, disclosed_option.position, disclosed_option.id
+    `, [attemptIds]);
+    return groupReferenceAnswerRows(result.rows);
+}
+
+/**
+ * Reads an explicitly opened catalog question for result-capable actors only.
+ * The requested revision must still be the question's current published revision.
+ */
+export async function getLocalPracticeQuestionReferenceAnswers(
+    questionId: string,
+    revisionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeReferenceAnswer[]> {
+    return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeResultAccess(client, actor);
+        const result = await client.query<ReferenceAnswerRow>(`
+            SELECT
+                question.id AS answer_attempt_id,
+                part.id AS part_id,
+                part.answer_mode,
+                answer.answer_key,
+                answer.accepted_value,
+                disclosed_option.option_key,
+                option_content.label AS option_label,
+                explanation.text AS explanation
+            FROM questions AS question
+            JOIN question_revisions AS revision
+                ON revision.id = question.current_revision_id
+                AND revision.question_id = question.id
+            JOIN question_parts AS part
+                ON part.question_revision_id = revision.id
+                AND part.is_independently_gradable = true
+            LEFT JOIN question_answers AS answer ON answer.question_part_id = part.id
+            LEFT JOIN question_options AS disclosed_option
+                ON disclosed_option.question_part_id = part.id
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(
+                    NULLIF(
+                        string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                        ''
+                    ),
+                    disclosed_option.option_key
+                ) AS label
+                FROM question_content_blocks AS block
+                WHERE block.question_option_id = disclosed_option.id
+                    AND block.placement = 'option'
+                    AND (block.text_content IS NOT NULL OR block.alt_text IS NOT NULL)
+            ) AS option_content ON true
+            LEFT JOIN LATERAL (
+                SELECT NULLIF(
+                    string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                    ''
+                ) AS text
+                FROM question_content_blocks AS block
+                WHERE block.question_revision_id = revision.id
+                    AND block.placement = 'explanation'
+                    AND (block.text_content IS NOT NULL OR block.alt_text IS NOT NULL)
+                    AND (block.question_part_id IS NULL OR block.question_part_id = part.id)
+            ) AS explanation ON true
+            WHERE question.id = $1
+                AND revision.id = $2
+                AND question.status = 'published'
+                AND revision.status = 'published'
+                AND EXISTS (
+                    SELECT 1
+                    FROM question_bank_items AS bank_item
+                    JOIN question_banks AS bank
+                        ON bank.id = bank_item.question_bank_id
+                        AND bank.status = 'active'
+                    JOIN question_bank_learners AS bank_learner
+                        ON bank_learner.question_bank_id = bank.id
+                    WHERE bank_item.question_id = question.id
+                        AND bank_learner.learner_id = $3
+                )
+            ORDER BY part.position, part.id,
+                answer.position, answer.id, disclosed_option.position, disclosed_option.id
+            FOR SHARE OF question, revision, part
+        `, [questionId.toLowerCase(), revisionId.toLowerCase(), actor.learnerId]);
+        if (result.rows.length === 0) {
+            throw new LocalPracticeRequestError(
+                "QUESTION_REFERENCE_NOT_FOUND",
+                "找不到可查看的題目參考答案，題目內容可能已更新。",
+                404,
+            );
+        }
+        return groupReferenceAnswerRows(result.rows).get(questionId.toLowerCase()) ?? [];
+    });
+}
+
+function toAttemptReceipt(row: AttemptRow): LocalPracticeAttemptReceipt {
+    return {
+        id: row.id,
+        sessionId: row.practice_session_id,
+        sessionItemId: row.practice_session_item_id,
+        questionId: row.question_id,
+        revisionId: row.question_revision_id,
+        submittedAt: asIso(row.submitted_at),
+    };
+}
+
+function toSessionMetadata(session: LocalPracticeSession): LocalPracticeSessionMetadata {
+    return {
+        id: session.id,
+        mode: session.mode,
+        checkMode: session.checkMode,
+        status: session.status,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+    };
+}
+
+function scoreSummary(total: number, correct: number, wrong: number, pending: number): LocalPracticeScoreSummary {
+    const graded = correct + wrong;
+    return {
+        total,
+        correct,
+        wrong,
+        pending,
+        accuracy: graded === 0 ? 0 : Math.round(correct / graded * 100),
+    };
+}
+
+async function readSessionScoreSummary(
+    client: PoolClient,
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeScoreSummary> {
+    const result = await client.query<{
+        total: number;
+        correct: number;
+        wrong: number;
+        pending: number;
+    } & QueryResultRow>(`
+        SELECT
+            session.score_total_count AS total,
+            session.score_correct_count AS correct,
+            session.score_wrong_count AS wrong,
+            session.score_pending_count AS pending
+        FROM practice_sessions AS session
+        WHERE session.id = $1
+            AND session.learner_id = $2
+            AND session.created_by_user_id = $3
+            AND session.check_mode = 'score'
+    `, [sessionId, actor.learnerId, actor.userId]);
+    const row = result.rows[0];
+    return scoreSummary(
+        Number(row?.total ?? 0),
+        Number(row?.correct ?? 0),
+        Number(row?.wrong ?? 0),
+        Number(row?.pending ?? 0),
+    );
+}
+
+async function readSessionAttempts(
+    client: PoolClient,
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeAttempt[]> {
+    const result = await client.query<AttemptRow>(`
+        SELECT
+            attempt.id,
+            attempt.practice_session_item_id,
+            item.practice_session_id,
+            session.mode AS session_mode,
+            session.check_mode AS session_check_mode,
+            session.status AS session_status,
+            item.question_id,
+            item.question_revision_id,
+            attempt.overall_result,
+            attempt.grading_source,
+            attempt.duration_seconds,
+            attempt.submitted_at
+        FROM answer_attempts AS attempt
+        JOIN practice_session_items AS item ON item.id = attempt.practice_session_item_id
+        JOIN practice_sessions AS session ON session.id = item.practice_session_id
+        WHERE session.id = $1
+            AND session.learner_id = $2
+            AND session.created_by_user_id = $3
+        ORDER BY item.position, attempt.attempt_number, attempt.id
+    `, [sessionId, actor.learnerId, actor.userId]);
+    const attemptIds = result.rows.map((attempt) => attempt.id);
+    const [partRows, referencesByAttempt] = await Promise.all([
+        getAttemptParts(client, attemptIds),
+        getAttemptReferenceAnswers(client, attemptIds),
+    ]);
+    const partsByAttempt = new Map<string, AttemptPartRow[]>();
+    for (const part of partRows) {
+        const current = partsByAttempt.get(part.answer_attempt_id) ?? [];
+        current.push(part);
+        partsByAttempt.set(part.answer_attempt_id, current);
+    }
+    return result.rows.map((attempt) => toAttempt(
+        attempt,
+        partsByAttempt.get(attempt.id) ?? [],
+        referencesByAttempt.get(attempt.id) ?? [],
+    ));
+}
+
+async function readSessionDisclosure(
+    client: PoolClient,
+    session: LocalPracticeSession,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeSessionRead> {
+    if (session.checkMode === "score" && session.status === "completed") {
+        return {
+            disclosure: "score",
+            session: toSessionMetadata(session),
+            summary: await readSessionScoreSummary(client, session.id, actor),
+        };
+    }
+    if (canDiscloseLocalPracticeReferenceAnswers(session.checkMode, session.status)) {
+        return {
+            disclosure: "detailed",
+            session,
+            attempts: await readSessionAttempts(client, session.id, actor),
+        };
+    }
+    return { disclosure: "masked", session };
+}
+
 function sameAnswerPayload(
     rows: readonly AttemptPartRow[],
     answers: ReadonlyMap<string, string | string[]>,
@@ -671,26 +1302,127 @@ function sameAnswerPayload(
     }) && [...answers.keys()].every((partId) => rows.some((row) => row.question_part_id === partId));
 }
 
+function toScoreReceipt(row: ScoreReceiptRow): LocalPracticeAttemptReceipt {
+    return {
+        id: row.id,
+        sessionId: row.practice_session_id,
+        sessionItemId: row.practice_session_item_id,
+        questionId: row.question_id,
+        revisionId: row.question_revision_id,
+        submittedAt: asIso(row.submitted_at),
+    };
+}
+
+async function discloseSubmittedScoreReceipt(
+    client: PoolClient,
+    receipt: ScoreReceiptRow,
+    session: Pick<SessionRow, "id" | "check_mode" | "status" | "completed_at">,
+    actor: LocalPracticeActor,
+    replayed: boolean,
+): Promise<SubmitLocalPracticeAttemptResult> {
+    const sessionView = {
+        id: session.id,
+        status: session.status,
+        completedAt: session.completed_at ? asIso(session.completed_at) : null,
+    };
+    if (session.status === "completed") {
+        return {
+            disclosure: "score",
+            summary: await readSessionScoreSummary(client, session.id, actor),
+            session: sessionView,
+            replayed,
+        };
+    }
+    return {
+        disclosure: "masked",
+        receipt: toScoreReceipt(receipt),
+        session: sessionView,
+        replayed,
+    };
+}
+
+async function discloseSubmittedAttempt(
+    client: PoolClient,
+    attemptRow: AttemptRow,
+    partRows: readonly AttemptPartRow[],
+    session: Pick<SessionRow, "id" | "check_mode" | "status" | "completed_at">,
+    actor: LocalPracticeActor,
+    replayed: boolean,
+): Promise<SubmitLocalPracticeAttemptResult> {
+    const sessionView = {
+        id: session.id,
+        status: session.status,
+        completedAt: session.completed_at ? asIso(session.completed_at) : null,
+    };
+    if (session.check_mode === "instant") {
+        const referencesByAttempt = await getAttemptReferenceAnswers(client, [attemptRow.id]);
+        return {
+            disclosure: "detailed",
+            attempt: toAttempt(attemptRow, partRows, referencesByAttempt.get(attemptRow.id) ?? []),
+            session: sessionView,
+            replayed,
+        };
+    }
+    if (session.check_mode === "complete" && session.status === "completed") {
+        const attempts = await readSessionAttempts(client, session.id, actor);
+        const attempt = attempts.find((candidate) => candidate.id === attemptRow.id);
+        if (!attempt) throw new Error("completed session did not return its submitted attempt");
+        return {
+            disclosure: "detailed",
+            attempt,
+            attempts,
+            session: sessionView,
+            replayed,
+        };
+    }
+    if (session.check_mode === "score" && session.status === "completed") {
+        return {
+            disclosure: "score",
+            summary: await readSessionScoreSummary(client, session.id, actor),
+            session: sessionView,
+            replayed,
+        };
+    }
+    return {
+        disclosure: "masked",
+        receipt: toAttemptReceipt(attemptRow),
+        session: sessionView,
+        replayed,
+    };
+}
+
 export interface SubmitLocalPracticeAttemptInput {
     sessionId: string;
     questionId: string;
+    /** Preferred identity when a review session contains the same question more than once. */
+    sessionItemId?: string;
+    /** Compatibility selector for a review item pinned to one part. */
+    partId?: string;
     idempotencyKey: string;
     durationSeconds: number | null;
     answers: LocalPracticeAnswerInput[];
 }
 
-export interface SubmitLocalPracticeAttemptResult {
-    attempt: LocalPracticeAttempt;
-    session: Pick<LocalPracticeSession, "id" | "status" | "completedAt">;
-    replayed: boolean;
-}
+export type SubmitLocalPracticeAttemptResult = LocalPracticeAttemptSubmission & { replayed: boolean };
 
-/** Grades and stores one question atomically, including review queue and outbox rows. */
+/** Grades one question atomically; score mode stores only aggregate plus an answer-free receipt. */
 export async function submitLocalPracticeAttempt(
     input: SubmitLocalPracticeAttemptInput,
     actor: LocalPracticeActor,
 ): Promise<SubmitLocalPracticeAttemptResult> {
+    input = {
+        ...input,
+        sessionId: input.sessionId.toLowerCase(),
+        questionId: input.questionId.toLowerCase(),
+        ...(input.sessionItemId ? { sessionItemId: input.sessionItemId.toLowerCase() } : {}),
+        ...(input.partId ? { partId: input.partId.toLowerCase() } : {}),
+        answers: input.answers.map((answer) => ({
+            ...answer,
+            partId: answer.partId.toLowerCase(),
+        })),
+    };
     return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeResultAccess(client, actor);
         await client.query(
             "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
             [`${actor.learnerId}:${input.idempotencyKey}`],
@@ -705,32 +1437,65 @@ export async function submitLocalPracticeAttempt(
                 acceptedValues: [],
                 validOptionKeys: [],
             }, answer.value).answerPayload.value;
-            if (normalized !== null) normalizedInput.set(answer.partId, normalized);
+            const hasValue = Array.isArray(normalized)
+                ? normalized.length > 0
+                : normalized !== null && normalizeLocalPracticeText(normalized) !== "";
+            if (normalized !== null && hasValue) normalizedInput.set(answer.partId, normalized);
         }
 
-        const existingResult = await client.query<AttemptRow>(`
+        if (input.sessionItemId === undefined && input.partId === undefined) {
+            const matchingItemCount = await client.query<{ count: number } & QueryResultRow>(`
+                SELECT count(*)::integer AS count
+                FROM practice_session_items AS item
+                JOIN practice_sessions AS session ON session.id = item.practice_session_id
+                WHERE item.practice_session_id = $1
+                    AND item.question_id = $2
+                    AND session.learner_id = $3
+                    AND session.created_by_user_id = $4
+            `, [input.sessionId, input.questionId, actor.learnerId, actor.userId]);
+            if ((matchingItemCount.rows[0]?.count ?? 0) > 1) {
+                throw new LocalPracticeRequestError(
+                    "SESSION_QUESTION_AMBIGUOUS",
+                    "這次練習包含同一道題的多個小題，請指定練習項目。",
+                    409,
+                );
+            }
+        }
+
+        const existingScoreReceiptResult = await client.query<ScoreReceiptRow>(`
             SELECT
-                attempt.id,
-                attempt.practice_session_item_id,
+                receipt.id,
+                receipt.practice_session_item_id,
                 item.practice_session_id,
+                session.check_mode AS session_check_mode,
+                session.status AS session_status,
+                session.created_by_user_id AS session_created_by_user_id,
                 item.question_id,
                 item.question_revision_id,
-                attempt.overall_result,
-                attempt.grading_source,
-                attempt.duration_seconds,
-                attempt.submitted_at
-            FROM answer_attempts AS attempt
-            JOIN practice_session_items AS item ON item.id = attempt.practice_session_item_id
-            WHERE attempt.learner_id = $1 AND attempt.idempotency_key = $2
+                item.question_part_id AS session_item_part_id,
+                receipt.submitted_at
+            FROM practice_score_receipts AS receipt
+            JOIN practice_session_items AS item
+                ON item.id = receipt.practice_session_item_id
+            JOIN practice_sessions AS session
+                ON session.id = item.practice_session_id
+            WHERE receipt.learner_id = $1
+                AND receipt.idempotency_key = $2
         `, [actor.learnerId, input.idempotencyKey]);
-        const existing = existingResult.rows[0];
-        if (existing) {
-            const partRows = await getAttemptParts(client, [existing.id]);
+        const existingScoreReceipt = existingScoreReceiptResult.rows[0];
+        if (existingScoreReceipt) {
             if (
-                existing.practice_session_id !== input.sessionId
-                || existing.question_id !== input.questionId
-                || existing.duration_seconds !== input.durationSeconds
-                || !sameAnswerPayload(partRows, normalizedInput)
+                existingScoreReceipt.practice_session_id !== input.sessionId
+                || existingScoreReceipt.question_id !== input.questionId
+                || (
+                    input.sessionItemId !== undefined
+                    && existingScoreReceipt.practice_session_item_id !== input.sessionItemId
+                )
+                || (
+                    input.partId !== undefined
+                    && existingScoreReceipt.session_item_part_id !== input.partId
+                )
+                || existingScoreReceipt.session_created_by_user_id !== actor.userId
             ) {
                 throw new LocalPracticeRequestError(
                     "IDEMPOTENCY_CONFLICT",
@@ -739,37 +1504,106 @@ export async function submitLocalPracticeAttempt(
                 );
             }
             const sessionResult = await client.query<SessionRow>(`
-                SELECT id, status, started_at, completed_at
+                SELECT id, check_mode, status, completed_at
                 FROM practice_sessions
-                WHERE id = $1 AND learner_id = $2
-            `, [input.sessionId, actor.learnerId]);
+                WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+            `, [input.sessionId, actor.learnerId, actor.userId]);
             const session = sessionResult.rows[0];
             if (!session) throw new LocalPracticeRequestError("SESSION_NOT_FOUND", "找不到這次練習。", 404);
-            return {
-                attempt: toAttempt(existing, partRows),
-                session: {
-                    id: session.id,
-                    status: session.status,
-                    completedAt: session.completed_at ? asIso(session.completed_at) : null,
-                },
-                replayed: true,
-            };
+            return discloseSubmittedScoreReceipt(
+                client,
+                existingScoreReceipt,
+                session,
+                actor,
+                true,
+            );
         }
 
-        const itemResult = await client.query<SessionItemRow & { session_status: LocalPracticeSession["status"] }>(`
+        const existingResult = await client.query<AttemptRow>(`
+            SELECT
+                attempt.id,
+                attempt.practice_session_item_id,
+                item.practice_session_id,
+                session.mode AS session_mode,
+                session.check_mode AS session_check_mode,
+                session.status AS session_status,
+                session.created_by_user_id AS session_created_by_user_id,
+                item.question_id,
+                item.question_revision_id,
+                item.question_part_id AS session_item_part_id,
+                attempt.overall_result,
+                attempt.grading_source,
+                attempt.duration_seconds,
+                attempt.submitted_at
+            FROM answer_attempts AS attempt
+            JOIN practice_session_items AS item ON item.id = attempt.practice_session_item_id
+            JOIN practice_sessions AS session ON session.id = item.practice_session_id
+            WHERE attempt.learner_id = $1
+                AND attempt.idempotency_key = $2
+        `, [actor.learnerId, input.idempotencyKey]);
+        const existing = existingResult.rows[0];
+        if (existing) {
+            if (
+                existing.practice_session_id !== input.sessionId
+                || existing.question_id !== input.questionId
+                || (input.sessionItemId !== undefined && existing.practice_session_item_id !== input.sessionItemId)
+                || (input.partId !== undefined && existing.session_item_part_id !== input.partId)
+                || existing.session_created_by_user_id !== actor.userId
+                || existing.duration_seconds !== input.durationSeconds
+            ) {
+                throw new LocalPracticeRequestError(
+                    "IDEMPOTENCY_CONFLICT",
+                    "這個重送識別碼已用於不同的作答內容。",
+                    409,
+                );
+            }
+            const partRows = await getAttemptParts(client, [existing.id]);
+            if (!sameAnswerPayload(partRows, normalizedInput)) {
+                throw new LocalPracticeRequestError(
+                    "IDEMPOTENCY_CONFLICT",
+                    "這個重送識別碼已用於不同的作答內容。",
+                    409,
+                );
+            }
+            const sessionResult = await client.query<SessionRow>(`
+                SELECT id, check_mode, status, completed_at
+                FROM practice_sessions
+                WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+            `, [input.sessionId, actor.learnerId, actor.userId]);
+            const session = sessionResult.rows[0];
+            if (!session) throw new LocalPracticeRequestError("SESSION_NOT_FOUND", "找不到這次練習。", 404);
+            return discloseSubmittedAttempt(client, existing, partRows, session, actor, true);
+        }
+
+        const itemResult = await client.query<SessionItemRow & {
+            session_check_mode: LocalPracticeSessionSettings["checkMode"];
+            session_status: LocalPracticeSession["status"];
+        }>(`
             SELECT
                 item.id,
                 item.question_id,
                 item.question_revision_id,
+                item.question_part_id,
                 item.position,
+                session.check_mode AS session_check_mode,
                 session.status AS session_status
             FROM practice_session_items AS item
             JOIN practice_sessions AS session ON session.id = item.practice_session_id
             WHERE item.practice_session_id = $1
                 AND item.question_id = $2
-                AND session.learner_id = $3
+                AND ($3::uuid IS NULL OR item.id = $3)
+                AND ($4::uuid IS NULL OR item.question_part_id = $4)
+                AND session.learner_id = $5
+                AND session.created_by_user_id = $6
             FOR UPDATE OF item, session
-        `, [input.sessionId, input.questionId, actor.learnerId]);
+        `, [
+            input.sessionId,
+            input.questionId,
+            input.sessionItemId ?? null,
+            input.partId ?? null,
+            actor.learnerId,
+            actor.userId,
+        ]);
         if (itemResult.rows.length === 0) {
             throw new LocalPracticeRequestError(
                 "SESSION_QUESTION_NOT_FOUND",
@@ -785,6 +1619,24 @@ export async function submitLocalPracticeAttempt(
             );
         }
         const item = itemResult.rows[0];
+        const answeredResult = await client.query<{ exists: boolean } & QueryResultRow>(`
+            SELECT EXISTS (
+                SELECT 1
+                FROM answer_attempts AS attempt
+                WHERE attempt.practice_session_item_id = $1
+                UNION ALL
+                SELECT 1
+                FROM practice_score_receipts AS receipt
+                WHERE receipt.practice_session_item_id = $1
+            ) AS exists
+        `, [item.id]);
+        if (answeredResult.rows[0]?.exists) {
+            throw new LocalPracticeRequestError(
+                "SESSION_ITEM_ALREADY_ANSWERED",
+                "這道題已經保存，不能以新的重送識別碼再次作答。",
+                409,
+            );
+        }
         if (!(["active", "paused"] as const).includes(item.session_status as "active" | "paused")) {
             throw new LocalPracticeRequestError("SESSION_NOT_ACTIVE", "這次練習已結束，不能新增作答。", 409);
         }
@@ -807,9 +1659,10 @@ export async function submitLocalPracticeAttempt(
             LEFT JOIN question_answers AS answer ON answer.question_part_id = part.id
             WHERE part.question_revision_id = $1
                 AND part.is_independently_gradable = true
+                AND ($2::uuid IS NULL OR part.id = $2)
             ORDER BY part.position, part.id, answer.position, answer.id
             FOR SHARE OF part
-        `, [item.question_revision_id]);
+        `, [item.question_revision_id, item.question_part_id]);
         if (partResult.rows.length === 0) {
             throw new LocalPracticeRequestError("QUESTION_NOT_GRADABLE", "這道題目前沒有可作答的小題。", 409);
         }
@@ -841,6 +1694,15 @@ export async function submitLocalPracticeAttempt(
                 throw new LocalPracticeRequestError("INVALID_ANSWER_VALUE", "這個小題只能提交一個答案。", 400);
             }
         }
+        if (normalizedInput.size !== groupedParts.size) {
+            throw new LocalPracticeRequestError(
+                "INCOMPLETE_ANSWER",
+                item.question_part_id === null
+                    ? "請完成這道題的所有小題後再提交。"
+                    : "請完成指定小題後再提交。",
+                400,
+            );
+        }
 
         const gradedParts = [...groupedParts.values()].map(({
             row,
@@ -859,6 +1721,73 @@ export async function submitLocalPracticeAttempt(
         }));
         const overallResult = deriveLocalPracticeOverallResult(gradedParts.map((part) => part.result));
         const gradingSource = deriveLocalPracticeGradingSource(gradedParts.map((part) => part.gradingSource));
+
+        if (item.session_check_mode === "score") {
+            const receiptResult = await client.query<ScoreReceiptRow>(`
+                INSERT INTO practice_score_receipts (
+                    id,
+                    practice_session_item_id,
+                    learner_id,
+                    idempotency_key
+                )
+                VALUES ($1, $2, $3, $4)
+                RETURNING
+                    id,
+                    practice_session_item_id,
+                    $5::uuid AS practice_session_id,
+                    'score'::varchar AS session_check_mode,
+                    $6::varchar AS session_status,
+                    $7::uuid AS session_created_by_user_id,
+                    $8::uuid AS question_id,
+                    $9::uuid AS question_revision_id,
+                    $10::uuid AS session_item_part_id,
+                    submitted_at
+            `, [
+                randomUUID(),
+                item.id,
+                actor.learnerId,
+                input.idempotencyKey,
+                input.sessionId,
+                item.session_status,
+                actor.userId,
+                item.question_id,
+                item.question_revision_id,
+                item.question_part_id,
+            ]);
+            const receipt = receiptResult.rows[0];
+            if (!receipt) throw new Error("score receipt insert did not return a row");
+
+            const finalSessionResult = await client.query<SessionRow>(`
+                UPDATE practice_sessions AS session
+                SET score_answered_count = session.score_answered_count + 1,
+                    score_correct_count = session.score_correct_count
+                        + CASE WHEN $4 = 'correct' THEN 1 ELSE 0 END,
+                    score_wrong_count = session.score_wrong_count
+                        + CASE WHEN $4 = 'wrong' THEN 1 ELSE 0 END,
+                    score_pending_count = session.score_pending_count
+                        - CASE WHEN $4 IN ('correct', 'wrong') THEN 1 ELSE 0 END,
+                    status = CASE
+                        WHEN session.score_answered_count + 1 = session.score_total_count
+                            THEN 'completed'
+                        ELSE session.status
+                    END,
+                    completed_at = CASE
+                        WHEN session.score_answered_count + 1 = session.score_total_count
+                            THEN transaction_timestamp()
+                        ELSE session.completed_at
+                    END
+                WHERE session.id = $1
+                    AND session.learner_id = $2
+                    AND session.created_by_user_id = $3
+                    AND session.check_mode = 'score'
+                    AND session.status IN ('active', 'paused')
+                RETURNING id, check_mode, status, completed_at
+            `, [input.sessionId, actor.learnerId, actor.userId, overallResult]);
+            const finalSession = finalSessionResult.rows[0];
+            if (!finalSession) throw new Error("score aggregate update did not return its session");
+            return discloseSubmittedScoreReceipt(client, receipt, finalSession, actor, false);
+        }
+
         const attemptId = randomUUID();
         const attemptNumberResult = await client.query<{ next_attempt_number: number }>(`
             SELECT count(*)::integer + 1 AS next_attempt_number
@@ -885,6 +1814,7 @@ export async function submitLocalPracticeAttempt(
                 $9::uuid AS practice_session_id,
                 $10::uuid AS question_id,
                 $11::uuid AS question_revision_id,
+                $12::uuid AS session_item_part_id,
                 overall_result,
                 grading_source,
                 duration_seconds,
@@ -901,6 +1831,7 @@ export async function submitLocalPracticeAttempt(
             input.sessionId,
             input.questionId,
             item.question_revision_id,
+            item.question_part_id,
         ]);
 
         const insertedPartRows: AttemptPartRow[] = [];
@@ -968,6 +1899,7 @@ export async function submitLocalPracticeAttempt(
             SET status = 'completed', completed_at = transaction_timestamp()
             WHERE session.id = $1
                 AND session.learner_id = $2
+                AND session.created_by_user_id = $3
                 AND session.status IN ('active', 'paused')
                 AND NOT EXISTS (
                     SELECT 1
@@ -979,44 +1911,40 @@ export async function submitLocalPracticeAttempt(
                             WHERE submitted.practice_session_item_id = pending_item.id
                         )
                 )
-            RETURNING id, status, started_at, completed_at
-        `, [input.sessionId, actor.learnerId]);
+            RETURNING id, check_mode, status, completed_at
+        `, [input.sessionId, actor.learnerId, actor.userId]);
         const finalSessionResult = completedResult.rows[0]
             ? completedResult
             : await client.query<SessionRow>(`
-                SELECT id, status, started_at, completed_at
+                SELECT id, check_mode, status, completed_at
                 FROM practice_sessions
-                WHERE id = $1 AND learner_id = $2
-            `, [input.sessionId, actor.learnerId]);
+                WHERE id = $1 AND learner_id = $2 AND created_by_user_id = $3
+            `, [input.sessionId, actor.learnerId, actor.userId]);
         const finalSession = finalSessionResult.rows[0];
         const attempt = insertedAttempt.rows[0];
         if (!finalSession || !attempt) throw new Error("attempt transaction did not return its final rows");
 
-        return {
-            attempt: toAttempt(attempt, insertedPartRows),
-            session: {
-                id: finalSession.id,
-                status: finalSession.status,
-                completedAt: finalSession.completed_at ? asIso(finalSession.completed_at) : null,
-            },
-            replayed: false,
-        };
+        return discloseSubmittedAttempt(client, attempt, insertedPartRows, finalSession, actor, false);
     });
 }
 
 /** Hydrates durable attempts and pending wrong-review work without answer payloads. */
-export async function getLocalPracticeHistory(limit: number, actor: LocalPracticeActor): Promise<{
-    attempts: LocalPracticeAttempt[];
-    wrongReviewQueue: { pendingCount: number; items: LocalPracticeWrongQueueItem[] };
-    sessions: LocalPracticeSessionHistory[];
+export async function getLocalPracticeHistory(limit: number, actor: LocalPracticeActor, attemptOffset = 0): Promise<{
+    attempts: LocalPracticeHistory["attempts"];
+    wrongReviewQueue: LocalPracticeHistory["wrongReviewQueue"];
+    sessions: LocalPracticeHistory["sessions"];
 }> {
     return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeResultAccess(client, actor);
         const [attemptResult, sessionResult, queueResult] = await Promise.all([
             client.query<AttemptRow>(`
                 SELECT
                     attempt.id,
                     attempt.practice_session_item_id,
                     item.practice_session_id,
+                    session.mode AS session_mode,
+                    session.check_mode AS session_check_mode,
+                    session.status AS session_status,
                     item.question_id,
                     item.question_revision_id,
                     attempt.overall_result,
@@ -1025,36 +1953,84 @@ export async function getLocalPracticeHistory(limit: number, actor: LocalPractic
                     attempt.submitted_at
                 FROM answer_attempts AS attempt
                 JOIN practice_session_items AS item ON item.id = attempt.practice_session_item_id
+                JOIN practice_sessions AS session ON session.id = item.practice_session_id
                 WHERE attempt.learner_id = $1
+                    AND (
+                        session.check_mode = 'instant'
+                        OR (session.check_mode = 'complete' AND session.status = 'completed')
+                    )
                 ORDER BY attempt.submitted_at DESC, attempt.id DESC
-                LIMIT $2
-            `, [actor.learnerId, limit]),
+                LIMIT $2 OFFSET $3
+            `, [actor.learnerId, limit, attemptOffset]),
             client.query<SessionHistoryRow>(`
                 SELECT
                     session.id,
+                    session.mode,
+                    session.check_mode,
                     session.status,
                     session.started_at,
                     session.completed_at,
-                    count(DISTINCT item.id)::integer AS item_count,
-                    count(DISTINCT item.id) FILTER (WHERE attempt.id IS NOT NULL)::integer AS attempted_item_count
+                    CASE WHEN session.check_mode = 'score'
+                        THEN session.score_total_count
+                        ELSE count(item.id)::integer
+                    END AS item_count,
+                    CASE WHEN session.check_mode = 'score'
+                        THEN session.score_answered_count
+                        ELSE count(item.id) FILTER (WHERE latest.id IS NOT NULL)::integer
+                    END AS attempted_item_count,
+                    CASE WHEN session.check_mode = 'score'
+                        THEN session.score_correct_count
+                        ELSE count(item.id) FILTER (WHERE latest.overall_result = 'correct')::integer
+                    END AS correct_count,
+                    CASE WHEN session.check_mode = 'score'
+                        THEN session.score_wrong_count
+                        ELSE count(item.id) FILTER (WHERE latest.overall_result = 'wrong')::integer
+                    END AS wrong_count,
+                    CASE WHEN session.check_mode = 'score'
+                        THEN session.score_pending_count
+                        ELSE count(item.id) FILTER (
+                            WHERE latest.id IS NULL OR latest.overall_result = 'pending'
+                        )::integer
+                    END AS pending_count
                 FROM practice_sessions AS session
                 LEFT JOIN practice_session_items AS item ON item.practice_session_id = session.id
-                LEFT JOIN answer_attempts AS attempt ON attempt.practice_session_item_id = item.id
+                LEFT JOIN LATERAL (
+                    SELECT attempt.id, attempt.overall_result
+                    FROM answer_attempts AS attempt
+                    WHERE attempt.practice_session_item_id = item.id
+                    ORDER BY attempt.attempt_number DESC, attempt.id DESC
+                    LIMIT 1
+                ) AS latest ON true
                 WHERE session.learner_id = $1
                 GROUP BY session.id
                 ORDER BY session.started_at DESC, session.id DESC
-                LIMIT $2
-            `, [actor.learnerId, limit]),
+                LIMIT $2 OFFSET $3
+            `, [actor.learnerId, limit, attemptOffset]),
             client.query<WrongQueueRow>(`
-                SELECT id, question_id, question_revision_id, question_part_id, created_at,
+                SELECT queue.id, queue.question_id, queue.question_revision_id,
+                    queue.question_part_id, queue.created_at,
                     count(*) OVER () AS total_count
-                FROM learner_practice_queue_items
-                WHERE learner_id = $1 AND reason = 'wrong_review' AND status = 'pending'
-                ORDER BY created_at DESC, id DESC
+                FROM learner_practice_queue_items AS queue
+                JOIN answer_part_results AS result ON result.id = queue.source_answer_part_result_id
+                JOIN answer_attempts AS attempt ON attempt.id = result.answer_attempt_id
+                JOIN practice_session_items AS item ON item.id = attempt.practice_session_item_id
+                JOIN practice_sessions AS session ON session.id = item.practice_session_id
+                WHERE queue.learner_id = $1
+                    AND queue.reason = 'wrong_review'
+                    AND queue.status = 'pending'
+                    AND (
+                        session.check_mode = 'instant'
+                        OR (session.check_mode = 'complete' AND session.status = 'completed')
+                    )
+                ORDER BY queue.created_at DESC, queue.id DESC
                 LIMIT $2
             `, [actor.learnerId, limit]),
         ]);
-        const partRows = await getAttemptParts(client, attemptResult.rows.map((attempt) => attempt.id));
+        const attemptIds = attemptResult.rows.map((attempt) => attempt.id);
+        const [partRows, referencesByAttempt] = await Promise.all([
+            getAttemptParts(client, attemptIds),
+            getAttemptReferenceAnswers(client, attemptIds),
+        ]);
         const partsByAttempt = new Map<string, AttemptPartRow[]>();
         for (const part of partRows) {
             const current = partsByAttempt.get(part.answer_attempt_id) ?? [];
@@ -1063,7 +2039,11 @@ export async function getLocalPracticeHistory(limit: number, actor: LocalPractic
         }
 
         return {
-            attempts: attemptResult.rows.map((attempt) => toAttempt(attempt, partsByAttempt.get(attempt.id) ?? [])),
+            attempts: attemptResult.rows.map((attempt) => toAttempt(
+                attempt,
+                partsByAttempt.get(attempt.id) ?? [],
+                referencesByAttempt.get(attempt.id) ?? [],
+            )),
             wrongReviewQueue: {
                 pendingCount: Number(queueResult.rows[0]?.total_count ?? 0),
                 items: queueResult.rows.map((item) => ({
@@ -1074,14 +2054,32 @@ export async function getLocalPracticeHistory(limit: number, actor: LocalPractic
                     createdAt: asIso(item.created_at),
                 })),
             },
-            sessions: sessionResult.rows.map((session) => ({
-                id: session.id,
-                status: session.status,
-                startedAt: asIso(session.started_at),
-                completedAt: session.completed_at ? asIso(session.completed_at) : null,
-                itemCount: session.item_count,
-                attemptedItemCount: session.attempted_item_count,
-            })),
+            sessions: sessionResult.rows.map((session): LocalPracticeSessionHistory => {
+                const disclosure = session.check_mode === "score"
+                    ? session.status === "completed" ? "score" : "masked"
+                    : session.check_mode === "complete" && session.status !== "completed"
+                        ? "masked"
+                        : "detailed";
+                return {
+                    id: session.id,
+                    mode: session.mode,
+                    checkMode: session.check_mode,
+                    status: session.status,
+                    startedAt: asIso(session.started_at),
+                    completedAt: session.completed_at ? asIso(session.completed_at) : null,
+                    itemCount: session.item_count,
+                    attemptedItemCount: session.attempted_item_count,
+                    disclosure,
+                    ...(disclosure === "score" ? {
+                        summary: scoreSummary(
+                            session.item_count,
+                            session.correct_count,
+                            session.wrong_count,
+                            session.pending_count,
+                        ),
+                    } : {}),
+                };
+            }),
         };
     });
 }
@@ -1180,7 +2178,7 @@ export async function findLocalPracticeAsset(
     `, [
         assetId,
         filters.grade,
-        subjectAliases(filters.subject),
+        getSubjectLookupLabels(filters.subject),
         filters.publisher,
         filters.volume,
         filters.lesson,

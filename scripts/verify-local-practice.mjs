@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { createHash, randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { userInfo } from "node:os";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
+import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,13 +18,23 @@ import { HANLIN_IMPORT_PRINCIPAL } from "./lib/hanlin-postgres-writer.mjs";
 
 const { Pool } = pg;
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_BASE_URL = "http://127.0.0.1:3500";
-const DEFAULT_SOCKET = path.join(REPOSITORY_ROOT, "local-data", "postgres-socket");
-const DEFAULT_DATABASE = "lerniqa_local";
-const DEFAULT_PORT = 55_432;
+const MIGRATION_DIRECTORY = path.join(REPOSITORY_ROOT, "database", "migrations");
+const ISOLATED_ROOT_BASENAME_PATTERN = /^lerniqa-practice-test\.[A-Za-z0-9_-]+$/u;
+const ISOLATED_DATABASE_PATTERN = /^lerniqa_practice_test_[a-z0-9_]+$/u;
+const ISOLATION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,128}$/u;
+const ISOLATION_MARKER_FILE = ".lerniqa-isolated-practice-test";
+const DATABASE_OWNERSHIP_COMMENT_PREFIX = "lerniqa-isolated-practice-test:";
 const AUTH_SESSION_COOKIE = "lerniqa_session";
+const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const FORWARDED_HTTPS_HOST = "session-contract.lerniqa.invalid:8443";
+const FORWARDED_HTTPS_ORIGIN = `https://${FORWARDED_HTTPS_HOST}`;
+const SYNTHETIC_ACCOUNT_ROLES = ["learner", "parent", "tutor"];
 const IMPORT_RECOGNIZER = PARSER_VERSION;
 const IMPORT_KEY_PREFIX = `${IMPORT_RECOGNIZER}:jh1-zh-hanlin-v1-l4:`;
+const SYNTHETIC_SOURCE_FILE = "lerniqa-isolated-practice-fixture.doc";
+const SYNTHETIC_SOURCE_SHA256 = createHash("sha256")
+    .update("lerniqa-isolated-practice-fixture-v1", "utf8")
+    .digest("hex");
 const EXPECTED_IMPORT = Object.freeze({
     sourceFiles: 1,
     parsed: 279,
@@ -31,15 +42,6 @@ const EXPECTED_IMPORT = Object.freeze({
     pending: 0,
     rejected: 0,
 });
-const EXPECTED_MIGRATIONS = [
-    ["0001", "identity_and_catalog"],
-    ["0002", "question_core"],
-    ["0003", "import_and_collections"],
-    ["0004", "practice_and_attempts"],
-    ["0005", "similarity_analytics_and_audit"],
-    ["0006", "source_documents_word"],
-    ["0007", "practice_answer_integrity"],
-];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu;
@@ -73,7 +75,37 @@ const FORBIDDEN_QUESTION_API_KEYS = new Set([
     "explanation",
     "explanationtext",
     "explanations",
+    "idempotencykey",
     "storagekey",
+]);
+const FORBIDDEN_MASKED_GRADING_KEYS = new Set([
+    "attempt",
+    "attempts",
+    "feedbackcode",
+    "gradingsource",
+    "overallresult",
+    "partresults",
+    "parts",
+    "result",
+]);
+const FORBIDDEN_DETAILED_PRIVATE_KEYS = new Set([
+    "answerpayload",
+    "idempotencykey",
+    "storagekey",
+]);
+const FORBIDDEN_SCORE_MAPPING_KEYS = new Set([
+    "attempt",
+    "attempts",
+    "feedbackcode",
+    "gradingsource",
+    "items",
+    "overallresult",
+    "partid",
+    "partresults",
+    "parts",
+    "questionid",
+    "revisionid",
+    "sessionitemid",
 ]);
 
 class VerificationError extends Error {
@@ -106,32 +138,129 @@ function parseBooleanEnvironment(name) {
 
 function parsePort() {
     const raw = readOptionalEnvironment("LOCAL_PG_PORT");
-    if (raw === undefined) return DEFAULT_PORT;
+    invariant(raw !== undefined, "ISOLATED_DATABASE_PORT_REQUIRED", "隔離驗證必須明確提供 LOCAL_PG_PORT。");
     invariant(/^\d+$/u.test(raw), "INVALID_DATABASE_PORT", "LOCAL_PG_PORT 必須是整數。");
     const port = Number(raw);
     invariant(Number.isSafeInteger(port) && port >= 1 && port <= 65_535, "INVALID_DATABASE_PORT", "LOCAL_PG_PORT 必須介於 1 到 65535。");
     return port;
 }
 
+function existingServerModeEnabled() {
+    const value = readOptionalEnvironment("LERNIQA_PRACTICE_TEST_EXISTING") ?? "0";
+    invariant(["0", "1"].includes(value), "INVALID_EXISTING_SERVER_MODE", "LERNIQA_PRACTICE_TEST_EXISTING 只接受 0 或 1。");
+    return value === "1";
+}
+
+function parseExpectedExistingPort() {
+    const raw = readOptionalEnvironment("LERNIQA_PRACTICE_TEST_PORT");
+    invariant(raw !== undefined && /^\d+$/u.test(raw), "EXISTING_SERVER_PORT_REQUIRED", "existing-local-server 模式必須明確提供 LERNIQA_PRACTICE_TEST_PORT。");
+    const port = Number(raw);
+    invariant(Number.isSafeInteger(port) && port >= 1 && port <= 65_535, "INVALID_EXISTING_SERVER_PORT", "LERNIQA_PRACTICE_TEST_PORT 必須介於 1 到 65535。");
+    return port;
+}
+
 function databaseConfig() {
-    const socket = readOptionalEnvironment("LOCAL_PG_SOCKET") ?? DEFAULT_SOCKET;
+    const existingServer = existingServerModeEnabled();
+    const configuredRoot = readOptionalEnvironment("LERNIQA_ISOLATED_TEST_ROOT");
+    invariant(configuredRoot !== undefined, "ISOLATED_TEST_ROOT_REQUIRED", "拒絕對持久資料執行整合寫入；請改用 npm run test:local-practice 建立臨時測試環境。");
+    invariant(path.isAbsolute(configuredRoot), "INVALID_ISOLATED_TEST_ROOT", "LERNIQA_ISOLATED_TEST_ROOT 必須是絕對路徑。");
+    const testRoot = path.resolve(configuredRoot);
+    invariant(ISOLATED_ROOT_BASENAME_PATTERN.test(path.basename(testRoot)), "INVALID_ISOLATED_TEST_ROOT", "隔離測試目錄名稱不符合安全規則。");
+    invariant(testRoot !== REPOSITORY_ROOT && !testRoot.startsWith(`${REPOSITORY_ROOT}${path.sep}`), "ISOLATED_TEST_ROOT_IN_REPOSITORY", "隔離測試目錄不得位於 repository 或持久資料目錄內。");
+
+    const token = readOptionalEnvironment("LERNIQA_ISOLATED_TEST_TOKEN");
+    invariant(token !== undefined && ISOLATION_TOKEN_PATTERN.test(token), "ISOLATED_TEST_TOKEN_REQUIRED", "隔離驗證缺少有效的一次性識別。");
+
+    const socket = readOptionalEnvironment("LOCAL_PG_SOCKET");
+    invariant(socket !== undefined, "ISOLATED_DATABASE_SOCKET_REQUIRED", "隔離驗證必須明確提供 LOCAL_PG_SOCKET。");
     invariant(path.isAbsolute(socket), "INVALID_DATABASE_SOCKET", "LOCAL_PG_SOCKET 必須是絕對路徑。");
+    const resolvedSocket = path.resolve(socket);
+    let expectedDataDirectory = path.join(testRoot, "postgres");
+    let expectedSocket = path.join(testRoot, "socket");
+    let expectedPort = parsePort();
+    if (existingServer) {
+        const configuredSocket = readOptionalEnvironment("LERNIQA_PRACTICE_TEST_SOCKET");
+        invariant(configuredSocket !== undefined && path.isAbsolute(configuredSocket), "EXISTING_SERVER_SOCKET_REQUIRED", "existing-local-server 模式必須明確提供絕對 LERNIQA_PRACTICE_TEST_SOCKET。");
+        expectedSocket = path.resolve(configuredSocket);
+        invariant(resolvedSocket === expectedSocket, "EXISTING_SERVER_SOCKET_MISMATCH", "LOCAL_PG_SOCKET 與明確核准的 existing-local-server socket 不一致。");
+        expectedPort = parseExpectedExistingPort();
+        invariant(parsePort() === expectedPort, "EXISTING_SERVER_PORT_MISMATCH", "LOCAL_PG_PORT 與明確核准的 existing-local-server port 不一致。");
+        const configuredDataDirectory = readOptionalEnvironment("LERNIQA_PRACTICE_TEST_DATA_DIRECTORY");
+        invariant(configuredDataDirectory !== undefined && path.isAbsolute(configuredDataDirectory), "EXISTING_SERVER_DATA_DIRECTORY_REQUIRED", "existing-local-server 模式必須明確提供絕對 LERNIQA_PRACTICE_TEST_DATA_DIRECTORY。");
+        expectedDataDirectory = path.resolve(configuredDataDirectory);
+    }
+    else {
+        invariant(resolvedSocket === expectedSocket, "DATABASE_SOCKET_OUTSIDE_TEST_ROOT", "LOCAL_PG_SOCKET 必須位於本次隔離測試目錄。");
+    }
+
+    const database = readOptionalEnvironment("LOCAL_PG_DATABASE");
+    invariant(database !== undefined && ISOLATED_DATABASE_PATTERN.test(database), "ISOLATED_DATABASE_NAME_REQUIRED", "隔離驗證只能使用 lerniqa_practice_test_* 資料庫。");
+    const user = readOptionalEnvironment("LOCAL_PG_USER");
+    invariant(user === userInfo().username, "ISOLATED_DATABASE_USER_MISMATCH", "隔離驗證只能使用目前作業系統使用者。");
     return {
-        socket: path.resolve(socket),
-        port: parsePort(),
-        database: readOptionalEnvironment("LOCAL_PG_DATABASE") ?? DEFAULT_DATABASE,
-        user: readOptionalEnvironment("LOCAL_PG_USER") ?? userInfo().username,
+        testRoot,
+        token,
+        existingServer,
+        socket: resolvedSocket,
+        port: expectedPort,
+        database,
+        user,
+        expectedSocket,
+        expectedDataDirectory,
     };
 }
 
 function baseUrl() {
-    const parsed = new URL(readOptionalEnvironment("BASE_URL") ?? DEFAULT_BASE_URL);
+    const configuredBaseUrl = readOptionalEnvironment("BASE_URL");
+    invariant(configuredBaseUrl !== undefined, "ISOLATED_BASE_URL_REQUIRED", "隔離驗證必須明確提供 BASE_URL。");
+    const configuredHttpPort = readOptionalEnvironment("LERNIQA_ISOLATED_HTTP_PORT");
+    invariant(configuredHttpPort !== undefined && /^\d+$/u.test(configuredHttpPort), "ISOLATED_HTTP_PORT_REQUIRED", "隔離驗證必須明確提供 LERNIQA_ISOLATED_HTTP_PORT。");
+    const parsed = new URL(configuredBaseUrl);
     invariant(parsed.protocol === "http:", "UNSAFE_BASE_URL", "整合驗證只允許本機 HTTP 開發服務。");
     invariant(parsed.username === "" && parsed.password === "", "UNSAFE_BASE_URL", "BASE_URL 不可包含帳號或密碼。");
-    invariant(["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname), "UNSAFE_BASE_URL", "整合驗證拒絕對非 loopback 服務建立作答資料。");
-    invariant(parsed.search === "" && parsed.hash === "", "INVALID_BASE_URL", "BASE_URL 不可包含 query 或 fragment。");
+    invariant(parsed.hostname === "127.0.0.1", "UNSAFE_BASE_URL", "隔離驗證只能連到明確的 127.0.0.1 服務。");
+    invariant(Number(parsed.port) === Number(configuredHttpPort), "ISOLATED_HTTP_PORT_MISMATCH", "BASE_URL 與隔離 HTTP port 不一致。");
+    invariant(parsed.pathname === "/" && parsed.search === "" && parsed.hash === "", "INVALID_BASE_URL", "BASE_URL 不可包含額外 path、query 或 fragment。");
     parsed.pathname = parsed.pathname.replace(/\/+$/u, "");
     return parsed;
+}
+
+async function verifyIsolationMarker(config) {
+    const canonicalRoot = await realpath(config.testRoot).catch(() => null);
+    invariant(canonicalRoot === config.testRoot, "ISOLATED_TEST_ROOT_NOT_CANONICAL", "隔離測試目錄不存在、是符號連結或不是 canonical path。");
+    const canonicalTemp = await realpath(tmpdir()).catch(() => null);
+    invariant(canonicalTemp !== null && path.dirname(canonicalRoot) === canonicalTemp, "ISOLATED_TEST_ROOT_OUTSIDE_TEMP", "隔離測試目錄必須是作業系統 canonical 暫存目錄的直屬目錄。");
+    const rootMetadata = await lstat(canonicalRoot).catch(() => null);
+    invariant(rootMetadata?.isDirectory() === true
+        && rootMetadata.isSymbolicLink() === false
+        && (rootMetadata.mode & 0o077) === 0, "INVALID_ISOLATED_TEST_ROOT", "隔離測試根目錄必須是私有真實目錄，不可為符號連結。");
+    for (const childName of config.existingServer ? [] : ["postgres", "socket"]) {
+        const childPath = path.join(canonicalRoot, childName);
+        const metadata = await lstat(childPath).catch(() => null);
+        invariant(metadata?.isDirectory() === true
+            && metadata.isSymbolicLink() === false
+            && (metadata.mode & 0o077) === 0, "ISOLATED_TEST_CHILD_INVALID", `隔離測試的 ${childName} 必須是私有真實目錄，不可為符號連結。`);
+    }
+    const markerPath = path.join(config.testRoot, ISOLATION_MARKER_FILE);
+    const markerMetadata = await lstat(markerPath).catch(() => null);
+    invariant(markerMetadata?.isFile() === true
+        && markerMetadata.isSymbolicLink() === false
+        && (markerMetadata.mode & 0o077) === 0, "ISOLATED_TEST_MARKER_INVALID", "隔離測試 marker 必須是私有一般檔案，不可為符號連結。");
+    const marker = await readFile(markerPath, "utf8").catch(() => null);
+    invariant(marker?.trim() === config.token, "ISOLATED_TEST_MARKER_MISMATCH", "隔離測試目錄的一次性標記不符。");
+}
+
+async function expectedMigrations() {
+    const fileNames = (await readdir(MIGRATION_DIRECTORY))
+        .filter((fileName) => /^[0-9]{4}_[a-z0-9_]+\.up\.sql$/u.test(fileName))
+        .sort();
+    invariant(fileNames.length > 0, "MIGRATION_MANIFEST_EMPTY", "找不到 migration manifest。");
+    return fileNames.map((fileName, index) => {
+        const match = fileName.match(/^([0-9]{4})_([a-z0-9_]+)\.up\.sql$/u);
+        const expectedVersion = String(index + 1).padStart(4, "0");
+        invariant(match !== null && match[1] === expectedVersion, "MIGRATION_MANIFEST_INVALID", "migration manifest 有跳號或格式錯誤。", { fileName, expectedVersion });
+        return [match[1], match[2]];
+    });
 }
 
 function isRecord(value) {
@@ -150,6 +279,25 @@ function numberValue(value) {
 
 function unique(values) {
     return [...new Set(values)];
+}
+
+function catalogProfile() {
+    const profile = readOptionalEnvironment("VERIFY_CATALOG_PROFILE");
+    invariant(["synthetic-import", "real-import-copy"].includes(profile), "CATALOG_PROFILE_REQUIRED", "VERIFY_CATALOG_PROFILE 必須明確指定 synthetic-import 或 real-import-copy。");
+    if (profile === "synthetic-import") {
+        return {
+            name: profile,
+            sourceFile: SYNTHETIC_SOURCE_FILE,
+            sourceSha256: SYNTHETIC_SOURCE_SHA256,
+            synthetic: true,
+        };
+    }
+    return {
+        name: profile,
+        sourceFile: AUTHORIZED_FOURTH_LESSON_FILE,
+        sourceSha256: AUTHORIZED_FOURTH_LESSON_SHA256,
+        synthetic: false,
+    };
 }
 
 function isAbsoluteOrPrivateString(value) {
@@ -188,6 +336,20 @@ function scanForbiddenKeys(value, location = "response", findings = []) {
     return findings;
 }
 
+function scanNamedKeys(value, forbiddenKeys, location = "response", findings = []) {
+    if (Array.isArray(value)) {
+        value.forEach((entry, index) => scanNamedKeys(entry, forbiddenKeys, `${location}[${index}]`, findings));
+        return findings;
+    }
+    if (!isRecord(value)) return findings;
+    for (const [key, entry] of Object.entries(value)) {
+        const normalizedKey = key.replace(/[-_\s]/gu, "").toLowerCase();
+        if (forbiddenKeys.has(normalizedKey)) findings.push(`${location}.${key}`);
+        scanNamedKeys(entry, forbiddenKeys, `${location}.${key}`, findings);
+    }
+    return findings;
+}
+
 async function fetchJson(origin, pathname, init = undefined, expectedStatuses = [200]) {
     const url = new URL(pathname, origin);
     let response;
@@ -213,6 +375,55 @@ async function fetchJson(origin, pathname, init = undefined, expectedStatuses = 
     return { body, headers: response.headers, status: response.status };
 }
 
+async function fetchJsonWithExplicitHost(origin, pathname, init = undefined, expectedStatuses = [200]) {
+    const url = new URL(pathname, origin);
+    const headers = Object.fromEntries(new Headers(init?.headers).entries());
+    const response = await new Promise((resolve, reject) => {
+        const request = httpRequest({
+            hostname: url.hostname,
+            port: url.port,
+            path: `${url.pathname}${url.search}`,
+            method: init?.method ?? "GET",
+            headers,
+        }, (incoming) => {
+            const chunks = [];
+            incoming.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+            incoming.once("error", reject);
+            incoming.once("end", () => {
+                const responseHeaders = new Headers();
+                for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
+                    responseHeaders.append(incoming.rawHeaders[index], incoming.rawHeaders[index + 1]);
+                }
+                resolve({
+                    headers: responseHeaders,
+                    status: incoming.statusCode ?? 0,
+                    text: Buffer.concat(chunks).toString("utf8"),
+                });
+            });
+        });
+        request.setTimeout(30_000, () => request.destroy(new Error("loopback proxy request timed out")));
+        request.once("error", (error) => {
+            reject(new VerificationError("API_UNREACHABLE", "無法連線到本機練習 API。", {
+                cause: error instanceof Error ? error.name : "unknown",
+            }));
+        });
+        if (typeof init?.body === "string") request.write(init.body);
+        request.end();
+    });
+    let body;
+    try {
+        body = JSON.parse(response.text);
+    }
+    catch {
+        throw new VerificationError("API_NON_JSON_RESPONSE", "本機練習 API 未回傳 JSON。", { status: response.status });
+    }
+    invariant(expectedStatuses.includes(response.status), "API_STATUS_MISMATCH", "本機練習 API 回傳非預期狀態。", {
+        status: response.status,
+        errorCode: isRecord(body?.error) ? body.error.code : undefined,
+    });
+    return { body, headers: response.headers, status: response.status };
+}
+
 function sessionCookieFromHeaders(headers) {
     const setCookie = headers.get("set-cookie");
     invariant(typeof setCookie === "string", "AUTH_COOKIE_MISSING", "合成帳號註冊後沒有收到 session cookie。");
@@ -224,17 +435,45 @@ function sessionCookieFromHeaders(headers) {
     };
 }
 
+function verifySessionCookiePolicy(headers, { secure, cleared = false }) {
+    const setCookie = headers.get("set-cookie");
+    invariant(typeof setCookie === "string", "AUTH_COOKIE_MISSING", "帳號回應沒有設定 session cookie。");
+    invariant(/(?:^|;\s*)HttpOnly(?:;|$)/iu.test(setCookie), "AUTH_COOKIE_HTTP_ONLY_MISSING", "session cookie 缺少 HttpOnly。");
+    invariant(/(?:^|;\s*)SameSite=Lax(?:;|$)/iu.test(setCookie), "AUTH_COOKIE_SAME_SITE_INVALID", "session cookie 必須使用 SameSite=Lax。");
+    invariant(/(?:^|;\s*)Path=\/(?:;|$)/iu.test(setCookie), "AUTH_COOKIE_PATH_INVALID", "session cookie 必須套用至整個網站。");
+    invariant(!/(?:^|;\s*)Domain=/iu.test(setCookie), "AUTH_COOKIE_DOMAIN_TOO_BROAD", "session cookie 不得設定跨主機 Domain。");
+    invariant(
+        /(?:^|;\s*)Secure(?:;|$)/iu.test(setCookie) === secure,
+        "AUTH_COOKIE_SECURE_POLICY_INVALID",
+        secure ? "HTTPS session cookie 缺少 Secure。" : "loopback HTTP session cookie 不應標記 Secure。",
+    );
+    invariant(
+        new RegExp(`(?:^|;\\s*)Max-Age=${cleared ? 0 : AUTH_SESSION_MAX_AGE_SECONDS}(?:;|$)`, "iu").test(setCookie),
+        "AUTH_COOKIE_MAX_AGE_INVALID",
+        cleared ? "登出沒有立即清除 session cookie。" : "session cookie 保存期限不符合服務契約。",
+    );
+    if (cleared) {
+        invariant(
+            new RegExp(`(?:^|,\\s*)${AUTH_SESSION_COOKIE}=(?:;|$)`, "u").test(setCookie),
+            "AUTH_COOKIE_CLEAR_VALUE_INVALID",
+            "登出沒有把 session cookie 值清空。",
+        );
+    }
+}
+
 function authenticatedInit(cookieHeader, init = undefined) {
     const headers = new Headers(init?.headers);
     headers.set("cookie", cookieHeader);
     return { ...init, headers };
 }
 
-async function createSyntheticAuthClient(origin) {
+async function createSyntheticAuthClient(origin, requestedRole = "learner") {
+    invariant(SYNTHETIC_ACCOUNT_ROLES.includes(requestedRole), "SYNTHETIC_ROLE_INVALID", "合成帳號角色不在可驗證範圍內。", { requestedRole });
     let registration = null;
     let email = null;
+    let password = null;
     for (let attempt = 0; attempt < 3 && registration === null; attempt += 1) {
-        const candidateEmail = `local-practice-${randomUUID()}@lerniqa.invalid`;
+        const candidateEmail = `local-practice-${requestedRole}-${randomUUID()}@lerniqa.invalid`;
         const candidatePassword = `verify-${randomUUID()}-${randomUUID()}`;
         const response = await fetchJson(origin, "/api/v1/auth/register", {
             method: "POST",
@@ -243,11 +482,11 @@ async function createSyntheticAuthClient(origin) {
                 origin: origin.origin,
             },
             body: JSON.stringify({
-                displayName: "整合驗證帳號",
-                learnerName: "整合驗證學習者",
+                displayName: `整合驗證${requestedRole}帳號`,
+                learnerName: `整合驗證${requestedRole}學習者`,
                 email: candidateEmail,
                 password: candidatePassword,
-                role: "learner",
+                role: requestedRole,
             }),
         }, [201, 409]);
         if (response.status === 409 && response.body?.error?.code === "EMAIL_ALREADY_REGISTERED") continue;
@@ -257,21 +496,28 @@ async function createSyntheticAuthClient(origin) {
         });
         registration = response;
         email = candidateEmail;
+        password = candidatePassword;
     }
-    invariant(registration !== null && email !== null, "SYNTHETIC_REGISTRATION_COLLISION", "無法取得唯一的 .invalid 合成帳號。");
+    invariant(registration !== null && email !== null && password !== null, "SYNTHETIC_REGISTRATION_COLLISION", "無法取得唯一的 .invalid 合成帳號。");
 
     const account = registration.body?.data?.account;
     invariant(
         isRecord(account)
             && account.email === email
             && account.email.endsWith(".invalid")
-            && account.activeRole === "learner"
+            && account.accountRole === requestedRole
+            && account.activeRole === requestedRole
+            && Array.isArray(account.roles)
+            && account.roles.includes(requestedRole)
             && isRecord(account.learner)
+            && Array.isArray(account.learners)
+            && account.learners.some((learner) => learner?.id === account.learner.id)
             && UUID_PATTERN.test(account.learner.id),
         "SYNTHETIC_ACCOUNT_INVALID",
         "合成帳號註冊回應缺少有效的 learner 身分。",
     );
     const cookie = sessionCookieFromHeaders(registration.headers);
+    verifySessionCookiePolicy(registration.headers, { secure: origin.protocol === "https:" });
     let loggedOut = false;
     const request = (pathname, init = undefined, expectedStatuses = [200]) => (
         fetchJson(origin, pathname, authenticatedInit(cookie.header, init), expectedStatuses)
@@ -286,18 +532,187 @@ async function createSyntheticAuthClient(origin) {
     );
 
     return {
+        email,
         emailDomain: ".invalid",
+        learnerId: account.learner.id,
+        password,
+        request,
+        requestedRole,
+        sessionTokenHash: `sha256:v1:${createHash("sha256").update(cookie.token, "utf8").digest("hex")}`,
+        async logout() {
+            if (loggedOut) return;
+            const response = await request("/api/v1/auth/logout", { method: "POST" });
+            invariant(response.body?.data?.loggedOut === true, "AUTH_LOGOUT_FAILED", "合成帳號登出 API 未確認完成。");
+            verifySessionCookiePolicy(response.headers, { secure: origin.protocol === "https:", cleared: true });
+            const afterLogout = await request("/api/v1/auth/me", undefined, [401]);
+            invariant(afterLogout.body?.error?.code === "AUTH_REQUIRED", "AUTH_SESSION_NOT_REVOKED", "登出後舊 session cookie 仍可使用。");
+            loggedOut = true;
+        },
+    };
+}
+
+async function loginSyntheticAuthClient(origin, registeredAccount) {
+    const login = await fetchJson(origin, "/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            origin: origin.origin,
+        },
+        body: JSON.stringify({
+            email: registeredAccount.email,
+            password: registeredAccount.password,
+        }),
+    });
+    const account = login.body?.data?.account;
+    invariant(
+        isRecord(account)
+            && account.email === registeredAccount.email
+            && account.activeRole === registeredAccount.requestedRole
+            && account.learner?.id === registeredAccount.learnerId,
+        "SYNTHETIC_LOGIN_ROLE_UNSTABLE",
+        "合成帳號再次登入後沒有穩定選回 learner access 的角色。",
+        { requestedRole: registeredAccount.requestedRole, activeRole: account?.activeRole },
+    );
+    const cookie = sessionCookieFromHeaders(login.headers);
+    verifySessionCookiePolicy(login.headers, { secure: origin.protocol === "https:" });
+    let loggedOut = false;
+    const request = (pathname, init = undefined, expectedStatuses = [200]) => (
+        fetchJson(origin, pathname, authenticatedInit(cookie.header, init), expectedStatuses)
+    );
+    const me = await request("/api/v1/auth/me");
+    invariant(
+        me.body?.data?.account?.email === registeredAccount.email
+            && me.body?.data?.account?.activeRole === registeredAccount.requestedRole
+            && me.body?.data?.account?.learner?.id === registeredAccount.learnerId,
+        "SYNTHETIC_LOGIN_SESSION_ROLE_UNSTABLE",
+        "登入 session 無法讀回所選角色與同一學習者。",
+        { requestedRole: registeredAccount.requestedRole },
+    );
+    return {
+        activeRole: account.activeRole,
         learnerId: account.learner.id,
         request,
         sessionTokenHash: `sha256:v1:${createHash("sha256").update(cookie.token, "utf8").digest("hex")}`,
         async logout() {
             if (loggedOut) return;
             const response = await request("/api/v1/auth/logout", { method: "POST" });
-            invariant(response.body?.data?.loggedOut === true, "AUTH_LOGOUT_FAILED", "合成帳號登出 API 未確認完成。");
+            invariant(response.body?.data?.loggedOut === true, "AUTH_LOGOUT_FAILED", "重新登入的合成帳號登出 API 未確認完成。");
+            verifySessionCookiePolicy(response.headers, { secure: origin.protocol === "https:", cleared: true });
             const afterLogout = await request("/api/v1/auth/me", undefined, [401]);
             invariant(afterLogout.body?.error?.code === "AUTH_REQUIRED", "AUTH_SESSION_NOT_REVOKED", "登出後舊 session cookie 仍可使用。");
             loggedOut = true;
         },
+    };
+}
+
+async function verifyForwardedHttpsSessionLifecycle(client, origin) {
+    const email = `forwarded-session-${randomUUID()}@lerniqa.invalid`;
+    const password = `verify-${randomUUID()}-${randomUUID()}`;
+    const proxyHeaders = {
+        host: FORWARDED_HTTPS_HOST,
+        origin: FORWARDED_HTTPS_ORIGIN,
+        "x-forwarded-proto": "https",
+    };
+    const registration = await fetchJsonWithExplicitHost(origin, "/api/v1/auth/register", {
+        method: "POST",
+        headers: {
+            ...proxyHeaders,
+            "content-type": "application/json",
+        },
+        body: JSON.stringify({
+            displayName: "HTTPS session 驗證帳號",
+            email,
+            password,
+            role: "learner",
+        }),
+    }, [201]);
+    const account = registration.body?.data?.account;
+    invariant(
+        account?.email === email && UUID_PATTERN.test(account?.learner?.id ?? ""),
+        "FORWARDED_HTTPS_REGISTRATION_INVALID",
+        "模擬 HTTPS proxy 的註冊回應缺少正確帳號。",
+    );
+    verifySessionCookiePolicy(registration.headers, { secure: true });
+    const requestWithCookie = (cookieHeader, pathname, init = undefined, expectedStatuses = [200]) => (
+        fetchJsonWithExplicitHost(
+            origin,
+            pathname,
+            authenticatedInit(cookieHeader, {
+                ...init,
+                headers: {
+                    ...proxyHeaders,
+                    ...Object.fromEntries(new Headers(init?.headers).entries()),
+                },
+            }),
+            expectedStatuses,
+        )
+    );
+    const registrationCookie = sessionCookieFromHeaders(registration.headers);
+    const registrationLogout = await requestWithCookie(
+        registrationCookie.header,
+        "/api/v1/auth/logout",
+        { method: "POST" },
+    );
+    invariant(
+        registrationLogout.body?.data?.loggedOut === true,
+        "FORWARDED_HTTPS_REGISTRATION_LOGOUT_FAILED",
+        "HTTPS proxy 註冊 session 無法在登入前安全結束。",
+    );
+    verifySessionCookiePolicy(registrationLogout.headers, { secure: true, cleared: true });
+    await verifyAuthSessionRevoked(
+        client,
+        `sha256:v1:${createHash("sha256").update(registrationCookie.token, "utf8").digest("hex")}`,
+    );
+
+    const login = await fetchJsonWithExplicitHost(origin, "/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+            ...proxyHeaders,
+            "content-type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+    });
+    invariant(
+        login.body?.data?.account?.email === email
+            && login.body?.data?.account?.learner?.id === account.learner.id,
+        "FORWARDED_HTTPS_LOGIN_INVALID",
+        "模擬 HTTPS proxy 的登入沒有讀回原帳號。",
+    );
+    verifySessionCookiePolicy(login.headers, { secure: true });
+    const cookie = sessionCookieFromHeaders(login.headers);
+    const request = (pathname, init = undefined, expectedStatuses = [200]) => requestWithCookie(
+        cookie.header,
+        pathname,
+        init,
+        expectedStatuses,
+    );
+
+    const refresh = await request("/api/v1/auth/me");
+    const reopenedTab = await request("/api/v1/auth/me");
+    invariant(
+        refresh.body?.data?.account?.email === email
+            && refresh.body?.data?.account?.learner?.id === account.learner.id
+            && reopenedTab.body?.data?.account?.email === email
+            && reopenedTab.body?.data?.account?.learner?.id === account.learner.id,
+        "FORWARDED_HTTPS_SESSION_NOT_RESTORED",
+        "HTTPS proxy 後的 session 無法在重新整理或新分頁讀回同一帳號。",
+    );
+    const logout = await request("/api/v1/auth/logout", { method: "POST" });
+    invariant(logout.body?.data?.loggedOut === true, "FORWARDED_HTTPS_LOGOUT_FAILED", "HTTPS proxy 後的 session 無法登出。");
+    verifySessionCookiePolicy(logout.headers, { secure: true, cleared: true });
+    const afterLogout = await request("/api/v1/auth/me", undefined, [401]);
+    invariant(afterLogout.body?.error?.code === "AUTH_REQUIRED", "FORWARDED_HTTPS_SESSION_NOT_REVOKED", "HTTPS proxy 登出後舊 session 仍可使用。");
+    await verifyAuthSessionRevoked(
+        client,
+        `sha256:v1:${createHash("sha256").update(cookie.token, "utf8").digest("hex")}`,
+    );
+    return {
+        forwardedProtocol: "https",
+        secureCookie: true,
+        loginIssuedSession: true,
+        refreshRestored: true,
+        reopenedTabRestored: true,
+        logoutRevoked: true,
     };
 }
 
@@ -310,16 +725,833 @@ async function verifyAuthSessionRevoked(client, tokenHash) {
     invariant(row?.revoked_at !== null && row?.revoked_at !== undefined, "AUTH_SESSION_DATABASE_NOT_REVOKED", "登出後資料庫 session 尚未標記 revoked_at。");
 }
 
+async function verifyRegistrationRoleContracts(client, origin) {
+    const roleContracts = [];
+    for (const requestedRole of SYNTHETIC_ACCOUNT_ROLES) {
+        const registered = await createSyntheticAuthClient(origin, requestedRole);
+        let loggedIn = null;
+        try {
+            const state = (await client.query(`
+                SELECT
+                    identity.user_id,
+                    app_user.account_role,
+                    app_user.display_name AS user_display_name,
+                    learner.display_name AS learner_display_name,
+                    ARRAY(
+                        SELECT role.role
+                        FROM user_roles AS role
+                        WHERE role.user_id = identity.user_id
+                            AND role.revoked_at IS NULL
+                        ORDER BY role.role
+                    ) AS active_roles,
+                    ARRAY(
+                        SELECT DISTINCT access.access_role
+                        FROM learner_access AS access
+                        WHERE access.user_id = identity.user_id
+                            AND access.learner_id = $2
+                            AND access.accepted_at IS NOT NULL
+                            AND access.revoked_at IS NULL
+                        ORDER BY access.access_role
+                    ) AS active_access_roles
+                FROM account_identities AS identity
+                JOIN users AS app_user ON app_user.id = identity.user_id
+                JOIN learners AS learner ON learner.id = $2
+                WHERE identity.provider = 'email'
+                    AND identity.email_normalized = $1
+                    AND identity.revoked_at IS NULL
+                LIMIT 1
+            `, [registered.email, registered.learnerId])).rows[0];
+            const expectedRoles = requestedRole === "learner"
+                ? ["learner"]
+                : ["learner", requestedRole].sort();
+            invariant(
+                UUID_PATTERN.test(state?.user_id)
+                    && state.account_role === requestedRole
+                    && JSON.stringify(state.active_roles) === JSON.stringify(expectedRoles)
+                    && JSON.stringify(state.active_access_roles) === JSON.stringify([requestedRole]),
+                "REGISTRATION_ROLE_CONTRACT_MISMATCH",
+                "註冊沒有建立預期的 active user roles 與 learner access role。",
+                {
+                    requestedRole,
+                    expectedRoles,
+                    activeRoles: state?.active_roles,
+                    activeAccessRoles: state?.active_access_roles,
+                },
+            );
+            if (requestedRole === "learner") {
+                invariant(
+                    state.user_display_name === state.learner_display_name,
+                    "REGISTRATION_SELF_NAME_MISMATCH",
+                    "本人學習者名稱沒有和帳號稱呼同步。",
+                );
+            }
+
+            await registered.logout();
+            await verifyAuthSessionRevoked(client, registered.sessionTokenHash);
+            loggedIn = await loginSyntheticAuthClient(origin, registered);
+            invariant(loggedIn.activeRole === requestedRole, "LOGIN_ACTIVE_ROLE_MISMATCH", "再次登入沒有選回註冊時的角色。", { requestedRole, activeRole: loggedIn.activeRole });
+            roleContracts.push({
+                requestedRole,
+                activeRoles: state.active_roles,
+                accessRole: state.active_access_roles[0],
+                registrationActiveRole: requestedRole,
+                loginActiveRole: loggedIn.activeRole,
+            });
+        }
+        finally {
+            await registered.logout();
+            if (loggedIn) {
+                await loggedIn.logout();
+                await verifyAuthSessionRevoked(client, loggedIn.sessionTokenHash);
+            }
+        }
+    }
+    return roleContracts;
+}
+
+function accountMutationInit(origin, body) {
+    return {
+        method: "PATCH",
+        headers: {
+            "content-type": "application/json",
+            origin: origin.origin,
+        },
+        body: JSON.stringify(body),
+    };
+}
+
+async function verifyAccountSettingsContracts(client, origin) {
+    const owner = await createSyntheticAuthClient(origin, "parent");
+    const outsider = await createSyntheticAuthClient(origin, "parent");
+    try {
+        const initialAccount = (await owner.request("/api/v1/auth/me")).body?.data?.account;
+        const initialSubjectSetting = initialAccount?.learner?.subjectSettings?.find((setting) => (
+            typeof setting?.subject?.code === "string"
+            && Number.isSafeInteger(setting?.lockVersion)
+            && Array.isArray(setting?.availableBookVersions)
+            && setting.availableBookVersions.some((version) => UUID_PATTERN.test(version?.id ?? ""))
+        ));
+        invariant(
+            initialSubjectSetting,
+            "SUBJECT_VERSION_FIXTURE_MISSING",
+            "合成學習者沒有可用教材版本，無法驗證每科版本設定。",
+        );
+        const originalBookVersionId = initialSubjectSetting.bookVersion?.id ?? null;
+        const changedBookVersionId = originalBookVersionId === null
+            ? initialSubjectSetting.availableBookVersions[0].id
+            : null;
+        const changedSubjectVersion = await owner.request(
+            "/api/v1/auth/learners/subject-settings",
+            accountMutationInit(origin, {
+                learnerId: owner.learnerId,
+                subjectCode: initialSubjectSetting.subject.code,
+                bookVersionId: changedBookVersionId,
+                lockVersion: initialSubjectSetting.lockVersion,
+            }),
+        );
+        const changedSetting = changedSubjectVersion.body?.data?.account?.learner?.subjectSettings?.find(
+            (setting) => setting?.subject?.code === initialSubjectSetting.subject.code,
+        );
+        invariant(
+            changedSetting?.bookVersion?.id === changedBookVersionId
+                || (changedBookVersionId === null && changedSetting?.bookVersion === null),
+            "SUBJECT_VERSION_UPDATE_MISMATCH",
+            "科目版本 PATCH 沒有回傳更新後的教材版本。",
+        );
+        invariant(
+            changedSetting.lockVersion === initialSubjectSetting.lockVersion + 1,
+            "SUBJECT_VERSION_LOCK_NOT_ADVANCED",
+            "科目版本更新沒有推進 optimistic lock。",
+        );
+
+        const staleSubjectVersion = await owner.request(
+            "/api/v1/auth/learners/subject-settings",
+            accountMutationInit(origin, {
+                learnerId: owner.learnerId,
+                subjectCode: initialSubjectSetting.subject.code,
+                bookVersionId: originalBookVersionId,
+                lockVersion: initialSubjectSetting.lockVersion,
+            }),
+            [409],
+        );
+        invariant(
+            staleSubjectVersion.body?.error?.code === "LEARNER_SUBJECT_SETTING_CONFLICT",
+            "SUBJECT_VERSION_STALE_LOCK_ACCEPTED",
+            "科目版本設定接受了會覆蓋新值的過期 optimistic lock。",
+        );
+        const crossAccountSubjectVersion = await outsider.request(
+            "/api/v1/auth/learners/subject-settings",
+            accountMutationInit(origin, {
+                learnerId: owner.learnerId,
+                subjectCode: initialSubjectSetting.subject.code,
+                bookVersionId: originalBookVersionId,
+                lockVersion: changedSetting.lockVersion,
+            }),
+            [403],
+        );
+        invariant(
+            crossAccountSubjectVersion.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN",
+            "SUBJECT_VERSION_CROSS_ACCOUNT_UPDATE",
+            "另一帳號可修改不屬於自己的學習者科目版本。",
+        );
+        const restoredSubjectVersion = await owner.request(
+            "/api/v1/auth/learners/subject-settings",
+            accountMutationInit(origin, {
+                learnerId: owner.learnerId,
+                subjectCode: initialSubjectSetting.subject.code,
+                bookVersionId: originalBookVersionId,
+                lockVersion: changedSetting.lockVersion,
+            }),
+        );
+        const restoredSetting = restoredSubjectVersion.body?.data?.account?.learner?.subjectSettings?.find(
+            (setting) => setting?.subject?.code === initialSubjectSetting.subject.code,
+        );
+        const refreshedSetting = (await owner.request("/api/v1/auth/me"))
+            .body?.data?.account?.learner?.subjectSettings?.find(
+                (setting) => setting?.subject?.code === initialSubjectSetting.subject.code,
+            );
+        invariant(
+            (restoredSetting?.bookVersion?.id ?? null) === originalBookVersionId
+                && restoredSetting?.lockVersion === changedSetting.lockVersion + 1
+                && (refreshedSetting?.bookVersion?.id ?? null) === originalBookVersionId
+                && refreshedSetting?.lockVersion === restoredSetting.lockVersion,
+            "SUBJECT_VERSION_READBACK_MISMATCH",
+            "科目版本設定無法由目前 session 重新讀回，或還原後狀態不一致。",
+        );
+        const subjectVersionSetting = {
+            subjectCode: initialSubjectSetting.subject.code,
+            updateReadBack: true,
+            optimisticLock: true,
+            crossAccountIsolation: true,
+        };
+
+        const ungrantedRole = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: owner.password,
+            }),
+            [403],
+        );
+        invariant(
+            ungrantedRole.body?.error?.code === "ROLE_NOT_GRANTED",
+            "QUICK_ROLE_GRANTED_PRIVILEGE",
+            "快速角色切換可切到未授權角色。",
+        );
+
+        const wrongPassword = await owner.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: "definitely-not-the-account-password",
+            }),
+            [401],
+        );
+        invariant(
+            wrongPassword.body?.error?.code === "INVALID_CREDENTIALS",
+            "IDENTITY_REAUTH_NOT_ENFORCED",
+            "身份變更沒有拒絕錯誤密碼。",
+        );
+        const tutorGrantBeforeIdentity = await client.query(`
+            SELECT 1
+            FROM account_identities AS identity
+            JOIN user_roles AS role ON role.user_id = identity.user_id
+            WHERE identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+                AND role.role = 'tutor'
+                AND role.revoked_at IS NULL
+        `, [owner.email]);
+        invariant(tutorGrantBeforeIdentity.rowCount === 0, "FAILED_IDENTITY_PARTIAL_GRANT", "錯誤密碼的身份變更留下 tutor grant。");
+
+        const tutorIdentity = await owner.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: owner.password,
+            }),
+        );
+        invariant(
+            tutorIdentity.body?.data?.account?.accountRole === "tutor"
+                && tutorIdentity.body.data.account.activeRole === "tutor"
+                && tutorIdentity.body.data.account.roles.includes("tutor")
+                && !tutorIdentity.body.data.account.roles.includes("system_admin"),
+            "IDENTITY_SELF_GRANT_MISMATCH",
+            "身份變更沒有建立或選取預期的一般角色。",
+        );
+        const systemAdminGrant = await client.query(`
+            SELECT 1
+            FROM account_identities AS identity
+            JOIN user_roles AS role ON role.user_id = identity.user_id
+            WHERE identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+                AND role.role = 'system_admin'
+                AND role.revoked_at IS NULL
+        `, [owner.email]);
+        invariant(systemAdminGrant.rowCount === 0, "IDENTITY_GRANTED_SYSTEM_ADMIN", "一般身份 API 建立了 system_admin grant。");
+        const wrongQuickSwitchPassword = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: "definitely-not-the-account-password",
+            }),
+            [401],
+        );
+        invariant(
+            wrongQuickSwitchPassword.body?.error?.code === "INVALID_CREDENTIALS",
+            "QUICK_ROLE_REAUTH_NOT_ENFORCED",
+            "快速切到 parent/tutor 沒有拒絕錯誤密碼。",
+        );
+        const idempotentQuickSwitch = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: owner.password,
+            }),
+        );
+        invariant(
+            idempotentQuickSwitch.body?.data?.account?.activeRole === "tutor"
+                && idempotentQuickSwitch.headers.get("set-cookie") === null,
+            "QUICK_ROLE_NOT_IDEMPOTENT",
+            "切到目前角色時不應建立新 session 或改變角色。",
+        );
+
+        const learnerMode = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, { targetRole: "learner" }),
+        );
+        invariant(
+            learnerMode.body?.data?.account?.accountRole === "tutor"
+                && learnerMode.body.data.account.activeRole === "learner"
+                && learnerMode.body.data.account.learner.id === owner.learnerId
+                && learnerMode.body.data.account.email === null
+                && learnerMode.body.data.account.emailVerified === null
+                && learnerMode.body.data.account.learners.length === 1
+                && learnerMode.body.meta?.emailVerification === "hidden",
+            "QUICK_ROLE_ACCOUNT_IDENTITY_CHANGED",
+            "快速角色切換不應改變本人身份，受管理 learner 模式也不得揭露帳號資料。",
+        );
+        const forbiddenManagedLearnerIdentity = await owner.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, {
+                targetRole: "parent",
+                password: owner.password,
+            }),
+            [403],
+        );
+        invariant(
+            forbiddenManagedLearnerIdentity.body?.error?.code === "ACCOUNT_SETTINGS_FORBIDDEN",
+            "MANAGED_LEARNER_IDENTITY_BYPASS",
+            "受管理學習者模式可直接變更帳號身份。",
+        );
+        const identityAfterForbiddenMutation = (await client.query(`
+            SELECT app_user.account_role
+            FROM account_identities AS identity
+            JOIN users AS app_user ON app_user.id = identity.user_id
+            WHERE identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+            LIMIT 1
+        `, [owner.email])).rows[0];
+        invariant(
+            identityAfterForbiddenMutation?.account_role === "tutor",
+            "MANAGED_LEARNER_IDENTITY_PARTIAL_WRITE",
+            "被拒絕的帳號身份變更留下部分寫入。",
+        );
+        const currentLearnerUpdate = await owner.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update-current",
+                learnerId: owner.learnerId,
+                displayName: "學習者模式目前學生",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+        );
+        invariant(
+            currentLearnerUpdate.body?.data?.account?.accountRole === "tutor"
+                && currentLearnerUpdate.body.data.account.activeRole === "learner"
+                && currentLearnerUpdate.body.data.account.learner.id === owner.learnerId
+                && currentLearnerUpdate.body.data.account.learner.displayName === "學習者模式目前學生",
+            "CURRENT_LEARNER_UPDATE_MISMATCH",
+            "learner mode 沒有只更新目前學習者的基本資料。",
+        );
+        const forbiddenManagedUpdate = await owner.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update",
+                learnerId: owner.learnerId,
+                displayName: "不可由帳號設定修改",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+            [403],
+        );
+        invariant(
+            forbiddenManagedUpdate.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN",
+            "LEARNER_MODE_ACCOUNT_SETTINGS_GUARD_MISSING",
+            "learner mode 可冒用帳號層 learner update。",
+        );
+        await client.query(`
+            UPDATE learner_access AS access
+            SET can_manage_settings = false
+            FROM account_identities AS identity
+            WHERE identity.user_id = access.user_id
+                AND identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+                AND access.learner_id = $2
+                AND access.access_role IN ('parent', 'tutor')
+                AND access.revoked_at IS NULL
+        `, [owner.email, owner.learnerId]);
+        const forbiddenReadOnlyCurrentUpdate = await owner.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update-current",
+                learnerId: owner.learnerId,
+                displayName: "唯讀 access 不可修改",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+            [403],
+        );
+        invariant(
+            forbiddenReadOnlyCurrentUpdate.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN",
+            "CURRENT_LEARNER_MANAGE_PERMISSION_MISSING",
+            "learner mode 忽略 can_manage_settings=false。",
+        );
+        await client.query(`
+            UPDATE learner_access AS access
+            SET can_manage_settings = true
+            FROM account_identities AS identity
+            WHERE identity.user_id = access.user_id
+                AND identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+                AND access.learner_id = $2
+                AND access.access_role IN ('parent', 'tutor')
+                AND access.revoked_at IS NULL
+        `, [owner.email, owner.learnerId]);
+        const forbiddenOtherCurrentUpdate = await owner.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update-current",
+                learnerId: outsider.learnerId,
+                displayName: "不可修改其他學習者",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+            [403],
+        );
+        invariant(
+            forbiddenOtherCurrentUpdate.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN",
+            "CURRENT_LEARNER_SCOPE_GUARD_MISSING",
+            "learner mode 可修改非目前或跨帳號學習者。",
+        );
+        const forbiddenCreateId = randomUUID();
+        const forbiddenCreate = await owner.request(
+            "/api/v1/auth/learners",
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    origin: origin.origin,
+                },
+                body: JSON.stringify({
+                    clientRequestId: forbiddenCreateId,
+                    displayName: "模式拒絕學習者",
+                    gradeCode: "junior-high-1",
+                    semesterCode: "semester-1",
+                }),
+            },
+            [403],
+        );
+        invariant(
+            forbiddenCreate.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN",
+            "MANAGED_LEARNER_MODE_GUARD_MISSING",
+            "受管帳號切到 learner 模式後仍可新增學習者。",
+        );
+        const forbiddenArtifact = await client.query(
+            "SELECT 1 FROM learners WHERE id = $1",
+            [forbiddenCreateId],
+        );
+        invariant(forbiddenArtifact.rowCount === 0, "FORBIDDEN_LEARNER_PARTIAL_WRITE", "被拒絕的新增要求留下部分資料。");
+
+        const adultAccountMode = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, {
+                targetRole: "parent",
+                password: owner.password,
+            }),
+        );
+        invariant(
+            adultAccountMode.body?.data?.account?.accountRole === "tutor"
+                && adultAccountMode.body.data.account.activeRole === "parent",
+            "ADULT_ACCOUNT_MODE_SWITCH_MISMATCH",
+            "非 learner 的已授權成人模式不應改變持久本人身份。",
+        );
+        const invalidCatalogId = randomUUID();
+        const invalidCatalog = await owner.request(
+            "/api/v1/auth/learners",
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    origin: origin.origin,
+                },
+                body: JSON.stringify({
+                    clientRequestId: invalidCatalogId,
+                    displayName: "不存在年級",
+                    gradeCode: "missing-grade",
+                    semesterCode: "semester-1",
+                }),
+            },
+            [400],
+        );
+        invariant(invalidCatalog.body?.error?.code === "LEARNER_CATALOG_NOT_FOUND", "INVALID_LEARNER_CATALOG_ACCEPTED", "不存在的年級仍可新增學習者。");
+        const invalidCatalogArtifact = await client.query(
+            "SELECT 1 FROM learners WHERE id = $1",
+            [invalidCatalogId],
+        );
+        invariant(invalidCatalogArtifact.rowCount === 0, "INVALID_CATALOG_PARTIAL_WRITE", "無效年級要求留下部分 learner 資料。");
+
+        const learnerId = randomUUID();
+        const learnerPayload = {
+            clientRequestId: learnerId,
+            displayName: "冪等受管學習者",
+            gradeCode: "junior-high-1",
+            semesterCode: "semester-1",
+        };
+        for (let replay = 0; replay < 2; replay += 1) {
+            const created = await owner.request(
+                "/api/v1/auth/learners",
+                {
+                    method: "POST",
+                    headers: {
+                        "content-type": "application/json",
+                        origin: origin.origin,
+                    },
+                    body: JSON.stringify(learnerPayload),
+                },
+                [201],
+            );
+            invariant(
+                created.body?.data?.account?.learner?.id === learnerId,
+                "LEARNER_CREATE_REPLAY_MISMATCH",
+                "重送新增學習者要求沒有回到同一筆資料。",
+            );
+        }
+        const learnerRows = (await client.query(`
+            SELECT
+                count(DISTINCT learner.id)::integer AS learner_count,
+                count(DISTINCT access.id)::integer AS access_count,
+                count(DISTINCT preference.learner_id)::integer AS preference_count
+            FROM learners AS learner
+            LEFT JOIN learner_access AS access ON access.learner_id = learner.id
+            LEFT JOIN learner_preferences AS preference ON preference.learner_id = learner.id
+            WHERE learner.id = $1
+        `, [learnerId])).rows[0];
+        invariant(
+            learnerRows?.learner_count === 1
+                && learnerRows.access_count === 1
+                && learnerRows.preference_count === 1,
+            "LEARNER_CREATE_NOT_IDEMPOTENT",
+            "重送新增學習者要求建立了重複或不完整資料。",
+            learnerRows,
+        );
+
+        const changedReplay = await owner.request(
+            "/api/v1/auth/learners",
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    origin: origin.origin,
+                },
+                body: JSON.stringify({ ...learnerPayload, displayName: "不同 payload" }),
+            },
+            [409],
+        );
+        invariant(changedReplay.body?.error?.code === "LEARNER_REQUEST_CONFLICT", "LEARNER_REPLAY_CONFLICT_MISSING", "同一識別碼可被不同 payload 重用。");
+        const crossAccountReplay = await outsider.request(
+            "/api/v1/auth/learners",
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    origin: origin.origin,
+                },
+                body: JSON.stringify(learnerPayload),
+            },
+            [409],
+        );
+        invariant(crossAccountReplay.body?.error?.code === "LEARNER_REQUEST_CONFLICT", "LEARNER_REQUEST_ID_HIJACK", "另一帳號可劫持已使用的請求識別碼。");
+
+        const crossAccountUpdate = await outsider.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update",
+                learnerId,
+                displayName: "越權修改",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+            [403],
+        );
+        invariant(crossAccountUpdate.body?.error?.code === "LEARNER_SETTINGS_FORBIDDEN", "CROSS_ACCOUNT_LEARNER_UPDATE", "另一帳號可修改不屬於自己的學習者。");
+
+        const gradeFixtureToken = randomUUID().replaceAll("-", "").slice(0, 10);
+        const nextGradeId = randomUUID();
+        const nextGradeCode = `verify-grade-${gradeFixtureToken}`;
+        const oldSystemSubjectId = randomUUID();
+        const nextSystemSubjectId = randomUUID();
+        const customSubjectId = randomUUID();
+        await client.query(`
+            INSERT INTO grades (id, stage, code, name, sort_order, status)
+            VALUES ($1, 'junior_high', $2, $3, 32760, 'active')
+        `, [nextGradeId, nextGradeCode, `驗證年級${gradeFixtureToken}`]);
+        await client.query(`
+            INSERT INTO subjects (
+                id, code, name, normalized_name, subject_kind, origin, owner_user_id, status
+            )
+            VALUES
+                ($1, $2, $3, $3, 'leaf', 'system', NULL, 'active'),
+                ($4, $5, $6, $6, 'leaf', 'system', NULL, 'active')
+        `, [
+            oldSystemSubjectId,
+            `verify-old-${gradeFixtureToken}`,
+            `舊年級系統科目${gradeFixtureToken}`,
+            nextSystemSubjectId,
+            `verify-new-${gradeFixtureToken}`,
+            `新年級系統科目${gradeFixtureToken}`,
+        ]);
+        await client.query(`
+            INSERT INTO subjects (
+                id, code, name, normalized_name, subject_kind, origin, owner_user_id, status
+            )
+            SELECT $1, $2, $3, $3, 'leaf', 'account', identity.user_id, 'active'
+            FROM account_identities AS identity
+            WHERE identity.email_normalized = $4
+                AND identity.revoked_at IS NULL
+        `, [
+            customSubjectId,
+            `verify-custom-${gradeFixtureToken}`,
+            `帳號自訂科目${gradeFixtureToken}`,
+            owner.email,
+        ]);
+        await client.query(`
+            INSERT INTO grade_subjects (grade_id, subject_id, is_default, sort_order)
+            VALUES ($1, $2, true, 0)
+        `, [nextGradeId, nextSystemSubjectId]);
+        await client.query(`
+            INSERT INTO learner_subject_settings (
+                id, learner_id, subject_id, enabled, is_default_subject, position
+            )
+            VALUES
+                ($1, $2, $3, true, true, 31000),
+                ($4, $2, $5, true, true, 31001)
+        `, [randomUUID(), learnerId, oldSystemSubjectId, randomUUID(), customSubjectId]);
+
+        const updated = await owner.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update",
+                learnerId,
+                displayName: "已更新受管學習者",
+                gradeCode: nextGradeCode,
+                semesterCode: "semester-1",
+            }),
+        );
+        const enabledSubjectCodes = (updated.body?.data?.account?.learner?.subjectSettings ?? [])
+            .map((setting) => setting?.subject?.code);
+        invariant(
+            updated.body?.data?.account?.learner?.displayName === "已更新受管學習者"
+                && updated.body.data.account.learner.gradeCode === nextGradeCode
+                && enabledSubjectCodes.includes(`verify-new-${gradeFixtureToken}`)
+                && enabledSubjectCodes.includes(`verify-custom-${gradeFixtureToken}`)
+                && !enabledSubjectCodes.includes(`verify-old-${gradeFixtureToken}`),
+            "MANAGED_LEARNER_UPDATE_MISMATCH",
+            "年級更新沒有正確啟停系統科目或保留帳號自訂科目。",
+            { enabledSubjectCodes },
+        );
+        const reconciledSettings = await client.query(`
+            SELECT subject_id, enabled, is_default_subject, position
+            FROM learner_subject_settings
+            WHERE learner_id = $1
+                AND subject_id = ANY($2::uuid[])
+            ORDER BY subject_id
+        `, [learnerId, [oldSystemSubjectId, nextSystemSubjectId, customSubjectId]]);
+        const enabledBySubjectId = new Map(
+            reconciledSettings.rows.map((row) => [row.subject_id, row]),
+        );
+        invariant(
+            enabledBySubjectId.get(oldSystemSubjectId)?.enabled === false
+                && enabledBySubjectId.get(nextSystemSubjectId)?.enabled === true
+                && enabledBySubjectId.get(customSubjectId)?.enabled === true
+                && enabledBySubjectId.get(customSubjectId)?.is_default_subject === true
+                && enabledBySubjectId.get(customSubjectId)?.position === 31001,
+            "GRADE_SUBJECT_RECONCILIATION_MISMATCH",
+            "grade change 的 subject setting reconcile 不正確。",
+        );
+
+        const managedModeAfterSecondLearner = await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, { targetRole: "learner" }),
+        );
+        const managedAccount = managedModeAfterSecondLearner.body?.data?.account;
+        invariant(
+            managedAccount?.email === null
+                && managedAccount.emailVerified === null
+                && managedAccount.learner?.id === learnerId
+                && managedAccount.learners?.length === 1
+                && managedAccount.learners[0]?.id === learnerId,
+            "MANAGED_LEARNER_ROSTER_LEAK",
+            "受管理 learner 模式揭露了帳號信箱或其他學習者。",
+        );
+        await owner.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, { targetRole: "parent", password: owner.password }),
+        );
+
+        const selfIdentity = await outsider.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, { targetRole: "learner" }),
+        );
+        const selfAccount = selfIdentity.body?.data?.account;
+        invariant(
+            selfAccount?.accountRole === "learner"
+                && selfAccount.activeRole === "learner"
+                && selfAccount.learner?.isSelf === true
+                && selfAccount.learner?.canManageSettings === true
+                && selfAccount.learner?.displayName === selfAccount.displayName
+                && selfAccount.learners?.length === 1
+                && selfAccount.learners[0]?.id === selfAccount.learner.id,
+            "SELF_LEARNER_PROVISION_MISMATCH",
+            "learner 本人身份沒有建立可管理且同名的 self learner。",
+        );
+        const firstSelfLearnerId = selfAccount.learner.id;
+        const replayedSelfIdentity = await outsider.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, { targetRole: "learner" }),
+        );
+        invariant(replayedSelfIdentity.body?.data?.account?.learner?.id === firstSelfLearnerId, "SELF_IDENTITY_NOT_IDEMPOTENT", "重送本人身份選取建立了第二位 self learner。");
+
+        const selfUpdated = await outsider.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update-current",
+                learnerId: firstSelfLearnerId,
+                displayName: "同步本人新名稱",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+        );
+        invariant(
+            selfUpdated.body?.data?.account?.displayName === "同步本人新名稱"
+                && selfUpdated.body.data.account.learner.displayName === "同步本人新名稱",
+            "SELF_LEARNER_NAME_NOT_SYNCED",
+            "本人學習者更新沒有同步帳號與 learner 名稱。",
+        );
+        const selfDatabaseState = (await client.query(`
+            SELECT
+                app_user.display_name AS user_display_name,
+                learner.display_name AS learner_display_name,
+                count(*) OVER ()::integer AS self_access_count,
+                access.can_manage_settings
+            FROM account_identities AS identity
+            JOIN users AS app_user ON app_user.id = identity.user_id
+            JOIN learner_access AS access
+                ON access.user_id = app_user.id
+                AND access.access_role = 'learner'
+                AND access.revoked_at IS NULL
+            JOIN learners AS learner ON learner.id = access.learner_id
+            WHERE identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+        `, [outsider.email])).rows[0];
+        invariant(
+            selfDatabaseState?.self_access_count === 1
+                && selfDatabaseState.can_manage_settings === true
+                && selfDatabaseState.user_display_name === selfDatabaseState.learner_display_name,
+            "SELF_LEARNER_DATABASE_INVARIANT_MISMATCH",
+            "本人學習者的唯一性、權限或名稱同步不正確。",
+        );
+
+        const adultModeWithLearnerIdentity = await outsider.request(
+            "/api/v1/auth/role",
+            accountMutationInit(origin, {
+                targetRole: "parent",
+                password: outsider.password,
+            }),
+        );
+        invariant(
+            adultModeWithLearnerIdentity.body?.data?.account?.accountRole === "learner"
+                && adultModeWithLearnerIdentity.body.data.account.activeRole === "parent",
+            "LEARNER_IDENTITY_ADULT_MODE_UNSUPPORTED",
+            "保留的成人角色授權切換後沒有形成可用且一致的成人模式。",
+        );
+
+        await outsider.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, {
+                targetRole: "parent",
+                password: outsider.password,
+            }),
+        );
+        const managedSelfUpdate = await outsider.request(
+            "/api/v1/auth/learners",
+            accountMutationInit(origin, {
+                action: "update",
+                learnerId: firstSelfLearnerId,
+                displayName: "管理模式同步本人名稱",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            }),
+        );
+        invariant(
+            managedSelfUpdate.body?.data?.account?.accountRole === "parent"
+                && managedSelfUpdate.body.data.account.displayName === "管理模式同步本人名稱"
+                && managedSelfUpdate.body.data.account.learner.displayName === "管理模式同步本人名稱",
+            "MANAGED_SELF_LEARNER_NAME_NOT_SYNCED",
+            "parent/tutor identity 更新自己的 self learner 時未同步帳號名稱。",
+        );
+
+        return {
+            quickRoleDoesNotGrant: true,
+            identitySelfGrant: true,
+            systemAdminUntouched: true,
+            idempotentQuickRole: true,
+            managedModeGuard: true,
+            managedLearnerIdentityGuard: true,
+            adultRoleAccountSettings: true,
+            currentLearnerModeGuard: true,
+            idempotentLearnerCreate: true,
+            crossAccountIsolation: true,
+            gradeSubjectReconciliation: true,
+            subjectVersionSetting,
+            selfLearnerNameSync: true,
+            retainedAdultGrantSupported: true,
+        };
+    }
+    finally {
+        await owner.logout();
+        await outsider.logout();
+    }
+}
+
 async function verifyDatabaseIdentity(client, config) {
     const identity = (await client.query(`
         SELECT
             inet_server_addr()::text AS server_address,
             current_database() AS database_name,
+            current_user AS current_user_name,
+            session_user AS session_user_name,
             current_setting('data_directory') AS data_directory,
             current_setting('listen_addresses') AS listen_addresses,
             current_setting('unix_socket_directories') AS socket_directories,
             current_setting('unix_socket_permissions') AS socket_permissions,
             current_setting('port') AS server_port,
+            pg_catalog.pg_is_in_recovery() AS in_recovery,
+            (
+                SELECT pg_catalog.shobj_description(oid, 'pg_database')
+                FROM pg_catalog.pg_database
+                WHERE datname = current_database()
+            ) AS database_comment,
             pg_postmaster_start_time() AS server_started_at
     `)).rows[0];
     invariant(identity?.server_address === null, "DATABASE_NOT_UNIX_SOCKET", "資料庫連線不是 Unix socket，拒絕驗證寫入流程。");
@@ -331,34 +1563,55 @@ async function verifyDatabaseIdentity(client, config) {
         expected: config.port,
         actual: identity.server_port,
     });
-    invariant(identity.listen_addresses === "", "DATABASE_TCP_ENABLED", "隔離 PostgreSQL 不應啟用 TCP。");
-    invariant(identity.socket_directories === config.socket, "DATABASE_SOCKET_MISMATCH", "PostgreSQL socket 目錄不符。");
-    invariant(identity.socket_permissions === "0700", "DATABASE_SOCKET_PERMISSIONS_MISMATCH", "隔離 PostgreSQL socket 權限必須是 0700。");
-    const expectedDataDirectory = path.join(REPOSITORY_ROOT, "local-data", "postgres");
-    invariant(path.resolve(identity.data_directory) === expectedDataDirectory, "DATABASE_CLUSTER_MISMATCH", "目前連線不是 Lerniqa 管理的本機隔離 cluster。");
+    invariant(identity.current_user_name === config.user && identity.session_user_name === config.user, "DATABASE_USER_MISMATCH", "PostgreSQL current_user/session_user 不是目前作業系統使用者。");
+    invariant(identity.in_recovery === false, "DATABASE_IN_RECOVERY", "拒絕在 recovery 中的 PostgreSQL 執行練習整合驗證。");
+    const [actualDataDirectory, expectedDataDirectory, actualSocket, expectedSocket] = await Promise.all([
+        realpath(identity.data_directory).catch(() => null),
+        realpath(config.expectedDataDirectory).catch(() => null),
+        realpath(identity.socket_directories).catch(() => null),
+        realpath(config.expectedSocket).catch(() => null),
+    ]);
+    invariant(actualDataDirectory !== null && actualDataDirectory === expectedDataDirectory, "DATABASE_CLUSTER_MISMATCH", "PostgreSQL data_directory 與明確核准的隔離環境不符。", {
+        expected: expectedDataDirectory,
+        actual: actualDataDirectory,
+    });
+    invariant(actualSocket !== null && actualSocket === expectedSocket, "DATABASE_SOCKET_MISMATCH", "PostgreSQL unix_socket_directories 與明確核准的 socket 不符。", {
+        expected: expectedSocket,
+        actual: actualSocket,
+    });
+    if (config.existingServer) {
+        invariant(identity.database_comment === `${DATABASE_OWNERSHIP_COMMENT_PREFIX}${config.token}`, "DATABASE_OWNERSHIP_MARKER_MISMATCH", "existing-local-server 上的隔離資料庫缺少本次一次性 ownership marker。");
+    }
+    else {
+        invariant(identity.listen_addresses === "", "DATABASE_TCP_ENABLED", "隔離 PostgreSQL 不應啟用 TCP。");
+        invariant(identity.socket_permissions === "0700", "DATABASE_SOCKET_PERMISSIONS_MISMATCH", "隔離 PostgreSQL socket 權限必須是 0700。");
+    }
     const serverStartedAtMillis = new Date(identity.server_started_at).getTime();
     invariant(Number.isFinite(serverStartedAtMillis), "DATABASE_START_TIME_INVALID", "PostgreSQL 未回傳有效的啟動時間。");
     const serverStartedAt = new Date(serverStartedAtMillis).toISOString();
     return {
         database: identity.database_name,
+        borrowedExistingServer: config.existingServer,
         unixSocket: true,
         socketPermissions: identity.socket_permissions,
-        tcpDisabled: true,
+        tcpDisabled: identity.listen_addresses === "",
+        currentUser: identity.current_user_name,
+        inRecovery: identity.in_recovery,
         serverStartedAt,
     };
 }
 
-async function verifyMigrations(client) {
+async function verifyMigrations(client, expected) {
     const rows = (await client.query(`
         SELECT version, name
         FROM schema_migrations
         ORDER BY version
     `)).rows;
-    invariant(rows.length === EXPECTED_MIGRATIONS.length, "MIGRATION_COUNT_MISMATCH", "schema_migrations 必須恰好包含 0001 到 0007。", {
-        expected: EXPECTED_MIGRATIONS.length,
+    invariant(rows.length === expected.length, "MIGRATION_COUNT_MISMATCH", "schema_migrations 必須與 repository migration manifest 完全一致。", {
+        expected: expected.length,
         actual: rows.length,
     });
-    EXPECTED_MIGRATIONS.forEach(([version, name], index) => {
+    expected.forEach(([version, name], index) => {
         invariant(rows[index]?.version === version && rows[index]?.name === name, "MIGRATION_MISMATCH", "migration 版本或名稱不符。", {
             index,
             expectedVersion: version,
@@ -406,7 +1659,7 @@ function payloadSource(payload) {
     return isRecord(payload.source) ? payload.source : payload;
 }
 
-async function verifyImport(client, authenticatedLearnerId) {
+async function verifyImport(client, authenticatedLearnerId, profile) {
     const { batch, matchingBatchCount } = await findImportBatch(client);
     invariant(batch.idempotency_key.startsWith(IMPORT_KEY_PREFIX), "IMPORT_TARGET_KEY_MISMATCH", "匯入批次不是第四課目標分類。");
     invariant(batch.created_by_user_id === HANLIN_IMPORT_PRINCIPAL.userId, "IMPORT_PRINCIPAL_MISMATCH", "匯入批次不是由固定匯入服務建立。");
@@ -483,7 +1736,7 @@ async function verifyImport(client, authenticatedLearnerId) {
         invariant(row.created_by_user_id === HANLIN_IMPORT_PRINCIPAL.userId, "SOURCE_ASSET_CREATOR_MISMATCH", "正式來源資產不是由固定匯入服務建立。");
         invariant(row.input_type === "document" && row.status === "ready" && row.pasted_text === null, "SOURCE_DOCUMENT_STATE_MISMATCH", "來源文件必須是已就緒的 document 且不得保存 pasted_text。");
         invariant(path.basename(row.original_file_name) === row.original_file_name && row.original_file_name.toLowerCase().endsWith(".doc"), "SOURCE_DOCUMENT_NAME_UNSAFE", "來源文件名稱必須是頂層相對 `.doc` 檔名。");
-        invariant(row.original_file_name.normalize("NFC") === AUTHORIZED_FOURTH_LESSON_FILE.normalize("NFC"), "SOURCE_DOCUMENT_SCOPE_MISMATCH", "匯入批次包含未授權寫入第四課的來源文件。");
+        invariant(row.original_file_name.normalize("NFC") === profile.sourceFile.normalize("NFC"), "SOURCE_DOCUMENT_SCOPE_MISMATCH", "匯入批次包含不屬於本次驗證 fixture 的來源文件。");
         invariant(typeof row.document_title === "string" && row.document_title.trim() !== "", "SOURCE_DOCUMENT_TITLE_MISSING", "來源文件缺少標題。");
         invariant(row.purpose === "source_document" && row.sensitivity === "private" && row.scan_status === "clean" && row.deleted_at === null, "SANITIZED_ASSET_STATE_MISMATCH", "來源文件只能引用 clean/private 的 source_document 資產。");
         invariant(/^sanitized-source-documents\/[0-9a-f]{64}\.docx$/u.test(row.storage_key), "SANITIZED_STORAGE_KEY_MISMATCH", "清理後來源的 storage_key 格式不符。");
@@ -535,13 +1788,13 @@ async function verifyImport(client, authenticatedLearnerId) {
         const originalSha = source.originalSha256;
         const sanitizedSha = source.sanitizedSha256;
         invariant(typeof originalSha === "string" && SHA256_PATTERN.test(originalSha), "ORIGINAL_HASH_MISSING", "來源 metadata 缺少原檔 SHA-256。");
-        invariant(originalSha === AUTHORIZED_FOURTH_LESSON_SHA256, "IMPORT_SOURCE_CHECKSUM_MISMATCH", "匯入 metadata 不是已核准的第四課原檔內容。");
+        invariant(originalSha === profile.sourceSha256, "IMPORT_SOURCE_CHECKSUM_MISMATCH", "匯入 metadata 與本次驗證 fixture 的來源雜湊不符。");
         invariant(typeof sanitizedSha === "string" && SHA256_PATTERN.test(sanitizedSha), "SANITIZED_HASH_MISSING", "來源 metadata 缺少清理後 SHA-256。");
         originalHashes.add(originalSha);
         sanitizedHashes.add(sanitizedSha);
         const relativeName = source.relativeFileName ?? source.relativePath;
         invariant(typeof relativeName === "string" && path.basename(relativeName) === relativeName, "IMPORT_RELATIVE_NAME_UNSAFE", "來源 metadata 只能保留頂層相對檔名。");
-        invariant(relativeName.normalize("NFC") === AUTHORIZED_FOURTH_LESSON_FILE.normalize("NFC"), "IMPORT_SOURCE_SCOPE_MISMATCH", "匯入 metadata 不是指定的第四課來源文件。");
+        invariant(relativeName.normalize("NFC") === profile.sourceFile.normalize("NFC"), "IMPORT_SOURCE_SCOPE_MISMATCH", "匯入 metadata 不是本次驗證 fixture 的來源文件。");
         invariant(source.originalScanStatus === "rejected", "ORIGINAL_SCAN_STATUS_MISMATCH", "原始 Word 文件必須標示為 rejected。");
         invariant(source.macroQuarantined === true, "ORIGINAL_MACRO_QUARANTINE_MISSING", "原始 Word 文件必須保留 macroQuarantined 證據。");
         const priorMapping = sourceMappings.get(originalSha);
@@ -609,7 +1862,7 @@ async function verifyImport(client, authenticatedLearnerId) {
         invariant(row.purpose === "source_document" && row.sensitivity === "private" && row.scan_status === "rejected" && row.deleted_at === null, "QUARANTINE_ASSET_STATE_MISMATCH", "原始 Word 資產必須維持 rejected/private 隔離狀態。");
         invariant(row.created_by_user_id === HANLIN_IMPORT_PRINCIPAL.userId, "QUARANTINE_ASSET_CREATOR_MISMATCH", "隔離原檔不是由固定匯入服務建立。");
         invariant(numberValue(row.byte_size) > 0 && SHA256_PATTERN.test(row.checksum), "QUARANTINE_ASSET_METADATA_INVALID", "隔離原檔缺少有效雜湊或大小。");
-        invariant(row.checksum === AUTHORIZED_FOURTH_LESSON_SHA256, "QUARANTINE_SOURCE_CHECKSUM_MISMATCH", "隔離原檔不是已核准的第四課原檔內容。");
+        invariant(row.checksum === profile.sourceSha256, "QUARANTINE_SOURCE_CHECKSUM_MISMATCH", "隔離原檔與本次驗證 fixture 的來源雜湊不符。");
         invariant(row.storage_key === `quarantine/source-documents/${row.checksum}.doc`, "QUARANTINE_CHECKSUM_MISMATCH", "隔離原檔 storage_key 與 SHA-256 不一致。");
         invariant(row.linked_source_documents === 0, "QUARANTINE_ASSET_LINKED", "rejected 原檔不得被 source_documents 引用。");
         invariant(!isAbsoluteOrPrivateString(row.storage_key), "QUARANTINE_STORAGE_KEY_UNSAFE", "隔離原檔 storage_key 含絕對路徑或 email。");
@@ -686,8 +1939,8 @@ async function verifyImport(client, authenticatedLearnerId) {
                 bool_and(
                     NOT revision_unit.is_primary
                     OR (
-                        revision_unit.assignment_type = 'manual_classification'
-                        AND revision_unit.value_source = 'user'
+                        revision_unit.assignment_type = 'native'
+                        AND revision_unit.value_source = 'document'
                     )
                 ) AS primary_assignment_valid
             FROM linked
@@ -863,6 +2116,14 @@ async function loadQuestions(api) {
         total,
         loaded: questions.length,
     });
+    const publisherNumbers = questions.map((question) => String(question.code ?? "").replace(/^[0-9a-f]{16}:/iu, ""));
+    const naturallySorted = [...publisherNumbers].sort(new Intl.Collator("zh-Hant", { numeric: true }).compare);
+    invariant(
+        publisherNumbers.every(Boolean)
+            && publisherNumbers.every((value, index) => value === naturallySorted[index]),
+        "QUESTION_API_ORDER_INVALID",
+        "題庫 API 未依出版社題號的數字自然順序回傳。",
+    );
     return { questions, pageCount: responseCount, total };
 }
 
@@ -913,6 +2174,42 @@ function correctValue(definition) {
     if (definition.answerMode === "multiple_choice") return unique(definition.acceptedKeys.map(normalize).filter(Boolean));
     if (["single_choice", "boolean"].includes(definition.answerMode)) return definition.acceptedKeys[0];
     return definition.acceptedValues[0];
+}
+
+function assertReferenceAnswers(referenceAnswers, question, definitions, codePrefix) {
+    invariant(
+        Array.isArray(referenceAnswers) && referenceAnswers.length === question.parts.length,
+        `${codePrefix}_REFERENCE_ANSWER_COUNT_INVALID`,
+        "已解鎖參考答案沒有涵蓋題目的全部目標小題。",
+    );
+    for (const part of question.parts) {
+        const actual = referenceAnswers.find((answer) => answer.partId === part.id);
+        const expected = definitions.get(part.id);
+        invariant(isRecord(actual) && expected, `${codePrefix}_REFERENCE_ANSWER_PART_MISSING`, "參考答案缺少指定小題。", { partId: part.id });
+        invariant(actual.answerMode === expected.answerMode, `${codePrefix}_REFERENCE_ANSWER_MODE_MISMATCH`, "參考答案作答方式與 pinned revision 不符。", { partId: part.id });
+        invariant(
+            JSON.stringify(unique(actual.answerKeys ?? []).sort()) === JSON.stringify(unique(expected.acceptedKeys).sort())
+                && JSON.stringify(unique(actual.acceptedValues ?? []).sort()) === JSON.stringify(unique(expected.acceptedValues).sort()),
+            `${codePrefix}_REFERENCE_ANSWER_VALUE_MISMATCH`,
+            "參考答案內容與 pinned revision 不符。",
+            { partId: part.id },
+        );
+        const expectedOptionKeys = part.options.map((option) => option.key).sort();
+        const actualOptionKeys = (actual.options ?? []).map((option) => option.key).sort();
+        invariant(
+            JSON.stringify(actualOptionKeys) === JSON.stringify(expectedOptionKeys)
+                && (actual.options ?? []).every((option) => typeof option.label === "string" && option.label.trim() !== ""),
+            `${codePrefix}_REFERENCE_OPTION_LABELS_INVALID`,
+            "參考答案沒有保留選項鍵與顯示文字。",
+            { partId: part.id },
+        );
+        invariant(
+            actual.explanation === null || typeof actual.explanation === "string",
+            `${codePrefix}_REFERENCE_EXPLANATION_INVALID`,
+            "參考答案解析必須是文字或 null。",
+            { partId: part.id },
+        );
+    }
 }
 
 function pendingValue(part) {
@@ -969,26 +2266,165 @@ function selectAttemptCases(questions, definitions) {
         missingKeyCase = { question, missingKeyPartIds: new Set(missingKeyParts.map((part) => part.id)), answers };
         break;
     }
-    return { wrongCase, missingKeyCase };
+
+    let manualReviewCase = null;
+    for (const question of questions) {
+        const manualPartIds = new Set(
+            question.parts
+                .filter((part) => definitions.get(part.id)?.gradingPolicy === "manual_review")
+                .map((part) => part.id),
+        );
+        if (manualPartIds.size === 0) continue;
+        const answers = [];
+        let selectable = true;
+        for (const part of question.parts) {
+            const definition = definitions.get(part.id);
+            const value = definition?.gradingPolicy === "manual_review"
+                ? pendingValue(part)
+                : definitionIsCompleteAutomatic(definition)
+                    ? correctValue(definition)
+                    : null;
+            if (value === null) {
+                selectable = false;
+                break;
+            }
+            answers.push({ partId: part.id, value });
+        }
+        if (!selectable) continue;
+        manualReviewCase = { question, manualPartIds, answers };
+        break;
+    }
+    invariant(manualReviewCase !== null, "MANUAL_REVIEW_QUESTION_NOT_FOUND", "找不到可完整提交的人工批改題驗證 pending 契約。");
+    return { wrongCase, missingKeyCase, manualReviewCase };
 }
 
-async function createSession(api, questionIds) {
+async function createSession(api, questions, settings = {}) {
+    const sessionId = randomUUID();
     const { body, status } = await api.request("/api/v1/local-practice/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ questionIds }),
+        body: JSON.stringify({
+            sessionId,
+            questions: questions.map((question) => ({ questionId: question.id, revisionId: question.revisionId })),
+            mode: settings.mode ?? "practice",
+            checkMode: settings.checkMode ?? "instant",
+        }),
     }, [201]);
     const session = body?.data?.session;
     const leaks = scanForbiddenKeys(body?.data, "session");
     invariant(leaks.length === 0, "SESSION_API_LEAK", "session API 洩漏答案、解析或 storage key。", { locations: leaks.slice(0, 10) });
     invariant(status === 201 && isRecord(session) && UUID_PATTERN.test(session.id), "SESSION_API_SHAPE_INVALID", "建立練習未回傳有效 session。");
-    invariant(Array.isArray(session.items) && session.items.length === questionIds.length, "SESSION_ITEM_COUNT_MISMATCH", "session 題目數量不符。");
+    invariant(session.id === sessionId, "SESSION_CLIENT_ID_MISMATCH", "session 未沿用 client 產生的 UUID。");
+    invariant(Array.isArray(session.items) && session.items.length === questions.length, "SESSION_ITEM_COUNT_MISMATCH", "session 題目數量不符。");
     invariant(
         body?.meta?.persistence === "local-postgresql" && body?.meta?.identityMode === "authenticated",
         "SESSION_API_META_INVALID",
         "session 未使用已登入的本機 PostgreSQL 身分。",
     );
     return session;
+}
+
+async function verifySessionContracts(client, origin, api, question) {
+    const sessionId = randomUUID();
+    const requestBody = {
+        sessionId,
+        questions: [{ questionId: question.id, revisionId: question.revisionId }],
+        mode: "review",
+        checkMode: "complete",
+    };
+    const created = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(requestBody),
+    }, [201]);
+    invariant(created.body?.data?.session?.id === sessionId && created.body?.meta?.replayed === false, "SESSION_IDEMPOTENT_CREATE_FAILED", "client UUID session 第一次建立結果不正確。");
+
+    const replay = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(requestBody),
+    }, [200]);
+    invariant(replay.body?.data?.session?.id === sessionId && replay.body?.meta?.replayed === true, "SESSION_IDEMPOTENT_REPLAY_FAILED", "相同 session 建立請求未安全重播。");
+
+    const conflict = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...requestBody, checkMode: "score" }),
+    }, [409]);
+    invariant(conflict.body?.error?.code === "SESSION_IDEMPOTENCY_CONFLICT", "SESSION_IDEMPOTENCY_CONFLICT_MISSING", "相同 session UUID 搭配不同設定未回傳 409。");
+
+    const otherAccount = await createSyntheticAuthClient(origin);
+    try {
+        const crossAccountPost = await otherAccount.request("/api/v1/local-practice/sessions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(requestBody),
+        }, [409]);
+        invariant(crossAccountPost.body?.error?.code === "SESSION_IDEMPOTENCY_CONFLICT", "SESSION_CROSS_ACCOUNT_POST_NOT_ISOLATED", "另一帳號可用相同 UUID 重播 session。");
+        const crossAccountGet = await otherAccount.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(sessionId)}`, undefined, [404]);
+        invariant(crossAccountGet.body?.error?.code === "SESSION_NOT_FOUND", "SESSION_CROSS_ACCOUNT_GET_NOT_ISOLATED", "另一帳號可讀取 session。");
+        const crossAccountPatch = await otherAccount.request("/api/v1/local-practice/sessions", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId, status: "paused" }),
+        }, [404]);
+        invariant(crossAccountPatch.body?.error?.code === "SESSION_NOT_FOUND", "SESSION_CROSS_ACCOUNT_PATCH_NOT_ISOLATED", "另一帳號可變更 session 狀態。");
+    }
+    finally {
+        await otherAccount.logout();
+        await verifyAuthSessionRevoked(client, otherAccount.sessionTokenHash);
+    }
+
+    const stale = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            ...requestBody,
+            sessionId: randomUUID(),
+            questions: [{ questionId: question.id, revisionId: randomUUID() }],
+        }),
+    }, [409]);
+    invariant(stale.body?.error?.code === "QUESTION_REVISION_STALE", "SESSION_STALE_REVISION_ACCEPTED", "過期 revision target 未回傳 409。");
+
+    const getSession = async (expectedStatus) => {
+        const response = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(sessionId)}`);
+        invariant(response.body?.data?.session?.status === expectedStatus, "SESSION_GET_STATUS_MISMATCH", "GET session 未回傳預期狀態。", { expectedStatus });
+        const leaks = scanForbiddenKeys(response.body?.data, "resumedSession");
+        invariant(leaks.length === 0, "SESSION_GET_API_LEAK", "GET session 洩漏答案、解析或評分 payload。", { locations: leaks.slice(0, 10) });
+    };
+    await getSession("active");
+    for (const status of ["paused", "active", "abandoned"]) {
+        const response = await api.request("/api/v1/local-practice/sessions", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId, status }),
+        });
+        invariant(response.body?.data?.session?.status === status, "SESSION_STATUS_UPDATE_FAILED", "session lifecycle 更新未生效。", { status });
+        await getSession(status);
+    }
+
+    const legacy = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ questionIds: [question.id] }),
+    }, [201]);
+    const legacySessionId = legacy.body?.data?.session?.id;
+    invariant(UUID_PATTERN.test(legacySessionId), "LEGACY_SESSION_PAYLOAD_REJECTED", "舊 questionIds payload 不再相容。");
+    await api.request("/api/v1/local-practice/sessions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: legacySessionId, status: "abandoned" }),
+    });
+    return {
+        clientSessionId: true,
+        exactReplay: true,
+        conflictRejected: true,
+        crossAccountIsolated: true,
+        staleRevisionRejected: true,
+        getAndLifecycle: true,
+        legacyQuestionIds: true,
+        answerOrStorageLeaks: 0,
+    };
 }
 
 async function submitAttempt(api, body, expectedStatuses) {
@@ -998,10 +2434,12 @@ async function submitAttempt(api, body, expectedStatuses) {
         body: JSON.stringify(body),
     }, expectedStatuses);
     const attempt = response.body?.data?.attempt;
-    const leaks = scanForbiddenKeys(response.body?.data, "attempt");
-    invariant(leaks.length === 0, "ATTEMPT_API_LEAK", "作答 API 洩漏答案內容或 storage key。", { locations: leaks.slice(0, 10) });
+    const leaks = scanNamedKeys(response.body?.data, FORBIDDEN_DETAILED_PRIVATE_KEYS, "attempt");
+    invariant(leaks.length === 0, "ATTEMPT_API_LEAK", "作答 API 洩漏作答 payload、冪等鍵或 storage key。", { locations: leaks.slice(0, 10) });
+    invariant(response.body?.data?.disclosure === "detailed", "ATTEMPT_DISCLOSURE_INVALID", "逐題檢核未回傳 detailed disclosure。");
     invariant(isRecord(attempt) && UUID_PATTERN.test(attempt.id), "ATTEMPT_API_SHAPE_INVALID", "作答 API 未回傳有效 attempt。");
     invariant(Array.isArray(attempt.parts), "ATTEMPT_PARTS_INVALID", "作答 API 未回傳小題結果。");
+    invariant(Array.isArray(attempt.referenceAnswers), "ATTEMPT_REFERENCE_ANSWERS_MISSING", "逐題檢核未回傳已解鎖的參考答案。");
     return { ...response, attempt };
 }
 
@@ -1029,11 +2467,573 @@ async function attemptDatabaseState(client, learnerId, attemptId, idempotencyKey
     return Object.fromEntries(Object.entries(result).map(([key, value]) => [key, numberValue(value)]));
 }
 
-async function verifyAttemptFlow(client, api, questions, definitions) {
-    const { wrongCase, missingKeyCase } = selectAttemptCases(questions, definitions);
+async function sessionDatabaseArtifacts(client, sessionId) {
+    const result = (await client.query(`
+        SELECT
+            session.score_total_count,
+            session.score_answered_count,
+            session.score_correct_count,
+            session.score_wrong_count,
+            session.score_pending_count,
+            ARRAY(
+                SELECT receipt.id
+                FROM practice_session_items AS item
+                JOIN practice_score_receipts AS receipt
+                    ON receipt.practice_session_item_id = item.id
+                WHERE item.practice_session_id = session.id
+                ORDER BY receipt.id
+            ) AS receipt_ids,
+            ARRAY(
+                SELECT attempt.id
+                FROM practice_session_items AS item
+                JOIN answer_attempts AS attempt
+                    ON attempt.practice_session_item_id = item.id
+                WHERE item.practice_session_id = session.id
+                ORDER BY attempt.id
+            ) AS attempt_ids,
+            ARRAY(
+                SELECT part.id
+                FROM practice_session_items AS item
+                JOIN answer_attempts AS attempt
+                    ON attempt.practice_session_item_id = item.id
+                JOIN answer_part_results AS part
+                    ON part.answer_attempt_id = attempt.id
+                WHERE item.practice_session_id = session.id
+                ORDER BY part.id
+            ) AS part_result_ids,
+            ARRAY(
+                SELECT queue.id
+                FROM practice_session_items AS item
+                JOIN answer_attempts AS attempt
+                    ON attempt.practice_session_item_id = item.id
+                JOIN answer_part_results AS part
+                    ON part.answer_attempt_id = attempt.id
+                JOIN learner_practice_queue_items AS queue
+                    ON queue.source_answer_part_result_id = part.id
+                WHERE item.practice_session_id = session.id
+                ORDER BY queue.id
+            ) AS queue_ids,
+            ARRAY(
+                SELECT outbox.id
+                FROM practice_session_items AS item
+                JOIN answer_attempts AS attempt
+                    ON attempt.practice_session_item_id = item.id
+                JOIN analytics_outbox AS outbox
+                    ON outbox.source_record_id = attempt.id
+                WHERE item.practice_session_id = session.id
+                ORDER BY outbox.id
+            ) AS outbox_ids
+        FROM practice_sessions AS session
+        WHERE session.id = $1
+    `, [sessionId])).rows[0];
+    invariant(result, "SESSION_DATABASE_ARTIFACTS_MISSING", "找不到待驗證的 session database state。");
+    return {
+        receiptIds: result.receipt_ids ?? [],
+        attemptIds: result.attempt_ids ?? [],
+        partResultIds: result.part_result_ids ?? [],
+        queueIds: result.queue_ids ?? [],
+        outboxIds: result.outbox_ids ?? [],
+        scoreAggregate: {
+            total: numberValue(result.score_total_count),
+            answered: numberValue(result.score_answered_count),
+            correct: numberValue(result.score_correct_count),
+            wrong: numberValue(result.score_wrong_count),
+            pending: numberValue(result.score_pending_count),
+        },
+    };
+}
+
+async function shareLearnerWithSyntheticAccount(client, account, learnerId, canViewResults = true) {
+    const accessId = randomUUID();
+    const access = await client.query(`
+        INSERT INTO learner_access (
+            id,
+            learner_id,
+            user_id,
+            access_role,
+            can_view_results,
+            can_create_plans,
+            can_review_answers,
+            can_manage_settings,
+            invited_by_user_id,
+            accepted_at
+        )
+        SELECT
+            $1::uuid,
+            $2::uuid,
+            identity.user_id,
+            'parent',
+            $4::boolean,
+            false,
+            false,
+            false,
+            NULL,
+            transaction_timestamp()
+        FROM account_identities AS identity
+        WHERE identity.provider = 'email'
+            AND identity.email_normalized = $3
+            AND identity.revoked_at IS NULL
+        RETURNING user_id
+    `, [accessId, learnerId, account.email, canViewResults]);
+    invariant(access.rowCount === 1, "SHARED_LEARNER_ACCESS_SETUP_FAILED", "無法建立第二帳號的隔離 shared learner 驗證資料。");
+    const switched = await client.query(`
+        UPDATE auth_sessions
+        SET active_role = 'learner', active_learner_id = $1
+        WHERE token_hash = $2
+            AND revoked_at IS NULL
+        RETURNING user_id
+    `, [learnerId, account.sessionTokenHash]);
+    invariant(switched.rowCount === 1, "SHARED_LEARNER_SESSION_SETUP_FAILED", "無法把第二帳號切換至 shared learner 驗證資料。");
+    const me = await account.request("/api/v1/auth/me");
+    invariant(me.body?.data?.account?.learner?.id === learnerId, "SHARED_LEARNER_SESSION_MISMATCH", "第二帳號沒有取得預期的 shared learner session。");
+}
+
+function assertMaskedDisclosure(data, codePrefix) {
+    invariant(data?.disclosure === "masked", `${codePrefix}_DISCLOSURE_NOT_MASKED`, "未完成的練習沒有回傳 masked disclosure。");
+    invariant(isRecord(data.receipt) && UUID_PATTERN.test(data.receipt.id), `${codePrefix}_RECEIPT_MISSING`, "masked disclosure 缺少有效 receipt。");
+    const findings = scanNamedKeys(data, FORBIDDEN_MASKED_GRADING_KEYS, codePrefix);
+    invariant(findings.length === 0, `${codePrefix}_GRADING_LEAK`, "masked disclosure 洩漏判分結果。", { locations: findings.slice(0, 10) });
+}
+
+function assertScoreDisclosure(data, expected, codePrefix) {
+    invariant(data?.disclosure === "score", `${codePrefix}_DISCLOSURE_NOT_SCORE`, "計分模式完成後沒有回傳 score disclosure。");
+    invariant(JSON.stringify(data.summary) === JSON.stringify(expected), `${codePrefix}_SUMMARY_MISMATCH`, "計分模式彙總不正確。", {
+        expected,
+        actual: data?.summary,
+    });
+    invariant(
+        JSON.stringify(Object.keys(data.summary ?? {}).sort()) === JSON.stringify(["accuracy", "correct", "pending", "total", "wrong"]),
+        `${codePrefix}_SUMMARY_SHAPE_INVALID`,
+        "計分模式彙總欄位不符合契約。",
+    );
+    const findings = scanNamedKeys(data, FORBIDDEN_SCORE_MAPPING_KEYS, codePrefix);
+    invariant(findings.length === 0, `${codePrefix}_QUESTION_RESULT_LEAK`, "計分模式建立了逐題或逐小題判分對照。", { locations: findings.slice(0, 10) });
+}
+
+function assertScoreDatabaseState(state, expected, codePrefix) {
+    invariant(
+        state.attemptIds.length === 0
+            && state.partResultIds.length === 0
+            && state.queueIds.length === 0
+            && state.outboxIds.length === 0,
+        `${codePrefix}_DETAIL_PERSISTED`,
+        "score 模式不可保存逐題 attempt、part result、錯題佇列或 outbox。",
+        {
+            attemptIds: state.attemptIds,
+            partResultIds: state.partResultIds,
+            queueIds: state.queueIds,
+            outboxIds: state.outboxIds,
+        },
+    );
+    invariant(
+        state.receiptIds.length === expected.answered,
+        `${codePrefix}_RECEIPT_COUNT_MISMATCH`,
+        "score 模式的無答案冪等收據數與已提交題數不一致。",
+        { expected: expected.answered, actual: state.receiptIds.length },
+    );
+    invariant(
+        JSON.stringify(state.scoreAggregate) === JSON.stringify(expected),
+        `${codePrefix}_AGGREGATE_MISMATCH`,
+        "score session aggregate 與預期不一致。",
+        { expected, actual: state.scoreAggregate },
+    );
+}
+
+async function postAttempt(api, request, expectedStatuses = [201]) {
+    return api.request("/api/v1/local-practice/attempts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+    }, expectedStatuses);
+}
+
+async function verifyCheckModeDisclosure(client, origin, api, questions, definitions) {
+    const { wrongCase } = selectAttemptCases(questions, definitions);
+    const secondQuestion = questions.find((question) => question.id !== wrongCase.question.id
+        && question.parts.every((part) => definitionIsCompleteAutomatic(definitions.get(part.id))));
+    invariant(secondQuestion, "SECOND_AUTOMATIC_QUESTION_NOT_FOUND", "找不到第二題完整自動判分題驗證 complete/score 揭露時機。");
+    const secondCorrectAnswers = secondQuestion.parts.map((part) => ({
+        partId: part.id,
+        value: correctValue(definitions.get(part.id)),
+    }));
     const runToken = `${Date.now().toString(36)}:${randomUUID()}`;
 
-    const correctSession = await createSession(api, [wrongCase.question.id]);
+    for (const checkMode of ["instant", "complete"]) {
+        const outOfOrderSession = await createSession(
+            api,
+            [wrongCase.question, secondQuestion],
+            { checkMode },
+        );
+        const lastItemFirst = await postAttempt(api, {
+            sessionId: outOfOrderSession.id,
+            questionId: secondQuestion.id,
+            idempotencyKey: `local-practice-verify:${checkMode}-last-first:${runToken}`,
+            durationSeconds: 3,
+            answers: secondCorrectAnswers,
+        });
+        invariant(
+            lastItemFirst.body?.data?.session?.status === "active",
+            `${checkMode.toUpperCase()}_LAST_ITEM_COMPLETED_EARLY`,
+            `${checkMode} 模式先送清單最後一題時 session 不得提早完成。`,
+        );
+        const outOfOrderRead = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(outOfOrderSession.id)}`);
+        const outOfOrderAnswered = outOfOrderRead.body?.data?.session?.items?.filter((item) => item.answered) ?? [];
+        invariant(
+            outOfOrderAnswered.length === 1 && outOfOrderAnswered[0].questionId === secondQuestion.id,
+            `${checkMode.toUpperCase()}_LAST_ITEM_PROGRESS_INVALID`,
+            `${checkMode} 模式亂序提交後的 answered progress 不正確。`,
+        );
+        const remainingItem = await postAttempt(api, {
+            sessionId: outOfOrderSession.id,
+            questionId: wrongCase.question.id,
+            idempotencyKey: `local-practice-verify:${checkMode}-remaining:${runToken}`,
+            durationSeconds: 4,
+            answers: wrongCase.wrongAnswers,
+        });
+        invariant(
+            remainingItem.body?.data?.session?.status === "completed",
+            `${checkMode.toUpperCase()}_OUT_OF_ORDER_NOT_COMPLETED`,
+            `${checkMode} 模式補送其餘題目後 session 未完成。`,
+        );
+    }
+
+    const completeSession = await createSession(api, [wrongCase.question, secondQuestion], { checkMode: "complete" });
+    const completeFirstRequest = {
+        sessionId: completeSession.id,
+        questionId: wrongCase.question.id,
+        idempotencyKey: `local-practice-verify:complete-first:${runToken}`,
+        durationSeconds: 5,
+        answers: wrongCase.wrongAnswers,
+    };
+    const queueBeforeComplete = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data?.wrongReviewQueue;
+    const completeFirst = await postAttempt(api, completeFirstRequest);
+    assertMaskedDisclosure(completeFirst.body?.data, "COMPLETE_ACTIVE");
+    invariant(completeFirst.body?.data?.session?.status === "active", "COMPLETE_RELEASED_EARLY", "complete 模式在全卷提交前已結束。");
+    const completeFirstAttemptId = completeFirst.body.data.receipt.id;
+
+    const completeReplay = await postAttempt(api, completeFirstRequest, [200]);
+    assertMaskedDisclosure(completeReplay.body?.data, "COMPLETE_REPLAY");
+    invariant(completeReplay.body?.meta?.replayed === true && completeReplay.body.data.receipt.id === completeFirstAttemptId, "COMPLETE_REPLAY_MISMATCH", "complete 模式相同冪等鍵沒有安全重播同一 receipt。");
+    const completeDifferentKey = await postAttempt(api, {
+        ...completeFirstRequest,
+        idempotencyKey: `local-practice-verify:complete-duplicate:${runToken}`,
+    }, [409]);
+    invariant(completeDifferentKey.body?.error?.code === "SESSION_ITEM_ALREADY_ANSWERED", "COMPLETE_DIFFERENT_KEY_ACCEPTED", "complete 模式同一題換冪等鍵沒有回 409。");
+
+    const completeResume = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(completeSession.id)}`);
+    invariant(completeResume.body?.data?.disclosure === "masked", "COMPLETE_RESUME_DISCLOSURE_INVALID", "未完成 complete session 的 GET 未保持遮罩。");
+    const answeredItems = completeResume.body?.data?.session?.items?.filter((item) => item.answered) ?? [];
+    invariant(answeredItems.length === 1 && answeredItems[0].questionId === wrongCase.question.id, "COMPLETE_RESUME_PROGRESS_INVALID", "resume 沒有只標示已作答 item。");
+    const resumeLeaks = scanNamedKeys(completeResume.body?.data, FORBIDDEN_MASKED_GRADING_KEYS, "completeResume");
+    invariant(resumeLeaks.length === 0, "COMPLETE_RESUME_GRADING_LEAK", "resume 洩漏 complete 模式判分。", { locations: resumeLeaks.slice(0, 10) });
+
+    const completeMidHistory = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data;
+    const completeMidSession = completeMidHistory?.sessions?.find((session) => session.id === completeSession.id);
+    invariant(completeMidSession?.disclosure === "masked" && completeMidSession.summary === undefined, "COMPLETE_HISTORY_RELEASED_EARLY", "history 在 complete session 完成前揭露結果。");
+    invariant(!(completeMidHistory?.attempts ?? []).some((attempt) => attempt.sessionId === completeSession.id), "COMPLETE_HISTORY_ATTEMPT_LEAK", "history 在 complete session 完成前回傳逐題 attempt。");
+    const completeArtifacts = await sessionDatabaseArtifacts(client, completeSession.id);
+    invariant(completeArtifacts.attemptIds.length === 1 && completeArtifacts.queueIds.length > 0, "COMPLETE_MASK_FIXTURE_INVALID", "complete 遮罩測試沒有建立預期的錯題持久資料。");
+    invariant(completeArtifacts.queueIds.every((id) => !(completeMidHistory?.wrongReviewQueue?.items ?? []).some((item) => item.id === id)), "COMPLETE_QUEUE_LEAK", "complete 未完成前可從錯題佇列反推出結果。");
+    invariant(completeMidHistory?.wrongReviewQueue?.pendingCount === queueBeforeComplete?.pendingCount, "COMPLETE_QUEUE_COUNT_LEAK", "complete 未完成前錯題 pendingCount 洩漏結果。");
+
+    const completeSecondRequest = {
+        sessionId: completeSession.id,
+        questionId: secondQuestion.id,
+        idempotencyKey: `local-practice-verify:complete-second:${runToken}`,
+        durationSeconds: 6,
+        answers: secondCorrectAnswers,
+    };
+    const completeFinal = await postAttempt(api, completeSecondRequest);
+    invariant(completeFinal.body?.data?.disclosure === "detailed" && completeFinal.body?.data?.session?.status === "completed", "COMPLETE_FINAL_NOT_RELEASED", "complete 模式完成後沒有釋出詳細結果。");
+    invariant(completeFinal.body?.data?.attempts?.length === 2, "COMPLETE_FINAL_ATTEMPTS_MISSING", "complete 模式完成後未回傳整個 session 的詳細結果。");
+    invariant(completeFinal.body.data.attempts.some((attempt) => attempt.overallResult === "wrong") && completeFinal.body.data.attempts.some((attempt) => attempt.overallResult === "correct"), "COMPLETE_FINAL_RESULTS_INVALID", "complete 模式完成後的詳細結果不完整。");
+    for (const attempt of completeFinal.body.data.attempts) {
+        const question = attempt.questionId === wrongCase.question.id ? wrongCase.question : secondQuestion;
+        assertReferenceAnswers(attempt.referenceAnswers, question, definitions, "COMPLETE_FINAL");
+    }
+    const completeFinalReplay = await postAttempt(api, completeSecondRequest, [200]);
+    invariant(completeFinalReplay.body?.meta?.replayed === true && completeFinalReplay.body?.data?.attempts?.length === 2, "COMPLETE_FINAL_REPLAY_MISMATCH", "complete 最後一題冪等重播未保持完整揭露。");
+    const completeHistory = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data;
+    const completeFinalArtifacts = await sessionDatabaseArtifacts(client, completeSession.id);
+    invariant(completeFinalArtifacts.attemptIds.length === 2, "COMPLETE_FINAL_ARTIFACTS_INVALID", "complete session 完成後沒有保留兩筆作答記錄。");
+    invariant(completeFinalArtifacts.attemptIds.every((id) => (completeHistory?.attempts ?? []).some((attempt) => attempt.id === id)), "COMPLETE_HISTORY_DETAILS_MISSING", "complete session 完成後 history 未釋出所有詳細結果。");
+    invariant(completeFinalArtifacts.queueIds.every((id) => (completeHistory?.wrongReviewQueue?.items ?? []).some((item) => item.id === id)), "COMPLETE_HISTORY_QUEUE_MISSING", "complete session 完成後 history 未釋出錯題佇列。");
+
+    const abandonedSession = await createSession(api, [wrongCase.question, secondQuestion], { checkMode: "complete" });
+    const abandonedFirst = await postAttempt(api, {
+        ...completeFirstRequest,
+        sessionId: abandonedSession.id,
+        idempotencyKey: `local-practice-verify:complete-abandoned:${runToken}`,
+    });
+    assertMaskedDisclosure(abandonedFirst.body?.data, "COMPLETE_ABANDONED_ACTIVE");
+    await api.request("/api/v1/local-practice/sessions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: abandonedSession.id, status: "abandoned" }),
+    });
+    const abandonedRead = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(abandonedSession.id)}`);
+    invariant(abandonedRead.body?.data?.disclosure === "masked", "COMPLETE_ABANDONED_RELEASED", "未完成即放棄的 complete session 不得解鎖詳細結果。");
+    const abandonedArtifacts = await sessionDatabaseArtifacts(client, abandonedSession.id);
+
+    const scoreSession = await createSession(api, [wrongCase.question, secondQuestion], { checkMode: "score" });
+    const scoreFirstRequest = {
+        ...completeSecondRequest,
+        sessionId: scoreSession.id,
+        idempotencyKey: `local-practice-verify:score-first:${runToken}`,
+    };
+    const scoreHistoryBefore = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data;
+    const scoreFirst = await postAttempt(api, scoreFirstRequest);
+    assertMaskedDisclosure(scoreFirst.body?.data, "SCORE_ACTIVE");
+    invariant(scoreFirst.body?.data?.session?.status === "active", "SCORE_LAST_ITEM_COMPLETED_EARLY", "score 模式先送清單最後一題時 session 不得提早完成。");
+    const scoreFirstAttemptId = scoreFirst.body.data.receipt.id;
+    const scoreProgress = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(scoreSession.id)}`);
+    const scoreAnsweredItems = scoreProgress.body?.data?.session?.items?.filter((item) => item.answered) ?? [];
+    invariant(scoreAnsweredItems.length === 1 && scoreAnsweredItems[0].questionId === secondQuestion.id, "SCORE_LAST_ITEM_PROGRESS_INVALID", "score 模式先送最後一題後的 answered progress 不正確。");
+    const scoreFirstDatabaseState = await sessionDatabaseArtifacts(client, scoreSession.id);
+    assertScoreDatabaseState(scoreFirstDatabaseState, {
+        total: 2,
+        answered: 1,
+        correct: 1,
+        wrong: 0,
+        pending: 1,
+    }, "SCORE_FIRST");
+    const scoreReplay = await postAttempt(api, scoreFirstRequest, [200]);
+    assertMaskedDisclosure(scoreReplay.body?.data, "SCORE_REPLAY");
+    invariant(scoreReplay.body?.meta?.replayed === true && scoreReplay.body.data.receipt.id === scoreFirstAttemptId, "SCORE_REPLAY_MISMATCH", "score 模式相同冪等鍵沒有安全重播。");
+    const scoreDifferentKey = await postAttempt(api, {
+        ...scoreFirstRequest,
+        idempotencyKey: `local-practice-verify:score-duplicate:${runToken}`,
+    }, [409]);
+    invariant(scoreDifferentKey.body?.error?.code === "SESSION_ITEM_ALREADY_ANSWERED", "SCORE_DIFFERENT_KEY_ACCEPTED", "score 模式同一題換冪等鍵沒有回 409。");
+
+    const scoreArtifactsBeforeCrossAccount = await sessionDatabaseArtifacts(client, scoreSession.id);
+    await api.request("/api/v1/local-practice/sessions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: scoreSession.id, status: "paused" }),
+    });
+    const otherAccount = await createSyntheticAuthClient(origin);
+    try {
+        await shareLearnerWithSyntheticAccount(client, otherAccount, api.learnerId);
+        const collisionSession = await createSession(otherAccount, [wrongCase.question]);
+        const crossAccountIdempotencyCollision = await postAttempt(otherAccount, {
+            ...completeFirstRequest,
+            sessionId: collisionSession.id,
+        }, [409]);
+        invariant(
+            crossAccountIdempotencyCollision.body?.error?.code === "IDEMPOTENCY_CONFLICT",
+            "CROSS_ACCOUNT_IDEMPOTENCY_COLLISION_NOT_CONFLICT",
+            "同一 learner 的另一授權帳號重用 non-score 冪等鍵時未安全回傳 409。",
+        );
+        const collisionArtifacts = await sessionDatabaseArtifacts(client, collisionSession.id);
+        invariant(collisionArtifacts.attemptIds.length === 0, "CROSS_ACCOUNT_IDEMPOTENCY_COLLISION_WRITE", "被拒絕的跨帳號冪等鍵衝突仍寫入 attempt。");
+        await otherAccount.request("/api/v1/local-practice/sessions", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId: collisionSession.id, status: "abandoned" }),
+        });
+        const crossAccountAttempt = await postAttempt(otherAccount, scoreFirstRequest, [404, 409]);
+        invariant(["SESSION_QUESTION_NOT_FOUND", "IDEMPOTENCY_CONFLICT"].includes(crossAccountAttempt.body?.error?.code), "ATTEMPT_CROSS_ACCOUNT_NOT_ISOLATED", "第二帳號可對不屬於自己的 session 提交或重播作答。");
+        const crossAccountLeaks = scanNamedKeys(crossAccountAttempt.body?.data, FORBIDDEN_MASKED_GRADING_KEYS, "crossAccountAttempt");
+        invariant(crossAccountLeaks.length === 0, "ATTEMPT_CROSS_ACCOUNT_RESULT_LEAK", "第二帳號 attempt 錯誤回應洩漏判分結果。");
+        const afterCrossAccount = await sessionDatabaseArtifacts(client, scoreSession.id);
+        invariant(JSON.stringify(afterCrossAccount) === JSON.stringify(scoreArtifactsBeforeCrossAccount), "ATTEMPT_CROSS_ACCOUNT_WRITE", "第二帳號 attempt 請求建立了新的持久紀錄。");
+
+        const sharedHistory = (await otherAccount.request("/api/v1/local-practice/history?limit=100")).body?.data;
+        const sharedCompleteSession = sharedHistory?.sessions?.find((session) => session.id === completeSession.id);
+        invariant(sharedCompleteSession?.disclosure === "detailed", "SHARED_RESULTS_NOT_VISIBLE", "具有成果檢視權限的共享帳號看不到已完成 complete session。");
+        invariant(completeFinalArtifacts.attemptIds.every((id) => (sharedHistory?.attempts ?? []).some((attempt) => attempt.id === id)), "SHARED_ATTEMPTS_NOT_VISIBLE", "具有成果檢視權限的共享帳號看不到 learner-wide 作答結果。");
+        invariant(completeFinalArtifacts.queueIds.every((id) => (sharedHistory?.wrongReviewQueue?.items ?? []).some((item) => item.id === id)), "SHARED_QUEUE_NOT_VISIBLE", "具有成果檢視權限的共享帳號看不到 learner-wide 錯題佇列。");
+        const sharedAbandonedSession = sharedHistory?.sessions?.find((session) => session.id === abandonedSession.id);
+        invariant(sharedAbandonedSession?.disclosure === "masked" && sharedAbandonedSession.status === "abandoned", "SHARED_ABANDONED_RELEASED", "共享成果檢視不得解鎖未完成即放棄的 complete session。");
+        invariant(abandonedArtifacts.attemptIds.every((id) => !(sharedHistory?.attempts ?? []).some((attempt) => attempt.id === id)), "SHARED_ABANDONED_ATTEMPT_LEAK", "共享成果檢視洩漏已放棄 complete session 的逐題結果。");
+        invariant(abandonedArtifacts.queueIds.every((id) => !(sharedHistory?.wrongReviewQueue?.items ?? []).some((item) => item.id === id)), "SHARED_ABANDONED_QUEUE_LEAK", "共享成果檢視從錯題佇列洩漏已放棄 complete session 結果。");
+        const sharedScoreSession = sharedHistory?.sessions?.find((session) => session.id === scoreSession.id);
+        invariant(sharedScoreSession?.disclosure === "masked" && sharedScoreSession.status === "paused" && sharedScoreSession.summary === undefined, "SHARED_SCORE_RELEASED_EARLY", "共享成果檢視不得繞過已暫停 score session 的遮罩。");
+        invariant(scoreArtifactsBeforeCrossAccount.attemptIds.every((id) => !(sharedHistory?.attempts ?? []).some((attempt) => attempt.id === id)), "SHARED_SCORE_ATTEMPT_LEAK", "共享成果檢視洩漏 score session 的逐題結果。");
+        invariant(scoreArtifactsBeforeCrossAccount.queueIds.every((id) => !(sharedHistory?.wrongReviewQueue?.items ?? []).some((item) => item.id === id)), "SHARED_SCORE_QUEUE_LEAK", "共享成果檢視從錯題佇列洩漏 score session 結果。");
+        const sharedReferenceRead = await otherAccount.request(
+            `/api/v1/local-practice/questions/${encodeURIComponent(wrongCase.question.id)}/reference-answer?revisionId=${encodeURIComponent(wrongCase.question.revisionId)}`,
+        );
+        assertReferenceAnswers(
+            sharedReferenceRead.body?.data?.referenceAnswers,
+            wrongCase.question,
+            definitions,
+            "SHARED_QUESTION_REVIEW",
+        );
+    }
+    finally {
+        await otherAccount.logout();
+        await verifyAuthSessionRevoked(client, otherAccount.sessionTokenHash);
+    }
+    await api.request("/api/v1/local-practice/sessions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: scoreSession.id, status: "active" }),
+    });
+
+    const restrictedAccount = await createSyntheticAuthClient(origin);
+    try {
+        await shareLearnerWithSyntheticAccount(client, restrictedAccount, api.learnerId, false);
+        const deniedHistory = await restrictedAccount.request("/api/v1/local-practice/history?limit=100", undefined, [403]);
+        invariant(deniedHistory.body?.error?.code === "RESULT_ACCESS_DENIED" && deniedHistory.body?.data === undefined, "RESULT_ACCESS_NOT_ENFORCED", "沒有成果檢視權限的共享帳號仍可讀取 history。");
+        const deniedReferenceRead = await restrictedAccount.request(
+            `/api/v1/local-practice/questions/${encodeURIComponent(wrongCase.question.id)}/reference-answer?revisionId=${encodeURIComponent(wrongCase.question.revisionId)}`,
+            undefined,
+            [403],
+        );
+        invariant(
+            deniedReferenceRead.body?.error?.code === "RESULT_ACCESS_DENIED"
+                && deniedReferenceRead.body?.data === undefined,
+            "QUESTION_REFERENCE_RESULT_ACCESS_NOT_ENFORCED",
+            "沒有成果檢視權限的共享帳號仍可讀取題目參考答案。",
+        );
+
+        const restrictedSession = await createSession(restrictedAccount, [wrongCase.question], { checkMode: "complete" });
+        const restrictedRead = await restrictedAccount.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(restrictedSession.id)}`);
+        invariant(restrictedRead.body?.data?.disclosure === "masked", "RESTRICTED_PROGRESS_NOT_MASKED", "沒有成果檢視權限的帳號讀取未完成 session 時未維持遮罩。");
+        const deniedAttempt = await postAttempt(restrictedAccount, {
+            ...completeFirstRequest,
+            sessionId: restrictedSession.id,
+            idempotencyKey: `local-practice-verify:no-result-access:${runToken}`,
+        }, [403]);
+        invariant(deniedAttempt.body?.error?.code === "RESULT_ACCESS_DENIED" && deniedAttempt.body?.data === undefined, "RESTRICTED_ATTEMPT_RESULT_ACCESS", "沒有成果檢視權限的帳號仍可提交並取得判分結果。");
+        const restrictedArtifacts = await sessionDatabaseArtifacts(client, restrictedSession.id);
+        invariant(restrictedArtifacts.attemptIds.length === 0 && restrictedArtifacts.queueIds.length === 0, "RESTRICTED_ATTEMPT_WRITE", "被拒絕的作答請求仍建立了持久紀錄。");
+        await restrictedAccount.request("/api/v1/local-practice/sessions", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId: restrictedSession.id, status: "abandoned" }),
+        });
+    }
+    finally {
+        await restrictedAccount.logout();
+        await verifyAuthSessionRevoked(client, restrictedAccount.sessionTokenHash);
+    }
+
+    const scoreMidHistory = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data;
+    const scoreMidSession = scoreMidHistory?.sessions?.find((session) => session.id === scoreSession.id);
+    invariant(scoreMidSession?.disclosure === "masked" && scoreMidSession.summary === undefined, "SCORE_HISTORY_RELEASED_EARLY", "score session 完成前 history 洩漏彙總或詳細結果。");
+    invariant(!(scoreMidHistory?.attempts ?? []).some((attempt) => attempt.sessionId === scoreSession.id), "SCORE_HISTORY_ATTEMPT_LEAK", "score history 回傳逐題 attempt。");
+    const scoreArtifacts = await sessionDatabaseArtifacts(client, scoreSession.id);
+    assertScoreDatabaseState(scoreArtifacts, {
+        total: 2,
+        answered: 1,
+        correct: 1,
+        wrong: 0,
+        pending: 1,
+    }, "SCORE_MID");
+    invariant(scoreMidHistory?.wrongReviewQueue?.pendingCount === scoreHistoryBefore?.wrongReviewQueue?.pendingCount, "SCORE_QUEUE_COUNT_LEAK", "score 模式錯題 pendingCount 洩漏結果。");
+
+    const scoreSecondRequest = {
+        ...completeFirstRequest,
+        sessionId: scoreSession.id,
+        idempotencyKey: `local-practice-verify:score-second:${runToken}`,
+    };
+    const expectedScore = { total: 2, correct: 1, wrong: 1, pending: 0, accuracy: 50 };
+    const scoreFinal = await postAttempt(api, scoreSecondRequest);
+    assertScoreDisclosure(scoreFinal.body?.data, expectedScore, "SCORE_FINAL");
+    invariant(scoreFinal.body?.data?.session?.status === "completed", "SCORE_SESSION_NOT_COMPLETED", "score 最後一題送出後 session 未完成。");
+    const scoreFinalReplay = await postAttempt(api, scoreSecondRequest, [200]);
+    assertScoreDisclosure(scoreFinalReplay.body?.data, expectedScore, "SCORE_FINAL_REPLAY");
+    invariant(scoreFinalReplay.body?.meta?.replayed === true, "SCORE_FINAL_REPLAY_FLAG_MISSING", "score 最後一題冪等重播未標記 replayed。");
+
+    const scoreRead = await api.request(`/api/v1/local-practice/sessions?id=${encodeURIComponent(scoreSession.id)}`);
+    assertScoreDisclosure(scoreRead.body?.data, expectedScore, "SCORE_SESSION_GET");
+    const finalHistory = (await api.request("/api/v1/local-practice/history?limit=100")).body?.data;
+    const scoreHistorySession = finalHistory?.sessions?.find((session) => session.id === scoreSession.id);
+    invariant(scoreHistorySession?.disclosure === "score", "SCORE_HISTORY_SUMMARY_MISSING", "score history 未回傳 aggregate disclosure。");
+    invariant(JSON.stringify(scoreHistorySession.summary) === JSON.stringify(expectedScore), "SCORE_HISTORY_SUMMARY_MISMATCH", "score history aggregate 不正確。");
+    const finalScoreArtifacts = await sessionDatabaseArtifacts(client, scoreSession.id);
+    assertScoreDatabaseState(finalScoreArtifacts, {
+        total: 2,
+        answered: 2,
+        correct: 1,
+        wrong: 1,
+        pending: 0,
+    }, "SCORE_FINAL");
+    invariant(!(finalHistory?.attempts ?? []).some((attempt) => attempt.sessionId === scoreSession.id), "SCORE_HISTORY_DETAIL_LEAK", "score history 回傳了逐題詳細結果。");
+    const historyLeaks = scanNamedKeys(finalHistory, FORBIDDEN_DETAILED_PRIVATE_KEYS, "checkModeHistory");
+    invariant(historyLeaks.length === 0, "CHECK_MODE_HISTORY_PRIVATE_LEAK", "check mode history 洩漏作答 payload、storage key 或冪等鍵。", { locations: historyLeaks.slice(0, 10) });
+
+    return {
+        instant: { detailed: true },
+        complete: { maskedUntilCompleted: true, detailedAttemptsAfterCompletion: 2, abandonedRemainsMasked: true },
+        score: { maskedUntilCompleted: true, summary: expectedScore, perQuestionResults: false },
+        idempotencyReplay: true,
+        duplicateItemRejected: true,
+        crossAccountAttemptIsolated: true,
+        sharedLearnerResultsAuthorized: true,
+        resultAccessDeniedWithoutCapability: true,
+        historyRedacted: true,
+    };
+}
+
+async function verifyAttemptFlow(client, api, questions, definitions) {
+    const { wrongCase, missingKeyCase, manualReviewCase } = selectAttemptCases(questions, definitions);
+    const runToken = `${Date.now().toString(36)}:${randomUUID()}`;
+
+    const referenceRead = await api.request(
+        `/api/v1/local-practice/questions/${encodeURIComponent(wrongCase.question.id)}/reference-answer?revisionId=${encodeURIComponent(wrongCase.question.revisionId)}`,
+    );
+    assertReferenceAnswers(
+        referenceRead.body?.data?.referenceAnswers,
+        wrongCase.question,
+        definitions,
+        "QUESTION_REVIEW",
+    );
+    const uppercaseReferenceRead = await api.request(
+        `/api/v1/local-practice/questions/${encodeURIComponent(wrongCase.question.id.toUpperCase())}/reference-answer?revisionId=${encodeURIComponent(wrongCase.question.revisionId.toUpperCase())}`,
+    );
+    assertReferenceAnswers(
+        uppercaseReferenceRead.body?.data?.referenceAnswers,
+        wrongCase.question,
+        definitions,
+        "QUESTION_REVIEW_UPPERCASE_UUID",
+    );
+    const staleReferenceRead = await api.request(
+        `/api/v1/local-practice/questions/${encodeURIComponent(wrongCase.question.id)}/reference-answer?revisionId=${encodeURIComponent(randomUUID())}`,
+        undefined,
+        [404],
+    );
+    invariant(staleReferenceRead.body?.error?.code === "QUESTION_REFERENCE_NOT_FOUND", "QUESTION_REVIEW_STALE_REVISION_ACCEPTED", "題目總覽答案 API 接受了非 current revision。");
+
+    const duplicateCaseVariant = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            questions: [
+                {
+                    questionId: wrongCase.question.id,
+                    revisionId: wrongCase.question.revisionId,
+                    partId: wrongCase.targetPartId,
+                },
+                {
+                    questionId: wrongCase.question.id.toUpperCase(),
+                    revisionId: wrongCase.question.revisionId.toUpperCase(),
+                    partId: wrongCase.targetPartId.toUpperCase(),
+                },
+            ],
+        }),
+    }, [400]);
+    invariant(duplicateCaseVariant.body?.error?.code === "INVALID_SESSION_REQUEST", "UUID_CASE_DUPLICATE_ACCEPTED", "UUID 大小寫變體繞過了重複小題檢查。");
+    const overlappingWholeAndPart = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            questions: [
+                { questionId: wrongCase.question.id, revisionId: wrongCase.question.revisionId },
+                {
+                    questionId: wrongCase.question.id,
+                    revisionId: wrongCase.question.revisionId,
+                    partId: wrongCase.targetPartId,
+                },
+            ],
+        }),
+    }, [400]);
+    invariant(overlappingWholeAndPart.body?.error?.code === "INVALID_SESSION_REQUEST", "WHOLE_AND_PART_OVERLAP_ACCEPTED", "整題與其指定小題可同時加入同一輪練習。");
+
+    const correctSession = await createSession(api, [wrongCase.question]);
     const correctRequest = {
         sessionId: correctSession.id,
         questionId: wrongCase.question.id,
@@ -1042,6 +3042,7 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         answers: wrongCase.correctAnswers,
     };
     const correctResponse = await submitAttempt(api, correctRequest, [201]);
+    assertReferenceAnswers(correctResponse.attempt.referenceAnswers, wrongCase.question, definitions, "INSTANT_CORRECT");
     invariant(correctResponse.status === 201 && correctResponse.body?.meta?.replayed === false, "CORRECT_ATTEMPT_NOT_CREATED", "完整正解第一次送出必須建立新紀錄。");
     invariant(correctResponse.attempt.overallResult === "correct" && correctResponse.attempt.gradingSource === "automatic", "CORRECT_ATTEMPT_RESULT_MISMATCH", "完整標準答案沒有得到 automatic/correct 結果。");
     invariant(correctResponse.attempt.parts.length === wrongCase.question.parts.length, "CORRECT_PART_COUNT_MISMATCH", "完整正解結果沒有涵蓋全部可作答小題。");
@@ -1062,8 +3063,27 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         correctState,
     );
     invariant(correctState.wrong_queue_items === 0 && correctState.outbox_events === 1, "CORRECT_SIDE_EFFECT_MISMATCH", "完整正解不得建立錯題佇列，但必須建立 outbox。");
+    const freshKeyDuplicate = await api.request("/api/v1/local-practice/attempts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            ...correctRequest,
+            idempotencyKey: `local-practice-verify:correct-fresh-key:${runToken}`,
+        }),
+    }, [409]);
+    invariant(
+        freshKeyDuplicate.body?.error?.code === "SESSION_ITEM_ALREADY_ANSWERED",
+        "INSTANT_FRESH_KEY_DUPLICATE_ACCEPTED",
+        "instant 模式同一 session item 使用新冪等鍵時仍可建立第二次作答。",
+    );
+    const correctAttemptCount = (await client.query(`
+        SELECT count(*)::integer AS count
+        FROM answer_attempts AS attempt
+        WHERE attempt.practice_session_item_id = $1
+    `, [correctResponse.attempt.sessionItemId])).rows[0]?.count;
+    invariant(correctAttemptCount === 1, "INSTANT_FRESH_KEY_DUPLICATE_ROWS", "拒絕新冪等鍵後仍留下重複作答。");
 
-    const wrongSession = await createSession(api, [wrongCase.question.id]);
+    const wrongSession = await createSession(api, [wrongCase.question]);
     const wrongRequest = {
         sessionId: wrongSession.id,
         questionId: wrongCase.question.id,
@@ -1072,6 +3092,7 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         answers: wrongCase.wrongAnswers,
     };
     const wrongResponse = await submitAttempt(api, wrongRequest, [201]);
+    assertReferenceAnswers(wrongResponse.attempt.referenceAnswers, wrongCase.question, definitions, "INSTANT_WRONG");
     invariant(wrongResponse.status === 201 && wrongResponse.body?.meta?.replayed === false, "WRONG_ATTEMPT_NOT_CREATED", "錯題作答第一次送出必須建立新紀錄。");
     invariant(wrongResponse.attempt.overallResult === "wrong", "WRONG_ATTEMPT_RESULT_MISMATCH", "刻意提交的有效錯誤選項沒有得到 wrong 結果。");
     const wrongPart = wrongResponse.attempt.parts.find((part) => part.partId === wrongCase.targetPartId);
@@ -1106,7 +3127,121 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
     }, [409]);
     invariant(conflict.body?.error?.code === "IDEMPOTENCY_CONFLICT", "IDEMPOTENCY_CONFLICT_MISSING", "同一冪等鍵搭配不同內容必須回傳 409 conflict。");
 
-    const missingAnswerSession = await createSession(api, [wrongCase.question.id]);
+    const partSessionResponse = await api.request("/api/v1/local-practice/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            sessionId: randomUUID(),
+            questions: [{
+                questionId: wrongCase.question.id,
+                revisionId: wrongCase.question.revisionId,
+                partId: wrongCase.targetPartId,
+            }],
+            mode: "review",
+            checkMode: "instant",
+        }),
+    }, [201]);
+    const partSession = partSessionResponse.body?.data?.session;
+    const partSessionItem = partSession?.items?.[0];
+    invariant(
+        partSession?.items?.length === 1
+            && partSessionItem?.partId === wrongCase.targetPartId
+            && UUID_PATTERN.test(partSessionItem.id),
+        "WRONG_REVIEW_PART_TARGET_MISSING",
+        "錯題複習 session 沒有固定指定小題。",
+    );
+    const selectionReason = (await client.query(`
+        SELECT selection_reason
+        FROM practice_session_items
+        WHERE id = $1
+    `, [partSessionItem.id])).rows[0]?.selection_reason;
+    invariant(selectionReason === "wrong_review", "WRONG_REVIEW_SELECTION_REASON_INVALID", "指定小題 session item 沒有標記 wrong_review。");
+    const partAnswer = wrongCase.correctAnswers.find((answer) => answer.partId === wrongCase.targetPartId);
+    invariant(partAnswer, "WRONG_REVIEW_PART_ANSWER_MISSING", "找不到指定小題的合成作答。");
+    const partReviewResponse = await submitAttempt(api, {
+        sessionId: partSession.id,
+        sessionItemId: partSessionItem.id,
+        questionId: wrongCase.question.id,
+        partId: wrongCase.targetPartId,
+        idempotencyKey: `local-practice-verify:part-review:${runToken}`,
+        durationSeconds: 2,
+        answers: [partAnswer],
+    }, [201]);
+    invariant(
+        partReviewResponse.attempt.parts.length === 1
+            && partReviewResponse.attempt.parts[0].partId === wrongCase.targetPartId
+            && partReviewResponse.attempt.parts[0].result === "correct"
+            && partReviewResponse.attempt.referenceAnswers.length === 1
+            && partReviewResponse.attempt.referenceAnswers[0].partId === wrongCase.targetPartId,
+        "WRONG_REVIEW_PART_SCOPE_INVALID",
+        "指定小題答對後的判分或答案揭露未維持在該小題。",
+    );
+    const partReviewState = await attemptDatabaseState(
+        client,
+        api.learnerId,
+        partReviewResponse.attempt.id,
+        `local-practice-verify:part-review:${runToken}`,
+    );
+    invariant(
+        partReviewState.attempts === 1
+            && partReviewState.part_results === 1
+            && partReviewState.wrong_parts === 0
+            && partReviewState.pending_parts === 0
+            && partReviewState.wrong_queue_items === 0,
+        "WRONG_REVIEW_CORRECT_RESULT_MISMATCH",
+        "指定錯題小題答對後仍被判錯、建立新錯題或保存了額外小題。",
+        partReviewState,
+    );
+
+    const manualReviewSession = await createSession(api, [manualReviewCase.question]);
+    const manualReviewRequest = {
+        sessionId: manualReviewSession.id,
+        questionId: manualReviewCase.question.id,
+        idempotencyKey: `local-practice-verify:manual-review:${runToken}`,
+        durationSeconds: 3,
+        answers: manualReviewCase.answers,
+    };
+    const manualReviewResponse = await submitAttempt(api, manualReviewRequest, [201]);
+    assertReferenceAnswers(
+        manualReviewResponse.attempt.referenceAnswers,
+        manualReviewCase.question,
+        definitions,
+        "MANUAL_REVIEW",
+    );
+    const manualResultParts = manualReviewResponse.attempt.parts.filter(
+        (part) => manualReviewCase.manualPartIds.has(part.partId),
+    );
+    invariant(
+        manualReviewResponse.attempt.overallResult === "pending"
+            && manualReviewResponse.attempt.parts.every((part) => part.result !== "wrong")
+            && manualResultParts.length === manualReviewCase.manualPartIds.size
+            && manualResultParts.every((part) => (
+                part.result === "pending"
+                && part.gradingSource === "manual_review"
+                && part.feedbackCode === "manual_review"
+            )),
+        "MANUAL_REVIEW_MISGRADED",
+        "人工批改小題被自動判定正確或錯誤。",
+    );
+    const manualReviewState = await attemptDatabaseState(
+        client,
+        api.learnerId,
+        manualReviewResponse.attempt.id,
+        manualReviewRequest.idempotencyKey,
+    );
+    invariant(
+        manualReviewState.attempts === 1
+            && manualReviewState.part_results === manualReviewCase.question.parts.length
+            && manualReviewState.pending_parts >= manualReviewCase.manualPartIds.size
+            && manualReviewState.wrong_parts === 0
+            && manualReviewState.wrong_queue_items === 0
+            && manualReviewState.outbox_events === 1,
+        "MANUAL_REVIEW_DATABASE_MISMATCH",
+        "人工批改題沒有以 pending 保存，或誤建錯題佇列。",
+        manualReviewState,
+    );
+
+    const missingAnswerSession = await createSession(api, [wrongCase.question]);
     const missingAnswerRequest = {
         sessionId: missingAnswerSession.id,
         questionId: wrongCase.question.id,
@@ -1114,32 +3249,30 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         durationSeconds: 1,
         answers: [],
     };
-    const missingAnswerResponse = await submitAttempt(api, missingAnswerRequest, [201]);
-    invariant(missingAnswerResponse.attempt.overallResult === "pending", "MISSING_ANSWER_RESULT_MISMATCH", "未作答的自動判分題沒有保持 pending。");
-    invariant(missingAnswerResponse.attempt.parts.length === wrongCase.question.parts.length, "MISSING_ANSWER_PART_COUNT_MISMATCH", "未作答結果沒有涵蓋全部可作答小題。");
-    invariant(missingAnswerResponse.attempt.parts.every((part) => (
-        part.result === "pending"
-        && part.gradingSource === "automatic"
-        && part.feedbackCode === "missing_answer"
-    )), "MISSING_ANSWER_PART_RESULT_MISMATCH", "未作答小題沒有以 missing_answer 保持 automatic/pending。");
-    invariant(missingAnswerResponse.body?.data?.session?.status === "completed", "MISSING_ANSWER_SESSION_NOT_COMPLETED", "未作答送出後 session 未完成。");
-    const missingAnswerState = await attemptDatabaseState(client, api.learnerId, missingAnswerResponse.attempt.id, missingAnswerRequest.idempotencyKey);
-    invariant(
-        missingAnswerState.attempts === 1
-            && missingAnswerState.part_results === wrongCase.question.parts.length
-            && missingAnswerState.pending_parts === wrongCase.question.parts.length
-            && missingAnswerState.wrong_parts === 0,
-        "MISSING_ANSWER_DATABASE_MISMATCH",
-        "未作答的持久 pending 結果不正確。",
-        missingAnswerState,
-    );
-    invariant(missingAnswerState.wrong_queue_items === 0 && missingAnswerState.outbox_events === 1, "MISSING_ANSWER_SIDE_EFFECT_MISMATCH", "未作答不得建立錯題佇列，但必須建立 outbox。");
+    const missingAnswerResponse = await api.request("/api/v1/local-practice/attempts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(missingAnswerRequest),
+    }, [400]);
+    invariant(missingAnswerResponse.body?.error?.code === "INCOMPLETE_ANSWER", "MISSING_ANSWER_ACCEPTED", "未完成指定 item 的全部小題仍可提交。");
+    const missingAnswerArtifacts = await sessionDatabaseArtifacts(client, missingAnswerSession.id);
+    invariant(missingAnswerArtifacts.attemptIds.length === 0, "MISSING_ANSWER_DATABASE_WRITE", "拒絕未完成作答後仍留下 attempt。");
+    await api.request("/api/v1/local-practice/sessions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: missingAnswerSession.id, status: "abandoned" }),
+    });
 
     let missingKeySummary = { status: "not_available", reason: "no-selectable-automatic-missing-key" };
-    const attemptIds = [correctResponse.attempt.id, wrongResponse.attempt.id, missingAnswerResponse.attempt.id];
+    const attemptIds = [
+        correctResponse.attempt.id,
+        wrongResponse.attempt.id,
+        partReviewResponse.attempt.id,
+        manualReviewResponse.attempt.id,
+    ];
     let missingKeySessionId = null;
     if (missingKeyCase) {
-        const missingKeySession = await createSession(api, [missingKeyCase.question.id]);
+        const missingKeySession = await createSession(api, [missingKeyCase.question]);
         missingKeySessionId = missingKeySession.id;
         const missingKeyRequest = {
             sessionId: missingKeySession.id,
@@ -1172,12 +3305,20 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
     }
 
     const { body: historyBody } = await api.request("/api/v1/local-practice/history?limit=100");
-    const historyLeaks = scanForbiddenKeys(historyBody?.data, "history");
-    invariant(historyLeaks.length === 0, "HISTORY_API_LEAK", "歷史 API 洩漏作答內容或答案。", { locations: historyLeaks.slice(0, 10) });
+    const historyLeaks = scanNamedKeys(historyBody?.data, FORBIDDEN_DETAILED_PRIVATE_KEYS, "history");
+    invariant(historyLeaks.length === 0, "HISTORY_API_LEAK", "歷史 API 洩漏作答 payload、冪等鍵或 storage key。", { locations: historyLeaks.slice(0, 10) });
     const historyAttempts = historyBody?.data?.attempts;
     const queueItems = historyBody?.data?.wrongReviewQueue?.items;
     invariant(Array.isArray(historyAttempts) && attemptIds.every((id) => historyAttempts.some((attempt) => attempt.id === id)), "HISTORY_ATTEMPT_MISSING", "歷史 API 找不到剛建立的作答。");
-    invariant(Array.isArray(queueItems) && queueItems.some((item) => item.questionId === wrongCase.question.id), "HISTORY_WRONG_QUEUE_MISSING", "歷史 API 找不到剛建立的錯題佇列。");
+    invariant(
+        Array.isArray(queueItems)
+            && queueItems.some((item) => (
+                item.questionId === wrongCase.question.id
+                && item.partId === wrongCase.targetPartId
+            )),
+        "HISTORY_WRONG_QUEUE_MISSING",
+        "歷史 API 找不到剛建立之 learner + question + part 錯題佇列。",
+    );
 
     return {
         sessionIds: {
@@ -1195,23 +3336,75 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         },
         wrongAttempt: {
             attemptId: wrongResponse.attempt.id,
+            questionId: wrongCase.question.id,
+            partId: wrongCase.targetPartId,
             result: wrongResponse.attempt.overallResult,
             wrongParts: stateAfterReplay.wrong_parts,
             wrongQueueItems: stateAfterReplay.wrong_queue_items,
             outboxEvents: stateAfterReplay.outbox_events,
             idempotencyReplay: true,
         },
+        wrongReviewAttempt: {
+            attemptId: partReviewResponse.attempt.id,
+            questionId: wrongCase.question.id,
+            partId: wrongCase.targetPartId,
+            result: partReviewResponse.attempt.overallResult,
+            scopedToOnePart: true,
+        },
+        manualReviewAttempt: {
+            attemptId: manualReviewResponse.attempt.id,
+            result: manualReviewResponse.attempt.overallResult,
+            pendingParts: manualReviewState.pending_parts,
+            wrongQueueItems: manualReviewState.wrong_queue_items,
+        },
         missingAnswerAttempt: {
-            attemptId: missingAnswerResponse.attempt.id,
-            result: missingAnswerResponse.attempt.overallResult,
-            pendingParts: missingAnswerState.pending_parts,
-            wrongQueueItems: missingAnswerState.wrong_queue_items,
-            outboxEvents: missingAnswerState.outbox_events,
+            rejected: true,
+            code: missingAnswerResponse.body?.error?.code,
         },
         missingKeyAttempt: missingKeySummary,
         attemptIds,
         historyVisible: true,
     };
+}
+
+async function verifyPracticeReadbackAfterNewLogin(client, origin, registeredAccount, flow) {
+    const loggedIn = await loginSyntheticAuthClient(origin, registeredAccount);
+    try {
+        invariant(
+            loggedIn.learnerId === registeredAccount.learnerId,
+            "PRACTICE_RELOGIN_LEARNER_CHANGED",
+            "同一帳號建立新登入後沒有回到原學習者。",
+        );
+        const history = (await loggedIn.request("/api/v1/local-practice/history?limit=100"))
+            .body?.data;
+        const attemptIds = new Set((history?.attempts ?? []).map((attempt) => attempt.id));
+        invariant(
+            flow.attemptIds.every((attemptId) => attemptIds.has(attemptId)),
+            "PRACTICE_RELOGIN_HISTORY_MISSING",
+            "同一帳號建立新登入後無法讀回既有作答成果。",
+            {
+                expected: flow.attemptIds.length,
+                visible: flow.attemptIds.filter((attemptId) => attemptIds.has(attemptId)).length,
+            },
+        );
+        invariant(
+            (history?.wrongReviewQueue?.items ?? []).some((item) => (
+                item.questionId === flow.wrongAttempt.questionId
+                && item.partId === flow.wrongAttempt.partId
+            )),
+            "PRACTICE_RELOGIN_WRONG_QUEUE_MISSING",
+            "同一帳號建立新登入後無法讀回 learner + part 錯題。",
+        );
+        return {
+            learnerIdStable: true,
+            attemptCount: flow.attemptIds.length,
+            wrongPartVisible: true,
+        };
+    }
+    finally {
+        await loggedIn.logout();
+        await verifyAuthSessionRevoked(client, loggedIn.sessionTokenHash);
+    }
 }
 
 function normalizedTimestamp(value, code, message) {
@@ -1265,15 +3458,32 @@ async function readPersistenceEvidence() {
     };
 }
 
-async function verifyPersistedAttempts(client, api, attemptIds, previousDatabaseStartedAt, currentDatabaseStartedAt) {
+async function verifyPersistedAttempts(
+    client,
+    api,
+    attemptIds,
+    previousDatabaseStartedAt,
+    currentDatabaseStartedAt,
+    requireDatabaseRestart,
+) {
     invariant(attemptIds.length > 0, "PERSISTED_ATTEMPT_IDS_REQUIRED", "VERIFY_PERSISTENCE_ONLY 需要 PERSISTED_ATTEMPT_IDS 或 PERSISTED_ATTEMPT_IDS_FILE。");
-    invariant(previousDatabaseStartedAt !== undefined, "PERSISTED_DATABASE_START_REQUIRED", "重啟驗證需要先前完整驗證輸出的 databaseStartedAt；請使用 PERSISTED_ATTEMPT_IDS_FILE，或提供 PERSISTED_DATABASE_STARTED_AT。");
-    invariant(
-        Date.parse(currentDatabaseStartedAt) > Date.parse(previousDatabaseStartedAt),
-        "DATABASE_RESTART_NOT_OBSERVED",
-        "PostgreSQL 啟動時間沒有晚於第一次驗證；必須先停止並重新啟動本機資料庫。",
-        { previousDatabaseStartedAt, currentDatabaseStartedAt },
-    );
+    invariant(previousDatabaseStartedAt !== undefined, "PERSISTED_DATABASE_START_REQUIRED", "持久性驗證需要先前完整驗證輸出的 databaseStartedAt；請使用 PERSISTED_ATTEMPT_IDS_FILE，或提供 PERSISTED_DATABASE_STARTED_AT。");
+    if (requireDatabaseRestart) {
+        invariant(
+            Date.parse(currentDatabaseStartedAt) > Date.parse(previousDatabaseStartedAt),
+            "DATABASE_RESTART_NOT_OBSERVED",
+            "PostgreSQL 啟動時間沒有晚於第一次驗證；必須先停止並重新啟動本機資料庫。",
+            { previousDatabaseStartedAt, currentDatabaseStartedAt },
+        );
+    }
+    else {
+        invariant(
+            currentDatabaseStartedAt === previousDatabaseStartedAt,
+            "BORROWED_DATABASE_RESTARTED",
+            "借用的 existing-local-server 在兩次驗證間被重新啟動；無法證明 runner 沒有干預該服務。",
+            { previousDatabaseStartedAt, currentDatabaseStartedAt },
+        );
+    }
     const rows = (await client.query(`
         SELECT
             attempt.id,
@@ -1306,8 +3516,8 @@ async function verifyPersistedAttempts(client, api, attemptIds, previousDatabase
         || (row.overall_result === "correct" && row.pending_parts === 0 && row.wrong_parts === 0)
     )), "PERSISTED_RESULT_MISMATCH", "重啟後的 overall result 與小題結果不一致。");
     const { body } = await api.request("/api/v1/local-practice/history?limit=100");
-    const historyLeaks = scanForbiddenKeys(body?.data, "persistedHistory");
-    invariant(historyLeaks.length === 0, "PERSISTED_HISTORY_API_LEAK", "重啟後歷史 API 洩漏作答內容或答案。", { locations: historyLeaks.slice(0, 10) });
+    const historyLeaks = scanNamedKeys(body?.data, FORBIDDEN_DETAILED_PRIVATE_KEYS, "persistedHistory");
+    invariant(historyLeaks.length === 0, "PERSISTED_HISTORY_API_LEAK", "重啟後歷史 API 洩漏作答 payload、storage key 或冪等鍵。", { locations: historyLeaks.slice(0, 10) });
     const historyIds = new Set((body?.data?.attempts ?? []).map((attempt) => attempt.id));
     const ownedByCurrentLearner = rows.every((row) => row.learner_id === api.learnerId);
     if (ownedByCurrentLearner) {
@@ -1327,7 +3537,10 @@ async function verifyPersistedAttempts(client, api, attemptIds, previousDatabase
         historyVisible: ownedByCurrentLearner,
         crossAccountHistoryIsolated: !ownedByCurrentLearner,
         databaseRestart: {
-            verified: true,
+            verified: requireDatabaseRestart,
+            skipped: !requireDatabaseRestart,
+            reason: requireDatabaseRestart ? undefined : "borrowed-existing-server",
+            serverRemainedRunning: !requireDatabaseRestart,
             previousStartedAt: previousDatabaseStartedAt,
             currentStartedAt: currentDatabaseStartedAt,
         },
@@ -1348,7 +3561,10 @@ function safeError(error) {
 
 async function main() {
     const config = databaseConfig();
+    await verifyIsolationMarker(config);
     const origin = baseUrl();
+    const migrationManifest = await expectedMigrations();
+    const selectedCatalogProfile = catalogProfile();
     const persistenceOnly = parseBooleanEnvironment("VERIFY_PERSISTENCE_ONLY");
     const persistenceEvidence = await readPersistenceEvidence();
     const persistedAttemptIds = persistenceEvidence.attemptIds;
@@ -1372,22 +3588,27 @@ async function main() {
         const client = await pool.connect();
         try {
             const database = await verifyDatabaseIdentity(client, config);
-            const migrations = await verifyMigrations(client);
+            const migrations = await verifyMigrations(client, migrationManifest);
+            const forwardedHttpsSession = await verifyForwardedHttpsSessionLifecycle(client, origin);
+            const roleContracts = await verifyRegistrationRoleContracts(client, origin);
+            const accountSettings = await verifyAccountSettingsContracts(client, origin);
             const api = await createSyntheticAuthClient(origin);
             let output;
             try {
                 if (persistenceOnly) {
-                    const importVerification = await verifyImport(client, api.learnerId);
+                    const importVerification = await verifyImport(client, api.learnerId, selectedCatalogProfile);
                     const persistence = await verifyPersistedAttempts(
                         client,
                         api,
                         persistedAttemptIds,
                         persistenceEvidence.databaseStartedAt,
                         database.serverStartedAt,
+                        !config.existingServer,
                     );
                     output = {
                         ok: true,
                         mode: "persistence-only",
+                        catalogProfile: selectedCatalogProfile.name,
                         baseUrl: origin.origin,
                         database,
                         migrations,
@@ -1395,14 +3616,23 @@ async function main() {
                             synthetic: true,
                             emailDomain: api.emailDomain,
                             learnerId: api.learnerId,
+                            forwardedHttpsSession,
+                            roleContracts,
+                            accountSettings,
                         },
                         import: importVerification.summary,
                         persistence,
                     };
                 }
                 else {
-                    const importVerification = await verifyImport(client, api.learnerId);
+                    const importVerification = await verifyImport(client, api.learnerId, selectedCatalogProfile);
                     const catalog = await loadQuestions(api);
+                    invariant(
+                        catalog.total === EXPECTED_IMPORT.approved,
+                        "QUESTION_API_EXACT_COUNT_MISMATCH",
+                        "國語／國一／翰林／第一冊／第四課必須精確回傳 279 題。",
+                        { expected: EXPECTED_IMPORT.approved, actual: catalog.total },
+                    );
                     const apiRevisionIds = new Set(catalog.questions.map((question) => question.revisionId));
                     invariant(importVerification.publishedRevisionIds.every((id) => apiRevisionIds.has(id)), "IMPORTED_QUESTION_MISSING_FROM_API", "題庫 API 未完整提供本批已發布題目。", {
                         importedRevisions: importVerification.publishedRevisionIds.length,
@@ -1410,7 +3640,15 @@ async function main() {
                         missing: importVerification.publishedRevisionIds.filter((id) => !apiRevisionIds.has(id)).length,
                     });
                     const definitions = await loadGradeDefinitions(client, catalog.questions);
+                    const sessionContracts = await verifySessionContracts(client, origin, api, catalog.questions[0]);
                     const flow = await verifyAttemptFlow(client, api, catalog.questions, definitions);
+                    const checkModeDisclosure = await verifyCheckModeDisclosure(client, origin, api, catalog.questions, definitions);
+                    const practiceRelogin = await verifyPracticeReadbackAfterNewLogin(
+                        client,
+                        origin,
+                        api,
+                        flow,
+                    );
                     const suppliedPersistence = persistedAttemptIds.length > 0
                         ? await verifyPersistedAttempts(
                             client,
@@ -1418,11 +3656,13 @@ async function main() {
                             persistedAttemptIds,
                             persistenceEvidence.databaseStartedAt,
                             database.serverStartedAt,
+                            !config.existingServer,
                         )
                         : null;
                     output = {
                         ok: true,
                         mode: "full",
+                        catalogProfile: selectedCatalogProfile.name,
                         baseUrl: origin.origin,
                         database,
                         migrations,
@@ -1430,6 +3670,9 @@ async function main() {
                             synthetic: true,
                             emailDomain: api.emailDomain,
                             learnerId: api.learnerId,
+                            forwardedHttpsSession,
+                            roleContracts,
+                            accountSettings,
                         },
                         import: importVerification.summary,
                         catalog: {
@@ -1437,12 +3680,17 @@ async function main() {
                             pages: catalog.pageCount,
                             answerOrStorageLeaks: 0,
                         },
+                        sessionContracts,
                         practice: flow,
+                        practiceRelogin,
+                        checkModeDisclosure,
                         suppliedPersistence,
                         persistence: {
                             attemptIds: flow.attemptIds,
                             databaseStartedAt: database.serverStartedAt,
-                            nextCheck: "先保存本次 JSON，停止並重啟 PostgreSQL 與網站，再執行 VERIFY_PERSISTENCE_ONLY=1 PERSISTED_ATTEMPT_IDS_FILE=<本次 JSON 路徑> node scripts/verify-local-practice.mjs",
+                            nextCheck: config.existingServer
+                                ? "npm run test:local-practice 會重啟隔離 Next，但保持借用的 PostgreSQL 持續運行，再驗證作答持久性。"
+                                : "npm run test:local-practice 會在同一次隔離執行中自動重啟臨時 PostgreSQL 與 Next，並驗證作答持久性。",
                         },
                     };
                 }

@@ -1,6 +1,10 @@
 # 題目與學習資料庫規劃
 
-狀態：正式 schema（資料庫結構）基底。身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計五階段 migration（資料庫遷移）已完成本機隔離驗證。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
+
+279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
+
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0011` 共十一個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性，以及 `score` session 的彙總與逐題資料隱私。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -10,13 +14,13 @@
 
 ## 實作狀態
 
-`database/migrations/0001_identity_and_catalog.up.sql` 已建立身份、學習者、檔案與基礎目錄資料表，並提供對應的回滾 migration。前進、欄位限制、回滾及再次前進已在可直接丟棄、只含合成資料的本機 PostgreSQL 測試資料庫通過。`learner_preferences.active_exam_id` 已由練習與作答階段加入，並以複合外鍵限制為同一學習者的考試。現有 JSON API 尚未切換到 PostgreSQL。
+`database/migrations/0001_identity_and_catalog.up.sql` 已建立身份、學習者、檔案與基礎目錄資料表，並提供對應的回滾 migration。前進、欄位限制、回滾及再次前進已在只含合成資料的隔離 PostgreSQL 測試資料庫通過。`learner_preferences.active_exam_id` 已由練習與作答階段加入，並以複合外鍵限制為同一學習者的考試。舊 JSON HTTP 端點已封閉；尚未資料庫化的偏好、考試、計畫、排程與收藏不得改回舊 JSON 路徑。
 
 `database/migrations/0002_question_core.up.sql` 已建立題庫、題目版本、小題、內容、答案、分類關聯及來源專屬篩選欄位。`database/migrations/0003_import_and_collections.up.sql` 已建立來源文件、匯入、來源追溯與收藏資料表，並補上文件內題號的欄位與限制。`database/migrations/0004_practice_and_attempts.up.sql` 已建立考試、計畫、排程、練習、逐次作答、小題結果、手寫檔案、審核、後續練習佇列及來源追溯。
 
-`database/migrations/0005_similarity_analytics_and_audit.up.sql` 已建立相近題、統計、隱私政策、outbox、重算工作、管理員稽核與資料刪除共 14 張業務資料表，並為 `learner_practice_queue_items` 與 `practice_session_item_origins` 加入 `similarity_group_id`、外鍵與 `confirmed_group` 值域。它也補上 `curriculum_units`、`source_categories` 的系統／帳號所有權，以及代表圖片、題目內容、來源文件、裁切圖、手寫與一般作答附件的用途、掃描狀態和刪除狀態完整性。`npm run db:test` 已通過五階段兩次前進與限制測試、逐階段反向回滾及 schema parity（結構一致性）比對。
+`database/migrations/0005_similarity_analytics_and_audit.up.sql` 已建立相近題、統計、隱私政策、outbox、重算工作、管理員稽核與資料刪除共 14 張業務資料表，並為 `learner_practice_queue_items` 與 `practice_session_item_origins` 加入 `similarity_group_id`、外鍵與 `confirmed_group` 值域。它也補上 `curriculum_units`、`source_categories` 的系統／帳號所有權，以及代表圖片、題目內容、來源文件、裁切圖、手寫與一般作答附件的用途、掃描狀態和刪除狀態完整性。`0006` 補齊 Word 來源型別，`0007` 補齊選項答案與 ready DOCX 來源的交易結束完整性限制。`0008` 要求有效 session 指定啟用中的學習者，固定帳號／學習者鎖定順序，並只把指定 confirmed Hanlin 批次的教材關聯修正為 `native/document`。`0009` 要求 published／superseded 版本中的自動判分小題具備可用答案，升級前發現既有缺漏就停止，不猜測或補造答案。`0010` 加入 `users.account_role`、self learner 唯一性、名稱與設定權限一致性，以及相關登入身份、角色與學習者關係的交易最終狀態限制。`0011` 為 `practice_sessions` 加入五個 `score` 彙總欄位，新增不含答案與判定的 `practice_score_receipts`，將舊版 `score` 逐題資料改為只保留彙總與收據，從剩餘非 `score` 明細重建五張統計表，並以 `asset_object_cleanup_jobs` 追蹤只屬於舊 `score` 的私有作答物件清理。
 
-五階段合計 94 張業務資料表；技術性的 `schema_migrations` 不列入。現有題目 fixture 尚未搬入 PostgreSQL，現有 JSON API 與 UI 也尚未改用這些資料表。
+十一個 migration 合計 96 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -42,10 +46,13 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | 必填 | 帳號識別碼 | 主鍵 |
 | `display_name` | `varchar(80)` | 必填 | 帳號顯示名稱 | — |
+| `account_role` | `varchar(30)` | 有有效登入身份時必填 | 一般帳號本人身分 | `parent`、`learner` 或 `tutor`；`system_admin` 不寫入此欄 |
 | `status` | `varchar(20)` | 必填；`active` | 帳號狀態 | `active`、`suspended`、`closed` |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
 | `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
 | `closed_at` | `timestamptz` | 選填 | 關閉帳號時間 | 關閉後仍保留依法必須保存的交易與稽核資料 |
+
+`0010` 要求有未撤銷登入身份的帳號具有 `account_role`，並保留相符且未撤銷的 `user_roles` 授權。`account_role=learner` 還必須具有已接受、未撤銷且指向啟用中學習者的本人關係。既有資料依有效 session、學習者關係與成人角色授權按固定順序回填；無法安全判定時 migration 會停止，不猜測帳號身分。
 
 ### `account_identities` 登入身份
 
@@ -105,9 +112,11 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `revoked_by_user_id` | `uuid` | 選填 | 移除角色者帳號 | — |
 | `revoked_at` | `timestamptz` | 選填 | 角色失效時間 | 同一帳號與角色只能有一筆有效授權 |
 
-新帳號建立時由後端一併建立有效的 `learner` 角色；前端不能用 `active_role` 自行授予角色。角色授權對象、角色、授權者與授權時間不可改寫或刪除，撤銷只能從有效狀態單向發生。`system_admin` 的授予或撤銷必須由當下有效的管理員，或受控的 `bootstrap_admin` 路徑執行，並在同一交易建立目標為該 `user_roles.id` 的相符管理員稽核。
+新帳號建立時由後端依選定的 `account_role` 一併建立相符有效角色；前端不能用 `active_role` 自行授予角色。角色授權對象、角色、授權者與授權時間不可改寫或刪除，撤銷只能從有效狀態單向發生。`system_admin` 的授予或撤銷必須由當下有效的管理員，或受控的 `bootstrap_admin` 路徑執行，並在同一交易建立目標為該 `user_roles.id` 的相符管理員稽核。
 
 ### `role_pin_credentials` 角色切換密碼
+
+此表是已建立但尚未接入目前 UI 的資料契約。現行 parent／tutor 角色切換使用帳號密碼重新確認；若後續啟用角色 PIN，才使用下列欄位與 `verification_challenges` 的重設流程。
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
@@ -152,7 +161,9 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `accepted_at` | `timestamptz` | 選填 | 接受邀請時間 | 未接受前不得讀取學習資料 |
 | `revoked_at` | `timestamptz` | 選填 | 取消授權時間 | `learner_id + user_id + access_role` 只能有一筆有效授權 |
 
-`access_role` 用於顯示關係與套用新授權的預設值，實際授權以四個 `can_*` 欄位為準。審核者是 `can_review_answers=true` 的能力，不是可登入或切換的帳號角色；`auth_sessions.active_role` 只能使用 `user_roles` 的有效角色。
+`access_role` 用於顯示關係與套用新授權的預設值，實際授權以四個 `can_*` 欄位為準。審核者是 `can_review_answers=true` 的能力，不是可登入或切換的帳號角色；`auth_sessions.active_role` 只能使用 `user_roles` 的有效角色。應用程式公開的 `accountRole` 只代表一般帳號的主要身分是 `parent`、`tutor` 或 `learner`，不把 `system_admin` 混進一般身分，也不等同 session 的 `active_role`。變更 `accountRole` 不會自動撤銷其他有效一般角色；目前可用能力以 `active_role` 及其有效授權為準。
+
+`learner_access(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一。`0010` 另以 `learner_access(user_id)` 的部分唯一索引限制每個帳號至多一筆未撤銷的 `access_role=learner` 關係。已接受且啟用中的 self learner 必須與帳號顯示名稱一致，並具有 `can_manage_settings=true`；這些規則由可延後限制檢查交易最終狀態。parent／tutor 切入受管 learner mode 時，帳號層系統設定 API 回 `403`；目前學習者設定仍可依有效關係及 `can_manage_settings` 讀寫。
 
 ### `learner_preferences` 學習偏好
 
@@ -615,6 +626,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 作答方式只由 `question_parts.answer_mode` 決定。`question_answers` 保存可接受答案，不重複保存作答方式。每列只能使用 `answer_key` 或 `accepted_value` 其中一種答案表示；多選題以多筆 `answer_key` 表示正確集合，首版必須完整符合才判定為正確。文字答案只有在產品已明確設定可自動比對時才使用 `automatic`，否則使用人工檢視或 AI 輔助後人工確認。
 
+`0009_automatic_answer_completeness` 對已發布與已取代版本檢查交易的最終狀態：`single_choice`、`multiple_choice` 與 `boolean` 的自動判分小題至少要有一個非空白 `answer_key`，且該鍵值對應同一小題的有效選項；`text` 的自動判分小題至少要有一個非空白 `accepted_value`。`manual_review` 與 `ai_assisted_review` 可以沒有參考答案。限制在 revision、小題、選項及答案異動後延後檢查，允許同一交易按安全順序組裝資料，但提交時不得留下無法判分的發布版本。
+
 ### `question_revision_topics` 題目主題關聯
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -685,6 +698,22 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 `handwriting` 只保存手寫板影像；其他經題型與表單核准的一般作答檔案使用 `answer_attachment`。兩種作答附件都必須是 `sensitivity=private`、`scan_status=clean` 且 `deleted_at IS NULL`，才能建立 `answer_part_assets` 關聯。用途分開可避免把一般附件假裝成手寫內容，也能讓後端依題型限制可接受的檔案；附件仍須從作答及學習者授權鏈反查權限，不因掃描通過而變成公開檔案。作答仍引用檔案時，`storage_key`、MIME、大小、圖片尺寸、內容雜湊、上傳者與建立時間視為證據，不可原地覆寫。
 
+### `asset_object_cleanup_jobs` 外部物件清理工作
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `asset_id` | `uuid` | 必填 | 待清理資產 | 主鍵；外鍵至 `assets.id` |
+| `reason` | `varchar(60)` | 必填 | 排程原因 | `0011` 使用 `legacy_score_detail_purge`；不可為空白 |
+| `status` | `varchar(20)` | 必填；`pending` | 清理狀態 | `pending`、`processing`、`completed`、`failed` |
+| `requested_at` | `timestamptz` | 必填；目前時間 | 排程時間 | 建立後不可改 |
+| `last_attempted_at` | `timestamptz` | 選填 | 最近執行時間 | 進入 `processing`、`completed` 或 `failed` 時必填，且不得早於排程時間 |
+| `object_deleted_at` | `timestamptz` | 選填 | 外部物件確認刪除時間 | 只有 `completed` 可填，且不得早於最近執行時間 |
+| `last_error` | `text` | 選填 | 最近失敗摘要 | 只有 `failed` 必填且不得為空白；不得保存答案或其他敏感內容 |
+
+工作只能從已解除所有產品引用、已寫入 `deleted_at`、用途為 `handwriting`／`answer_attachment` 且敏感度為 `private` 的 asset 建立。新工作固定從 `pending` 開始，`last_attempted_at`、`object_deleted_at` 與 `last_error` 都必須為空；允許 `pending → processing → completed|failed`，失敗後可再回到 `processing`，completed 為終態。工作不可刪除，資產、原因、排程時間、`assets.deleted_at` 與待刪物件的儲存證據不可改寫。
+
+這張表是資料庫與外部物件儲存之間的兩階段邊界。Migration 只對移除舊 `score` 作答關聯後不再被題目、來源文件、裁切內容、學習者或非 `score` 作答引用的資產進行邏輯刪除與排程；共用資產保留。受控 worker 實際確認外部物件已刪除後，才能寫 `object_deleted_at` 並完成工作。本輪沒有對真實 storage 執行破壞性刪除。
+
 ### `source_documents` 來源文件
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -692,7 +721,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `id` | `uuid` | 必填 | 來源文件識別碼 | 主鍵 |
 | `owner_user_id` | `uuid` | 選填 | 文件擁有者 | 系統搬移文件可為空 |
 | `asset_id` | `uuid` | 選填 | 原始檔案 | 貼上文字時可為空 |
-| `input_type` | `varchar(20)` | 必填 | 輸入方式 | `image`、`pdf`、`text` |
+| `input_type` | `varchar(20)` | 必填 | 輸入方式 | `image`、`pdf`、`text`、`document` |
 | `original_file_name` | `varchar(255)` | 選填 | 原始檔名 | 不作權限或分類依據 |
 | `pasted_text` | `text` | 選填 | 使用者貼上的原文 | `input_type=text` 時必填 |
 | `document_title` | `varchar(300)` | 選填 | 文件標題 | 可作 AI 建議依據，使用者確認後才寫正式分類 |
@@ -1126,8 +1155,15 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `mode` | `varchar(20)` | 必填 | 練習用途 | `practice`、`review`、`similar` |
 | `check_mode` | `varchar(20)` | 必填 | 實際檢核方式 | 建立時由計畫複製，後續計畫變更不影響 |
 | `status` | `varchar(20)` | 必填；`active` | 練習狀態 | `active`、`paused`、`completed`、`abandoned` |
+| `score_total_count` | `integer` | 必填；`0` | `score` session 的總題數 | 必須與 session item 數相同；非 `score` 必須為 0 |
+| `score_answered_count` | `integer` | 必填；`0` | 已送出題數 | 必須與收據數相同且不大於總題數；非 `score` 必須為 0 |
+| `score_correct_count` | `integer` | 必填；`0` | 答對題數 | 不得小於 0；非 `score` 必須為 0 |
+| `score_wrong_count` | `integer` | 必填；`0` | 答錯題數 | 不得小於 0；非 `score` 必須為 0 |
+| `score_pending_count` | `integer` | 必填；`0` | 尚未作答或待檢視題數 | `correct + wrong + pending = total`；非 `score` 必須為 0 |
 | `started_at` | `timestamptz` | 必填；目前時間 | 開始時間 | — |
 | `completed_at` | `timestamptz` | 選填 | 完成時間 | — |
+
+`check_mode` 同時約束 API 的答案揭露與保存範圍。`instant` 可在每題送出後回傳該題明細；`complete` 在 session 完成前只回傳已送出狀態，完成後才回傳逐題明細；`score` 進行中只回傳遮罩狀態，完成後保存並只回傳總題數、答對、答錯、待檢視與正確率。`score` 的 aggregate 可在重新整理或重新開啟後讀回，但各題送出的答案、判定、附件與審核不保存，也不建立錯題／相近題佇列、來源追溯或統計 outbox。歷程及錯題佇列必須套用相同規則，不能成為旁路。瀏覽器只保存 session UUID；重新整理時由資料庫恢復可安全恢復的進度並把進行中 session 暫停。固定 revision 與可用題目內容不一致時，把舊 session 標記為 `abandoned` 並要求建立新練習；尚未送出的文字或手寫內容不屬於資料庫恢復範圍。從任意題開始作答時，伺服器與介面都以尚未送出的 item 決定下一題，只有全部 item 都完成才結束 session。
 
 ### `practice_session_items` 練習固定題目
 
@@ -1141,7 +1177,21 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `position` | `integer` | 必填 | 題目順序 | 同一練習內唯一 |
 | `selection_reason` | `varchar(30)` | 必填 | 選入原因 | `filter`、`fixed`、`wrong_review`、`similar_review`、`difficulty_fill` |
 
-一旦練習項目已有來源追溯或作答，`practice_session_id`、題目、版本、小題與選入原因不可改寫；parent session 也不可換成另一位學習者。這些限制保留 `practice_sessions.status`、`completed_at` 等正常生命週期欄位可更新。
+一旦練習項目已有來源追溯或一般作答，`practice_session_id`、題目、版本、小題與選入原因不可改寫；parent session 也不可換成另一位學習者。`score` item 已有收據後，`practice_session_id`、題目、版本與小題不可改寫，parent session 也不可更換學習者或 `check_mode`。這些限制保留 `practice_sessions.status`、`completed_at` 等正常生命週期欄位可更新。
+
+歷程顯示必須使用 `question_revision_id` 指向的當時版本。若資料保存或舊資料搬移沒有留下可安全顯示的 revision 快照，查詢只回傳結果、時間與內容不可用狀態，不得拿 `questions.current_revision_id` 指向的目前題目補上舊內容。
+
+### `practice_score_receipts` 計分模式送出收據
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 收據識別碼 | 主鍵；重播相同提交時回傳同一識別碼 |
+| `practice_session_item_id` | `uuid` | 必填 | 已送出的練習項目 | 外鍵至 `practice_session_items.id`；每個 item 最多一筆 |
+| `learner_id` | `uuid` | 必填 | 作答學習者 | 必須與所屬 `score` session 相同 |
+| `idempotency_key` | `varchar(120)` | 必填 | 送出冪等鍵 | 不可為空白；`learner_id + idempotency_key` 唯一 |
+| `submitted_at` | `timestamptz` | 必填；目前時間 | 送出時間 | — |
+
+收據只證明某個 `score` item 已送出，不能保存或推導答案、逐題判定、question part、耗時、附件或審核內容。每個 item 最多一筆，收據建立後不可修改或刪除；只有所屬 session 的學習者可以建立，且該 session 必須是 `score`。交易提交時，session 的 `score_total_count` 必須等於 item 數，`score_answered_count` 必須等於收據數；所有 item 都有收據後才能完成。相同冪等鍵可重播原提交，同一 item 改用新鍵送出會衝突，不建立第二筆收據。
 
 ### `practice_session_item_origins` 練習項目來源追溯
 
@@ -1166,6 +1216,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 ### `answer_attempts` 每次送出作答
 
+這張表只保存 `instant` 與 `complete` 的逐題作答。`score` 使用 `practice_score_receipts` 標記已送出 item，不能在這張表建立答案或判定明細。
+
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | 必填 | 作答識別碼 | 主鍵 |
@@ -1179,6 +1231,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `submitted_at` | `timestamptz` | 必填；目前時間 | 送出時間 | 不可覆寫 |
 
 ### `answer_part_results` 小題作答與結果
+
+這張表只屬於需要保留逐題明細的作答；`score` 不建立小題結果。
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
@@ -1291,6 +1345,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `total_duration_seconds` | `bigint` | 必填；`0` | 總作答秒數 | — |
 | `updated_at` | `timestamptz` | 必填；目前時間 | 最近重算時間 | 可由原始作答重建 |
 
+`0011` 的隱私升級會重新建立上述五張統計表。合格明細只包括所有 `instant` 作答，以及 session 已完成的 `complete` 作答；進行中的 `complete` 與任何 `score` 都不納入。每日統計以 `Asia/Taipei` 換日；相近題掌握度先取每位學習者對每題的最新整題結果，再依已確認群組計算不同題目數；學習者每日 session 數只計已完成的 `instant`／`complete` session。重建不從舊統計扣除 `score`，也不從 session aggregate 反推逐題結果。
+
 錯題英雄榜不永久保存名次。查詢依日期範圍與共用篩選條件聚合後，再用資料庫排名函式計算；畫面額外顯示答錯次數、錯誤率、最後作答時間等錯題資料。
 
 ### `analytics_privacy_policies` 統計隱私政策
@@ -1381,7 +1437,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 下列資料不另建第二份權威資料：
 
-- 不建立獨立錯題表。錯題由 `answer_part_results` 的最新已檢核結果與可重建統計取得，避免改判後錯題表不同步。
+- 不建立獨立錯題表。`instant` 與 `complete` 的錯題由 `answer_part_results` 的最新已檢核結果與可重建統計取得，避免改判後錯題表不同步；`score` 不保存逐題結果，因此不產生錯題明細。
 - 不建立永久名次表。排行榜依日期範圍及篩選條件從每日統計計算。
 - 不建立平行的題組內容表。同一大題的共用內容放在 `question_revisions` 的內容區塊，各小題放在 `question_parts`；切換小題時可保留共用內容。
 - 不把來源路徑、重複來源類型或重複知識點再存成可見條件。原始證據留在來源文件與匯入草稿；可驗證的正式課綱代碼另存到 `curriculum_codes`，不能因畫面不顯示「學習內容」就丟棄代碼。
@@ -1393,6 +1449,8 @@ users ──< account_identities
       ├──< user_roles
       ├──< role_pin_credentials
       └──< learner_access >── learners ──< learner_subject_settings
+
+assets ──0..1 asset_object_cleanup_jobs
 
 subjects(parent) ──< subjects(child)
          ├──< subject_aliases
@@ -1441,6 +1499,7 @@ learners ──< practice_schedules ──< practice_schedule_items
 practice_plans ──< practice_sessions
 practice_schedules ──0..1 practice_sessions
 practice_sessions ──< practice_session_items ──< answer_attempts ──< answer_part_results ──< answer_reviews
+                                  └──0..1 practice_score_receipts
 practice_session_items ──< practice_session_item_origins >── answer_part_results
 ```
 
@@ -1467,7 +1526,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 一次性驗證 | `UNIQUE(token_hash)`；索引 `user_id, purpose, consumed_at, expires_at` |
 | 有效角色去重 | `user_roles(user_id, role)` 在 `revoked_at IS NULL` 時唯一 |
 | 角色授權歷史 | 授權證據不可改寫或刪除，撤銷只能單向進行；`system_admin` 授撤必須同交易寫入 actor 與 target 相符的管理員稽核 |
-| 學習者分享 | `learner_access(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一；另建 `user_id, revoked_at, learner_id` 索引 |
+| 學習者分享 | `learner_access(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一；另建 `user_id, revoked_at, learner_id` 索引。`0010` 再以 `learner_access(user_id)` 的部分唯一索引限制每帳號至多一筆未撤銷的 `access_role=learner` 關係 |
 | 學習者就學狀態 | CHECK constraint 確保 `enrolled` 時有 `grade_id`，`not_enrolled` 時 `grade_id`、`semester_id` 與 `school_name` 為空 |
 | 學習者科目 | `UNIQUE(learner_id, subject_id)`；索引 `learner_id, enabled, position` |
 | 科目名稱與階層 | 系統科目的 `normalized_name` 與 `subject_aliases.normalized_alias` 各自全域唯一；帳號科目 `UNIQUE(owner_user_id, normalized_name)`；後端另拒絕與可見系統科目名稱或別名重名，並防止 `parent_subject_id` 形成循環 |
@@ -1479,7 +1538,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 題目外部編號 | `legacy` 使用 `UNIQUE(identifier_type, normalized_value)`；出版社與文件題號依有效範圍建立部分唯一索引，禁止兩題取得同一有效來源識別 |
 | 題目審核 | 索引 `question_revision_reviews(question_revision_id, created_at DESC)`；`reviewer_type=user` 時審核帳號必須存在，預設系統管理員則不得建立假帳號 |
 | 小題作答與判分政策 | `UNIQUE(question_revision_id, stable_key)`；`answer_mode` 限首版四種作答方式；`grading_policy` 限系統自動判分、人工檢視或 AI 輔助後人工確認 |
-| 參考答案表示 | CHECK constraint 確保每列只有 `answer_key` 或 `accepted_value` 一項有值；自動判分的小題必須有參考答案 |
+| 參考答案表示 | CHECK constraint 確保每列只有 `answer_key` 或 `accepted_value` 一項有值；`0009` 的 deferred constraint triggers 要求 published／superseded 的自動判分選擇類小題至少有一個同小題有效答案鍵，自動判分文字題至少有一個非空白可接受答案；manual／AI 輔助檢視可無答案 |
 | 目前題目版本 | `questions.current_revision_id` 必須屬於同一題且狀態為 `published`；以延後限制或同交易的後端檢查完成 |
 | 題目篩選 | 索引 `question_revisions(subject_id, grade_id, semester_id, book_version_id, source_category_id, difficulty_level_id, question_type_id)`、`question_revisions(exam_program_level_id)`；另索引 `question_revision_units(curriculum_unit_id, question_revision_id)` |
 | 題目全文搜尋 | 先量測中文斷詞；沒有品質證據前不引入外部搜尋服務 |
@@ -1494,13 +1553,15 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 相近題 | `PRIMARY KEY(similarity_group_id, question_id)`；索引 `question_id, status` |
 | 相近題候選 | `left_question_revision_id < right_question_revision_id`；`UNIQUE(left_question_revision_id, right_question_revision_id, method_key, method_version)`；索引 `status, similarity_score DESC`；已審核狀態必須有審核者與時間 |
 | 計畫、排程與練習順序 | `UNIQUE(practice_plan_id, position)`、`UNIQUE(practice_schedule_id, position)`、`UNIQUE(practice_session_id, position)` |
-| 作答來源固定 | 有來源追溯或作答後，練習項目的 session、題目、版本、小題及選入原因不可漂移；parent session 不可改換學習者 |
+| 作答來源固定 | 有來源追溯或一般作答後，練習項目的 session、題目、版本、小題及選入原因不可漂移；parent session 不可改換學習者。`score` item 有收據後，session、題目、版本與小題不可漂移，parent session 不可改換學習者或 `check_mode` |
 | 預設計畫 | 每個 `learner_id` 在 `status <> archived AND is_default=true` 時最多一筆 |
 | 排程執行 | `practice_sessions.practice_schedule_id` 有值時唯一；索引 `practice_schedules(learner_id, status, scheduled_for)` |
 | 後續練習佇列 | 索引 `learner_practice_queue_items(learner_id, status, created_at)`；正常錯題與相近題流程必須有來源小題作答 |
 | 相近題追溯 | `UNIQUE(practice_session_item_id, source_answer_part_result_id, relation_kind)`；索引 `source_answer_part_result_id, relation_kind`；相近題來源以 CHECK constraint 驗證 `match_basis` 與唯一一個依據外鍵一致 |
 | 難易度比例 | 啟用比例的計畫必須有有效比例，且同一計畫比例合計為 100；在提交交易前驗證 |
-| 作答冪等 | `UNIQUE(learner_id, idempotency_key)`；`UNIQUE(practice_session_item_id, attempt_number)` |
+| 作答冪等 | 一般作答以 `UNIQUE(learner_id, idempotency_key)` 及 `UNIQUE(practice_session_item_id, attempt_number)` 去重；`score` 收據以 `UNIQUE(practice_session_item_id)` 及 `UNIQUE(learner_id, idempotency_key)` 去重，建立後不可修改或刪除 |
+| 計分模式彙總 | `score_total_count` 等於 session item 數，`score_answered_count` 等於收據數；`correct + wrong <= answered <= total` 且 `correct + wrong + pending = total`；非 `score` session 的五個欄位全部為 0 |
+| 外部物件清理 | `asset_object_cleanup_jobs(asset_id)` 為主鍵；索引 `status, requested_at`。只接受已邏輯刪除的 private 作答 asset；工作由 pending 單向進入 processing，再完成或失敗，只有實際刪除物件後可寫 `object_deleted_at` |
 | 小題結果 | `UNIQUE(answer_attempt_id, question_part_id)`；索引 `question_part_id, current_result` |
 | 檔案引用完整性 | 代表圖片、題目內容、來源文件、頁面裁切圖與作答附件只接受用途相容、`scan_status=clean`、`deleted_at IS NULL` 的檔案；手寫與一般作答附件另要求 `sensitivity=private`，被引用後不得改成不相容或失效狀態；作答引用期間另凍結儲存鍵值、內容／尺寸雜湊與上傳證據 |
 | 作答附件 | `PRIMARY KEY(answer_part_result_id, asset_id, asset_role)`；索引 `asset_id`；引用資產的用途與附件角色必須相容 |
@@ -1519,6 +1580,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | --- | --- | --- |
 | 新增題目 | 建立 `questions`、第一版、小題、內容、選項、答案、分類、來源與題庫收錄；驗證作答方式與判分政策 | 任一項失敗全部回滾 |
 | 修改題目 | 驗證所有權並建立新版本；帳號題目發布時更新 `current_revision_id`，系統題目先保持草稿並另寫稽核 | 保留原版本，不產生半套新版本 |
+| 發布或取代題目版本 | 鎖定版本並驗證所有 automatic 小題的參考答案完整；選擇類答案鍵須屬於同一小題有效選項，文字答案不可只有空白 | 任一自動判分小題缺少可用答案時整筆交易失敗，不補造答案或把判分政策改成人工 |
 | 發布考試題目 | 驗證來源固定維度、正式級別及來源限定的考試體系，發布版本並更新目前版本 | 體系或必要級別不一致時維持草稿 |
 | 補齊題號來源 | 鎖定 `legacy` 識別、查找目標出版社與版本範圍的相同正規化題號，確認無衝突後更新原識別 | 發現既有題目時進入合併審核，不新增識別、不合併作答 |
 | 審核系統題目 | 鎖定版本、驗證審核者不是建立者、新增審核紀錄、轉換版本狀態、更新目前發布版本及稽核 | 任一項失敗維持原狀態 |
@@ -1528,7 +1590,8 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 開始練習 | 依有效條件選題，固定版本與小題到 `practice_session_items` | 不建立空的練習工作階段；題數不足回傳實際題數 |
 | 建立排程 | 鎖定來源計畫、固定題目版本與順序、建立排程及排程項目 | 不建立沒有題目的排程 |
 | 消耗後續練習 | 鎖定待處理佇列項目、建立練習與來源追溯、將項目標記為已使用 | 重試不得建立第二個工作階段或遺失追溯關係 |
-| 提交作答 | 依小題作答方式驗證原始答案與附件；依判分政策新增自動結果或待檢視結果，並寫入統計 outbox 事件 | 資料格式不合時拒絕整次提交；AI 或自動判分無法完成時保存原始答案並標記為 `pending` |
+| 提交作答 | `instant` 與 `complete` 依小題作答方式驗證並保存原始答案與附件，依判分政策新增自動結果或待檢視結果，並寫入統計 outbox 事件；`score` 在同一交易由伺服器暫時計分，只累計 session aggregate 並新增不含答案／判定的冪等收據，全部 item 有收據後才完成 session | 資料格式不合時拒絕整次提交；AI 或自動判分無法完成時，需保留明細的模式保存原始答案並標記為 `pending`。`score` 相同 key 重播原收據，同一 item 改用新 key 回傳衝突；不得因重載需求改存逐題內容、附件、佇列、來源追溯或 outbox |
+| 清理外部作答物件 | worker 鎖定 pending／failed 工作，標記 processing，依凍結的 asset 儲存證據刪除物件；只有儲存服務確認不存在或刪除成功後，才在後續交易寫 `object_deleted_at` 並標記 completed | 失敗時標記 failed 並保存不含答案或個資的摘要；不得只因 migration 已寫 `deleted_at` 就宣稱外部物件刪除完成 |
 | 人工改判 | 新增 `answer_reviews`，更新目前結果並寫入統計 outbox | 不修改初始判定或舊審核；任一資料無效時整次回滾 |
 | 核准相近題候選 | 鎖定候選與兩個題目版本，建立或更新已確認群組及成員，保存判定版本與審核紀錄，再標記候選為已核准 | 任一項失敗時不產生正式相近關聯，候選維持原狀態 |
 | 套用正式種子資料 | 驗證來源、內容雜湊、筆數、穩定鍵值與外鍵後套用正式目錄，最後寫入 `seed_manifests` | 已存在相同版本且內容不同時停止；任一核對失敗時整批回滾 |
@@ -1581,7 +1644,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | `ImportBook` | `question_banks`、`question_bank_learners` | 保留名稱、建立角色與適用學習者；同一擁有者的名稱衝突需隔離，不自行改名 |
 | `ImportBatch` | `import_batches`、`import_batch_documents`、`import_items` | `fileNames` 每個檔名建立或對照來源文件，`questionIds` 建立已確認匯入項目並連回正式題目版本；有 `bookId` 時對照匯入本，沒有時使用該帳號 `is_default=true` 的題庫；預設題庫不存在時先建立一筆名稱為「系統預設」的帳號題庫 |
 | `RoleAccess` | `account_identities`、`user_roles`、`role_pin_credentials`、`learner_access`、`auth_sessions` | 只搬到已知的 fixture 帳號；`registrationEmail` 正規化後寫入登入身份，角色清單建立授權、PIN 只搬雜湊、各角色學習者清單轉為存取關係，`activeRole` 只在有效角色內寫入工作階段；找不到帳號時整組隔離 |
-| 作答狀態 | `practice_sessions`、`answer_attempts`、`answer_part_results`、`answer_part_assets` | 必須連結當時題目版本；手寫檔案以附件角色連結。無法判斷小題的舊資料只建立根小題結果；無法確認原判定依據時保留原始結果並標記為搬移資料，不重新判分 |
+| 作答狀態 | `practice_sessions`、`practice_score_receipts`，以及非 `score` 使用的 `answer_attempts`、`answer_part_results`、`answer_part_assets` | 必須連結當時題目版本；`instant`／`complete` 手寫檔案以附件角色連結。`score` 只搬移 session aggregate 與不含答案／判定的冪等收據，不搬逐題答案或附件。無法判斷小題的非 `score` 舊資料只建立根小題結果；無法確認原判定依據時保留原始結果並標記為搬移資料，不重新判分 |
 
 搬移工具需輸出舊 ID 對新 UUID 對照與隔離報告，並核對題目、版本、小題、選項、答案、圖片、來源文件、收藏、計畫、作答及關聯失敗數。原始 fixture 保持唯讀，搬移可重跑。
 
@@ -1594,10 +1657,16 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 匯入與收藏 | 來源文件、匯入批次、草稿、來源追溯及收藏 | 同一冪等鍵不重複寫入，未確認草稿不進正式題庫 | 刪除該次匯入批次，不刪除原始檔案前先核對引用 |
 | 練習與作答 | 考試、計畫、排程、後續練習佇列、固定題目、練習工作階段、逐次作答、作答附件、小題結果及審核 | 歷史題目版本與原始判定不漂移，錯一小題只產生該小題複習；同一排程只能建立一個工作階段 | 停止新寫入，保留已提交作答 |
 | 相近題與統計 | 相近候選、相近群組、原始錯題追溯、掌握度、每日彙總、統計隱私政策、outbox（待處理事件表）與重算工作 | 每次相近題練習可追溯確切錯題作答；候選分數不能直接成為正式關聯；統計可從明細全量重建，未確認群組不參與排除；沒有有效隱私政策時社群榜保持關閉 | 清空可重建彙總，不動原始作答、政策版本與關聯審核紀錄 |
+| Word 來源 | 擴充 `source_documents.input_type=document` 及 ready DOCX 限制 | 文件來源只引用 private、clean、未刪除且 MIME 正確的 DOCX asset | 有 document 資料時拒絕縮回舊值域 |
+| 答案與來源完整性 | 選擇類答案鍵、ready 文件與被引用 asset 的交易最終狀態 | 答案鍵只指向同一小題有效選項，被引用來源不可改成不相容狀態 | 只移除本階段的限制物件，不修改業務資料 |
+| Session 與匯入完整性 | active learner session、鎖定順序與 confirmed Hanlin 教材分類修正 | 封存學習者時同交易撤銷 session；指定批次分類為 `native/document`，其他資料不變 | Schema 物件可移除；教材分類修正保持 forward-only |
+| 自動判分答案完整性 | published／superseded 版本的 automatic 小題答案檢查 | 選擇類有同小題有效答案鍵，文字題有非空白可接受答案；既有缺漏使升級停止 | 只移除 `0009` 限制物件，不修改題目或答案 |
+| 帳號角色與 self learner 完整性 | `users.account_role`、本人關係唯一索引、名稱與設定權限、登入身份及角色授權的一致性 | 有效登入身份具備可判定的一般角色；learner 帳號有一位有效 self learner，且名稱同步並可管理設定 | 移除 `0010` schema 物件；既有名稱與權限修正保持 forward-only |
+| 計分模式彙總與隱私清理 | session 五個計分彙總欄位、`practice_score_receipts`、`asset_object_cleanup_jobs`，以及五張可重建統計表 | `score` 只保存 aggregate 與不含答案／判定的收據；既有逐題明細與衍生資料清除，統計只由合格非 `score` 明細重建。exclusive 私有作答 asset 邏輯刪除並排程，共用 asset 保留 | 隔離 down 移除 `0011` schema 與 migration 清理稽核，但不重建明細、不取消 asset 邏輯刪除；有 pending 工作時不得作營運回滾 |
 
-每一階段都有 up 與 down migration。down 只用於空白或只含合成資料、可直接丟棄的本機資料庫，以驗證物件移除順序與再次前進；正式資料庫開始承載耐久資料後，不執行這些 down migration，改用保留資料的 forward fix migration，並以停止寫入、切回上一版服務或關閉功能等營運方式回復服務。接近正式資料量的驗證也必須使用隔離副本，不得把 down 當成正式資料的復原方案。
+每一階段都有 up 與 down migration。down 只用於空白或只含合成資料、可直接丟棄的本機資料庫，以驗證物件移除順序與再次前進；正式資料庫開始承載耐久資料後，不執行這些 down migration，改用保留資料的 forward fix migration，並以停止寫入、切回上一版服務或關閉功能等營運方式回復服務。`0008` 的教材分類修正是 forward-only，down 不把 `native/document` 改回舊分類；`0009` down 只移除新增的 trigger、函式與 migration 紀錄，不修改題目、選項或答案；`0010` down 不反向猜測 migration 修正前的 self learner 名稱或設定權限；`0011` down 不虛構已刪除的 `score` 明細，也不取消只屬於舊 `score` 資產的邏輯刪除，但會移除 job table 與 migration 產生的清理稽核。有 pending 工作的環境須先完成或受控移交工作並另留操作稽核，不能用 DDL down 當營運回滾。接近正式資料量的驗證也必須使用隔離副本，不得把 down 當成正式資料的復原方案。
 
-正式切換前先停止 JSON 寫入、完成最後增量搬移及數量核對，再切換後端讀寫來源；不能讓 JSON 與 PostgreSQL 同時成為可寫入的權威資料。若 fixture 系統題第一版要使用直接發布例外，部署順序固定為 `0001` 至 `0004`、受控 fixture 搬移、`0005`；否則另寫專用的一次性受控 migration。一般搬移工具在 `0005` 之後不得繞過 `draft`、審核與稽核限制。
+舊 JSON HTTP 寫入已停止。若要搬移仍需保留的歷史 JSON，先凍結來源、完成一次性搬移及數量核對，再開放對應的 PostgreSQL API；不能恢復雙寫。若 fixture 系統題第一版要使用直接發布例外，部署順序固定為 `0001` 至 `0004`、受控 fixture 搬移、`0005`；否則另寫專用的一次性受控 migration。一般搬移工具在 `0005` 之後不得繞過 `draft`、審核與稽核限制。
 
 ## 正式切換前仍需確認
 
@@ -1610,6 +1679,9 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 各考試體系與級別的主辦機關正式清單、更新責任及停用規則。
 - 目標考試級別練習是否包含較低級別；首版只選相同級別。
 - 手寫附件的檔案大小、格式及保存期限上限。
+- 相近題候選的審核操作、正式群組關聯與授權後查詢 API，以及複習／相近題 session 寫入 `practice_session_item_origins` 的交易流程；現有資料表不代表這些服務已經串接。
+- `/settings` 尚未正式寫入的就學狀態、學校、代表圖片、練習偏好與考試；各科書籍版本已有受權限且具 optimistic lock 的正式寫入，`system_admin` 的管理與升權邊界仍須另外完成。
+- 計畫、排程與收藏仍由 `localStorage` 保存，其正式寫入 API 與表單切換尚未完成。
 - 若未來要支援排序、拖曳配對、圖片熱區、繪圖或錄音作答，需先確認產品需求，再以新 migration 增加互動格式、判分方式與必要版面資料；首版不預留空表或發布前置條件。
 
 ## 驗證計畫
@@ -1622,16 +1694,19 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 跨版本歸檔：不綁版本的會考或校內卷題目可歸入多個出版社單元，題目原生 `book_version_id` 仍保持空值；原生教材題目的 `native` 單元不得和科目、年級、學期或版本衝突。
 - 課綱代碼：`N-7-5`、`Da-IV-1` 等通過目錄驗證後可查詢；未知原文進入人工校正，不得寫成知識點或自行建立正式代碼。
 - migration 結構往返：在空白或只含合成資料、可直接丟棄的本機資料庫前進、回滾並再次前進後，最終 schema 與第一次前進的 schema parity（結構一致性）相符。現有 verifier 不驗證種子資料的 round-trip parity（往返後資料一致性）；正式種子資料另依下一項的版本、雜湊、筆數與外鍵規則驗證。
+- 帳號角色與 self learner：`0010` 對既有資料做固定順序回填；無法安全判定的一般角色或 learner 帳號缺少 self learner 時停止。併發撤銷目前帳號角色授權，或同時改動 self 關係與學習者名稱，都不能留下只通過其中一側檢查的狀態。
 - 正式種子資料：同一目錄版本重跑不新增資料；內容雜湊或筆數不符時整批停止；穩定鍵值與既有外鍵在升版後仍可追溯。
 - fixture 搬移：既有八種題型、圖片、兩個以上填空、小題、收藏、考試與動態來源欄位可重現；能確認出版社的既有 `code` 搬成 `publisher_question`，其餘才搬成 `legacy`；`Question.topic` 依核准對照表分流至題型或主題。系統題目第一版直接發布需有搬移稽核、不能產生虛構審核者，且只能依 `0001` 至 `0004`、受控 fixture 搬移、`0005` 的順序，或由專用的一次性受控 migration 執行。
 - 音訊內容：音訊檔案、錄音稿、顯示順序與權限可由同一內容模型重現，缺少必要錄音稿時不得發布英聽題。
 - 作答答案：選項、是非、文字與多值答案通過首版格式驗證；未知欄位、跨小題選項鍵值與不相容附件必須拒絕。
+- 自動判分答案完整性：既有 published／superseded 版本有缺漏時 `0009` preflight 停止；新交易中，單選、複選與是非題缺少同小題有效答案鍵，或文字題缺少非空白可接受答案時不得發布或取代。人工與 AI 輔助檢視無答案仍可提交，down 後既有題目與答案保持不變。
 - 判分政策：系統自動判分、人工檢視與 AI 輔助後人工確認都有允許及拒絕案例；AI 結果未經確認時維持待檢視。
-- 判分歷史：原始答案與初始結果不可覆寫；只有新增審核紀錄才能改變目前結果，不得因後續程式更新重新改判。
+- 判分歷史：`instant` 與 `complete` 的原始答案與初始結果不可覆寫；只有新增審核紀錄才能改變目前結果，不得因後續程式更新重新改判。`score` 只保留 session aggregate 與不含答案／判定的冪等收據，不補造逐題答案內容。
+- 舊 `score` 隱私清理：升級只用每個 item 最新 attempt 回填 aggregate／收據，之後清除所有 `score` attempt、part result、附件關聯、審核、來源、錯題／相近題佇列及 outbox。非 `score` 原始明細保留；五張統計表只從 `instant` 與已完成 `complete` 明細確定性重建，不由 aggregate 反推。
 - 出版來源去重：同一出版社、版本或來源文件範圍內的相同題號不能建立成兩個題目；fixture 搬入的出版社題號與後續匯入的同一題號必須解析到同一個 `questions.id`；不同合法範圍可使用相同題號。
 - 檔名解析：原始檔名保持不變；分類解析結果先建立候選，未確認候選不能污染正式單元、版本、來源或課綱目錄；題號直接進入匯入項目與來源位置，不建立題號分類候選。
 - 舊資料搬移：排程、後續相近題、匯入本、匯入批次與角色權限逐項核對筆數；無法建立的追溯關係必須出現在隔離報告。
-- 歷史一致性：更正答案後，舊作答仍引用舊版本，新練習使用新版本。
+- 歷史一致性：更正答案後，舊作答仍引用舊版本，新練習使用新版本。沒有安全 revision 快照的舊歷程只顯示結果、時間與內容不可用狀態，不得以目前版本冒充。
 - 題目審核：`0005` 套用後，一般搬移工具與應用程式都不能繞過先建立 `draft`、另一位管理員審核及同交易稽核；退回原因、狀態轉換與目前發布版本保持一致。一次性 fixture 直接發布例外只適用於前述受控順序或專用受控 migration。
 - 系統題目修改原因：`0005` preflight 會拒絕既有缺漏；系統題目新增或更新 `revision_number > 1` 的版本時，缺少或只有空白的 `change_note` 會由 revision trigger 拒絕；帳號題目含有缺漏的後續版本時，`questions.origin` 的 deferred constraint trigger 會阻止交易以 `origin=system` 提交。這些允許與拒絕案例已納入資料庫限制測試；正式 API 另提供送出前的友善驗證。
 - 小題複習：只有答錯的小題進入複習；其他小題與大題共用內容仍可正確顯示。
@@ -1649,15 +1724,17 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 併發更新：兩個帳號同時修改學習者設定、收藏、考試或計畫時，後提交者收到衝突且不覆蓋前一筆更新。
 - 檔案與刪除：直接使用檔案識別碼不能繞過引用資源權限；核准的資料刪除要求依政策移除或去識別化且留下不含個資的摘要。
 - 作答附件：手寫只接受 `handwriting`，一般附件只接受 `answer_attachment`；兩者都必須是 private、掃描通過且未刪除。用途、權限及順序可由作答結果重現；資產刪除前檢查所有引用，不能留下可繞過授權的孤立下載入口。
+- 物件清理工作：移除舊 `score` 關聯後，只有無任何其他引用的 private 作答 asset 會寫入 `deleted_at` 與 pending 工作，共用 asset 不變；未確認外部物件刪除時，工作不得標成 completed 或填入 `object_deleted_at`。隔離 down 會移除工作與 migration 清理稽核但保留 `assets.deleted_at`，因此 pending 工作存在時不得執行營運 down。
 - 冪等與交易：重送匯入、提交答案及敏感權限操作不產生重複資料或半套狀態。
-- 統計重建：清空彙總後可由不可覆寫的作答與審核明細重建相同結果。
+- 檢核模式與恢復：`instant` 可逐題揭露；`complete` 只有 completed session 可回傳明細；`score` 進行中遮罩，completed session 對外只回傳 aggregate，資料庫保存 aggregate 與不含答案／判定的冪等收據，不保存逐題答案內容。歷程與錯題佇列不得旁路洩漏；重新整理後只依 session UUID 恢復可安全恢復的進度並暫停，revision mismatch 時關閉舊 session 並要求建立新練習。
+- 統計重建：清空明細型彙總後，可由所有 `instant` 與已完成 `complete` session 的不可覆寫作答及審核明細重建相同結果。`score` 的 aggregate 不得反推出或補造逐題答案。
 
 ## 依據
 
 - `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
 - `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
-- `docs/plan.md`：目前模擬 API、前端狀態及正式資料庫施工確認節點。
-- `docs/database-completion-matrix.md`：目前規劃需求、94 張業務資料表、正式 API／表單與安全切換狀態對照。
-- `app/lib/demo-data.ts`：目前題目、學習者、考試、練習、收藏與作答資料契約。
+- `docs/plan.md`：歷史 JSON API 邊界、目前 PostgreSQL 前端狀態及正式資料庫施工確認節點。
+- `docs/database-completion-matrix.md`：目前規劃需求、96 張業務資料表、正式 API／表單與安全切換狀態對照。
+- `app/lib/demo-data.ts`：歷史介面與 fixture 搬移來源；目前正式主流程不以它作為帳號、題目或作答的權威資料契約。
 - `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
 - `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

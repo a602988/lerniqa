@@ -1,16 +1,32 @@
+import { CHINESE_SUBJECT_LABEL } from "./subject-labels";
+
 export const LOCAL_PRACTICE_DEFAULT_FILTERS = {
     grade: "國一",
-    subject: "國文",
+    subject: CHINESE_SUBJECT_LABEL,
     publisher: "翰林",
     volume: "第一冊",
     lesson: "第四課",
 } as const;
 
-export const LOCAL_PRACTICE_MAX_QUESTIONS = 100;
+export const LOCAL_PRACTICE_MAX_QUESTIONS = 500;
+/** Matches the largest catalog range the existing practice UI can request. */
+export const LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE = 500;
 export const LOCAL_PRACTICE_MAX_ANSWER_LENGTH = 4_000;
 export const LOCAL_PRACTICE_MAX_DURATION_SECONDS = 24 * 60 * 60;
 
 export type LocalPracticeResult = "correct" | "wrong" | "pending";
+export interface LocalPracticeSessionSettings {
+    mode: "practice" | "review" | "similar";
+    checkMode: "complete" | "instant" | "score";
+}
+
+export interface LocalPracticeSessionTarget {
+    questionId: string;
+    /** Omitted only by legacy callers that have not observed a catalog revision. */
+    revisionId?: string;
+    /** Limits a wrong-review item to one independently gradable part. */
+    partId?: string;
+}
 export type LocalPracticeGradingSource = "automatic" | "manual_review" | "ai_assisted_review";
 export type LocalPracticeAnswerMode = "single_choice" | "multiple_choice" | "boolean" | "text";
 export type LocalPracticeAnswerValue = string | string[];
@@ -71,6 +87,10 @@ interface LocalPracticeCatalogValue {
     name: string;
 }
 
+export interface LocalPracticeKnowledgePoint extends LocalPracticeCatalogValue {
+    isPrimary: boolean;
+}
+
 export interface LocalPracticeQuestion {
     id: string;
     revisionId: string;
@@ -84,6 +104,8 @@ export interface LocalPracticeQuestion {
     bookVersion: LocalPracticeCatalogValue;
     unit: LocalPracticeCatalogValue & { unitType: string };
     difficulty: LocalPracticeCatalogValue | null;
+    /** Optional for compatibility with catalog responses created before knowledge-point projection. */
+    knowledgePoints?: LocalPracticeKnowledgePoint[];
     prompt: string;
     promptBlocks: LocalPracticeContentBlock[];
     parts: LocalPracticeQuestionPart[];
@@ -93,16 +115,28 @@ export interface LocalPracticeSessionItem {
     id: string;
     questionId: string;
     revisionId: string;
+    /** Null means the item covers every independently gradable part in the revision. */
+    partId: string | null;
     position: number;
+    /** Resume-safe progress marker; it never contains an answer or grading result. */
+    answered: boolean;
 }
 
-export interface LocalPracticeSession {
+export interface LocalPracticeSessionMetadata {
     id: string;
+    mode: LocalPracticeSessionSettings["mode"];
+    checkMode: LocalPracticeSessionSettings["checkMode"];
     status: "active" | "paused" | "completed" | "abandoned";
     startedAt: string;
     completedAt: string | null;
+}
+
+export interface LocalPracticeSession extends LocalPracticeSessionMetadata {
     items: LocalPracticeSessionItem[];
 }
+
+/** Completed score-mode reads intentionally omit the per-question item list. */
+export type LocalPracticeSessionView = LocalPracticeSession | LocalPracticeSessionMetadata;
 
 export interface LocalPracticeAnswerInput {
     partId: string;
@@ -116,7 +150,20 @@ export interface LocalPracticeAttemptPartResult {
     feedbackCode: LocalPracticeFeedbackCode;
 }
 
+/** Reference material released only after the disclosure policy unlocks an attempt. */
+export interface LocalPracticeReferenceAnswer {
+    partId: string;
+    answerMode: LocalPracticeAnswerMode;
+    answerKeys: string[];
+    acceptedValues: string[];
+    /** Public choice labels are repeated here so answer keys remain understandable. */
+    options: Array<{ key: string; label: string }>;
+    /** The revision may have no authored explanation. */
+    explanation: string | null;
+}
+
 export interface LocalPracticeAttempt {
+    sessionMode?: LocalPracticeSessionSettings["mode"];
     id: string;
     sessionId: string;
     sessionItemId: string;
@@ -127,15 +174,68 @@ export interface LocalPracticeAttempt {
     durationSeconds: number | null;
     submittedAt: string;
     parts: LocalPracticeAttemptPartResult[];
+    /** Answers from the session-pinned revision, never from the catalog/current revision. */
+    referenceAnswers: LocalPracticeReferenceAnswer[];
 }
+
+export interface LocalPracticeAttemptReceipt {
+    /** Stable idempotency receipt only; score mode never persists answer or result detail. */
+    id: string;
+    sessionId: string;
+    sessionItemId: string;
+    questionId: string;
+    revisionId: string;
+    submittedAt: string;
+}
+
+export interface LocalPracticeScoreSummary {
+    total: number;
+    correct: number;
+    wrong: number;
+    pending: number;
+    accuracy: number;
+}
+
+export type LocalPracticeAttemptSubmission = {
+    disclosure: "detailed";
+    session: Pick<LocalPracticeSessionMetadata, "id" | "status" | "completedAt">;
+    attempt: LocalPracticeAttempt;
+    /** Present when complete mode finishes and releases the whole session at once. */
+    attempts?: LocalPracticeAttempt[];
+} | {
+    disclosure: "masked";
+    session: Pick<LocalPracticeSessionMetadata, "id" | "status" | "completedAt">;
+    receipt: LocalPracticeAttemptReceipt;
+} | {
+    disclosure: "score";
+    session: Pick<LocalPracticeSessionMetadata, "id" | "status" | "completedAt">;
+    summary: LocalPracticeScoreSummary;
+};
+
+export type LocalPracticeSessionRead = {
+    disclosure: "detailed";
+    session: LocalPracticeSessionView;
+    attempts: LocalPracticeAttempt[];
+} | {
+    disclosure: "masked";
+    session: LocalPracticeSessionView;
+} | {
+    disclosure: "score";
+    session: LocalPracticeSessionMetadata;
+    summary: LocalPracticeScoreSummary;
+};
 
 export interface LocalPracticeSessionHistory {
     id: string;
+    mode: LocalPracticeSessionSettings["mode"];
+    checkMode: LocalPracticeSessionSettings["checkMode"];
     status: LocalPracticeSession["status"];
     startedAt: string;
     completedAt: string | null;
     itemCount: number;
     attemptedItemCount: number;
+    disclosure: "detailed" | "masked" | "score";
+    summary?: LocalPracticeScoreSummary;
 }
 
 export interface LocalPracticeWrongQueueItem {
@@ -144,6 +244,21 @@ export interface LocalPracticeWrongQueueItem {
     revisionId: string;
     partId: string | null;
     createdAt: string;
+}
+
+export interface LocalPracticeHistory {
+    /** Only instant attempts and completed complete-mode attempts are disclosed. */
+    attempts: LocalPracticeAttempt[];
+    wrongReviewQueue: { pendingCount: number; items: LocalPracticeWrongQueueItem[] };
+    sessions: LocalPracticeSessionHistory[];
+}
+
+/** Score mode never releases answers; complete mode unlocks only after completion. */
+export function canDiscloseLocalPracticeReferenceAnswers(
+    checkMode: LocalPracticeSessionSettings["checkMode"],
+    status: LocalPracticeSessionMetadata["status"],
+): boolean {
+    return checkMode === "instant" || (checkMode === "complete" && status === "completed");
 }
 
 export interface LocalPracticeGradeDefinition {

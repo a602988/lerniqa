@@ -83,7 +83,7 @@ export async function GET(
         return new Response(body, {
             status: 200,
             headers: {
-                "Cache-Control": "no-store",
+                "Cache-Control": "private, no-store",
                 "Content-Length": String(bytes.byteLength),
                 "Content-Type": asset.mimeType,
                 "X-Content-Type-Options": "nosniff",

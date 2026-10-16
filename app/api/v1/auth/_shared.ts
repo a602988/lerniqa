@@ -4,10 +4,13 @@ import {
     AUTH_SESSION_MAX_AGE_SECONDS,
     AuthServiceError,
     type AuthenticatedAccount,
+    type LearnerCheckMode,
     secureCookieForRequest,
 } from "@/app/lib/auth-service";
 import { AuthInputError, isCredentialRequestTransportAllowed } from "@/app/lib/auth-input";
+import { EmailVerificationError } from "@/app/lib/email-verification";
 import { LocalPostgresUnavailableError } from "@/app/lib/local-postgres";
+import { MailServiceError } from "@/app/lib/mail/synology-mailplus";
 
 export function authErrorResponse(code: string, message: string, status: number) {
     return NextResponse.json(
@@ -17,8 +20,21 @@ export function authErrorResponse(code: string, message: string, status: number)
 }
 
 export function handleAuthError(error: unknown) {
-    if (error instanceof AuthInputError || error instanceof AuthServiceError) {
+    if (
+        error instanceof AuthInputError
+        || error instanceof AuthServiceError
+        || error instanceof EmailVerificationError
+    ) {
         return authErrorResponse(error.code, error.message, error.status);
+    }
+    if (error instanceof MailServiceError) {
+        return authErrorResponse(
+            error.code,
+            error.code === "MAIL_NOT_CONFIGURED"
+                ? "驗證信寄送服務尚未完成設定，請稍後再試。"
+                : error.message,
+            error.status,
+        );
     }
     if (error instanceof LocalPostgresUnavailableError) {
         return authErrorResponse(
@@ -54,15 +70,146 @@ export async function readJsonBody(request: Request): Promise<unknown> {
     }
 }
 
-export function publicAccount(account: AuthenticatedAccount) {
+export interface PublicLearnerProfile {
+    id: string;
+    displayName: string;
+    gradeCode: string | null;
+    gradeName: string | null;
+    semesterCode: string | null;
+    semesterName: string | null;
+    accessRole: AuthenticatedAccount["learner"]["accessRole"];
+    canManageSettings: boolean;
+    isSelf: boolean;
+    preferences: {
+        questionLimitOptions: number[];
+        defaultQuestionLimit: number;
+        defaultCheckMode: LearnerCheckMode;
+    } | null;
+    subjectSettings: Array<{
+        position: number;
+        lockVersion: number;
+        subject: {
+            code: string;
+            name: string;
+        };
+        bookVersion: {
+            id: string;
+            name: string;
+            publisher: {
+                code: string;
+                name: string;
+            } | null;
+        } | null;
+        availableBookVersions: Array<{
+            id: string;
+            name: string;
+            publisher: {
+                code: string;
+                name: string;
+            } | null;
+        }>;
+    }>;
+}
+
+export interface PublicAccount {
+    displayName: string;
+    email: string | null;
+    emailVerified: boolean | null;
+    accountRole: AuthenticatedAccount["accountRole"];
+    activeRole: AuthenticatedAccount["activeRole"];
+    roles: AuthenticatedAccount["roles"];
+    learner: PublicLearnerProfile;
+    learners: PublicLearnerProfile[];
+    expiresAt: string;
+}
+
+function publicLearnerProfile(
+    learner: AuthenticatedAccount["learner"],
+): PublicLearnerProfile {
+    return {
+        id: learner.id,
+        displayName: learner.displayName,
+        gradeCode: learner.gradeCode,
+        gradeName: learner.gradeName,
+        semesterCode: learner.semesterCode,
+        semesterName: learner.semesterName,
+        accessRole: learner.accessRole,
+        canManageSettings: learner.canManageSettings,
+        isSelf: learner.isSelf,
+        preferences: learner.preferences === null
+            ? null
+            : {
+                questionLimitOptions: [...learner.preferences.questionLimitOptions],
+                defaultQuestionLimit: learner.preferences.defaultQuestionLimit,
+                defaultCheckMode: learner.preferences.defaultCheckMode,
+            },
+        subjectSettings: learner.subjectSettings.map((setting) => ({
+            position: setting.position,
+            lockVersion: setting.lockVersion,
+            subject: {
+                code: setting.subject.code,
+                name: setting.subject.name,
+            },
+            bookVersion: setting.bookVersion === null
+                ? null
+                : {
+                    id: setting.bookVersion.id,
+                    name: setting.bookVersion.name,
+                    publisher: setting.bookVersion.publisher === null
+                        ? null
+                        : {
+                            code: setting.bookVersion.publisher.code,
+                            name: setting.bookVersion.publisher.name,
+                        },
+                },
+            availableBookVersions: setting.availableBookVersions.map((bookVersion) => ({
+                id: bookVersion.id,
+                name: bookVersion.name,
+                publisher: bookVersion.publisher === null
+                    ? null
+                    : {
+                        code: bookVersion.publisher.code,
+                        name: bookVersion.publisher.name,
+                    },
+            })),
+        })),
+    };
+}
+
+export function publicAccount(account: AuthenticatedAccount): PublicAccount {
+    const managedLearnerMode = account.activeRole === "learner"
+        && (account.accountRole === "parent" || account.accountRole === "tutor");
+    const learnerScopedMode = account.activeRole === "learner";
+    const currentLearner = publicLearnerProfile(account.learner);
     return {
         displayName: account.displayName,
-        email: account.email,
-        emailVerified: account.emailVerified,
+        email: managedLearnerMode ? null : account.email,
+        emailVerified: managedLearnerMode ? null : account.emailVerified,
+        accountRole: account.accountRole,
         activeRole: account.activeRole,
-        learner: account.learner,
+        roles: [...account.roles],
+        learner: currentLearner,
+        learners: learnerScopedMode
+            ? [currentLearner]
+            : account.learners.map(publicLearnerProfile),
         expiresAt: account.expiresAt,
     };
+}
+
+export function accountResponse(account: AuthenticatedAccount, status = 200) {
+    const exposedAccount = publicAccount(account);
+    return NextResponse.json(
+        {
+            data: { account: exposedAccount },
+            meta: {
+                persistence: "local-postgresql",
+                emailVerification: exposedAccount.emailVerified === null
+                    ? "hidden"
+                    : exposedAccount.emailVerified ? "verified" : "pending",
+            },
+        },
+        { status, headers: { "Cache-Control": "no-store" } },
+    );
 }
 
 export function authenticatedResponse(
@@ -71,16 +218,7 @@ export function authenticatedResponse(
     token: string,
     status = 200,
 ) {
-    const response = NextResponse.json(
-        {
-            data: { account: publicAccount(account) },
-            meta: {
-                persistence: "local-postgresql",
-                emailVerification: account.emailVerified ? "verified" : "pending",
-            },
-        },
-        { status, headers: { "Cache-Control": "no-store" } },
-    );
+    const response = accountResponse(account, status);
     response.cookies.set({
         name: AUTH_SESSION_COOKIE,
         value: token,

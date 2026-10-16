@@ -15,6 +15,63 @@ export interface LoginAccountInput {
     password: string;
 }
 
+export interface SwitchAccountRoleInput {
+    targetRole: AccountRole;
+    password?: string;
+}
+
+export interface CreateAccountLearnerInput {
+    clientRequestId: string;
+    displayName: string;
+    gradeCode: string;
+    semesterCode: string;
+}
+
+export type UpdateAccountLearnerInput =
+    | Readonly<{
+        action: "select";
+        learnerId: string;
+    }>
+    | Readonly<{
+        action: "update" | "update-current";
+        learnerId: string;
+        displayName: string;
+        gradeCode: string;
+        semesterCode: string;
+    }>;
+
+export interface UpdateLearnerSubjectSettingInput {
+    learnerId: string;
+    subjectCode: string;
+    bookVersionId: string | null;
+    lockVersion: number;
+}
+
+export const ACCOUNT_PASSWORD_MIN_LENGTH = 8;
+export const ACCOUNT_PASSWORD_MAX_LENGTH = 128;
+export const ACCOUNT_PASSWORD_HINT = "至少 8 個字元；不必混合大小寫、數字與符號，請避開常見弱密碼。";
+
+const ACCOUNT_PASSWORD_MAX_BYTES = 512;
+const COMMON_WEAK_PASSWORDS = new Set([
+    "00000000",
+    "11111111",
+    "12345678",
+    "123456789",
+    "1234567890",
+    "abc12345",
+    "abcdefgh",
+    "admin123",
+    "iloveyou",
+    "letmein1",
+    "passw0rd",
+    "password",
+    "password1",
+    "password123",
+    "qwerty123",
+    "qwertyui",
+    "welcome1",
+]);
+
 export class AuthInputError extends Error {
     readonly code: string;
     readonly status: number;
@@ -68,10 +125,45 @@ export function validateAccountPassword(value: unknown): string {
     }
     const characterCount = [...value].length;
     const byteCount = new TextEncoder().encode(value).byteLength;
-    if (characterCount < 12 || characterCount > 128 || byteCount > 512 || value.includes("\0")) {
-        throw new AuthInputError("INVALID_PASSWORD", "密碼必須是 12 到 128 個字元。");
+    if (
+        characterCount < ACCOUNT_PASSWORD_MIN_LENGTH
+        || characterCount > ACCOUNT_PASSWORD_MAX_LENGTH
+        || byteCount > ACCOUNT_PASSWORD_MAX_BYTES
+        || value.includes("\0")
+    ) {
+        throw new AuthInputError(
+            "INVALID_PASSWORD",
+            `密碼必須是 ${ACCOUNT_PASSWORD_MIN_LENGTH} 到 ${ACCOUNT_PASSWORD_MAX_LENGTH} 個字元。`,
+        );
     }
     return value;
+}
+
+/**
+ * Validates a newly chosen password for registration and password reset.
+ * Login deliberately uses the length-only validator above so accounts created
+ * before this policy cannot be locked out by a later weak-password rule.
+ */
+export function validateNewAccountPassword(value: unknown): string {
+    const password = validateAccountPassword(value);
+    if (!password.trim()) {
+        throw new AuthInputError("INVALID_PASSWORD", "密碼不能全部是空白。");
+    }
+    if (password.trim() !== password) {
+        throw new AuthInputError("INVALID_PASSWORD", "密碼開頭與結尾不能有空白。");
+    }
+
+    const weakCandidate = password.normalize("NFKC").toLowerCase();
+    if (
+        COMMON_WEAK_PASSWORDS.has(weakCandidate)
+        || /^(.)\1{7,}$/u.test(weakCandidate)
+    ) {
+        throw new AuthInputError(
+            "INVALID_PASSWORD",
+            "這個密碼太容易猜，請換一組較長或不常見的密碼。",
+        );
+    }
+    return password;
 }
 
 function parseRole(value: unknown): AccountRole {
@@ -81,16 +173,46 @@ function parseRole(value: unknown): AccountRole {
     return value as AccountRole;
 }
 
+function normalizeUuid(value: unknown, label: string): string {
+    if (typeof value !== "string") {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", `${label}格式不正確。`);
+    }
+    const normalized = value.trim().toLowerCase();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(normalized)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", `${label}格式不正確。`);
+    }
+    return normalized;
+}
+
+function normalizeCatalogCode(value: unknown, label: string, maxLength: number): string {
+    if (typeof value !== "string") {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", `${label}格式不正確。`);
+    }
+    const normalized = value.normalize("NFKC").trim().toLowerCase();
+    if (
+        normalized.length < 1
+        || normalized.length > maxLength
+        || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(normalized)
+    ) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", `${label}格式不正確。`);
+    }
+    return normalized;
+}
+
 export function parseRegisterAccountInput(value: unknown): RegisterAccountInput {
     if (!isRecord(value)) {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "註冊資料格式不正確。");
     }
+    const displayName = normalizeName(value.displayName, "帳號稱呼");
+    const role = parseRole(value.role);
     return {
-        displayName: normalizeName(value.displayName, "帳號稱呼"),
-        learnerName: normalizeName(value.learnerName, "學習者稱呼"),
+        displayName,
+        learnerName: role === "learner"
+            ? displayName
+            : normalizeName(value.learnerName, "學習者稱呼"),
         email: normalizeAccountEmail(value.email),
-        password: validateAccountPassword(value.password),
-        role: parseRole(value.role),
+        password: validateNewAccountPassword(value.password),
+        role,
     };
 }
 
@@ -101,6 +223,73 @@ export function parseLoginAccountInput(value: unknown): LoginAccountInput {
     return {
         email: normalizeAccountEmail(value.email),
         password: validateAccountPassword(value.password),
+    };
+}
+
+export function parseSwitchAccountRoleInput(value: unknown): SwitchAccountRoleInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "角色切換資料格式不正確。");
+    }
+
+    const targetRole = parseRole(value.targetRole);
+    if (targetRole === "learner") return { targetRole };
+
+    return {
+        targetRole,
+        password: validateAccountPassword(value.password),
+    };
+}
+
+export function parseCreateAccountLearnerInput(value: unknown): CreateAccountLearnerInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "新增學習者資料格式不正確。");
+    }
+    return {
+        clientRequestId: normalizeUuid(value.clientRequestId, "請求識別碼"),
+        displayName: normalizeName(value.displayName, "學習者稱呼"),
+        gradeCode: normalizeCatalogCode(value.gradeCode, "年級", 30),
+        semesterCode: normalizeCatalogCode(value.semesterCode, "學期", 20),
+    };
+}
+
+export function parseUpdateAccountLearnerInput(value: unknown): UpdateAccountLearnerInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "學習者設定資料格式不正確。");
+    }
+    const learnerId = normalizeUuid(value.learnerId, "學習者識別碼");
+    if (value.action === "select") return { action: "select", learnerId };
+    if (value.action !== "update" && value.action !== "update-current") {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "學習者設定動作不正確。");
+    }
+    return {
+        action: value.action,
+        learnerId,
+        displayName: normalizeName(value.displayName, "學習者稱呼"),
+        gradeCode: normalizeCatalogCode(value.gradeCode, "年級", 30),
+        semesterCode: normalizeCatalogCode(value.semesterCode, "學期", 20),
+    };
+}
+
+export function parseUpdateLearnerSubjectSettingInput(
+    value: unknown,
+): UpdateLearnerSubjectSettingInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "科目版本設定資料格式不正確。");
+    }
+    if (
+        !Number.isInteger(value.lockVersion)
+        || Number(value.lockVersion) < 1
+        || Number(value.lockVersion) > 2_147_483_647
+    ) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "科目版本設定已過期，請重新載入後再試。");
+    }
+    return {
+        learnerId: normalizeUuid(value.learnerId, "學習者識別碼"),
+        subjectCode: normalizeCatalogCode(value.subjectCode, "科目", 60),
+        bookVersionId: value.bookVersionId === null
+            ? null
+            : normalizeUuid(value.bookVersionId, "書籍版本識別碼"),
+        lockVersion: Number(value.lockVersion),
     };
 }
 
@@ -145,8 +334,10 @@ function requestOriginFromHost(protocol: string, hostHeader: string | null): URL
 
 /**
  * Password-bearing requests may use HTTPS anywhere, but plain HTTP only on
- * a loopback origin. This prevents the Tailscale HTTP URL from accepting a
- * reusable password while leaving a future HTTPS deployment possible.
+ * a loopback origin. A loopback-bound server may recover the browser-facing
+ * authority from Host after a local proxy terminates TLS. All-interface bind
+ * URLs are rejected because their Host and forwarding headers are not a trust
+ * boundary.
  */
 export function isCredentialRequestTransportAllowed(
     requestUrl: string,
@@ -156,13 +347,45 @@ export function isCredentialRequestTransportAllowed(
     const request = normalizedUrl(requestUrl);
     if (!request || !["http:", "https:"].includes(request.protocol)) return false;
 
+    // Never infer a safe browser origin from Host while Next is reachable on
+    // every interface. Host and forwarding headers are client-controlled on a
+    // direct HTTP connection, so doing so would let a remote caller impersonate
+    // localhost or a TLS-terminating proxy. The runtime scripts bind Next to
+    // loopback before the local Tailscale Serve proxy is trusted below.
+    if (isAllInterfaceHostname(request.hostname)) return false;
+
     const origin = originHeader === null ? null : normalizedUrl(originHeader);
-    if (originHeader !== null && !origin) return false;
+    if (
+        originHeader !== null
+        && (
+            !origin
+            || origin.username
+            || origin.password
+            || origin.pathname !== "/"
+            || origin.search
+            || origin.hash
+        )
+    ) {
+        return false;
+    }
 
     let browserRequest = request;
-    if (isAllInterfaceHostname(request.hostname)) {
+    if (isLoopbackHostname(request.hostname) && hostHeader !== null) {
         const hostRequest = requestOriginFromHost(request.protocol, hostHeader);
         if (!hostRequest) return false;
+
+        // A direct plaintext request may only name the same loopback port.
+        // HTTPS may name the external authority because TLS terminates at the
+        // loopback-only Tailscale Serve proxy before it reaches Next.
+        if (
+            request.protocol === "http:"
+            && (
+                !isLoopbackHostname(hostRequest.hostname)
+                || hostRequest.port !== request.port
+            )
+        ) {
+            return false;
+        }
         browserRequest = hostRequest;
     }
     else if (hostHeader !== null) {
