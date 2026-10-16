@@ -1,6 +1,6 @@
 # PostgreSQL migration
 
-正式資料庫以 PostgreSQL 為基準。`0001` 至 `0005` 定義 94 張業務資料表，另有一張技術性的 `schema_migrations`。現有 `/api/v1`、表單與 fixture 仍主要讀寫 JSON；這些 migration 只建立正式 schema，不會自動切換應用程式資料來源。
+正式資料庫以 PostgreSQL 為基準。`0001` 至 `0007` 定義 94 張業務資料表，另有一張技術性的 `schema_migrations`。主應用的 `/api/v1`、表單與 fixture 仍主要讀寫 JSON；獨立的 `/account`、`/local-practice`、auth API 與 local-practice API 已接上本機 PostgreSQL，用來驗證帳號 session、學習者隔離、匯入、練習、判分與錯題保存。這個試行流程不代表主應用或 production 已完成切換。
 
 ## 本機驗證
 
@@ -12,7 +12,23 @@ npm run db:test
 
 腳本會自動找出每組 migration，依序執行前進與限制測試，再逐階段回滾、檢查 migration 紀錄／資料表／schema 回復，最後再次前進並比對 schema。結束時停止 cluster 並刪除整個暫存目錄，不會連線或修改既有資料庫。在限制本機程序或共享記憶體的 sandbox 中執行時，可能需要允許本機 PostgreSQL 程序；不要改以現成或 production 的 `PGHOST` 迴避隔離。
 
-目前 `0001` 至 `0005` 的兩次前進與限制測試、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity 均已通過。
+目前 `0001` 至 `0007` 的兩次前進與限制測試、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity 均已通過。
+
+## 持久的本機試行資料庫
+
+`npm run db:test` 只用於一次性的 schema 往返驗證。要讓 `/local-practice` 在重開應用程式後仍可讀取練習紀錄，使用下列指令：
+
+```bash
+npm run db:local:ensure
+npm run db:local:status
+npm run db:local:stop
+```
+
+`db:local:ensure` 會初始化或啟動 `local-data/postgres`，建立 `lerniqa_local`，再只向前套用尚未執行的 migration。它會拒絕未知版本、跳號、名稱不符與非 Lerniqa 管理的 cluster，不會對持久資料自動執行 down migration。
+
+本機 cluster 只監聽 `local-data/postgres-socket` 內權限為 `0700` 的 Unix socket，不開啟 TCP。它使用本機作業系統使用者，不建立新的資料庫密碼或永久憑證。`local-data`、cluster、socket、log 與 asset 全部不進版控。不要把這個 cluster 改成共用 PostgreSQL，也不要將它連向 production。
+
+本機應用以 `pg` 直接執行參數化 SQL，並在交易內保存練習、作答、錯題佇列與 `analytics_outbox`。`/account` 提供電子郵件與密碼的註冊、登入、登出及目前帳號查詢；密碼使用 scrypt 雜湊，瀏覽器只持有 HttpOnly session cookie，資料庫只保存不透明 session token 的 SHA-256 雜湊。`/api/v1/local-practice/*` 從 session 取得帳號與學習者，並以 `learner_access` 及 `question_bank_learners` 限制可讀題庫、練習、作答與歷程。這仍是只使用合成帳號資料的 localhost 試行；未驗證電子郵件只能在 localhost 登入，寄送驗證信、遠端 HTTPS、登入 rate limit、RLS／production GRANT 與正式角色授權尚未完成。完整操作、匯入安全限制與 production 邊界見 `../docs/local-practice-pilot.md`。
 
 ## Migration 清單
 
@@ -60,14 +76,23 @@ npm run db:test
 
 `0005` 的 down migration 只供尚未承載正式資料的 DDL 往返驗證。若相近題審核、隱私政策、來源追溯、管理員稽核、資料刪除要求或帳號自訂目錄已有資料，腳本會拒絕破壞性回滾；正式使用後應停用功能並只重建或清除可重建統計，不能用 down migration 刪除耐久紀錄。
 
+### `0006_source_documents_word`
+
+擴充 `source_documents.input_type` 加入 `document`，供 Word 等一般文件匯入使用。`document` 與圖片、PDF 一樣必須引用檔案且不可同時保留貼上文字；若已有 `document` 來源資料，down migration 會拒絕回復成舊值域，避免刪除已支援類型的證據。本機試行中的舊版 `.doc` 含 VBA，原檔只保存為隔離且拒絕的 asset；只有經過關閉巨集轉換並確認不含 VBA、Macro 或 ActiveX 的 DOCX 衍生檔，才能以 `clean` 狀態被 `source_documents` 引用。
+
+### `0007_practice_answer_integrity`
+
+選擇題、複選題與是非題的 `question_answers.answer_key` 必須對應同一小題的有效選項。限制在交易結束前檢查，讓匯入器可以在同一交易依任意安全順序建立小題、選項與答案，但不能留下畫面無法選到的標準答案。已就緒的 `document` 來源只能引用 private、clean、未刪除且 MIME 為 DOCX 的 `source_document` asset；後續把該 asset 改成其他 MIME 或公開資料也會被拒絕。
+
 `0001` 至 `0004` 的 down migration 也是供一次性空白／合成測試資料庫驗證 schema 對稱性，不是正式環境的資料復原程序；它們會刪除各階段資料表。資料庫開始承載正式資料後，回復舊版必須使用已演練的向前修正與 operational rollback，保留作答、來源與稽核紀錄，不能直接執行這些 down 檔。
 
 ## 尚未完成的正式串接
 
-Schema 通過不代表產品已切換。下列工作完成前，不得把 JSON mock 當成正式資料庫 API：
+Schema 與本機試行通過不代表產品已切換。下列工作完成前，不得把 JSON mock 或 `/local-practice` 當成正式資料庫 API：
 
-- 選定後端、ORM／查詢層、登入服務、PostgreSQL 託管位置、物件儲存與 Secret Manager。
-- 由可信 session 建立伺服器端帳號、角色與學習者授權，不接受前端自報身份。
+- 選定 production 後端、ORM／查詢層或 repository 邊界、PostgreSQL 託管位置、驗證信服務、物件儲存與 Secret Manager。
+- 把本機 session 與 `learner_access` 檢查擴充到正式角色、跨帳號分享與主應用全部資源；任何 API 都不得接受前端自報身份。
+- 在開放遠端登入前完成 HTTPS、電子郵件驗證、密碼重設、登入 rate limit 與帳號復原政策。
 - 使用受限的應用程式資料庫角色及受控的高權限程序，補上 RLS／GRANT／必要的 `SECURITY DEFINER` 邊界；`bootstrap_admin`、`system_job` 只是資料列中的來源類型，不能單獨證明 caller 身份。
 - 把整份狀態覆寫拆成題庫、匯入、考試、計畫、排程、作答、審核、統計與附件交易 API。
 - 建立可重跑的 fixture／JSON 搬移工具，輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告。

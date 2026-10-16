@@ -9,8 +9,8 @@ const DATABASE_PATH = new URL("../data/fixtures/database.json", import.meta.url)
 const ASSET_PATH = new URL("../data/fixtures/assets/", import.meta.url);
 const RUNTIME_DATABASE_PATH = new URL("../runtime-data/database.json", import.meta.url);
 const RUNTIME_ASSET_PATH = new URL("../runtime-data/assets/", import.meta.url);
-const VISUAL_REFERENCE = /如圖|附圖|附表|下圖|圖中|下表|圖[（(]|圖示/;
-const UNREADABLE_QUESTIONS = new Set(["1501003331", "1501003446"]);
+export const VISUAL_REFERENCE = /如圖|附圖|附表|下圖|圖中|下表|圖[（(]|圖示/;
+export const UNREADABLE_QUESTIONS = new Set(["1501003331", "1501003446"]);
 const LEGACY_QUESTION_NUMBERS = new Map([
     [3, "05010001"],
     [7, "05010037"],
@@ -21,8 +21,6 @@ const LEGACY_QUESTION_NUMBERS = new Map([
     [12, "05010234"],
     [13, "05010240"],
 ]);
-
-if (!SOURCE_ROOT) throw new Error("請提供國中題庫來源目錄。");
 
 const SUBJECTS = [
     {
@@ -62,8 +60,8 @@ const SUBJECTS = [
     },
 ];
 
-const CHOICE_TYPES = new Set(["選擇", "單一選擇題", "字彙選擇", "文法選擇", "對話與完成句子", "單題"]);
-const MULTI_TYPES = new Set(["配合題", "選詞測驗", "題組", "克漏字測驗", "閱讀測驗"]);
+export const CHOICE_TYPES = new Set(["選擇", "單一選擇題", "字彙選擇", "文法選擇", "對話與完成句子", "單題"]);
+export const MULTI_TYPES = new Set(["配合題", "選詞測驗", "題組", "克漏字測驗", "閱讀測驗"]);
 
 /** 將全形英文字母轉成一般英文字母，供答案代號比對。 */
 function normalizeLetter(value)
@@ -73,7 +71,7 @@ function normalizeLetter(value)
 }
 
 /** 清除 DOC 轉出的頁碼、欄位碼與多餘空白，但保留題目原文。 */
-function cleanText(value)
+export function cleanText(value)
 {
     return value
         .replace(/\r/g, "\n")
@@ -92,7 +90,7 @@ function cleanText(value)
  * @param {string} value 來源文件中的原始題幹。
  * @returns {string} 可供後續拆題的題幹。
  */
-function cleanQuestionBody(value)
+export function cleanQuestionBody(value)
 {
     const leadingBlank = value.match(/^[\r\n \t]*([　＿_]{2,})(?=\S)/)?.[1] ?? "";
     const body = cleanText(value).replace(/\n答：\s*$/, "").trim();
@@ -100,7 +98,7 @@ function cleanQuestionBody(value)
 }
 
 /** 讀取 DOC 的可搜尋文字；macOS textutil 能處理來源中的兩種 Word 格式。 */
-function readDocument(relativePath)
+export function readDocument(relativePath)
 {
     const sourcePath = path.join(SOURCE_ROOT, relativePath);
     return cleanText(execFileSync("textutil", ["-convert", "txt", "-stdout", sourcePath], {
@@ -126,7 +124,7 @@ async function listDocuments(relativeDirectory)
 }
 
 /** 依來源文件中的題型標題切出各段內容。 */
-function splitSections(text, types)
+export function splitSections(text, types)
 {
     const escaped = types.map((type) => type.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     const matcher = new RegExp(`^(${escaped.join("|")})\\s*$`, "gm");
@@ -143,7 +141,7 @@ function splitSections(text, types)
 }
 
 /** 解析國語、英文與地理使用的後置欄位格式。 */
-function parseMetadataLast(text, types, documentName)
+export function parseMetadataLast(text, types, documentName)
 {
     const records = [];
     const matcher = /([\s\S]*?)\n答案：([^\n]*)(?:\n解析：([\s\S]*?))?\n編號：([^\n]+)\n難易度：([^\n]+)\n出處：([^\n]+)\n認知向度：([^\n]*)\n知識向度：([^\n]*)(?:\n課名：([^\n]*))?/g;
@@ -195,7 +193,7 @@ function parseMetadataFirst(text, types, documentName)
 }
 
 /** 從題幹內取出選項及選項之前的文字。 */
-function parseOptions(body)
+export function parseOptions(body)
 {
     const matcher = /[（(]([Ａ-ＨA-H])[）)]/g;
     const matches = [...body.matchAll(matcher)];
@@ -211,7 +209,7 @@ function parseOptions(body)
 }
 
 /** 從來源答案取出各題的選項代號。 */
-function parseAnswerLetters(sourceAnswer)
+export function parseAnswerLetters(sourceAnswer)
 {
     const direct = [...sourceAnswer.matchAll(/[（(]([Ａ-ＨA-H])[）)]/g)].map((match) => normalizeLetter(match[1]));
     if (direct.length) return direct;
@@ -223,7 +221,7 @@ function parseAnswerLetters(sourceAnswer)
 }
 
 /** 將配合題、克漏字與題組拆成可逐小題作答的結構。 */
-function parseParts(body, sourceAnswer)
+export function parseParts(body, sourceAnswer)
 {
     const lines = body.split("\n").map((line) => line.trim()).filter(Boolean);
     const partPattern = /^(?:[（(]\s*[）)]\s*)?[（(]([0-9０-９]+)[）)]/;
@@ -273,7 +271,7 @@ function parseParts(body, sourceAnswer)
  * @param {string} sourceAnswer 來源文件中的答案。
  * @returns {Array<{id: string, prompt: string, answer: string}> | null} 可獨立作答的小題，無法可靠對應時回傳 null。
  */
-function parseWrittenParts(body, sourceAnswer)
+export function parseWrittenParts(body, sourceAnswer)
 {
     const pattern = /[（(]([0-9０-９]+)[）)]\s*([\s\S]*?)(?=[（(][0-9０-９]+[）)]|$)/g;
     const prompts = [...body.matchAll(pattern)];
@@ -309,7 +307,7 @@ function parseWrittenParts(body, sourceAnswer)
 }
 
 /** 將來源難易度轉成前端資料契約。 */
-function mapDifficulty(value)
+export function mapDifficulty(value)
 {
     if (value === "易") return "基礎";
     if (value === "難") return "進階";
@@ -317,7 +315,7 @@ function mapDifficulty(value)
 }
 
 /** 從檔名與題目單元取得章節名稱。 */
-function getChapter(record)
+export function getChapter(record)
 {
     const lesson = record.documentName.match(/(?:^|_)(第[^_]+課|Starter Unit|Unit \d+|\d+-\d+)/)?.[1];
     return lesson ?? record.unit;
@@ -328,13 +326,13 @@ function getChapter(record)
  * @param {Record<string, string>} record 來源題目。
  * @returns {string} 保留原始編號的單元值。
  */
-function getUnit(record)
+export function getUnit(record)
 {
     return path.basename(record.documentName, path.extname(record.documentName));
 }
 
 /** 把一筆來源題目轉成前端 API 使用的題目資料。 */
-function createQuestion(record, config, id)
+export function createQuestion(record, config, id)
 {
     let kind = "written";
     let prompt = record.body;
@@ -398,7 +396,7 @@ function createQuestion(record, config, id)
 }
 
 /** 判斷來源題目是否能在不遺失必要圖表或公式的情況下直接匯入。 */
-function canImport(record)
+export function canImport(record)
 {
     if (!record.body || !record.sourceAnswer || UNREADABLE_QUESTIONS.has(record.number)) return false;
     if (record.type === "看圖回答問題") return true;
@@ -481,6 +479,7 @@ async function attachEnglishImages(questions)
 /** 更新 fixture，保留其他年級與相近題資料。 */
 async function main()
 {
+    if (!SOURCE_ROOT) throw new Error("請提供國中題庫來源目錄。");
     const database = JSON.parse(await readFile(DATABASE_PATH, "utf8"));
     const questions = [];
     let nextId = 7001;

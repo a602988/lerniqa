@@ -1050,25 +1050,18 @@ function WorkspaceHeading({ icon: Icon, title, description }: WorkspaceHeadingPr
     );
 }
 
-/** 顯示尚未連接後端的帳號流程介面。 */
+/** 將舊工作區帳號路徑導向已連接 PostgreSQL 的正式帳號頁。 */
 function AuthScreen({ mode }: { mode: AuthMode }) {
     const router = useRouter();
-    const [status, setStatus] = useState("");
-    const providers = ["LINE", "Facebook", "Google"];
     const titles: Record<AuthMode, { title: string; description: string }> = {
         login: { title: "登入 Lerniqa", description: "使用電子郵件與密碼登入，繼續目前的學習進度。" },
-        register: { title: "建立帳號", description: "註冊後可在同一帳號下管理多位學習者。" },
+        register: { title: "建立帳號", description: "建立帳號時會同步建立學習者資料並連到個人練習紀錄。" },
         logout: { title: "登出帳號", description: "登出後，此裝置將回到登入頁。" },
-        "forgot-password": { title: "重設密碼", description: "輸入註冊信箱，正式版本會寄送重設連結。" },
-        "quick-register": { title: "快速註冊", description: "使用 LINE、Facebook 或 Google 建立帳號。" },
-        "account-link": { title: "帳號綁定", description: "將多種登入方式連到同一份帳號與學習資料。" },
+        "forgot-password": { title: "重設密碼", description: "郵件寄送尚未啟用，因此目前不能安全地重設密碼。" },
+        "quick-register": { title: "第三方登入尚未開放", description: "目前請使用電子郵件與密碼建立帳號。" },
+        "account-link": { title: "帳號綁定尚未開放", description: "目前只有電子郵件與密碼登入，不會建立假的第三方綁定。" },
     };
     const current = titles[mode];
-
-    /** 顯示介面階段不會送出資料的狀態。 */
-    function showDemoStatus(action: string) {
-        setStatus(`${action}介面已完成；正式帳號服務尚未連接，不會送出或保存資料。`);
-    }
 
     return (
         <main className="auth-shell">
@@ -1087,44 +1080,12 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
                     {mode !== "login" && <div className="mt-6"><CardTitle>{current.title}</CardTitle><CardDescription>{current.description}</CardDescription></div>}
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6 sm:p-8">
-                    {status && <p className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm font-semibold text-primary" role="status">{status}</p>}
-                    {mode === "login" && <>
-                        <FormField label="電子郵件"><Input type="email" autoComplete="email" placeholder="name@example.com" /></FormField>
-                        <FormField label="密碼"><Input type="password" autoComplete="current-password" /></FormField>
-                        <Button onClick={() => showDemoStatus("登入")}>登入<LogIn /></Button>
-                        <Button appearance="ghost" tone="muted" onClick={() => router.push(AUTH_PATHS["forgot-password"])}>忘記密碼</Button>
-                        <div className="auth-divider"><span>或快速註冊</span></div>
-                        <div className="grid gap-2 sm:grid-cols-3">{providers.map((provider) => <Button appearance="outline" key={provider} onClick={() => showDemoStatus(`${provider} 快速註冊`)}>{provider} 快速註冊</Button>)}</div>
-                    </>}
-                    {mode === "register" && <>
-                        <FormField label="稱呼"><Input autoComplete="name" placeholder="例如：林小姐" /></FormField>
-                        <FormField label="電子郵件"><Input type="email" autoComplete="email" placeholder="name@example.com" /></FormField>
-                        <FormField label="密碼" description="至少 8 個字元；正式版本會在後端再次驗證。"><Input type="password" autoComplete="new-password" minLength={8} /></FormField>
-                        <Button onClick={() => showDemoStatus("註冊")}>建立帳號<UserPlus /></Button>
-                    </>}
-                    {mode === "forgot-password" && <>
-                        <FormField label="註冊信箱"><Input type="email" autoComplete="email" placeholder="name@example.com" /></FormField>
-                        <Button onClick={() => showDemoStatus("寄送重設密碼連結")}>寄送重設連結<Mail /></Button>
-                    </>}
-                    {mode === "quick-register" && <>
-                        <FormField label="使用身份"><NativeSelect options={ROLE_OPTIONS} defaultValue="家長" /></FormField>
-                        <div className="grid gap-3">{providers.map((provider) => <Button appearance="outline" className="justify-between" key={provider} onClick={() => showDemoStatus(`${provider} 快速註冊`)}><span>{provider}</span><ArrowRight /></Button>)}</div>
-                        <p className="text-sm text-muted-foreground">若服務提供的電子郵件已存在，正式版本會引導登入並綁定，避免建立重複帳號。</p>
-                    </>}
-                    {mode === "account-link" && <>
-                        <div className="workspace-surface rounded-2xl p-4"><p className="text-xs text-muted-foreground">目前帳號</p><p className="mt-1 font-bold">林小姐</p><p className="text-sm text-muted-foreground">parent@example.com</p></div>
-                        <div className="grid gap-3">
-                            <div className="auth-provider"><div><strong>電子郵件與密碼</strong><p>parent@example.com</p></div><Badge tone="success">已綁定</Badge></div>
-                            {providers.map((provider) => <div className="auth-provider" key={provider}><div><strong>{provider}</strong><p>綁定後可使用同一份學習資料登入</p></div><Button appearance="outline" size="sm" onClick={() => showDemoStatus(`綁定 ${provider}`)}><Link2 />綁定</Button></div>)}
-                        </div>
-                        <Button appearance="outline" tone="danger" onClick={() => router.push(AUTH_PATHS.logout)}><LogOut />登出目前帳號</Button>
-                    </>}
-                    {mode === "logout" && <div className="grid gap-5 text-center"><div className="auth-logout-icon"><LogOut /></div><div><p className="font-bold">要登出目前帳號嗎？</p><p className="mt-1 text-sm text-muted-foreground">本機示範資料不會被刪除。</p></div><Button onClick={() => router.push(AUTH_PATHS.login)}>登出並返回登入</Button></div>}
-                    <div className="flex flex-wrap justify-center gap-2 border-t border-border pt-5 text-sm">
-                        {mode !== "login" && <Button appearance="ghost" tone="muted" size="sm" onClick={() => router.push(AUTH_PATHS.login)}>登入</Button>}
-                        {mode !== "register" && <Button appearance="ghost" tone="muted" size="sm" onClick={() => router.push(AUTH_PATHS.register)}>註冊</Button>}
-                        {mode !== "quick-register" && <Button appearance="ghost" tone="muted" size="sm" onClick={() => router.push(AUTH_PATHS["quick-register"])}>快速註冊</Button>}
+                    <div className="grid gap-3 text-center">
+                        <div className="auth-logout-icon">{mode === "register" ? <UserPlus /> : mode === "logout" ? <LogOut /> : <LogIn />}</div>
+                        <div><CardTitle>{current.title}</CardTitle><CardDescription className="mt-2">{current.description}</CardDescription></div>
                     </div>
+                    <Button onClick={() => router.push("/account")}>{mode === "register" ? "前往建立帳號" : mode === "logout" ? "前往帳號中心登出" : "前往安全帳號頁"}<ArrowRight /></Button>
+                    <Button appearance="ghost" tone="muted" onClick={() => router.push(SECTION_PATHS.overview)}>返回學習工作區</Button>
                 </CardContent>
             </Card>
         </main>
@@ -2952,7 +2913,14 @@ export default function Home() {
                                     : dayDifference === 0
                                         ? `${activeExam.name}就是今天，先完成最後一輪練習。`
                                         : `${activeExam.name}已結束，可切換到其他考試繼續安排。`}</p>
-                            <Button className="button-blue mt-5" disabled={!plannedQuestions.length} onClick={() => beginSession("practice", plannedQuestions.map((question) => question.id))}>{sessionPaused ? "繼續目前練習" : "開始今日練習"}<ArrowRight /></Button>
+                            <div className="mt-5 flex max-w-xl flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-xs font-bold tracking-[0.12em] text-primary">正式 PostgreSQL 題庫</p>
+                                    <p className="mt-1 font-bold">國一國文／翰林／第一冊／第四課</p>
+                                    <p className="mt-1 text-sm text-muted-foreground">共 279 題，登入後作答與進度會依學習者保存。</p>
+                                </div>
+                                <Button className="button-blue shrink-0" onClick={() => router.push("/local-practice")}>第四課練習（279 題）<ArrowRight /></Button>
+                            </div>
                         </div>
                         <LearningScene />
                     </div>
@@ -3079,9 +3047,9 @@ export default function Home() {
                             </FormField>
                         </section>
                     </QuestionFilterPanel>
-                    <section className="grid gap-4 border-t border-border pt-7">
-                        <fieldset className="grid gap-4">
-                            <legend><PracticeFieldLabel className="field-dot-gold" icon={ClipboardCheck} label="練習方式" /></legend>
+                    <section>
+                        <fieldset className="grid gap-3">
+                            <legend className="sr-only">答案檢核時機</legend>
                             <p className="text-sm text-muted-foreground">選擇答案何時顯示，練習中仍可保留手寫過程。</p>
                             <div className="grid gap-3 md:grid-cols-3">
                                 {modes.map((mode) => (
@@ -4284,7 +4252,7 @@ export default function Home() {
                 </div>
             </div>
             <div className="sidebar-action-scroll" tabIndex={0} aria-label="主要功能選單，可左右捲動">
-                <Button className="sidebar-practice-button mt-6 w-full" data-section="practice" aria-current={section === "practice" && !isScheduleListPage ? "page" : undefined} onClick={sessionPaused ? resumeSession : () => navigateToSection("practice")}><BookOpen />{sessionPaused ? "繼續練習" : "開始練習"}</Button>
+                <Button className="sidebar-practice-button mt-6 w-full" data-section="local-practice" onClick={() => router.push("/local-practice")}><BookOpen />第四課練習（279 題）</Button>
                 <nav className="sidebar-nav mt-4 grid gap-1" aria-label="主要導覽">
                     <Button data-section="practice-schedules" appearance="ghost" tone="muted" aria-current={isScheduleListPage ? "page" : undefined} onClick={openScheduleList}><span className="sidebar-nav-icon sidebar-nav-icon-schedules"><ClipboardCheck /></span>練習計劃</Button>
                     {NAV_ITEMS.filter((item) => item.id !== "practice" && item.id !== "settings").map((item) => {

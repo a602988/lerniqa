@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    // Keep the long-running local site isolated from validation builds. Next
+    // dev and next build mutate their output directory and cannot safely share
+    // it while the browser is using compiled chunks.
+    distDir: process.env.LERNIQA_NEXT_DIST_DIR ?? ".next",
     async rewrites() {
         return [
             {

@@ -7,13 +7,16 @@
 - [ ] 完成 GitHub Actions CI、正式測試環境
 
 ## P1 資料與練習
-- [ ] 電子郵件密碼與 LINE／Facebook／Google 登入綁定
+- [x] `/account` 本機電子郵件密碼註冊、登入、登出與 session
+- [ ] 電子郵件驗證與寄信、密碼重設、遠端 HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
 - [ ] 後端預設系統管理員、MFA 與 Secret 輪替
 - [ ] 系統管理員授權、稽核紀錄與帳號管理介面
 - [ ] 單一帳號管理多位學習者與資料隔離
 - [ ] 學習者跨帳號分享、權限檢查與成果共用
 - [ ] 家長／學習者／家教／審核者角色
-- [x] PostgreSQL schema 與 `0001` 至 `0005` 原生 SQL migration
+- [x] PostgreSQL schema 與 `0001` 至 `0007` 原生 SQL migration
+- [x] 私有 Unix socket 的持久本機 PostgreSQL 執行環境與只向前 migration 指令
+- [x] `/local-practice` 本機試行：依 session、`learner_access` 與題庫成員關係隔離題庫查詢、選題、作答、錯題佇列及持久歷程
 - [ ] ORM／查詢層、正式 repository 與 JSON 搬移及單一來源切換
 - [ ] 年級、科目、學期、可新增多筆的考試設定
 - [ ] 家教個人題庫與學習者練習計畫
@@ -33,6 +36,7 @@
 - [ ] 安全檔案上傳與物件儲存
 - [ ] 圖片／掃描 PDF OCR 與逐題切分
 - [ ] 人工校對、答案核對、頁碼與來源追溯
+- [x] 本機舊版 Word 題庫安全匯入：VBA 原檔隔離，只接受通過檢查的 DOCX 衍生檔
 
 ## P3 智慧補強
 - [ ] 知識點分類與相似題檢索
@@ -47,4 +51,4 @@
 
 決策原則：避免過早綁定特定雲端供應商；所有 AI 與 OCR 服務經由可替換的 adapter。
 
-勾選 schema／migration 只代表資料庫結構與限制已在本機隔離環境驗證，不代表相同列的正式 API、表單或 production 切換已完成。現有應用程式仍主要使用 JSON mock API；正式切換條件見 `docs/database-completion-matrix.md`。
+勾選 schema／migration 只代表資料庫結構與限制已在本機隔離環境驗證，不代表相同列的正式 API、表單或 production 切換已完成。`/account` 與 `/local-practice` 已接上本機 PostgreSQL，並以合成帳號實際驗證 session 與學習者隔離；其他主要畫面仍使用 JSON mock API。正式切換條件見 `docs/database-completion-matrix.md`。

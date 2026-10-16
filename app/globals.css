@@ -882,8 +882,7 @@ textarea:focus-visible,
 
 .practice-footer {
     margin-inline: -0.25rem;
-    padding: 1.5rem 0.25rem 0;
-    border-top: 1px solid #ececf3;
+    padding-inline: 0.25rem;
 }
 
 .practice-progress-summary {
