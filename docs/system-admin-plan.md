@@ -52,14 +52,15 @@ Vercel 只保存公開的前端程式與後端 API（應用程式介面）網址
 
 ## 資料契約
 
-正式資料庫至少需要以下欄位或等價關聯。實際表名可依選定的 ORM（物件關聯對映工具）調整，但語意不得改變。
+正式資料庫以 `docs/question-database-design.md` 的資料表為權威來源。實際表名可依選定的 ORM（物件關聯對映工具）調整，但以下語意不得改變。
 
-### User
+### `users` 與 `user_roles`
 
-- `id`：帳號不可變識別碼。
-- `is_system_admin`：是否具備系統管理員權限，預設為 `false`。
-- `admin_granted_at`：最近一次取得管理員權限的時間。
-- `admin_granted_by`：授權者識別碼；由預設系統管理員授權時保存固定的系統操作者識別碼。
+- `users.id` 保存帳號不可變識別碼，不保存系統管理員旗標。
+- 每一次系統管理員授權在 `user_roles` 建立 `role=system_admin` 的紀錄，並保存授權者類型、授權帳號與時間。
+- 移除權限時填入原授權紀錄的 `revoked_by_type`、`revoked_by_user_id` 與 `revoked_at`，不刪除歷史授權。
+- 預設系統管理員授權時使用 `granted_by_type=bootstrap_admin`，`granted_by_user_id` 保持空值。它不是資料庫帳號，不能建立一筆假的 `users` 資料替代。
+- 同一帳號與角色只能有一筆尚未撤銷的授權。API 回應中的 `isSystemAdmin` 是由有效 `user_roles` 計算的衍生值，不是可由前端寫入的欄位。
 
 ### Question
 
@@ -72,6 +73,10 @@ Vercel 只保存公開的前端程式與後端 API（應用程式介面）網址
 ### QuestionRevision
 
 題幹、選項、答案、解析與可影響作答結果的欄位每次修改都建立新版本。歷史作答要連結當時的題目版本，避免更正答案後改變舊作答的判定依據。
+
+系統題目的新版本必須由有效系統管理員或預設系統管理員留下審核紀錄，結果寫入 `question_revision_reviews`。被退回的版本保留審核原因與歷史狀態，不得覆寫既有審核紀錄。
+
+既有 fixture 搬移是一次性例外。搬移工具核對內容雜湊、題目筆數、必要欄位與來源後，可將既有系統題目第一版直接發布，並以 `created_by_type=migration` 及 `admin_audit_logs` 保存搬移證據，不建立虛構的管理員或審核紀錄。正式資料庫啟用後建立或修改的系統題目不得使用此例外，仍須由建立者以外的有效系統管理員審核。
 
 ### AdminAuditLog
 

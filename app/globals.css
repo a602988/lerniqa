@@ -160,6 +160,7 @@ textarea:focus-visible,
 .sidebar-brand-caption {
     min-width: 0;
     flex: 1;
+    padding-inline-start: 1.3rem;
     white-space: nowrap;
 }
 
@@ -1032,11 +1033,6 @@ textarea:focus-visible,
     font-weight: 700;
 }
 
-.role-pin-field > div:first-child > small {
-    color: var(--color-muted-foreground);
-    font-size: 0.75rem;
-}
-
 .role-pin-entry {
     display: grid;
     gap: 0.75rem;
@@ -1547,6 +1543,19 @@ textarea:focus-visible,
     font-size: 0.75rem;
 }
 
+.question-filter-heading-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.question-filter-heading-actions > span {
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 .question-filter-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1559,6 +1568,43 @@ textarea:focus-visible,
 
 .question-filter-search-field {
     grid-column: span 3;
+}
+
+.question-filter-extra {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+}
+
+.practice-filter-basis {
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+}
+
+.practice-difficulty-mix {
+    display: grid;
+    gap: 1rem;
+}
+
+.practice-difficulty-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.practice-difficulty-toggle span {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.practice-difficulty-toggle small {
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+}
+
+.practice-difficulty-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
 }
 
 .question-search {
@@ -1956,9 +2002,14 @@ textarea:focus-visible,
         flex-direction: column;
     }
 
-    .question-filter-heading > button,
+    .question-filter-heading-actions,
     .question-list-heading-actions {
         width: 100%;
+    }
+
+    .question-filter-heading-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
     }
 
     .question-filter-grid {
@@ -1968,6 +2019,11 @@ textarea:focus-visible,
 
     .question-filter-search-field {
         grid-column: 1 / -1;
+    }
+
+    .practice-filter-basis,
+    .practice-difficulty-fields {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .question-batch-dialog-grid {
@@ -2987,6 +3043,16 @@ textarea:focus-visible,
     margin-top: 0.25rem;
     color: var(--color-muted-foreground);
     font-size: 0.875rem;
+}
+
+.subject-book-setting {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+}
+
+.subject-book-setting > button {
+    justify-self: start;
 }
 
 .exam-settings-list {

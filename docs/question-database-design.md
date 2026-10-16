@@ -1,0 +1,1623 @@
+# 題目與學習資料庫規劃
+
+狀態：正式 schema（資料庫結構）基底。欄位、關聯、限制、搬移規則與尚待決策項目已整理完成；migration（資料庫遷移）仍要等後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限確定後才施工。
+
+## 評估結論
+
+本規劃已處理題目版本、文字／圖片／音訊內容、跨版本多單元歸檔、正式課綱代碼、來源適用維度、匯入來源、逐次作答、排程練習、相近題追溯、題目審核與統計重建。固定教材分類使用正式外鍵，來源特有欄位使用資料驅動規則；兩者不混用。正式 migration 前仍須確認後端服務與資料保存期限，不能先以應用程式預設值代替產品決策。
+
+正式資料庫以 PostgreSQL 為基準；大型 PDF、圖片及手寫內容放在物件儲存，資料庫只保存檔案資訊與儲存鍵值。
+
+## 共通規則
+
+- 資料表與欄位使用 `snake_case`。主鍵使用 `uuid`，由後端產生。
+- 所有時間使用 `timestamptz` 並保存 UTC；日統計依 `Asia/Taipei` 換日。
+- `created_at`、`updated_at` 由後端或資料庫維護。一般業務操作不得覆寫或實體刪除歷史作答、審核與稽核資料；依法提出的刪除要求依資料保存政策刪除或去識別化，不受一般業務限制阻擋。
+- 列舉值先使用 `text` 搭配 `CHECK` 或參照表；正式值域集中管理，不散落在應用程式。
+- `jsonb` 只保存匯入原文、選題快照、作答內容及稽核差異等結構可能變動的資料，不取代可查詢的正式關聯欄位。
+- 系統預設管理員不寫入本資料庫。其不可變身份與驗證資料放在後端的 Secret Manager（密鑰管理服務）或身份服務。
+- 題目、答案、分類或解析一旦供練習使用，不原地修改；更正時建立新的 `question_revisions`。
+- 外鍵預設禁止連鎖刪除。只有純關聯表可依交易需求使用連鎖刪除；題目版本、作答、稽核與來源紀錄不得連鎖刪除。
+- 所有可由多帳號修改的設定資料使用 `lock_version` 進行 optimistic locking（樂觀鎖定）。更新時必須同時比對主鍵與目前版本；不相符時回傳衝突，不能以最後寫入覆蓋前一位使用者。
+
+表格中的「—」表示該欄位沒有額外參數或限制需要補充。
+
+## 帳號、角色與學習者
+
+### `users` 帳號
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 帳號識別碼 | 主鍵 |
+| `display_name` | `varchar(80)` | 必填 | 帳號顯示名稱 | — |
+| `status` | `varchar(20)` | 必填；`active` | 帳號狀態 | `active`、`suspended`、`closed` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+| `closed_at` | `timestamptz` | 選填 | 關閉帳號時間 | 關閉後仍保留依法必須保存的交易與稽核資料 |
+
+### `account_identities` 登入身份
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 登入身份識別碼 | 主鍵 |
+| `user_id` | `uuid` | 必填 | 所屬帳號 | 外鍵至 `users.id` |
+| `provider` | `varchar(30)` | 必填 | 登入方式 | `email`、`google`、`line`、`facebook` 或後續核准值 |
+| `provider_subject` | `varchar(255)` | 必填 | 登入服務提供的不可變身份 | 與 `provider` 組合唯一 |
+| `email_normalized` | `varchar(320)` | 選填 | 正規化電子郵件 | 電子郵件登入或找回角色密碼時使用；有值時唯一 |
+| `password_hash` | `text` | 選填 | 電子郵件登入密碼雜湊 | 不得保存明碼；社群登入為空 |
+| `verified_at` | `timestamptz` | 選填 | 身份驗證完成時間 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 綁定時間 | — |
+| `revoked_at` | `timestamptz` | 選填 | 解除綁定時間 | — |
+
+### `auth_sessions` 登入工作階段
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 工作階段識別碼 | 主鍵 |
+| `user_id` | `uuid` | 必填 | 登入帳號 | 外鍵至 `users.id` |
+| `token_hash` | `text` | 必填 | 工作階段 token（權杖）雜湊 | 唯一；瀏覽器只持有原始 token，不寫入資料庫或 log（執行紀錄） |
+| `active_role` | `varchar(30)` | 必填；`learner` | 目前操作角色 | 必須是帳號有效角色；登入預設為 `learner` |
+| `active_learner_id` | `uuid` | 選填 | 目前選取的學習者 | 必須有有效 `learner_access` |
+| `expires_at` | `timestamptz` | 必填 | 到期時間 | — |
+| `last_seen_at` | `timestamptz` | 必填；目前時間 | 最近活動時間 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 登入時間 | — |
+| `revoked_at` | `timestamptz` | 選填 | 撤銷時間 | 權限重大異動時可撤銷既有工作階段 |
+
+### `verification_challenges` 帳號與角色密碼驗證
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 驗證要求識別碼 | 主鍵 |
+| `user_id` | `uuid` | 必填 | 驗證帳號 | 外鍵至 `users.id` |
+| `purpose` | `varchar(30)` | 必填 | 驗證用途 | `email_verify`、`password_reset`、`role_pin_reset`、`sensitive_action` |
+| `target_role` | `varchar(30)` | 選填 | 要重設的角色 | `purpose=role_pin_reset` 時必填 |
+| `token_hash` | `text` | 必填 | 一次性驗證 token 雜湊 | 不保存明碼 |
+| `attempt_count` | `smallint` | 必填；`0` | 驗證失敗次數 | — |
+| `expires_at` | `timestamptz` | 必填 | 到期時間 | — |
+| `consumed_at` | `timestamptz` | 選填 | 使用完成時間 | 已使用或過期的 token 不得再次使用 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+### `user_roles` 帳號角色與系統管理員授權
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 角色授權識別碼 | 主鍵 |
+| `user_id` | `uuid` | 必填 | 被授權帳號 | 外鍵至 `users.id` |
+| `role` | `varchar(30)` | 必填 | 帳號角色 | `parent`、`learner`、`tutor`、`system_admin` |
+| `granted_by_type` | `varchar(30)` | 必填 | 授權者類型 | `user` 或 `bootstrap_admin` |
+| `granted_by_user_id` | `uuid` | 選填 | 授權者帳號 | `granted_by_type=user` 時必填 |
+| `granted_at` | `timestamptz` | 必填；目前時間 | 授權時間 | — |
+| `revoked_by_type` | `varchar(30)` | 選填 | 移除角色者類型 | 參數同 `granted_by_type` |
+| `revoked_by_user_id` | `uuid` | 選填 | 移除角色者帳號 | — |
+| `revoked_at` | `timestamptz` | 選填 | 角色失效時間 | 同一帳號與角色只能有一筆有效授權 |
+
+新帳號建立時由後端一併建立有效的 `learner` 角色；前端不能用 `active_role` 自行授予角色。
+
+### `role_pin_credentials` 角色切換密碼
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 角色密碼識別碼 | 主鍵 |
+| `user_id` | `uuid` | 必填 | 所屬帳號 | 外鍵至 `users.id` |
+| `role` | `varchar(30)` | 必填 | 受保護角色 | 首批只允許 `parent`、`tutor` |
+| `pin_hash` | `text` | 必填 | 六位數角色密碼雜湊 | 只保存雜湊，不保存原始數字 |
+| `failed_attempts` | `smallint` | 必填；`0` | 連續失敗次數 | 用於限制暴力嘗試 |
+| `locked_until` | `timestamptz` | 選填 | 暫停嘗試截止時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近設定時間 | `user_id + role` 唯一 |
+
+### `learners` 學習者
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 學習者識別碼 | 主鍵 |
+| `display_name` | `varchar(80)` | 必填 | 畫面顯示稱呼 | 介面除最上方身份區外不重複顯示 |
+| `education_status` | `varchar(20)` | 必填；`enrolled` | 就學狀態 | `enrolled`、`not_enrolled` |
+| `grade_id` | `uuid` | 選填 | 目前年級 | 外鍵至 `grades.id`；在學時必填，不在學時為空 |
+| `semester_id` | `uuid` | 選填 | 目前學期 | 外鍵至 `semesters.id` |
+| `school_name` | `varchar(120)` | 選填 | 學校名稱 | 採最少蒐集原則 |
+| `avatar_asset_id` | `uuid` | 選填 | 代表圖片 | 外鍵至 `assets.id` |
+| `status` | `varchar(20)` | 必填；`active` | 學習者狀態 | `active`、`archived` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+`education_status=enrolled` 時 `grade_id` 必填；`education_status=not_enrolled` 時 `grade_id`、`semester_id` 與 `school_name` 必須為空。不建立「不在學」假年級，避免把就學狀態混入年級目錄及年級統計。不在學學習者可用 `learner_subject_settings` 啟用語言檢定或國家考試科目。
+
+### `learner_access` 學習者分享與角色權限
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 存取授權識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 學習者 | 外鍵至 `learners.id` |
+| `user_id` | `uuid` | 必填 | 可存取帳號 | 外鍵至 `users.id` |
+| `access_role` | `varchar(30)` | 必填 | 帳號與此學習者的關係 | `parent`、`learner`、`tutor`；不作為帳號可切換角色的授權來源 |
+| `can_view_results` | `boolean` | 必填；`true` | 是否可查看學習成果 | — |
+| `can_create_plans` | `boolean` | 必填；`false` | 是否可建立練習計畫 | — |
+| `can_review_answers` | `boolean` | 必填；`false` | 是否可審核答案 | — |
+| `can_manage_settings` | `boolean` | 必填；`false` | 是否可修改學習者設定 | — |
+| `invited_by_user_id` | `uuid` | 選填 | 發出邀請的帳號 | 外鍵至 `users.id` |
+| `accepted_at` | `timestamptz` | 選填 | 接受邀請時間 | 未接受前不得讀取學習資料 |
+| `revoked_at` | `timestamptz` | 選填 | 取消授權時間 | `learner_id + user_id + access_role` 只能有一筆有效授權 |
+
+`access_role` 用於顯示關係與套用新授權的預設值，實際授權以四個 `can_*` 欄位為準。審核者是 `can_review_answers=true` 的能力，不是可登入或切換的帳號角色；`auth_sessions.active_role` 只能使用 `user_roles` 的有效角色。
+
+### `learner_preferences` 學習偏好
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `learner_id` | `uuid` | 必填 | 學習者 | 主鍵及外鍵至 `learners.id` |
+| `question_limit_options` | `smallint[]` | 必填 | 常用題數清單 | 最多 20 個不重複的正整數，每個值為 1 至 500；依陣列順序顯示 |
+| `default_question_limit` | `smallint` | 必填 | 預設每輪題數 | 範圍 1 至 500，且必須存在於 `question_limit_options` |
+| `default_check_mode` | `varchar(20)` | 必填；`complete` | 預設答案檢核方式 | `complete`、`instant`、`score` |
+| `active_exam_id` | `uuid` | 選填 | 目前練習套用的考試 | 必須屬於同一學習者；外鍵至 `exams.id` |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+## 教材與分類目錄
+
+### `grades` 年級
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 年級識別碼 | 主鍵 |
+| `stage` | `varchar(20)` | 必填 | 教育階段 | `elementary`、`junior_high` 或後續核准值 |
+| `code` | `varchar(30)` | 必填 | 年級穩定代碼 | 唯一，例如 `junior_high_1` |
+| `name` | `varchar(40)` | 必填 | 年級顯示名稱 | 例如「國一」 |
+| `sort_order` | `smallint` | 必填 | 排序 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+### `semesters` 學期
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 學期識別碼 | 主鍵 |
+| `code` | `varchar(20)` | 必填 | 學期代碼 | 唯一 |
+| `name` | `varchar(40)` | 必填 | 學期名稱 | 例如「上學期」 |
+| `sort_order` | `smallint` | 必填 | 排序 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+### `subjects` 科目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 科目識別碼 | 主鍵 |
+| `code` | `varchar(60)` | 必填 | 科目穩定代碼 | 唯一；系統科目使用固定代碼，自訂科目由後端產生 |
+| `name` | `varchar(80)` | 必填 | 科目名稱 | 同一所有者範圍內不可重複 |
+| `normalized_name` | `varchar(80)` | 必填 | 正規化科目名稱 | 去除前後空白並套用統一大小寫規則；只供唯一性檢查 |
+| `parent_subject_id` | `uuid` | 選填 | 上層科目 | 外鍵至 `subjects.id`；例如社會為歷史、地理及公民的上層科目 |
+| `subject_kind` | `varchar(20)` | 必填；`leaf` | 科目節點種類 | `group` 或 `leaf`；題目只能直接關聯 `leaf` |
+| `origin` | `varchar(20)` | 必填 | 科目來源 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂科目建立者 | `origin=account` 時必填；系統科目為空 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | 自訂科目可封存；系統預設科目不得由一般帳號刪除 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+系統科目的 `normalized_name` 全域唯一；自訂科目在同一建立者範圍內唯一。建立自訂科目前，後端還要比對目前可見的系統科目名稱與別名；名稱相同時要求使用既有系統科目，不另建平行科目。
+
+科目樹只表達彙整關係，不取代年級適用設定。題目保存到歷史、地理、公民等最末層科目；畫面選取社會等上層科目時，查詢服務展開其所有有效子科目。自訂科目首批只允許建立 `leaf`，避免帳號自行改變系統科目樹。
+
+語言檢定與國家考試科目沿用同一科目樹，例如行政法、民法建立為系統 `leaf`，需要彙整時掛在系統 `group` 下，不另建平行科目機制。
+
+### `subject_aliases` 科目別名
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 別名識別碼 | 主鍵 |
+| `subject_id` | `uuid` | 必填 | 所屬系統科目 | 外鍵至 `subjects.id`；只允許系統科目 |
+| `alias` | `varchar(80)` | 必填 | 科目別名 | 例如教材或匯入資料中的替代名稱 |
+| `normalized_alias` | `varchar(80)` | 必填 | 正規化別名 | 全域唯一，規則同 `subjects.normalized_name` |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+### `grade_subjects` 年級可用科目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `grade_id` | `uuid` | 必填 | 年級 | 外鍵至 `grades.id` |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `is_default` | `boolean` | 必填；`false` | 是否為該年級系統預設科目 | 預設科目不可由學習者設定刪除 |
+| `sort_order` | `smallint` | 必填 | 顯示順序 | — |
+| `active_from` | `date` | 選填 | 啟用日期 | 未填表示立即適用 |
+| `active_until` | `date` | 選填 | 停用日期 | 之後加入理化只需新增關聯，不影響舊資料 |
+
+主鍵為 `grade_id + subject_id`。國一是否顯示理化由此表與學習者科目設定共同決定，不寫死在前端。
+
+### `publishers` 出版社
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 出版社識別碼 | 主鍵 |
+| `code` | `varchar(40)` | 必填 | 出版社代碼 | 唯一 |
+| `name` | `varchar(80)` | 必填 | 出版社名稱 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+### `book_versions` 書籍版本
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 書籍版本識別碼 | 主鍵 |
+| `subject_id` | `uuid` | 必填 | 所屬科目 | 外鍵至 `subjects.id` |
+| `grade_id` | `uuid` | 選填 | 適用年級 | 空值表示跨年級自訂版本 |
+| `publisher_id` | `uuid` | 選填 | 出版社 | 外鍵至 `publishers.id` |
+| `name` | `varchar(100)` | 必填 | 版本名稱 | 例如「康軒版」 |
+| `origin` | `varchar(20)` | 必填 | 版本來源 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂版本建立者 | `origin=account` 時必填 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+`book_versions` 表示科目、年級與出版社的版本，例如「國一數學康軒版」，不包含上、下學期。學期與冊次由 `curriculum_units` 的 `volume` 節點表達；同一版本可同時具有上冊與下冊。
+
+### `exam_programs` 考試體系
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 考試體系識別碼 | 主鍵 |
+| `code` | `varchar(60)` | 必填 | 穩定代碼 | 唯一，例如 `gept`、`cambridge_english`、`civil_service` |
+| `name` | `varchar(120)` | 必填 | 顯示名稱 | 例如「全民英檢」 |
+| `authority_name` | `varchar(160)` | 必填 | 主辦或發證機關 | — |
+| `source_reference` | `text` | 必填 | 正式分類來源 | 主辦機關文件名稱或網址 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+| `sort_order` | `smallint` | 必填 | 顯示順序 | — |
+
+### `exam_program_levels` 考試級別與類別
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 級別識別碼 | 主鍵 |
+| `exam_program_id` | `uuid` | 必填 | 所屬考試體系 | 外鍵至 `exam_programs.id` |
+| `parent_level_id` | `uuid` | 選填 | 上層級別或類別 | 外鍵至同表；例如類科可掛在考試等別下 |
+| `code` | `varchar(60)` | 必填 | 體系內穩定代碼 | 同一體系內唯一 |
+| `name` | `varchar(120)` | 必填 | 顯示名稱 | 例如「中級」「B1 Preliminary」「一般行政」 |
+| `level_kind` | `varchar(20)` | 必填；`level` | 節點種類 | `level`、`category`、`track` |
+| `cefr_level` | `varchar(10)` | 選填 | CEFR 對照 | 語言類考試使用；非語言考試為空 |
+| `sort_order` | `smallint` | 必填 | 顯示順序 | 只表示同層顯示順序，不一律代表難度高低 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+考試級別是跨出版社、跨教材的正式分類，不併入 `curriculum_units`，也不把每個級別建立成 `source_categories`。語言檢定可使用平面級別；國家考試等非線性分類可用 `parent_level_id` 與 `level_kind` 表達等別、類科或組別。正式目錄只能依主辦機關可查證資料建立，來源參照失效時不得自行補造級別。
+
+### `seed_manifests` 正式種子資料版本
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 種子資料版本識別碼 | 主鍵 |
+| `catalog_key` | `varchar(80)` | 必填 | 目錄穩定鍵值 | 例如 `question_types`、`curriculum_codes`、`exam_programs` |
+| `version` | `varchar(60)` | 必填 | 來源或發布版本 | 同一目錄內唯一 |
+| `source_reference` | `text` | 必填 | 正式來源參照 | 內部核准文件名稱或權威網址 |
+| `content_checksum` | `varchar(128)` | 必填 | 種子內容雜湊 | 用於偵測檔案與已套用內容不一致 |
+| `item_count` | `integer` | 必填 | 項目數量 | 不得小於 0 |
+| `status` | `varchar(20)` | 必填；`pending` | 套用狀態 | `pending`、`applied`、`superseded`、`failed` |
+| `applied_at` | `timestamptz` | 選填 | 套用完成時間 | `status=applied` 時必填 |
+| `migration_name` | `varchar(160)` | 必填 | 對應 migration 名稱 | 可由部署紀錄追溯 |
+
+正式目錄以版本化種子檔搭配 migration 管理，穩定代碼與固定 UUID 不因顯示名稱修改而改變。套用前驗證來源、雜湊、筆數與參照完整性；失敗時整批回滾。正式環境不得由前端自動建立系統題型、課綱代碼或考試級別。
+
+## 題目來源與資料驅動篩選
+
+### `source_categories` 題目來源
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 來源識別碼 | 主鍵 |
+| `code` | `varchar(60)` | 必填 | 來源穩定代碼 | 唯一 |
+| `name` | `varchar(100)` | 必填 | 來源名稱 | 首批包含題庫題目、課本自我評量、課本例題、課本隨堂、兩類習作、素養題、仿會考非選題、基測、會考、校內卷 |
+| `exam_program_id` | `uuid` | 選填 | 所屬考試體系 | 外鍵至 `exam_programs.id`；只在來源本身限定體系時填寫 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | 新來源以新增資料處理 |
+| `sort_order` | `smallint` | 必填 | 顯示順序 | — |
+
+### `source_category_dimensions` 來源固定維度規則
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `source_category_id` | `uuid` | 必填 | 題目來源 | 外鍵至 `source_categories.id` |
+| `dimension` | `varchar(30)` | 必填 | 固定分類維度 | `grade`、`semester`、`book_version`、`exam_level`、`unit`、`topic`、`knowledge_point`、`curriculum_code` |
+| `native_requirement` | `varchar(20)` | 必填 | 來源原生分類要求 | `required`、`optional`、`not_applicable` |
+| `sort_order` | `smallint` | 必填 | 篩選顯示順序 | 只排序適用的維度 |
+
+主鍵為 `source_category_id + dimension`。每個有效來源都要建立完整的固定維度規則；沒有資料列不能解讀成不適用。`native_requirement` 只約束來源原本具有的分類：`required` 表示發布前必須有原生值，`optional` 表示原生值可有可無，`not_applicable` 表示禁止保存原生值。空值只表示尚未取得或選填未填，不再同時表示「不適用」。後續人工分類或跨版本對照不屬於來源原生分類，不受 `not_applicable` 禁止。
+
+套用到單元時，`required` 必須至少有一筆 `question_revision_units.assignment_type=native`，`optional` 允許沒有 `native` 關聯，`not_applicable` 禁止建立 `native` 關聯。三種狀態都允許後續建立 `cross_version_alignment` 或 `manual_classification`。套用到版本時，`not_applicable` 要求 `question_revisions.book_version_id` 為空，但不妨礙題目歸入特定版本的教材單元。主題、知識點與課綱代碼同樣只以來源直接提供的關聯判斷原生要求，後續人工分類需以 `value_source` 區分。
+
+考試體系來源通常將 `exam_level` 設為 `required`，並將 `grade`、`semester` 與 `book_version` 設為 `not_applicable`。不限定特定考試體系的通用來源也能使用 `exam_level`，但題目級別仍須對應正式考試體系。
+
+### `filter_fields` 來源專屬篩選欄位
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 欄位識別碼 | 主鍵 |
+| `key` | `varchar(80)` | 必填 | API（應用程式介面）穩定鍵值 | 唯一，例如 `exam_round`、`paper_variant` |
+| `name` | `varchar(100)` | 必填 | 畫面欄位名稱 | 例如「回次」「卷別」 |
+| `value_type` | `varchar(20)` | 必填 | 值的型別 | `option`、`text`、`integer`、`year`、`date` |
+| `selection_mode` | `varchar(20)` | 必填；`single` | 篩選選取方式 | `single` 或 `multiple` |
+| `sort_order` | `smallint` | 必填 | 篩選面板中的預設順序 | 同一畫面依此排序 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+`來源路徑`、重複的`來源類型`及重複知識點不建立可見篩選欄位。來源中的「學習內容」不建立 `filter_fields`；通過驗證的官方代碼改寫入 `curriculum_codes` 與題目版本關聯。無法驗證的原文留在匯入資料等待校正，不能只因介面不顯示該欄位就丟棄。
+
+認知向度首批以 `filter_fields.key=cognitive_dimension` 建立全域適用的選項型欄位，選項由正式種子資料管理，不寫死在前端。若後續確認認知向度需要獨立權限、階層或跨題統計，再以 migration 升為正式分類表；目前不建立第二套平行欄位。
+
+### `filter_field_scopes` 篩選欄位適用規則
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 適用規則識別碼 | 主鍵 |
+| `filter_field_id` | `uuid` | 必填 | 篩選欄位 | 外鍵至 `filter_fields.id` |
+| `name` | `varchar(120)` | 選填 | 管理用規則名稱 | 只供管理介面辨識，不參與比對 |
+| `required_on_publish` | `boolean` | 必填；`false` | 發布題目時是否必填 | 只影響符合此範圍的題目 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+`filter_field_scopes` 不直接保存來源、科目、年級、學期或版本。每個維度都由下列具正式外鍵的關聯表管理，新增來源或版本只需增加資料，不需修改程式或 schema。
+
+### `filter_field_scope_sources` 適用來源
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `source_category_id` | `uuid` | 必填 | 題目來源 | 外鍵至 `source_categories.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+### `filter_field_scope_subjects` 適用科目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+### `filter_field_scope_grades` 適用年級
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `grade_id` | `uuid` | 必填 | 年級 | 外鍵至 `grades.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+### `filter_field_scope_semesters` 適用學期
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `semester_id` | `uuid` | 必填 | 學期 | 外鍵至 `semesters.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+### `filter_field_scope_book_versions` 適用書籍版本
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `book_version_id` | `uuid` | 必填 | 書籍版本 | 外鍵至 `book_versions.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+### `filter_field_scope_exam_levels` 適用考試級別
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id` |
+| `exam_program_level_id` | `uuid` | 必填 | 考試級別或類別 | 外鍵至 `exam_program_levels.id` |
+| `effect` | `varchar(20)` | 必填；`include` | 比對效果 | `include` 或 `exclude`；前兩欄為主鍵 |
+
+同一維度內的 `include` 關聯採任一符合，不同維度之間必須全部符合；命中任何 `exclude` 關聯時該規則不成立。某個維度沒有關聯資料代表不限制該維度。一個欄位可以有多筆規則，任一規則成立就顯示欄位；若任一符合規則的 `required_on_publish=true`，發布時該欄位必填。完全沒有維度關聯的規則代表所有情境都適用。欄位沒有任何有效規則時不在介面顯示；要讓欄位全域適用，必須明確建立一筆沒有維度關聯的有效規則。
+
+來源、科目、年級、學期、版本與考試級別是目前已確認的核心維度，因此保留各自的正式外鍵。未來新增資料值只需新增資料列；若產品新增全新的核心維度，例如學校或學年度，才新增對應關聯表與查詢條件。這項 schema 變更是為了保留外鍵與封存檢查，不以通用文字欄位或任意 JSON 迴避資料完整性。
+
+### `filter_field_options` 篩選欄位選項
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 選項識別碼 | 主鍵 |
+| `filter_field_id` | `uuid` | 必填 | 所屬欄位 | 外鍵至 `filter_fields.id` |
+| `parent_option_id` | `uuid` | 選填 | 上層選項 | 可表達第一回下的 A、B、C 版等階層 |
+| `value` | `varchar(160)` | 必填 | API 與資料庫值 | 同一欄位內唯一 |
+| `label` | `varchar(160)` | 必填 | 顯示文字 | — |
+| `sort_order` | `smallint` | 必填 | 顯示順序 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+### `filter_field_option_scopes` 篩選選項適用規則
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `filter_option_id` | `uuid` | 必填 | 篩選選項 | 外鍵至 `filter_field_options.id` |
+| `filter_field_scope_id` | `uuid` | 必填 | 適用規則 | 外鍵至 `filter_field_scopes.id`；兩者必須屬於同一篩選欄位 |
+
+前兩欄為主鍵。選項沒有任何適用規則關聯時，套用到該欄位的所有情境；有關聯時，只在其中至少一筆規則符合目前來源、科目、年級、學期、版本與考試級別時顯示。這讓同一個「回次」欄位可依教材版本顯示不同選項，也能讓考試梯次依正式級別顯示，不需要複製欄位定義。
+
+## 題庫、題目與版本
+
+### `question_banks` 題庫或匯入本
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 題庫識別碼 | 主鍵 |
+| `name` | `varchar(120)` | 必填 | 題庫名稱 | — |
+| `origin` | `varchar(20)` | 必填 | 題庫來源 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 題庫擁有者 | 帳號題庫必填；系統題庫為空 |
+| `created_role` | `varchar(30)` | 選填 | 建立時使用角色 | `parent`、`learner`、`tutor`；只供追溯，不作授權依據 |
+| `is_default` | `boolean` | 必填；`false` | 是否為擁有者的預設匯入題庫 | 未選擇匯入本時使用；每個擁有者最多一筆有效預設題庫 |
+| `status` | `varchar(20)` | 必填；`active` | 題庫狀態 | `active`、`archived` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+### `question_bank_learners` 題庫適用學習者
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_bank_id` | `uuid` | 必填 | 題庫 | 外鍵至 `question_banks.id` |
+| `learner_id` | `uuid` | 必填 | 適用學習者 | 外鍵至 `learners.id` |
+| `added_at` | `timestamptz` | 必填；目前時間 | 加入時間 | 前兩欄為主鍵 |
+
+### `question_bank_items` 題庫收錄項目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_bank_id` | `uuid` | 必填 | 題庫 | 外鍵至 `question_banks.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `added_by_user_id` | `uuid` | 選填 | 加入題庫的帳號 | 系統搬移可為空 |
+| `added_at` | `timestamptz` | 必填；目前時間 | 加入時間 | 前兩欄為主鍵 |
+
+### `questions` 題目穩定身份
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 題目識別碼 | 主鍵 |
+| `origin` | `varchar(20)` | 必填 | 題目來源身份 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 題目擁有者 | 帳號題目必填；系統題目為空 |
+| `current_revision_id` | `uuid` | 選填 | 目前發布版本 | 必須屬於同一題；草稿可為空 |
+| `status` | `varchar(20)` | 必填；`draft` | 題目狀態 | `draft`、`published`、`archived` |
+| `created_method` | `varchar(20)` | 必填 | 建立方式 | `manual`、`import`、`generated`、`migration` |
+| `created_by_user_id` | `uuid` | 選填 | 建立帳號 | 系統搬移可為空 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `archived_at` | `timestamptz` | 選填 | 封存時間 | 封存不刪除歷史版本與作答 |
+
+### `question_identifiers` 題目外部編號
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 編號紀錄識別碼 | 主鍵 |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `identifier_type` | `varchar(30)` | 必填 | 編號種類 | `legacy`、`publisher_question`、`source_document_question` |
+| `publisher_id` | `uuid` | 選填 | 出版社 | 出版社題號使用；外鍵至 `publishers.id` |
+| `book_version_id` | `uuid` | 選填 | 書籍版本 | 題號只在特定教材版本內穩定時使用 |
+| `source_document_id` | `uuid` | 選填 | 來源文件 | 文件內題號使用；外鍵至 `source_documents.id` |
+| `value` | `varchar(120)` | 必填 | 題目編號原文 | 不轉成資料庫主鍵 |
+| `normalized_value` | `varchar(120)` | 必填 | 正規化題號 | 去除不具識別意義的空白及全半形差異 |
+
+`legacy` 只允許 `publisher_id`、`book_version_id` 與 `source_document_id` 全部為空，並以 `identifier_type + normalized_value` 去重。出版社題號至少要有 `publisher_id`，文件內題號必須有 `source_document_id`。出版社題號依實際穩定範圍，以 `publisher_id + book_version_id + normalized_value` 或 `publisher_id + normalized_value` 建立部分唯一索引；不能把自由格式的命名空間當成出版社與版本外鍵的替代品。
+
+搬移或匯入題號前，先以已確認的出版社、書籍版本及來源文件決定識別範圍。能唯一確認出版社時不得建立 `legacy`。既有 `legacy` 日後補齊出版社時，要在同一交易檢查目標範圍是否已有相同 `normalized_value`：沒有重複時更新原紀錄的類型與外鍵；已有重複時停止更新並進入合併審核，不能新增第二題或靜默合併歷史作答。
+
+### `question_revisions` 題目版本
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 題目版本識別碼 | 主鍵 |
+| `question_id` | `uuid` | 必填 | 所屬題目 | 外鍵至 `questions.id` |
+| `revision_number` | `integer` | 必填 | 版本序號 | 同一題內唯一，從 1 遞增 |
+| `question_type_id` | `uuid` | 必填 | 標準題型 | 外鍵至 `question_types.id` |
+| `original_question_type_label` | `varchar(120)` | 選填 | 來源文件中的原始題型名稱 | 無法可靠對照時仍保留原文，不作題目來源欄位 |
+| `subject_id` | `uuid` | 選填 | 科目 | 外鍵至 `subjects.id`；有值時必須是 `subject_kind=leaf` |
+| `grade_id` | `uuid` | 選填 | 年級 | 外鍵至 `grades.id` |
+| `semester_id` | `uuid` | 選填 | 學期 | 外鍵至 `semesters.id` |
+| `book_version_id` | `uuid` | 選填 | 書籍版本 | 不使用版本的來源保持空值 |
+| `exam_program_level_id` | `uuid` | 選填 | 考試級別或類別 | 外鍵至 `exam_program_levels.id` |
+| `difficulty_level_id` | `uuid` | 選填 | 難易度 | 外鍵至 `difficulty_levels.id` |
+| `source_category_id` | `uuid` | 選填 | 題目來源 | 外鍵至 `source_categories.id` |
+| `search_text` | `text` | 必填；空字串 | 搜尋用衍生文字 | 由內容區塊重建，不是題目內容來源 |
+| `status` | `varchar(20)` | 必填；`draft` | 版本狀態 | `draft`、`published`、`superseded`、`rejected` |
+| `change_note` | `varchar(500)` | 選填 | 修改原因 | 系統題目修改時必填 |
+| `created_by_type` | `varchar(30)` | 必填 | 建立者類型 | `user`、`bootstrap_admin`、`system_job`、`migration` |
+| `created_by_user_id` | `uuid` | 選填 | 建立此版本的帳號 | `created_by_type=user` 時必填 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | 版本發布後不可原地修改 |
+| `published_at` | `timestamptz` | 選填 | 發布時間 | `status=published` 時必填 |
+
+`question_revisions` 的科目、年級、學期與版本表示題目原生分類。教材單元改由 `question_revision_units` 多對多保存，避免會考、基測或校內卷等不綁定出版社版本的題目，因後續歸入某一教材版本的單元而被迫填入錯誤版本。`book_version_id` 有值時，後端仍要驗證該版本的科目與年級不和題目版本衝突。
+
+發布版本時，後端依 `source_category_dimensions.native_requirement` 驗證固定分類。`required` 必須有對應原生欄位或正式關聯，`not_applicable` 不得保存原生值，`optional` 則允許空值。跨版本單元歸檔不算成題目原生 `book_version`，因此來源的版本規則為 `not_applicable` 時，仍可建立 `cross_version_alignment` 單元關聯。
+
+`exam_program_level_id` 有值且來源的 `exam_program_id` 也有值時，兩者必須屬於同一考試體系。來源未限定體系時，只要 `exam_level` 規則允許，仍可保存正式級別；這讓一般題庫來源能收錄已分類的檢定題，而不用複製來源類型。
+
+### `question_revision_reviews` 題目版本審核紀錄
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 審核識別碼 | 主鍵 |
+| `question_revision_id` | `uuid` | 必填 | 被審核版本 | 外鍵至 `question_revisions.id` |
+| `reviewer_type` | `varchar(30)` | 必填 | 審核者類型 | `user` 或 `bootstrap_admin` |
+| `reviewer_user_id` | `uuid` | 選填 | 審核帳號 | `reviewer_type=user` 時必填，且必須是有效 `system_admin` |
+| `decision` | `varchar(20)` | 必填 | 審核決定 | `approved`、`rejected`、`changes_requested` |
+| `reason` | `text` | 選填 | 審核說明 | `rejected` 或 `changes_requested` 時必填 |
+| `from_status` | `varchar(20)` | 必填 | 審核前狀態 | 保存當時狀態，不從目前版本狀態反推 |
+| `to_status` | `varchar(20)` | 必填 | 審核後狀態 | 必須符合下方狀態轉換規則 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 審核時間 | 新決定新增一列，不修改舊紀錄 |
+
+帳號自有題目可由擁有者將 `draft` 發布為 `published`，不需要管理員審核。系統題目必須由有效系統管理員或預設系統管理員留下審核紀錄。允許的狀態轉換為 `draft → published`、`draft → rejected`、`rejected → draft`、`published → superseded`。退回修改使用 `changes_requested` 審核決定，版本維持 `draft`；已發布版本不得退回草稿或原地修改。
+
+### `question_parts` 小題
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 小題識別碼 | 主鍵 |
+| `question_revision_id` | `uuid` | 必填 | 所屬題目版本 | 外鍵至 `question_revisions.id` |
+| `parent_part_id` | `uuid` | 選填 | 上層小題 | 只在巢狀題組使用 |
+| `stable_key` | `varchar(80)` | 必填 | 版本內穩定鍵值 | 同一版本內唯一 |
+| `position` | `smallint` | 必填 | 顯示與作答順序 | — |
+| `answer_mode` | `varchar(30)` | 必填 | 作答方式 | 首版為 `single_choice`、`multiple_choice`、`boolean`、`text` |
+| `grading_policy` | `varchar(30)` | 必填 | 判分政策 | `automatic`、`manual_review`、`ai_assisted_review` |
+| `is_independently_gradable` | `boolean` | 必填；`true` | 是否可獨立判分 | 為真時可只複習此小題 |
+
+一般單題仍建立一筆根小題，讓所有答案與作答都使用同一條路徑，避免整題與小題出現兩套平行實作。`grading_policy` 表示題目設定的判分方式，`answer_attempts.grading_source` 與 `answer_part_results.grading_source` 記錄實際採用的初始判分方式；三個欄位共用同一組值，不做額外字串對照。
+
+### `question_options` 選項
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 選項識別碼 | 主鍵 |
+| `question_part_id` | `uuid` | 必填 | 所屬小題 | 外鍵至 `question_parts.id` |
+| `option_key` | `varchar(30)` | 必填 | 判分用選項鍵值 | 例如 `A`、`B`；同一小題內唯一 |
+| `position` | `smallint` | 必填 | 顯示順序 | 不以鍵值推斷順序 |
+
+### `question_content_blocks` 題目內容區塊
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 內容區塊識別碼 | 主鍵 |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `question_part_id` | `uuid` | 選填 | 對應小題 | 共用大題內容可為空 |
+| `question_option_id` | `uuid` | 選填 | 對應選項 | 只有選項內容使用 |
+| `parent_block_id` | `uuid` | 選填 | 所屬內容區塊 | 錄音稿連到對應音訊；外鍵至同表 `id` |
+| `placement` | `varchar(20)` | 必填 | 顯示位置 | `prompt`、`option`、`answer`、`explanation`、`transcript` |
+| `content_type` | `varchar(20)` | 必填 | 內容格式 | `text`、`image`、`audio`、`transcript`、`formula`、`table`、`page_crop` |
+| `position` | `smallint` | 必填 | 同一位置中的順序 | — |
+| `text_content` | `text` | 選填 | 文字、公式或表格內容 | 與 `asset_id` 依格式至少擇一 |
+| `asset_id` | `uuid` | 選填 | 圖片、音訊或原頁裁切圖 | 外鍵至 `assets.id` |
+| `alt_text` | `varchar(300)` | 選填 | 替代文字 | 圖片發布前必填；音訊以錄音稿提供等價內容 |
+
+填空位置需在文字內容中使用經驗證的結構化標記，例如 `{{blank:part-1}}`，顯示時轉成底線或答案欄，不以連續空白推測。`audio` 必須使用 `asset_id`；錄音稿建立 `transcript` 區塊並以 `parent_block_id` 連到音訊區塊。發布英聽題前必須有錄音稿，除非正式無障礙政策核准其他等價方式。
+
+### `question_revision_units` 題目版本教材單元歸檔
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `curriculum_unit_id` | `uuid` | 必填 | 教材單元 | 外鍵至 `curriculum_units.id` |
+| `assignment_type` | `varchar(30)` | 必填 | 歸檔種類 | `native`、`cross_version_alignment`、`manual_classification` |
+| `is_primary` | `boolean` | 必填；`false` | 是否為主要單元 | 同一版本最多一筆主要單元 |
+| `value_source` | `varchar(30)` | 必填 | 歸檔來源 | `document`、`user`、`migration`、`system_rule` |
+| `confidence` | `numeric(5,4)` | 選填 | 自動判定信心值 | 範圍 0 至 1；人工指定可為空 |
+
+前兩欄為主鍵。`native` 表示題目原始文件直接屬於該教材單元，單元的科目、年級、學期與版本不得和題目原生分類衝突。`cross_version_alignment` 與 `manual_classification` 是後續歸檔，必須科目相符，但允許題目版本為空或與單元版本不同。尚未確認的搬移候選只保存在來源文件分類候選或匯入草稿，不寫入本表。
+
+### `question_answers` 參考答案
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 答案識別碼 | 主鍵 |
+| `question_part_id` | `uuid` | 必填 | 對應小題 | 外鍵至 `question_parts.id` |
+| `answer_key` | `varchar(80)` | 選填 | 選項或空格鍵值 | 選項題使用選項鍵值；文字題可為空 |
+| `accepted_value` | `text` | 選填 | 可接受答案 | 同一小題可有多筆 |
+| `position` | `smallint` | 必填；`0` | 多答案順序 | — |
+
+作答方式只由 `question_parts.answer_mode` 決定。`question_answers` 保存可接受答案，不重複保存作答方式。每列只能使用 `answer_key` 或 `accepted_value` 其中一種答案表示；多選題以多筆 `answer_key` 表示正確集合，首版必須完整符合才判定為正確。文字答案只有在產品已明確設定可自動比對時才使用 `automatic`，否則使用人工檢視或 AI 輔助後人工確認。
+
+### `question_revision_topics` 題目主題關聯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `topic_id` | `uuid` | 必填 | 主題 | 外鍵至 `topics.id` |
+| `is_primary` | `boolean` | 必填；`false` | 是否為主要主題 | 同一版本最多一筆主要主題 |
+| `value_source` | `varchar(30)` | 必填 | 分類來源 | `document`、`user`、`migration`、`system_rule` |
+
+### `question_revision_knowledge_points` 題目知識點關聯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `knowledge_point_id` | `uuid` | 必填 | 知識點 | 外鍵至 `knowledge_points.id` |
+| `is_primary` | `boolean` | 必填；`false` | 是否為主要知識點 | 同一版本最多一筆主要知識點 |
+| `value_source` | `varchar(30)` | 必填 | 分類來源 | `document`、`user`、`migration`、`system_rule` |
+
+### `question_revision_curriculum_codes` 題目版本課綱代碼關聯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `curriculum_code_id` | `uuid` | 必填 | 課綱代碼 | 外鍵至 `curriculum_codes.id` |
+| `is_primary` | `boolean` | 必填；`false` | 是否為主要課綱代碼 | 同一版本最多一筆主要代碼 |
+| `value_source` | `varchar(30)` | 必填 | 對照來源 | `document`、`user`、`migration`、`system_rule` |
+| `confidence` | `numeric(5,4)` | 選填 | 自動對照信心值 | 範圍 0 至 1；人工指定可為空 |
+
+前兩欄為主鍵。來源中的「學習內容」只有通過課綱版本、科目與代碼格式驗證後才建立正式關聯；無法辨識的原文留在匯入資料並列入人工校正，不得建立假的知識點或課綱代碼。
+
+### `question_revision_filter_values` 題目來源專屬欄位值
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 欄位值識別碼 | 主鍵 |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `filter_field_id` | `uuid` | 必填 | 欄位定義 | 外鍵至 `filter_fields.id` |
+| `filter_option_id` | `uuid` | 選填 | 標準選項 | 選項型欄位使用 |
+| `raw_label` | `varchar(160)` | 選填 | 來源文件中的原始欄位名稱 | 來源文件或搬移資料有原文時保存 |
+| `raw_value` | `text` | 選填 | 來源文件中的原始值 | 來源文件或搬移資料有原文時保存，不改寫原文 |
+| `normalized_value` | `varchar(240)` | 選填 | 可查詢的標準值 | 非選項型欄位必填；選項型欄位為空 |
+| `value_source` | `varchar(20)` | 必填 | 判定來源 | `document`、`path`、`ai`、`user`、`migration` |
+| `confidence` | `numeric(4,3)` | 選填 | 自動判定信心值 | 0 至 1；人工確認可為 1 |
+
+多值欄位每個值保存一列。欄位與選項是否能套用到此題，由符合的 `filter_field_scopes` 與 `filter_field_option_scopes` 驗證。`value_type=option` 時 `filter_option_id` 必填且 `normalized_value` 為空；其他型別時 `filter_option_id` 為空且 `normalized_value` 必填。`value_source=user` 不要求原始文件欄位，`raw_label` 與 `raw_value` 可為空。這些互斥規則以 CHECK constraint（檢查約束）及外鍵所屬欄位檢查執行。
+
+## 檔案、來源文件與匯入
+
+### `assets` 檔案
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 檔案識別碼 | 主鍵 |
+| `storage_key` | `varchar(500)` | 必填 | 物件儲存鍵值 | 唯一；不可使用公開網址作主鍵 |
+| `mime_type` | `varchar(120)` | 必填 | 檔案格式 | 上傳時需驗證實際內容 |
+| `byte_size` | `bigint` | 必填 | 檔案大小 | 必須大於 0 |
+| `width` | `integer` | 選填 | 圖片寬度 | 像素 |
+| `height` | `integer` | 選填 | 圖片高度 | 像素 |
+| `checksum` | `varchar(128)` | 必填 | 內容雜湊 | 用於完整性與重複檔案判斷 |
+| `purpose` | `varchar(30)` | 必填 | 檔案用途 | `question_content`、`source_document`、`handwriting`、`learner_avatar`、`page_crop` |
+| `sensitivity` | `varchar(20)` | 必填；`private` | 存取敏感度 | `public_content` 或 `private`；手寫與學習者資料固定為 `private` |
+| `scan_status` | `varchar(20)` | 必填；`pending` | 惡意內容掃描狀態 | `pending`、`clean`、`rejected` |
+| `created_by_user_id` | `uuid` | 選填 | 上傳帳號 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 上傳時間 | — |
+| `deleted_at` | `timestamptz` | 選填 | 邏輯刪除時間 | 確認無引用後才移除實體檔案 |
+
+`assets` 不直接授予存取權。讀取檔案時必須從題目內容、來源文件、手寫作答或學習者代表圖片等引用關係反查權限，再產生短效簽名網址；只知道 `asset_id` 或 `storage_key` 不代表可以下載。沒有正式引用的上傳檔案只能由上傳帳號在隔離區存取，並依保存政策清理。
+
+### `source_documents` 來源文件
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 來源文件識別碼 | 主鍵 |
+| `owner_user_id` | `uuid` | 選填 | 文件擁有者 | 系統搬移文件可為空 |
+| `asset_id` | `uuid` | 選填 | 原始檔案 | 貼上文字時可為空 |
+| `input_type` | `varchar(20)` | 必填 | 輸入方式 | `image`、`pdf`、`text` |
+| `original_file_name` | `varchar(255)` | 選填 | 原始檔名 | 不作權限或分類依據 |
+| `pasted_text` | `text` | 選填 | 使用者貼上的原文 | `input_type=text` 時必填 |
+| `document_title` | `varchar(300)` | 選填 | 文件標題 | 可作 AI 建議依據，使用者確認後才寫正式分類 |
+| `status` | `varchar(20)` | 必填；`uploaded` | 文件處理狀態 | `uploaded`、`processing`、`ready`、`failed`、`archived` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+檔名與文件標題只提供分類建議，不直接建立或改寫正式教材目錄。解析器先保存原始字串，再依已核准規則提出出版社、科目、年級、學期、書籍版本、考試體系、考試級別、冊次、單元、課綱代碼與來源候選；無法完整對照時保持待確認，不能把整段檔名直接寫成 `curriculum_units.code` 或 `curriculum_units.name`。題號不是分類維度；從檔名、頁面或題目標示擷取的題號直接寫入 `import_items.source_question_number`，確認後再寫入 `question_revision_sources.source_question_number` 及適用的 `question_identifiers`。
+
+### `source_document_classification_candidates` 來源文件分類候選
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 分類候選識別碼 | 主鍵 |
+| `source_document_id` | `uuid` | 必填 | 來源文件 | 外鍵至 `source_documents.id` |
+| `dimension` | `varchar(30)` | 必填 | 候選維度 | `publisher`、`subject`、`grade`、`semester`、`book_version`、`exam_program`、`exam_level`、`unit`、`curriculum_code`、`source_category` |
+| `raw_value` | `text` | 必填 | 檔名或標題中的原文 | 不改寫原文 |
+| `publisher_id` | `uuid` | 選填 | 出版社候選 | 外鍵至 `publishers.id` |
+| `subject_id` | `uuid` | 選填 | 科目候選 | 外鍵至 `subjects.id` |
+| `grade_id` | `uuid` | 選填 | 年級候選 | 外鍵至 `grades.id` |
+| `semester_id` | `uuid` | 選填 | 學期候選 | 外鍵至 `semesters.id` |
+| `book_version_id` | `uuid` | 選填 | 書籍版本候選 | 外鍵至 `book_versions.id` |
+| `exam_program_id` | `uuid` | 選填 | 考試體系候選 | 外鍵至 `exam_programs.id` |
+| `exam_program_level_id` | `uuid` | 選填 | 考試級別候選 | 外鍵至 `exam_program_levels.id` |
+| `curriculum_unit_id` | `uuid` | 選填 | 教材單元候選 | 外鍵至 `curriculum_units.id` |
+| `curriculum_code_id` | `uuid` | 選填 | 課綱代碼候選 | 外鍵至 `curriculum_codes.id` |
+| `source_category_id` | `uuid` | 選填 | 題目來源候選 | 外鍵至 `source_categories.id` |
+| `parser_version` | `varchar(80)` | 必填 | 解析規則版本 | 規則更新後可重算候選 |
+| `confidence` | `numeric(5,4)` | 選填 | 自動判定信心值 | 範圍 0 至 1 |
+| `review_status` | `varchar(20)` | 必填；`pending` | 確認狀態 | `pending`、`approved`、`rejected` |
+| `reviewed_by_user_id` | `uuid` | 選填 | 確認帳號 | 外鍵至 `users.id` |
+| `reviewed_at` | `timestamptz` | 選填 | 確認時間 | — |
+
+候選資料依 `dimension` 只允許對應的一個正式外鍵有值；尚未找到正式資料時所有候選外鍵皆為空。只有 `approved` 候選能在確認匯入時轉成正式分類；無法對照的候選保留在匯入批次與隔離報告中。解析規則至少要記錄可接受的檔名格式、全半形與空白正規化、同名衝突處理，以及每個擷取片段對應的正式維度。
+
+### `import_batches` 匯入批次
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 匯入批次識別碼 | 主鍵 |
+| `question_bank_id` | `uuid` | 必填 | 寫入題庫 | 外鍵至 `question_banks.id` |
+| `learner_id` | `uuid` | 選填 | 當時套用的學習者 | 用於帶入年級與版本，不代表題目只能給此學習者使用 |
+| `created_by_user_id` | `uuid` | 必填 | 執行匯入帳號 | 從登入狀態取得 |
+| `status` | `varchar(20)` | 必填；`draft` | 匯入狀態 | `draft`、`recognizing`、`review`、`confirmed`、`failed`、`cancelled` |
+| `idempotency_key` | `varchar(120)` | 必填 | 冪等鍵 | 同一建立帳號內唯一 |
+| `recognizer_version` | `varchar(80)` | 選填 | OCR 或拆題服務版本 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `confirmed_at` | `timestamptz` | 選填 | 全批確認時間 | 確認後才建立正式題目版本 |
+
+### `import_batch_documents` 匯入批次來源文件
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `import_batch_id` | `uuid` | 必填 | 匯入批次 | 外鍵至 `import_batches.id` |
+| `source_document_id` | `uuid` | 必填 | 來源文件 | 外鍵至 `source_documents.id` |
+| `position` | `integer` | 必填 | 檔案順序 | 同一批次內唯一 |
+
+前兩欄為主鍵。單一批次可包含多份圖片或 PDF；不得只把第一個檔案連到批次。
+
+### `import_items` 匯入題目草稿
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 匯入項目識別碼 | 主鍵 |
+| `import_batch_id` | `uuid` | 必填 | 匯入批次 | 外鍵至 `import_batches.id` |
+| `source_document_id` | `uuid` | 必填 | 項目來源文件 | 必須已存在於同一批次的 `import_batch_documents` |
+| `source_page` | `integer` | 選填 | 原始頁碼 | 從 1 起算 |
+| `source_question_number` | `varchar(80)` | 選填 | 原始題號 | 保留原文字樣 |
+| `source_order` | `integer` | 必填 | 原始順序 | 同批次內唯一 |
+| `draft_payload` | `jsonb` | 必填 | 待校正的辨識內容 | 包含尚未正式化的題幹、選項、答案與欄位 |
+| `recognition_confidence` | `numeric(4,3)` | 選填 | 整體辨識信心值 | 0 至 1 |
+| `review_status` | `varchar(20)` | 必填；`pending` | 人工校正狀態 | `pending`、`approved`、`rejected` |
+| `question_id` | `uuid` | 選填 | 確認後建立的題目 | 外鍵至 `questions.id` |
+| `question_revision_id` | `uuid` | 選填 | 確認後建立的版本 | 外鍵至 `question_revisions.id` |
+| `reviewed_by_user_id` | `uuid` | 選填 | 完成人工校正的帳號 | — |
+| `reviewed_at` | `timestamptz` | 選填 | 校正完成時間 | — |
+
+### `question_revision_sources` 題目版本來源位置
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 來源關聯識別碼 | 主鍵 |
+| `question_revision_id` | `uuid` | 必填 | 題目版本 | 外鍵至 `question_revisions.id` |
+| `source_document_id` | `uuid` | 必填 | 來源文件 | 外鍵至 `source_documents.id` |
+| `import_item_id` | `uuid` | 選填 | 匯入項目 | 外鍵至 `import_items.id` |
+| `source_page` | `integer` | 選填 | 原始頁碼 | — |
+| `source_question_number` | `varchar(80)` | 選填 | 原始題號 | — |
+| `crop_asset_id` | `uuid` | 選填 | 原頁裁切圖 | 外鍵至 `assets.id` |
+| `is_primary` | `boolean` | 必填；`true` | 是否為主要來源 | 同一版本最多一筆主要來源 |
+
+## 學習者教材設定與題目分類
+
+### `learner_subject_settings` 學習者科目與版本設定
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 設定識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 學習者 | 外鍵至 `learners.id` |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `book_version_id` | `uuid` | 選填 | 選定書籍版本 | 空值代表「無版本」 |
+| `enabled` | `boolean` | 必填；`true` | 是否顯示此科目 | 介面只顯示已啟用且符合就學狀態的科目 |
+| `is_default_subject` | `boolean` | 必填；`false` | 建立設定時是否屬系統預設 | 保留當時狀態，避免目錄改版後誤刪使用者設定 |
+| `position` | `smallint` | 必填 | 顯示順序 | — |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | `learner_id + subject_id` 唯一 |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+`enabled=true` 且 `book_version_id` 為空是合法狀態，表示學習者使用此科目，但沒有指定教材版本。`enabled=false` 時科目不出現在一般題目與練習入口，既有版本設定保留，重新啟用時可繼續使用。歷史作答、錯題與成果不受目前啟用狀態限制。在學學習者由 `grade_subjects` 建立系統預設設定；不在學學習者不建立年級預設，可從有效系統 `leaf` 與帳號自訂科目中加入設定。系統預設科目可以停用但不能刪除設定；自訂科目可在沒有歷史引用時刪除，有引用時只能停用或封存。
+
+### `curriculum_units` 教材單元
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 單元識別碼 | 主鍵 |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `grade_id` | `uuid` | 選填 | 年級 | 外鍵至 `grades.id` |
+| `semester_id` | `uuid` | 選填 | 學期 | 外鍵至 `semesters.id` |
+| `book_version_id` | `uuid` | 選填 | 書籍版本 | 外鍵至 `book_versions.id` |
+| `parent_unit_id` | `uuid` | 選填 | 上層單元 | 支援冊、章、課、回次等階層 |
+| `unit_type` | `varchar(30)` | 必填 | 單元層級 | 例如 `volume`、`chapter`、`lesson`、`round`；顯示名稱由資料決定 |
+| `code` | `varchar(80)` | 選填 | 來源中的單元代碼 | 同一版本與父層下有值時唯一 |
+| `name` | `varchar(120)` | 必填 | 單元名稱 | — |
+| `position` | `smallint` | 必填 | 同層順序 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+### `curriculum_codes` 正式課綱代碼
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 課綱代碼識別碼 | 主鍵 |
+| `curriculum_version` | `varchar(40)` | 必填 | 課綱版本 | 例如 `108`；使用正式穩定代碼 |
+| `code_type` | `varchar(30)` | 必填 | 代碼種類 | `learning_content`、`learning_performance` 或後續核准值 |
+| `code` | `varchar(80)` | 必填 | 官方課綱代碼 | 例如 `N-7-5`、`Da-IV-1` |
+| `subject_id` | `uuid` | 必填 | 科目或領域 | 外鍵至 `subjects.id`；允許 `group` 或 `leaf` |
+| `grade_id` | `uuid` | 選填 | 適用年級 | 跨年級代碼可為空 |
+| `name` | `varchar(240)` | 選填 | 官方名稱或說明 | 只保存可追溯的正式內容 |
+| `authority_name` | `varchar(160)` | 必填 | 發布機關或權威來源 | 例如教育主管機關 |
+| `source_reference` | `text` | 必填 | 來源參照 | 保存正式文件名稱、版本或可查證網址 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+`curriculum_version + code_type + code` 唯一。課綱代碼是跨出版社的正式分類鍵，不併入 `knowledge_points`；知識點仍是平台或帳號用來教學與複習的可編輯分類。課綱代碼可屬於自然科學等 `group`，也可屬於生物或理化等 `leaf`。題目使用課綱代碼時，題目科目必須等於代碼科目，或是該群組科目的有效子科目；以群組科目篩選課綱代碼時展開有效子科目，以子科目篩選時同時包含其上層領域適用的代碼。正式目錄必須記錄資料來源與版本，未取得權威目錄前只能把匯入值當成待確認候選。
+
+### `topics` 主題
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 主題識別碼 | 主鍵 |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `code` | `varchar(80)` | 選填 | 主題代碼 | 有權威代碼時使用 |
+| `name` | `varchar(120)` | 必填 | 跨版本共用主題名稱 | — |
+| `origin` | `varchar(20)` | 必填 | 建立來源 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂主題建立者 | `origin=account` 時必填 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+### `knowledge_points` 知識點
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 知識點識別碼 | 主鍵 |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `parent_id` | `uuid` | 選填 | 上層知識點 | 支援知識樹 |
+| `code` | `varchar(80)` | 選填 | 權威知識點代碼 | 沒有正式來源時不得自行編造 |
+| `name` | `varchar(160)` | 必填 | 知識點名稱 | — |
+| `origin` | `varchar(20)` | 必填 | 建立來源 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂知識點建立者 | `origin=account` 時必填 |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+### `unit_topics` 單元與主題關聯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `curriculum_unit_id` | `uuid` | 必填 | 教材單元 | 外鍵至 `curriculum_units.id` |
+| `topic_id` | `uuid` | 必填 | 主題 | 外鍵至 `topics.id` |
+| `position` | `smallint` | 必填；`0` | 顯示順序 | 主鍵為前兩欄 |
+
+### `unit_knowledge_points` 單元與知識點關聯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `curriculum_unit_id` | `uuid` | 必填 | 教材單元 | 外鍵至 `curriculum_units.id` |
+| `knowledge_point_id` | `uuid` | 必填 | 知識點 | 外鍵至 `knowledge_points.id` |
+| `position` | `smallint` | 必填；`0` | 顯示順序 | 主鍵為前兩欄 |
+
+### `question_types` 標準題型
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 題型識別碼 | 主鍵 |
+| `code` | `varchar(60)` | 必填 | 題型代碼 | 唯一 |
+| `name` | `varchar(100)` | 必填 | 題型名稱 | 例如填充題、配合題、題組 |
+| `supports_parts` | `boolean` | 必填；`false` | 是否允許多個小題 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+`question_types` 只描述題目的教學與內容型態，不參與判分。作答方式與判分政策由每個 `question_parts` 決定，因此同一題組可包含不同作答方式的小題。
+
+### `difficulty_levels` 難易度
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 難易度識別碼 | 主鍵 |
+| `code` | `varchar(30)` | 必填 | 穩定代碼 | 首批為 `basic`、`medium`、`advanced` |
+| `name` | `varchar(40)` | 必填 | 顯示名稱 | 首批為基礎、中等、進階 |
+| `sort_order` | `smallint` | 必填 | 排序 | — |
+| `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+## 收藏、相近題與考試
+
+### `question_collections` 收藏清單
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 收藏清單識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 所屬學習者 | 外鍵至 `learners.id` |
+| `name` | `varchar(100)` | 必填 | 收藏清單名稱 | 同一學習者內有效名稱唯一 |
+| `created_by_user_id` | `uuid` | 必填 | 建立帳號 | — |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `archived_at` | `timestamptz` | 選填 | 封存時間 | — |
+
+### `question_collection_items` 收藏項目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `collection_id` | `uuid` | 必填 | 收藏清單 | 外鍵至 `question_collections.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `added_by_user_id` | `uuid` | 必填 | 加入收藏的帳號 | — |
+| `added_at` | `timestamptz` | 必填；目前時間 | 加入時間 | 前兩欄為主鍵 |
+
+題目可同時存在多份收藏。「移動收藏」是一個交易：先刪除該學習者其他收藏中的題目，再加入目標收藏。
+
+### `question_similarity_groups` 相近題群組
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 群組識別碼 | 主鍵 |
+| `name` | `varchar(160)` | 選填 | 管理用群組名稱 | 不作相近判斷依據 |
+| `status` | `varchar(20)` | 必填；`pending` | 群組狀態 | `pending`、`confirmed`、`inactive` |
+| `created_source` | `varchar(20)` | 必填 | 建立來源 | `manual`、`rule`、`ai` |
+| `method_version` | `varchar(80)` | 選填 | 判定方法版本 | 規則或 AI 建立時必填 |
+| `created_by_user_id` | `uuid` | 選填 | 建立帳號 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `confirmed_by_user_id` | `uuid` | 選填 | 確認帳號 | — |
+| `confirmed_at` | `timestamptz` | 選填 | 確認時間 | — |
+
+### `question_similarity_candidates` 相近題候選與評分
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 候選識別碼 | 主鍵 |
+| `left_question_revision_id` | `uuid` | 必填 | 第一個題目版本 | 外鍵至 `question_revisions.id` |
+| `right_question_revision_id` | `uuid` | 必填 | 第二個題目版本 | 外鍵至 `question_revisions.id`；不得與第一個相同 |
+| `method_key` | `varchar(80)` | 必填 | 判定方法鍵值 | 例如人工規則或核准模型名稱 |
+| `method_version` | `varchar(80)` | 必填 | 判定方法版本 | 模型、特徵或規則變動時建立新版本 |
+| `similarity_score` | `numeric(6,5)` | 選填 | 候選相似度 | 範圍 0 至 1；人工候選可為空 |
+| `evidence` | `jsonb` | 必填；`{}` | 可審核判定依據 | 只保存核准欄位、命中關係與必要摘要 |
+| `status` | `varchar(20)` | 必填；`pending` | 候選狀態 | `pending`、`approved`、`rejected`、`expired` |
+| `reviewed_by_user_id` | `uuid` | 選填 | 審核帳號 | 外鍵至 `users.id` |
+| `reviewed_at` | `timestamptz` | 選填 | 審核時間 | 已審核狀態時必填 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+候選配對先以較小的題目版本 UUID 放在 `left_question_revision_id`，避免同一配對正反各存一筆。分數只用於排序人工審核工作，不得直接進入相近題篩選、排除已掌握題組或正式練習。候選核准後，才在同一交易建立或更新已確認的相近題群組與成員；題目改版後舊候選標記為 `expired`，不沿用舊分數判定新版題目。
+
+### `question_similarity_memberships` 相近題成員
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `similarity_group_id` | `uuid` | 必填 | 相近題群組 | 外鍵至 `question_similarity_groups.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `based_on_revision_id` | `uuid` | 必填 | 判定時使用的題目版本 | 題目改版後可要求重新審核 |
+| `status` | `varchar(20)` | 必填；`pending` | 成員狀態 | `pending`、`confirmed`、`rejected` |
+| `evidence` | `jsonb` | 選填 | 判定依據 | 不得只以相同題型作為已確認關聯 |
+| `confidence` | `numeric(4,3)` | 選填 | 自動判定信心值 | 0 至 1 |
+| `reviewed_by_user_id` | `uuid` | 選填 | 審核帳號 | — |
+| `reviewed_at` | `timestamptz` | 選填 | 審核時間 | 前兩欄為主鍵 |
+
+### `question_generation_relations` 生成題來源
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `source_question_id` | `uuid` | 必填 | 原始題目 | 外鍵至 `questions.id` |
+| `generated_question_id` | `uuid` | 必填 | 生成題目 | 外鍵至 `questions.id`；不得與原始題相同 |
+| `method_version` | `varchar(80)` | 必填 | 生成方法版本 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | 前兩欄為主鍵 |
+
+生成關係不等於相近關係。只有已確認的相近題群組能用於「相近題」篩選及排除已掌握題組。
+
+### `exams` 考試設定
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 考試識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 所屬學習者 | 外鍵至 `learners.id` |
+| `name` | `varchar(120)` | 必填 | 考試名稱 | — |
+| `exam_date` | `date` | 必填 | 考試日期 | 上方倒數天數由此欄位即時計算 |
+| `status` | `varchar(20)` | 必填；`active` | 考試狀態 | `active`、`completed`、`archived` |
+| `created_by_user_id` | `uuid` | 必填 | 建立帳號 | — |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+### `exam_subject_ranges` 考試科目範圍
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 範圍識別碼 | 主鍵 |
+| `exam_id` | `uuid` | 必填 | 考試 | 外鍵至 `exams.id` |
+| `subject_id` | `uuid` | 必填 | 科目 | 外鍵至 `subjects.id` |
+| `book_version_id` | `uuid` | 選填 | 當時使用版本 | 空值代表無版本 |
+| `start_unit_id` | `uuid` | 選填 | 起始單元 | 外鍵至 `curriculum_units.id` |
+| `end_unit_id` | `uuid` | 選填 | 結束單元 | 必須與起始單元屬同一教材樹 |
+| `target_level_id` | `uuid` | 選填 | 目標考試級別或類別 | 外鍵至 `exam_program_levels.id` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | `exam_id + subject_id` 唯一 |
+
+教材範圍與目標考試級別二擇一。使用 `target_level_id` 時 `book_version_id`、`start_unit_id` 與 `end_unit_id` 必須為空；使用教材範圍時 `target_level_id` 必須為空，且起訖單元需同時有值。目前目標級別只選取相同級別的題目，是否包含較低級別待產品規則確認後再擴充。
+
+## 練習計畫與選題
+
+### `practice_plans` 練習計畫
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 練習計畫識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 適用學習者 | 外鍵至 `learners.id` |
+| `created_by_user_id` | `uuid` | 必填 | 建立帳號 | — |
+| `created_role` | `varchar(30)` | 必填 | 建立時角色 | `parent`、`learner`、`tutor` |
+| `name` | `varchar(140)` | 必填 | 計畫名稱 | — |
+| `is_default` | `boolean` | 必填；`false` | 是否為學習者預設計畫 | 每位學習者最多一筆有效預設計畫 |
+| `basis` | `varchar(20)` | 必填；`chapter` | 範圍依據 | `chapter` 或 `assessment` |
+| `exam_id` | `uuid` | 選填 | 套用考試 | `basis=assessment` 時必填 |
+| `check_mode` | `varchar(20)` | 必填 | 答案檢核方式 | `complete`、`instant`、`score` |
+| `question_limit` | `smallint` | 必填 | 預計題數 | 1 至 500；題目不足時使用全部符合題目 |
+| `selection_mode` | `varchar(20)` | 必填；`dynamic` | 選題方式 | `dynamic` 或 `fixed` |
+| `difficulty_mix_enabled` | `boolean` | 必填；`false` | 是否啟用難易度比例 | 啟用後一般難易度條件不生效 |
+| `filter_schema_version` | `smallint` | 必填；`1` | 篩選快照格式版本 | 後端依此選用驗證與轉換規則 |
+| `filter_snapshot` | `jsonb` | 必填；`{}` | 建立計畫時的完整篩選快照 | 寫入前依共用篩選 schema 驗證；保存穩定識別碼、運算子與值 |
+| `status` | `varchar(20)` | 必填；`active` | 計畫狀態 | `draft`、`active`、`completed`、`archived` |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+`filter_snapshot` 是刻意採用的弱型別快照，不依賴無外鍵的 EAV（實體－屬性－值）表。它只用來重現計畫與稽核，不作目錄項目存在與否的權威來源。建立計畫與每次開始練習前，後端都要依 `filter_schema_version` 驗證欄位、運算子、UUID、來源適用規則及目前權限；目錄項目封存後不得默默改用其他項目。固定條件包含 `subject`、`semester`、`book_version`、`exam_level`、`source`、`unit`、`topic`、`knowledge`、`difficulty`、`question_type`、`creator`、`collection`、`search`、`attempt_state`、`similar_to_wrong` 與 `exclude_mastered`。`attempt_state` 的已做過、未做過及最近答錯依目前學習者最新一筆已提交作答判定。
+
+### `practice_plan_difficulty_mix` 難易度比例
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `practice_plan_id` | `uuid` | 必填 | 練習計畫 | 外鍵至 `practice_plans.id` |
+| `difficulty_level_id` | `uuid` | 必填 | 難易度 | 外鍵至 `difficulty_levels.id` |
+| `percentage` | `numeric(5,2)` | 必填 | 題數比例 | 0 至 100；同一計畫合計必須為 100 |
+
+前兩欄為主鍵。個別難度題目不足時，剩餘名額由其他符合一般條件的題目補足，不能放寬學習者、科目、版本、來源或權限條件。
+
+### `practice_plan_items` 計畫固定題目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 計畫項目識別碼 | 主鍵 |
+| `practice_plan_id` | `uuid` | 必填 | 練習計畫 | 外鍵至 `practice_plans.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `question_revision_id` | `uuid` | 必填 | 固定題目版本 | 外鍵至 `question_revisions.id` |
+| `question_part_id` | `uuid` | 選填 | 只練習的小題 | 錯一小題時建立此欄；空值代表整題 |
+| `position` | `integer` | 必填 | 題目順序 | 同一計畫內唯一 |
+| `reason` | `varchar(30)` | 必填；`selected` | 納入原因 | `selected`、`wrong_review`、`similar_review`、`manual` |
+
+### `practice_schedules` 排程練習
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 排程識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 適用學習者 | 外鍵至 `learners.id` |
+| `practice_plan_id` | `uuid` | 選填 | 來源計畫 | 外鍵至 `practice_plans.id`；計畫日後修改不改變本排程題目 |
+| `name` | `varchar(140)` | 必填 | 排程名稱 | — |
+| `scheduled_for` | `timestamptz` | 必填 | 預定練習時間 | 一份計畫可建立多筆排程 |
+| `check_mode` | `varchar(20)` | 必填 | 排程採用的答案檢核方式 | 建立排程時由計畫複製，後續不連動 |
+| `status` | `varchar(20)` | 必填；`scheduled` | 排程狀態 | `scheduled`、`available`、`completed`、`cancelled`、`missed` |
+| `created_by_user_id` | `uuid` | 必填 | 建立排程的帳號 | — |
+| `lock_version` | `integer` | 必填；`1` | 樂觀鎖定版本 | 每次成功更新加 1 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
+
+### `practice_schedule_items` 排程固定題目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 排程項目識別碼 | 主鍵 |
+| `practice_schedule_id` | `uuid` | 必填 | 所屬排程 | 外鍵至 `practice_schedules.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `question_revision_id` | `uuid` | 必填 | 排程採用版本 | 外鍵至 `question_revisions.id` |
+| `question_part_id` | `uuid` | 選填 | 只練習的小題 | 空值代表整題 |
+| `position` | `integer` | 必填 | 固定順序 | 同一排程內唯一 |
+| `reason` | `varchar(30)` | 必填 | 納入原因 | 參數同 `practice_plan_items.reason` |
+
+建立排程時就把題目版本與順序複製到 `practice_schedule_items`。同一計畫可重複排程，每筆排程各自保存當時內容與完成結果，之後修改計畫不會改變既有排程。
+
+### `learner_practice_queue_items` 後續練習佇列
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 佇列項目識別碼 | 主鍵 |
+| `learner_id` | `uuid` | 必填 | 適用學習者 | 外鍵至 `learners.id` |
+| `question_id` | `uuid` | 必填 | 後續練習題目 | 外鍵至 `questions.id` |
+| `question_revision_id` | `uuid` | 必填 | 加入時採用版本 | 外鍵至 `question_revisions.id` |
+| `question_part_id` | `uuid` | 選填 | 只練習的小題 | 空值代表整題 |
+| `reason` | `varchar(30)` | 必填 | 加入原因 | `wrong_review`、`similar_review`、`manual`、`legacy_migration` |
+| `source_answer_part_result_id` | `uuid` | 選填 | 觸發此項目的原始小題作答 | 外鍵至 `answer_part_results.id`；錯題與相近題正常流程必填 |
+| `match_basis` | `varchar(30)` | 選填 | 相近題選入依據 | `confirmed_group`、`same_topic`、`same_knowledge_point`、`same_unit`、`same_subject`；`similar_review` 必填 |
+| `similarity_group_id` | `uuid` | 選填 | 採用的相近題群組 | `match_basis=confirmed_group` 時必填 |
+| `matched_topic_id` | `uuid` | 選填 | 採用的主題 | `match_basis=same_topic` 時必填；外鍵至 `topics.id` |
+| `matched_knowledge_point_id` | `uuid` | 選填 | 採用的知識點 | `match_basis=same_knowledge_point` 時必填；外鍵至 `knowledge_points.id` |
+| `matched_curriculum_unit_id` | `uuid` | 選填 | 採用的教材單元 | `match_basis=same_unit` 時必填；外鍵至 `curriculum_units.id` |
+| `matched_subject_id` | `uuid` | 選填 | 採用的科目 | `match_basis=same_subject` 時必填；外鍵至 `subjects.id` |
+| `status` | `varchar(20)` | 必填；`pending` | 佇列狀態 | `pending`、`consumed`、`removed` |
+| `added_by_user_id` | `uuid` | 選填 | 加入佇列的帳號 | 自動加入或舊資料搬移可為空 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 加入時間 | — |
+| `consumed_at` | `timestamptz` | 選填 | 建立練習工作階段的時間 | `status=consumed` 時必填 |
+
+立即練習直接建立 `practice_sessions`；加入後續練習則先建立佇列項目。相近題選入時要保存當時實際使用的單一 `match_basis` 及其對應外鍵，不能在事後從題目目前分類反推。舊 JSON 沒有保存原始錯題作答時，搬移為 `reason=legacy_migration` 且來源作答為空，不能偽造追溯關係。
+
+### `practice_sessions` 實際練習
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 練習識別碼 | 主鍵 |
+| `practice_plan_id` | `uuid` | 選填 | 來源計畫 | 臨時練習可為空 |
+| `practice_schedule_id` | `uuid` | 選填 | 來源排程 | 外鍵至 `practice_schedules.id`；排程啟動時必填 |
+| `learner_id` | `uuid` | 必填 | 作答學習者 | 外鍵至 `learners.id` |
+| `created_by_user_id` | `uuid` | 必填 | 啟動練習的帳號 | — |
+| `mode` | `varchar(20)` | 必填 | 練習用途 | `practice`、`review`、`similar` |
+| `check_mode` | `varchar(20)` | 必填 | 實際檢核方式 | 建立時由計畫複製，後續計畫變更不影響 |
+| `status` | `varchar(20)` | 必填；`active` | 練習狀態 | `active`、`paused`、`completed`、`abandoned` |
+| `started_at` | `timestamptz` | 必填；目前時間 | 開始時間 | — |
+| `completed_at` | `timestamptz` | 選填 | 完成時間 | — |
+
+### `practice_session_items` 練習固定題目
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 練習項目識別碼 | 主鍵 |
+| `practice_session_id` | `uuid` | 必填 | 實際練習 | 外鍵至 `practice_sessions.id` |
+| `question_id` | `uuid` | 必填 | 題目 | 外鍵至 `questions.id` |
+| `question_revision_id` | `uuid` | 必填 | 開始練習時的題目版本 | 不隨日後修題變更 |
+| `question_part_id` | `uuid` | 選填 | 只作答的小題 | 空值代表依題目版本顯示全部小題 |
+| `position` | `integer` | 必填 | 題目順序 | 同一練習內唯一 |
+| `selection_reason` | `varchar(30)` | 必填 | 選入原因 | `filter`、`fixed`、`wrong_review`、`similar_review`、`difficulty_fill` |
+
+### `practice_session_item_origins` 練習項目來源追溯
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 來源追溯識別碼 | 主鍵 |
+| `practice_session_item_id` | `uuid` | 必填 | 練習項目 | 外鍵至 `practice_session_items.id` |
+| `source_answer_part_result_id` | `uuid` | 必填 | 觸發練習的原始小題作答 | 外鍵至 `answer_part_results.id` |
+| `queue_item_id` | `uuid` | 選填 | 消耗的後續練習項目 | 外鍵至 `learner_practice_queue_items.id` |
+| `relation_kind` | `varchar(30)` | 必填 | 追溯關係 | `wrong_review` 或 `similar_review` |
+| `match_basis` | `varchar(30)` | 選填 | 相近題選入依據 | 值域同後續練習佇列；`relation_kind=similar_review` 時必填 |
+| `similarity_group_id` | `uuid` | 選填 | 採用的相近題群組 | `match_basis=confirmed_group` 時必填；外鍵至 `question_similarity_groups.id` |
+| `matched_topic_id` | `uuid` | 選填 | 採用的主題 | `match_basis=same_topic` 時必填；外鍵至 `topics.id` |
+| `matched_knowledge_point_id` | `uuid` | 選填 | 採用的知識點 | `match_basis=same_knowledge_point` 時必填；外鍵至 `knowledge_points.id` |
+| `matched_curriculum_unit_id` | `uuid` | 選填 | 採用的教材單元 | `match_basis=same_unit` 時必填；外鍵至 `curriculum_units.id` |
+| `matched_subject_id` | `uuid` | 選填 | 採用的科目 | `match_basis=same_subject` 時必填；外鍵至 `subjects.id` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+每個錯題或相近題練習項目都要連到觸發它的確切 `answer_part_results`。同一練習項目可由多筆歷史錯題觸發，因此使用關聯表而不是在工作階段或題目上保存單一來源。相近題優先記錄已確認群組；沒有群組時，依產品規則逐級使用主題、知識點、單元或原題科目，並保存實際命中的依據。每筆相近題來源只允許一個依據外鍵有值。查詢某筆歷史錯題的相近題累計結果時，沿此表連到練習項目、作答與小題結果，不從目前分類或群組反推來源。
+
+## 作答、審核與逐小題複習
+
+### `answer_attempts` 每次送出作答
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 作答識別碼 | 主鍵 |
+| `practice_session_item_id` | `uuid` | 必填 | 練習題目 | 外鍵至 `practice_session_items.id` |
+| `learner_id` | `uuid` | 必填 | 作答學習者 | 必須與練習工作階段相同 |
+| `attempt_number` | `integer` | 必填 | 此練習項目的送出次數 | 從 1 遞增 |
+| `idempotency_key` | `varchar(120)` | 必填 | 送出冪等鍵 | `learner_id + idempotency_key` 唯一 |
+| `overall_result` | `varchar(20)` | 必填 | 整題目前判定 | `correct`、`wrong`、`pending`；由各小題目前結果重算 |
+| `grading_source` | `varchar(20)` | 必填 | 初始判定來源 | `automatic`、`manual_review`、`ai_assisted_review` |
+| `duration_seconds` | `integer` | 選填 | 作答耗時秒數 | 不得小於 0 |
+| `submitted_at` | `timestamptz` | 必填；目前時間 | 送出時間 | 不可覆寫 |
+
+### `answer_part_results` 小題作答與結果
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 小題作答識別碼 | 主鍵 |
+| `answer_attempt_id` | `uuid` | 必填 | 所屬作答 | 外鍵至 `answer_attempts.id` |
+| `question_part_id` | `uuid` | 必填 | 作答小題 | 外鍵至 `question_parts.id` |
+| `answer_payload` | `jsonb` | 必填 | 學習者原始答案 | 保存選項鍵值、文字或多值答案，不保存可執行內容 |
+| `initial_result` | `varchar(20)` | 必填 | 初始判定 | `correct`、`wrong`、`pending` |
+| `current_result` | `varchar(20)` | 必填 | 目前有效判定 | `correct`、`wrong`、`pending`；審核歷程另存 |
+| `grading_source` | `varchar(20)` | 必填 | 判定來源 | `automatic`、`manual_review`、`ai_assisted_review` |
+| `recognized_text` | `text` | 選填 | AI 手寫辨識文字 | 不能覆蓋原始手寫或使用者答案 |
+| `recognition_confidence` | `numeric(4,3)` | 選填 | 手寫辨識信心值 | 0 至 1 |
+
+`answer_attempt_id + question_part_id` 唯一。錯題與複習清單以這張表判定；只有答錯的小題進入複習，不自動擴成整個大題。
+
+### `answer_part_assets` 小題作答檔案
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `answer_part_result_id` | `uuid` | 必填 | 小題作答 | 外鍵至 `answer_part_results.id` |
+| `asset_id` | `uuid` | 必填 | 作答檔案 | 外鍵至 `assets.id` |
+| `asset_role` | `varchar(20)` | 必填 | 檔案用途 | 首版為 `handwriting`、`attachment` |
+| `position` | `smallint` | 必填；`0` | 同用途順序 | — |
+
+前三欄為主鍵。檔案讀取權限沿小題作答、練習與學習者授權反查；刪除或去識別化時不得只清掉 `answer_payload` 而留下可辨識的手寫檔案。
+
+### `answer_reviews` 人工或輔助審核
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 審核識別碼 | 主鍵 |
+| `answer_part_result_id` | `uuid` | 必填 | 被審核的小題作答 | 外鍵至 `answer_part_results.id` |
+| `reviewer_user_id` | `uuid` | 必填 | 審核帳號 | 後端檢查其對學習者的審核權限 |
+| `result` | `varchar(20)` | 必填 | 審核結果 | `correct`、`wrong`、`pending` |
+| `reason` | `text` | 選填 | 判定說明 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 審核時間 | 每次改判新增一筆，不修改舊紀錄 |
+
+## 統計與排行
+
+### `learner_question_stats` 學習者題目統計
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `learner_id` | `uuid` | 必填 | 學習者 | 與 `question_id` 組成主鍵 |
+| `question_id` | `uuid` | 必填 | 題目 | — |
+| `total_attempts` | `integer` | 必填；`0` | 總作答次數 | — |
+| `graded_attempts` | `integer` | 必填；`0` | 已檢核次數 | 不含待審核 |
+| `correct_attempts` | `integer` | 必填；`0` | 答對次數 | — |
+| `wrong_attempts` | `integer` | 必填；`0` | 答錯次數 | — |
+| `pending_attempts` | `integer` | 必填；`0` | 待審核次數 | — |
+| `first_attempted_at` | `timestamptz` | 選填 | 第一次作答時間 | — |
+| `last_attempted_at` | `timestamptz` | 選填 | 最近作答時間 | — |
+| `last_result` | `varchar(20)` | 選填 | 最近結果 | `correct`、`wrong`、`pending` |
+| `last_revision_id` | `uuid` | 選填 | 最近作答題目版本 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 統計更新時間 | 可由作答明細重建 |
+
+### `learner_part_stats` 學習者小題統計
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `learner_id` | `uuid` | 必填 | 學習者 | 與 `question_part_id` 組成主鍵 |
+| `question_part_id` | `uuid` | 必填 | 小題 | — |
+| `total_attempts` | `integer` | 必填；`0` | 小題作答次數 | — |
+| `correct_attempts` | `integer` | 必填；`0` | 小題答對次數 | — |
+| `wrong_attempts` | `integer` | 必填；`0` | 小題答錯次數 | — |
+| `pending_attempts` | `integer` | 必填；`0` | 小題待審核次數 | — |
+| `last_result` | `varchar(20)` | 選填 | 小題最近結果 | — |
+| `last_attempted_at` | `timestamptz` | 選填 | 小題最近作答時間 | 錯一小題的複習入口以此表加速查詢 |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 統計更新時間 | 可重建 |
+
+### `learner_similarity_group_stats` 相近題掌握統計
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `learner_id` | `uuid` | 必填 | 學習者 | 與群組組成主鍵 |
+| `similarity_group_id` | `uuid` | 必填 | 已確認相近題群組 | — |
+| `attempted_question_count` | `integer` | 必填；`0` | 已做過的不同題數 | 同題重做只算一題 |
+| `correct_question_count` | `integer` | 必填；`0` | 最新已檢核結果答對的不同題數 | 達 2 題時可視為已掌握 |
+| `wrong_question_count` | `integer` | 必填；`0` | 最新已檢核結果答錯的不同題數 | — |
+| `is_mastered` | `boolean` | 必填；`false` | 是否達排除門檻 | 由規則計算，不由前端直接寫入 |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 統計更新時間 | 可由作答與已確認群組重建 |
+
+### `learner_daily_stats` 學習者每日練習統計
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `stat_date` | `date` | 必填 | 臺北日期 | 與 `learner_id` 組成主鍵 |
+| `learner_id` | `uuid` | 必填 | 學習者 | 外鍵至 `learners.id` |
+| `session_count` | `integer` | 必填；`0` | 完成練習次數 | — |
+| `attempt_count` | `integer` | 必填；`0` | 送出作答次數 | 同一天多次作答仍只影響一次連續天數判斷 |
+| `correct_part_count` | `integer` | 必填；`0` | 答對小題數 | — |
+| `wrong_part_count` | `integer` | 必填；`0` | 答錯小題數 | — |
+| `pending_part_count` | `integer` | 必填；`0` | 待審核小題數 | — |
+| `total_duration_seconds` | `bigint` | 必填；`0` | 總作答秒數 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近重算時間 | 連續練習天數由此表計算；可由原始作答重建 |
+
+### `question_daily_stats` 每日題目統計
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `stat_date` | `date` | 必填 | 臺北日期 | 與題目版本組成主鍵 |
+| `question_id` | `uuid` | 必填 | 題目 | — |
+| `question_revision_id` | `uuid` | 必填 | 當時題目版本 | — |
+| `total_attempts` | `integer` | 必填；`0` | 作答次數 | — |
+| `unique_learner_count` | `integer` | 必填；`0` | 不重複學習者數 | — |
+| `wrong_learner_count` | `integer` | 必填；`0` | 曾答錯的不重複學習者數 | — |
+| `correct_attempts` | `integer` | 必填；`0` | 答對次數 | — |
+| `wrong_attempts` | `integer` | 必填；`0` | 答錯次數 | — |
+| `pending_attempts` | `integer` | 必填；`0` | 待審核次數 | — |
+| `total_duration_seconds` | `bigint` | 必填；`0` | 總作答秒數 | — |
+| `updated_at` | `timestamptz` | 必填；目前時間 | 最近重算時間 | 可由原始作答重建 |
+
+錯題英雄榜不永久保存名次。查詢依日期範圍與共用篩選條件聚合後，再用資料庫排名函式計算；畫面額外顯示答錯次數、錯誤率、最後作答時間等錯題資料。
+
+### `analytics_privacy_policies` 統計隱私政策
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 政策識別碼 | 主鍵 |
+| `policy_key` | `varchar(80)` | 必填 | 政策穩定鍵值 | 首批為 `community_question_ranking`；有效政策內唯一 |
+| `aggregation_scope` | `varchar(30)` | 必填 | 聚合範圍 | 首批只允許 `platform` |
+| `min_distinct_learners` | `smallint` | 必填 | 最少不重複學習者數 | 必須大於 1；未達門檻的題目不回傳 |
+| `status` | `varchar(20)` | 必填；`draft` | 政策狀態 | `draft`、`active`、`retired` |
+| `effective_at` | `timestamptz` | 選填 | 生效時間 | `status=active` 時必填 |
+| `created_by_user_id` | `uuid` | 必填 | 建立政策的系統管理員 | 外鍵至 `users.id` |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | 政策生效後不原地修改；調整門檻時建立新版本 |
+
+個人榜只從目前學習者的歷史作答與統計取得題目。社群榜排行的是已發布的系統題目，不排行學習者，也不納入帳號自有題目；它只提供給已登入且具有有效學習者存取權的帳號。社群榜可跨學習者聚合已檢核作答，但 API 只回傳題目、總作答次數、答錯次數、不重複作答人數、不重複答錯人數與錯誤率，不回傳學習者識別碼、姓名、帳號、學校或個別作答時間。資料保存或刪除政策要求排除的作答不得進入聚合。
+
+社群榜只有在 `community_question_ranking` 存在有效政策時才開放。每道題目在整個查詢期間的不重複學習者數必須達到 `min_distinct_learners` 才能顯示；未達門檻時整列省略，不回傳實際人數或零值。跨多日查詢不能直接加總 `question_daily_stats.unique_learner_count`，因同一位學習者可能跨日重複出現；必須從作答明細計算期間內的不重複學習者，或使用能保存期間去重集合的可重建彙總。
+
+### `analytics_outbox` 統計待處理事件
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 事件識別碼 | 主鍵 |
+| `event_type` | `varchar(60)` | 必填 | 事件類型 | 例如 `attempt_submitted`、`answer_reviewed` |
+| `source_record_id` | `uuid` | 必填 | 來源明細識別碼 | 與事件類型唯一，避免重複累加 |
+| `aggregate_key` | `varchar(240)` | 必填 | 分派用彙總鍵值 | — |
+| `occurred_at` | `timestamptz` | 必填 | 業務事件時間 | — |
+| `processed_at` | `timestamptz` | 選填 | 處理完成時間 | — |
+| `retry_count` | `integer` | 必填；`0` | 重試次數 | — |
+| `last_error` | `text` | 選填 | 最近失敗摘要 | 不記錄答案、密碼或其他敏感內容 |
+
+### `analytics_jobs` 統計重算工作
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 工作識別碼 | 主鍵 |
+| `job_type` | `varchar(30)` | 必填 | 工作類型 | `full_rebuild`、`date_range`、`refresh_view` |
+| `range_start` | `date` | 選填 | 重算起始日期 | — |
+| `range_end` | `date` | 選填 | 重算結束日期 | 不得早於起始日期 |
+| `status` | `varchar(20)` | 必填；`queued` | 工作狀態 | `queued`、`running`、`completed`、`failed` |
+| `cursor` | `jsonb` | 選填 | 大量資料處理進度 | — |
+| `aggregation_version` | `varchar(60)` | 必填 | 統計規則版本 | 相同版本與範圍重跑應得到相同結果 |
+| `started_at` | `timestamptz` | 選填 | 開始時間 | — |
+| `completed_at` | `timestamptz` | 選填 | 完成時間 | — |
+| `last_error` | `text` | 選填 | 最近失敗摘要 | — |
+
+## 稽核與敏感操作
+
+### `admin_audit_logs` 管理員稽核紀錄
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 稽核紀錄識別碼 | 主鍵 |
+| `actor_type` | `varchar(30)` | 必填 | 操作者類型 | `user`、`bootstrap_admin`、`system_job` |
+| `actor_user_id` | `uuid` | 選填 | 操作者帳號 | `actor_type=user` 時必填 |
+| `action` | `varchar(80)` | 必填 | 操作代碼 | 例如 `admin_role_granted`、`system_question_revised` |
+| `target_type` | `varchar(60)` | 必填 | 目標資源類型 | — |
+| `target_id` | `uuid` | 選填 | 目標資源識別碼 | 預設系統管理員使用固定文字目標時可為空 |
+| `before_data` | `jsonb` | 選填 | 異動前內容 | 排除密碼、token、完整答案影像等敏感資料 |
+| `after_data` | `jsonb` | 選填 | 異動後內容 | — |
+| `request_id` | `varchar(120)` | 必填 | 請求識別碼 | 用於串連 API 與伺服器紀錄 |
+| `source_ip` | `inet` | 選填 | 來源 IP | 依隱私保存期限處理 |
+| `user_agent` | `text` | 選填 | 操作端資訊 | — |
+| `created_at` | `timestamptz` | 必填；目前時間 | 操作時間 | 不提供一般管理介面修改或刪除 |
+
+### `data_erasure_requests` 資料刪除與去識別化要求
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 要求識別碼 | 主鍵 |
+| `requested_by_user_id` | `uuid` | 必填 | 提出要求的帳號 | 外鍵至 `users.id` |
+| `target_user_id` | `uuid` | 選填 | 要處理的帳號 | 帳號關閉或個資刪除時使用 |
+| `target_learner_id` | `uuid` | 選填 | 要處理的學習者 | 外鍵至 `learners.id`；與目標帳號至少一項必填 |
+| `request_type` | `varchar(30)` | 必填 | 要求類型 | `account_closure`、`learner_erasure`、`asset_erasure` |
+| `status` | `varchar(20)` | 必填；`pending` | 處理狀態 | `pending`、`approved`、`processing`、`completed`、`rejected` |
+| `reviewed_by_user_id` | `uuid` | 選填 | 審核帳號 | 正式政策要求審核時使用 |
+| `decision_reason` | `text` | 選填 | 核准或拒絕原因 | 拒絕時必填 |
+| `result_summary` | `jsonb` | 選填 | 處理結果摘要 | 只保存資料類別與筆數，不保存已刪除內容 |
+| `requested_at` | `timestamptz` | 必填；目前時間 | 提出時間 | — |
+| `completed_at` | `timestamptz` | 選填 | 完成時間 | `status=completed` 時必填 |
+
+保存期限由正式政策設定，不寫死在應用程式。帳號與學習者顯示資料在核准後去識別化；未達法定或契約保存期限的作答、審核與稽核資料保留不可回推個人的替代識別碼；手寫影像、代表圖片與未發布來源文件在沒有其他保存義務時刪除物件及 `assets` 引用。每次執行要產生不可含個資的處理摘要與管理員稽核紀錄。期限尚未核准前，不得把正式學習者資料搬入 production（正式環境）。
+
+## 關聯與權限規則
+
+下列資料不另建第二份權威資料：
+
+- 不建立獨立錯題表。錯題由 `answer_part_results` 的最新已檢核結果與可重建統計取得，避免改判後錯題表不同步。
+- 不建立永久名次表。排行榜依日期範圍及篩選條件從每日統計計算。
+- 不建立平行的題組內容表。同一大題的共用內容放在 `question_revisions` 的內容區塊，各小題放在 `question_parts`；切換小題時可保留共用內容。
+- 不把來源路徑、重複來源類型或重複知識點再存成可見條件。原始證據留在來源文件與匯入草稿；可驗證的正式課綱代碼另存到 `curriculum_codes`，不能因畫面不顯示「學習內容」就丟棄代碼。
+
+```text
+users ──< account_identities
+      ├──< auth_sessions
+      ├──< verification_challenges
+      ├──< user_roles
+      ├──< role_pin_credentials
+      └──< learner_access >── learners ──< learner_subject_settings
+
+subjects(parent) ──< subjects(child)
+         ├──< subject_aliases
+         └──< grade_subjects >── grades
+subjects ──< book_versions ──< curriculum_units
+exam_programs ──< exam_program_levels
+             └──< source_categories
+curriculum_units ──< unit_topics >── topics
+curriculum_units ──< unit_knowledge_points >── knowledge_points
+curriculum_codes ──< question_revision_curriculum_codes
+
+questions ──< question_revisions ──< question_parts ──< question_options
+                                  │                 ├──< question_answers
+                                  │                 └──< answer_part_results ──< answer_part_assets
+                                  ├──< question_revision_reviews
+                                  ├──< question_content_blocks
+                                  ├──< question_revision_units >── curriculum_units
+                                  ├──< question_revision_topics
+                                  ├──< question_revision_knowledge_points
+                                  ├──< question_revision_curriculum_codes
+                                  └──< question_revision_filter_values
+exam_program_levels ──< question_revisions
+
+question_revisions ──< question_similarity_candidates >── question_revisions
+questions ──< question_similarity_memberships >── question_similarity_groups
+
+source_documents ──< import_batch_documents >── import_batches ──< import_items
+source_documents ──< source_document_classification_candidates
+source_documents ──< question_revision_sources >── question_revisions
+source_categories ──< source_category_dimensions
+filter_fields ──< filter_field_scopes ──< filter_field_scope_sources
+              │                       ├──< filter_field_scope_subjects
+              │                       ├──< filter_field_scope_grades
+              │                       ├──< filter_field_scope_semesters
+              │                       ├──< filter_field_scope_book_versions
+              │                       └──< filter_field_scope_exam_levels
+              ├──< filter_field_options ──< filter_field_option_scopes >── filter_field_scopes
+              └──< question_revision_filter_values
+
+learners ──< exams ──< exam_subject_ranges
+exam_program_levels ──< exam_subject_ranges
+learners ──< practice_plans ──< practice_plan_items
+                         └──< practice_plan_difficulty_mix
+learners ──< practice_schedules ──< practice_schedule_items
+         └──< learner_practice_queue_items
+practice_plans ──< practice_sessions
+practice_schedules ──0..1 practice_sessions
+practice_sessions ──< practice_session_items ──< answer_attempts ──< answer_part_results ──< answer_reviews
+practice_session_items ──< practice_session_item_origins >── answer_part_results
+```
+
+後端授權必須遵守以下規則：
+
+- 一般帳號只能修改自己擁有的 `origin=account` 題目。系統題目只有有效的 `system_admin` 或預設系統管理員可建立新版本。
+- 系統題目版本須由另一位有效系統管理員審核；建立版本與審核決定要分離，不能自行核准。
+- 一次性的 fixture 搬移不建立虛構審核者。通過筆數、內容雜湊、必要欄位與來源檢查的既有系統題目第一版可由 migration 直接發布，並寫入 `admin_audit_logs`；搬移後建立的任何系統題目版本都不得使用此豁免。
+- 系統管理員授予與移除必須同時寫入 `user_roles` 及 `admin_audit_logs`，兩者在同一個 transaction（資料庫交易）提交。
+- 預設系統管理員從可信後端身份取得 `bootstrap_admin` 操作者，不在 `users` 建立假帳號。
+- 所有學習資料查詢同時限制 `learner_id` 及目前帳號有效的 `learner_access`，只知道資源 ID 不代表有權讀取。
+- 檔案下載權限由引用 `assets` 的正式資源決定，物件儲存鍵值與檔案識別碼都不是授權憑證。
+- 家長或家教建立的計畫可由學習者執行，但只有具修改權限的建立者能改變範圍與練習方式。
+- 未確認的 OCR、AI 分類、相近題關係與手寫辨識不能直接成為正式答案或已確認關聯。
+- 只有有效 `system_admin` 或預設系統管理員能建立及啟用統計隱私政策。社群榜查詢不得接受繞過最小樣本門檻或要求學習者明細的前端參數。
+
+## 必要限制與索引
+
+| 目的 | 限制或索引 |
+| --- | --- |
+| 登入身份去重 | `UNIQUE(provider, provider_subject)`；`email_normalized` 有值時唯一 |
+| 登入工作階段 | `UNIQUE(token_hash)`；索引 `user_id, revoked_at, expires_at` |
+| 一次性驗證 | `UNIQUE(token_hash)`；索引 `user_id, purpose, consumed_at, expires_at` |
+| 有效角色去重 | `user_roles(user_id, role)` 在 `revoked_at IS NULL` 時唯一 |
+| 學習者分享 | `learner_access(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一；另建 `user_id, revoked_at, learner_id` 索引 |
+| 學習者就學狀態 | CHECK constraint 確保 `enrolled` 時有 `grade_id`，`not_enrolled` 時 `grade_id`、`semester_id` 與 `school_name` 為空 |
+| 學習者科目 | `UNIQUE(learner_id, subject_id)`；索引 `learner_id, enabled, position` |
+| 科目名稱與階層 | 系統科目的 `normalized_name` 與 `subject_aliases.normalized_alias` 各自全域唯一；帳號科目 `UNIQUE(owner_user_id, normalized_name)`；後端另拒絕與可見系統科目名稱或別名重名，並防止 `parent_subject_id` 形成循環 |
+| 系統與帳號所有權 | `origin=system` 時 `owner_user_id IS NULL`；`origin=account` 時 `owner_user_id IS NOT NULL` |
+| 預設題庫 | 每個 `owner_user_id` 在 `status=active AND is_default=true` 時最多一筆；系統題庫另以系統範圍限制 |
+| 題目版本 | `UNIQUE(question_id, revision_number)`；索引 `question_id, revision_number DESC` |
+| 考試體系與級別 | `UNIQUE(exam_programs.code)`；`UNIQUE(exam_program_id, code)`；索引 `exam_program_levels(parent_level_id, sort_order)` 與 `source_categories(exam_program_id, status)`；父子級別必須屬於同一體系並防止循環 |
+| 題目外部編號 | `legacy` 使用 `UNIQUE(identifier_type, normalized_value)`；出版社與文件題號依有效範圍建立部分唯一索引，禁止兩題取得同一有效來源識別 |
+| 題目審核 | 索引 `question_revision_reviews(question_revision_id, created_at DESC)`；`reviewer_type=user` 時審核帳號必須存在，預設系統管理員則不得建立假帳號 |
+| 小題作答與判分政策 | `UNIQUE(question_revision_id, stable_key)`；`answer_mode` 限首版四種作答方式；`grading_policy` 限系統自動判分、人工檢視或 AI 輔助後人工確認 |
+| 參考答案表示 | CHECK constraint 確保每列只有 `answer_key` 或 `accepted_value` 一項有值；自動判分的小題必須有參考答案 |
+| 目前題目版本 | `questions.current_revision_id` 必須屬於同一題且狀態為 `published`；以延後限制或同交易的後端檢查完成 |
+| 題目篩選 | 索引 `question_revisions(subject_id, grade_id, semester_id, book_version_id, source_category_id, difficulty_level_id, question_type_id)`、`question_revisions(exam_program_level_id)`；另索引 `question_revision_units(curriculum_unit_id, question_revision_id)` |
+| 題目全文搜尋 | 先量測中文斷詞；沒有品質證據前不引入外部搜尋服務 |
+| 來源固定維度 | `PRIMARY KEY(source_category_id, dimension)`；每個有效來源發布前必須具備完整維度規則 |
+| 篩選適用規則 | 六張維度關聯表各以兩個識別碼為主鍵，並索引維度識別碼與 `effect`；`filter_field_option_scopes` 必須驗證選項與規則屬於同一欄位 |
+| 來源專屬條件 | 選項型與非選項型欄位的 CHECK constraint 必須互斥；分別索引 `filter_option_id, question_revision_id` 與 `filter_field_id, normalized_value, question_revision_id` |
+| 單元、主題、知識點與課綱代碼 | 索引四張題目關聯表的分類 ID 與版本 ID；每個版本在各分類最多一筆 `is_primary=true` |
+| 來源文件分類候選 | 索引 `source_document_id, review_status, dimension`；以 CHECK constraint 確保每列最多一個候選外鍵，且與 `dimension` 相符 |
+| 考試範圍 | `exam_subject_ranges` 以 CHECK constraint 確保教材起訖與 `target_level_id` 互斥；目標級別模式禁止保存書籍版本；發布題目時驗證級別與來源限定的考試體系一致 |
+| 匯入冪等 | `UNIQUE(created_by_user_id, idempotency_key)`；`UNIQUE(import_batch_id, source_order)`；`UNIQUE(import_batch_id, position)` 及批次文件複合外鍵驗證 |
+| 收藏去重 | `PRIMARY KEY(collection_id, question_id)`；索引 `question_id, collection_id` |
+| 相近題 | `PRIMARY KEY(similarity_group_id, question_id)`；索引 `question_id, status` |
+| 相近題候選 | `left_question_revision_id < right_question_revision_id`；`UNIQUE(left_question_revision_id, right_question_revision_id, method_key, method_version)`；索引 `status, similarity_score DESC`；已審核狀態必須有審核者與時間 |
+| 計畫、排程與練習順序 | `UNIQUE(practice_plan_id, position)`、`UNIQUE(practice_schedule_id, position)`、`UNIQUE(practice_session_id, position)` |
+| 預設計畫 | 每個 `learner_id` 在 `status <> archived AND is_default=true` 時最多一筆 |
+| 排程執行 | `practice_sessions.practice_schedule_id` 有值時唯一；索引 `practice_schedules(learner_id, status, scheduled_for)` |
+| 後續練習佇列 | 索引 `learner_practice_queue_items(learner_id, status, created_at)`；正常錯題與相近題流程必須有來源小題作答 |
+| 相近題追溯 | `UNIQUE(practice_session_item_id, source_answer_part_result_id, relation_kind)`；索引 `source_answer_part_result_id, relation_kind`；相近題來源以 CHECK constraint 驗證 `match_basis` 與唯一一個依據外鍵一致 |
+| 難易度比例 | 啟用比例的計畫必須有有效比例，且同一計畫比例合計為 100；在提交交易前驗證 |
+| 作答冪等 | `UNIQUE(learner_id, idempotency_key)`；`UNIQUE(practice_session_item_id, attempt_number)` |
+| 小題結果 | `UNIQUE(answer_attempt_id, question_part_id)`；索引 `question_part_id, current_result` |
+| 作答附件 | `PRIMARY KEY(answer_part_result_id, asset_id, asset_role)`；索引 `asset_id`；引用資產的用途與附件角色必須相容 |
+| 錯題與最近作答 | 索引 `learner_question_stats(learner_id, last_result, last_attempted_at DESC)` 及 `learner_part_stats(learner_id, last_result, last_attempted_at DESC)` |
+| 錯題排行 | 索引 `question_daily_stats(stat_date, wrong_attempts DESC)` 與 `stat_date, wrong_learner_count DESC` |
+| 社群榜隱私政策 | `analytics_privacy_policies(policy_key)` 在 `status=active` 時唯一；`min_distinct_learners > 1`；啟用、停用與改版都要寫入管理員稽核 |
+| 統計事件冪等 | `UNIQUE(event_type, source_record_id)`；索引 `processed_at, occurred_at` |
+| 稽核查詢 | 索引 `admin_audit_logs(target_type, target_id, created_at DESC)` 及 `actor_user_id, created_at DESC` |
+| 樂觀鎖定 | 更新 `learner_preferences`、`learner_subject_settings`、`question_collections`、`exams`、`practice_plans`、`practice_schedules` 時比對主鍵與 `lock_version`；成功後版本加 1 |
+| 資料刪除要求 | 索引 `data_erasure_requests(status, requested_at)`、`target_user_id` 及 `target_learner_id` |
+| 正式種子資料 | `UNIQUE(catalog_key, version)`；同版本的來源、內容雜湊與筆數必須一致；已套用版本不得覆寫或重新解讀 |
+
+## 寫入交易與資料生命週期
+
+| 操作 | 同一交易內必須完成的內容 | 失敗處理 |
+| --- | --- | --- |
+| 新增題目 | 建立 `questions`、第一版、小題、內容、選項、答案、分類、來源與題庫收錄；驗證作答方式與判分政策 | 任一項失敗全部回滾 |
+| 修改題目 | 驗證所有權並建立新版本；帳號題目發布時更新 `current_revision_id`，系統題目先保持草稿並另寫稽核 | 保留原版本，不產生半套新版本 |
+| 發布考試題目 | 驗證來源固定維度、正式級別及來源限定的考試體系，發布版本並更新目前版本 | 體系或必要級別不一致時維持草稿 |
+| 補齊題號來源 | 鎖定 `legacy` 識別、查找目標出版社與版本範圍的相同正規化題號，確認無衝突後更新原識別 | 發現既有題目時進入合併審核，不新增識別、不合併作答 |
+| 審核系統題目 | 鎖定版本、驗證審核者不是建立者、新增審核紀錄、轉換版本狀態、更新目前發布版本及稽核 | 任一項失敗維持原狀態 |
+| 搬移既有系統題目 | 驗證 fixture 雜湊、題目筆數、必要欄位與來源後，建立第一版並直接發布，同時寫入 migration 稽核 | 任一核對失敗時整批不發布；不建立虛構審核紀錄 |
+| 確認匯入 | 鎖定批次、驗證全部核准項目、建立正式題目與來源關聯、標記批次確認 | 冪等重試回傳同一結果 |
+| 移動收藏 | 移除該學習者其他收藏項目，再加入目標收藏 | 失敗時維持原收藏狀態 |
+| 開始練習 | 依有效條件選題，固定版本與小題到 `practice_session_items` | 不建立空的練習工作階段；題數不足回傳實際題數 |
+| 建立排程 | 鎖定來源計畫、固定題目版本與順序、建立排程及排程項目 | 不建立沒有題目的排程 |
+| 消耗後續練習 | 鎖定待處理佇列項目、建立練習與來源追溯、將項目標記為已使用 | 重試不得建立第二個工作階段或遺失追溯關係 |
+| 提交作答 | 依小題作答方式驗證原始答案與附件；依判分政策新增自動結果或待檢視結果，並寫入統計 outbox 事件 | 資料格式不合時拒絕整次提交；AI 或自動判分無法完成時保存原始答案並標記為 `pending` |
+| 人工改判 | 新增 `answer_reviews`，更新目前結果並寫入統計 outbox | 不修改初始判定或舊審核；任一資料無效時整次回滾 |
+| 核准相近題候選 | 鎖定候選與兩個題目版本，建立或更新已確認群組及成員，保存判定版本與審核紀錄，再標記候選為已核准 | 任一項失敗時不產生正式相近關聯，候選維持原狀態 |
+| 套用正式種子資料 | 驗證來源、內容雜湊、筆數、穩定鍵值與外鍵後套用正式目錄，最後寫入 `seed_manifests` | 已存在相同版本且內容不同時停止；任一核對失敗時整批回滾 |
+| 授予管理員 | 驗證操作者、建立角色授權、寫入稽核 | 角色與稽核要一起成功 |
+| 啟用統計隱私政策 | 驗證系統管理員、停用同鍵舊政策、啟用新政策並寫入稽核 | 任一項失敗時沿用舊政策；沒有舊政策時社群榜保持關閉 |
+| 封存題目 | 標記題目封存，停止新的練習工作階段選入 | 保留歷史版本、作答與來源 |
+
+## 共用篩選查詢規則
+
+題目總覽、錯題英雄榜與開始練習必須呼叫同一個後端查詢服務，並共用相同的固定條件、來源專屬條件與權限範圍。三個入口只增加各自的輸出或操作：
+
+- 題目總覽增加分頁、批次選取與收藏操作。
+- 錯題英雄榜增加日期範圍、答錯次數、錯誤率、最後作答時間與即時計算名次。
+- 開始練習增加題數、檢核方式及難易度比例。啟用比例時忽略一般難易度條件。
+
+一般題目總覽與開始練習先套用帳號及學習者權限，再依就學狀態、目前年級與已啟用科目限制候選題，接著套用固定教材條件、考試級別、來源固定維度規則、來源專屬欄位、收藏、作答狀態及相近題條件，最後才分頁或抽題。不能先取出所有資料再由前端過濾。
+
+題目來源將 `grade` 設為 `not_applicable` 時，不套用學習者年級過濾，但仍須符合已啟用科目；其他來源仍以題目版本的 `grade_id` 比對目前年級。在學學習者可同時看到符合目前年級的教材題與不綁年級的考試題。不在學學習者的通用查詢只納入 `grade=not_applicable` 的題目，科目候選完全依 `learner_subject_settings` 決定，不從 `grade_subjects` 推導。
+
+`exam_level` 是固定篩選條件。篩選面板只在目前來源的 `exam_level` 規則不是 `not_applicable` 時顯示；指定來源限定考試體系時，只列該體系級別。以 `exam_subject_ranges.target_level_id` 建立練習時，首版只選相同級別，不自行展開較低級別或兄弟類別。
+
+錯題英雄榜與歷史練習明細先從該學習者的 `answer_part_results` 或統計明細取得歷史題目，不套用目前年級、目前啟用科目或目前書籍版本限制；這些欄位只能作為歷史題目的篩選條件。從歷史錯題產生相近題時，同年級條件使用原錯題版本的 `grade_id`，不使用學習者目前年級。這可避免升年級後舊錯題消失，也不會把舊錯題的相近題錯配到目前年級。
+
+社群錯題排行從 `question_daily_stats` 與必要的作答明細依日期範圍聚合，不套用查詢者目前年級、啟用科目或版本；只套用共用篩選條件、已發布系統題目限制及有效統計隱私政策。API 只回傳題目層級聚合值，不回傳學習者識別資料。可見範圍尚未核准前不開放跨帳號或全站查詢，只提供查詢者有權存取的學習者資料所構成的範圍。
+
+「排除已掌握題組」只使用已確認群組與已確認成員。學習者在同一群組中至少有兩個不同題目的最新已檢核結果為答對時，才排除整組；同題重做不重複計數，待審核不計入。
+
+## JSON 搬移規則
+
+| 現有資料 | 正式資料表 | 搬移規則 |
+| --- | --- | --- |
+| `Learner` | `learners`、`learner_preferences` | 現有資料都有年級，搬移為 `education_status=enrolled`；常用題數轉成 `question_limit_options` 陣列，各科版本拆到 `learner_subject_settings`，空字串版本轉為空值 |
+| `customSubjects` | `subjects`、`learner_subject_settings` | 建立 `origin=account` 科目並保留建立帳號；找不到帳號則隔離，不自行指派 |
+| `Question` | `questions`、`question_revisions` | 一題建立穩定身份與第一版；既有 fixture 明確標記為系統題目。通過整批核對後第一版以 `created_by_type=migration` 直接發布並寫入 migration 稽核，不建立虛構審核者 |
+| `code` | `question_identifiers` | 先以核准對照規則及已確認的 `bookVersion`、出版社與來源文件判斷題號範圍；能唯一確認出版社時建立 `identifier_type=publisher_question` 並保存出版社及適用版本，無法確認時才建立 `legacy`。搬移前先查找同範圍的正規化題號，不能因識別種類不同而建立重複題目；對照規則、各類結果筆數及同一出版社範圍內一號多題的隔離紀錄寫入搬移報告，不自動合併 |
+| `subject`、`grade`、`semester`、`bookVersion` | `question_revisions` | 逐項對照正式目錄後寫入原生分類；找不到唯一對照時列入隔離報告，不依顯示文字自行新增系統目錄 |
+| `chapter`、`unit` | `curriculum_units`、`question_revision_units` | 只有能對照到既有教材層級時建立 `assignment_type=native` 關聯；「相近題模擬」等非教材位置不得建立單元，原文保留在搬移報告 |
+| `Question.topic` | `question_types`、`topics`、隔離報告 | 先以核准對照表判斷原值是標準題型或教學主題；「填充題」「配合題」「單一選擇題」等寫入題型，「角的分類」「異分母加法」等確認後寫入主題。未列入對照表的值不得自動建立主題或題型，保留原文並列入人工校正 |
+| `knowledge` | `knowledge_points`、`question_revision_knowledge_points`、隔離報告 | 只對照平台知識點；符合正式課綱代碼格式的值改走課綱代碼流程，不得同時寫入兩種分類 |
+| `blocks` | `question_content_blocks` | 有 blocks 時為唯一顯示來源；沒有時才由舊 prompt、options、answer、explanation 轉換。內容依原始順序保存，不依畫面座標推測額外版面結構 |
+| `parts` | `question_parts`、`question_answers` | 一般單題也建立根小題，多小題保持原順序。依既有資料對照首版作答方式及判分政策；無法判定標準答案或判分政策的題目隔離，不以顯示文字推測 |
+| `metadata` | `question_revision_filter_values`、`question_revision_knowledge_points`、`curriculum_codes`、`question_revision_curriculum_codes` | 重複來源與來源路徑不建立介面欄位；知識點只對照到知識點目錄；`N-7-5`、`Da-IV-1` 等通過格式與目錄驗證的學習內容代碼寫入課綱代碼關聯。無法確認層級或代碼的原文保留並列入人工校正，不混寫到知識點 |
+| `sourceDetail` | `source_documents`、`source_document_classification_candidates`、`import_items`、`question_revision_sources` | 保存原始檔名、頁碼、題號、判定來源與信心值；檔名解析只建立分類候選，題號直接保存到匯入項目及確認後的來源位置，經確認的分類候選才寫入正式版本、單元或來源分類 |
+| `QuestionCollection` | `question_collections`、`question_collection_items` | 依學習者分開搬移 |
+| `ExamSetting` | `exams`、`exam_subject_ranges` | 既有起訖值須先對照到正式單元；無法對照者列入隔離報告。舊資料沒有考試級別，不建立 `target_level_id` |
+| `plansByLearner` | `practice_plans`、`practice_plan_difficulty_mix`、`practice_plan_items` | 每位學習者的舊計畫搬成 `is_default=true`，名稱固定為「預設練習計畫」；保存版本化篩選快照，固定清單不得只留查詢條件 |
+| `ScheduledPractice` | `practice_schedules`、`practice_schedule_items`、`practice_sessions` | 日期與時間轉為臺北時區的 `scheduled_for`；保存當時檢核方式及固定題目順序；舊結果的 `sessionId` 對照既有工作階段，總題數、錯題數與正確率由作答明細重算，找不到工作階段時列入隔離報告 |
+| `queuedSimilarByLearner` | `learner_practice_queue_items` | 題號對照正式題目與目前版本，標記為 `legacy_migration`；舊資料沒有原始錯題作答，`source_answer_part_result_id` 保持空值並在搬移報告列出數量 |
+| `ImportBook` | `question_banks`、`question_bank_learners` | 保留名稱、建立角色與適用學習者；同一擁有者的名稱衝突需隔離，不自行改名 |
+| `ImportBatch` | `import_batches`、`import_batch_documents`、`import_items` | `fileNames` 每個檔名建立或對照來源文件，`questionIds` 建立已確認匯入項目並連回正式題目版本；有 `bookId` 時對照匯入本，沒有時使用該帳號 `is_default=true` 的題庫；預設題庫不存在時先建立一筆名稱為「系統預設」的帳號題庫 |
+| `RoleAccess` | `account_identities`、`user_roles`、`role_pin_credentials`、`learner_access`、`auth_sessions` | 只搬到已知的 fixture 帳號；`registrationEmail` 正規化後寫入登入身份，角色清單建立授權、PIN 只搬雜湊、各角色學習者清單轉為存取關係，`activeRole` 只在有效角色內寫入工作階段；找不到帳號時整組隔離 |
+| 作答狀態 | `practice_sessions`、`answer_attempts`、`answer_part_results`、`answer_part_assets` | 必須連結當時題目版本；手寫檔案以附件角色連結。無法判斷小題的舊資料只建立根小題結果；無法確認原判定依據時保留原始結果並標記為搬移資料，不重新判分 |
+
+搬移工具需輸出舊 ID 對新 UUID 對照與隔離報告，並核對題目、版本、小題、選項、答案、圖片、來源文件、收藏、計畫、作答及關聯失敗數。原始 fixture 保持唯讀，搬移可重跑。
+
+## Migration 施工順序
+
+| 階段 | 建立範圍 | 完成條件 | 回滾界線 |
+| --- | --- | --- | --- |
+| 身份與目錄 | 帳號、登入身份、工作階段、角色、學習者、年級、科目樹、版本、考試體系、考試級別、教材單元、課綱代碼、來源固定維度及種子資料版本 | 所有權、角色、學習者隔離、正式考試目錄、來源維度限制及種子資料內容核對通過 | 回滾新 schema（資料庫結構），不修改 fixture |
+| 題目核心 | 題庫、題目身份、外部編號、版本、小題、內容、答案、多單元歸檔、課綱代碼、來源條件與檔案 | 既有題型、圖片、題目音訊與錄音稿可由單一題目模型重現；跨版本歸檔不改寫原生版本 | 保留身份與目錄，回滾題目核心 migration |
+| 匯入與收藏 | 來源文件、匯入批次、草稿、來源追溯及收藏 | 同一冪等鍵不重複寫入，未確認草稿不進正式題庫 | 刪除該次匯入批次，不刪除原始檔案前先核對引用 |
+| 練習與作答 | 考試、計畫、排程、後續練習佇列、固定題目、練習工作階段、逐次作答、作答附件、小題結果及審核 | 歷史題目版本與原始判定不漂移，錯一小題只產生該小題複習；同一排程只能建立一個工作階段 | 停止新寫入，保留已提交作答 |
+| 相近題與統計 | 相近候選、相近群組、原始錯題追溯、掌握度、每日彙總、統計隱私政策、outbox（待處理事件表）與重算工作 | 每次相近題練習可追溯確切錯題作答；候選分數不能直接成為正式關聯；統計可從明細全量重建，未確認群組不參與排除；沒有有效隱私政策時社群榜保持關閉 | 清空可重建彙總，不動原始作答、政策版本與關聯審核紀錄 |
+
+每一階段都要有可前進、可回滾的 migration，並在接近正式資料量的環境驗證。正式切換前先停止 JSON 寫入、完成最後增量搬移及數量核對，再切換後端讀寫來源；不能讓 JSON 與 PostgreSQL 同時成為可寫入的權威資料。
+
+## 實作前仍需確認
+
+- 正式後端、PostgreSQL 託管位置、ORM、物件儲存、登入服務及 Secret Manager。
+- 資料庫系統管理員是否能修改其他帳號建立的題目；目前規則為拒絕。
+- 系統預設科目是否允許個別學習者停用；本模型支援停用但不允許刪除預設設定。
+- 學習者、作答、上傳文件、手寫檔案、來源 IP 與稽核紀錄的保存期限及刪除流程。
+- 社群錯題榜的 `min_distinct_learners` 初始門檻及未成年者資料用於平台聚合統計的法律依據；確認並啟用政策前不提供社群榜，只提供有權帳號可見的個人榜。
+- 中文全文搜尋品質標準與正式教材目錄的權威資料來源。
+- 各考試體系與級別的主辦機關正式清單、更新責任及停用規則。
+- 目標考試級別練習是否包含較低級別；首版只選相同級別。
+- 手寫附件的檔案大小、格式及保存期限上限。
+- 若未來要支援排序、拖曳配對、圖片熱區、繪圖或錄音作答，需先確認產品需求，再以新 migration 增加互動格式、判分方式與必要版面資料；首版不預留空表或發布前置條件。
+
+## 驗證計畫
+
+- schema 限制：帳號身份、角色、題目所有權、版本歸屬、學習者科目、動態欄位適用規則、選項適用規則及各唯一鍵。
+- 就學狀態：在學學習者必須有年級；不在學學習者不得保存年級、學期或學校，且能依啟用科目查到不綁年級的考試題。
+- 科目與來源目錄：社會、自然科學等上層科目可展開有效子科目；領域課綱代碼可套用到有效子科目；來源固定維度能分辨必填、選填與不適用，缺少規則時不得發布來源設定。
+- 來源原生分類：單元設為 `not_applicable` 時禁止 `native` 關聯，但允許跨版本或人工歸檔；版本設為 `not_applicable` 時題目版本保持空值，跨版本單元歸檔仍可使用。
+- 考試體系：不綁年級的考試題可供任一年級及不在學學習者查詢；級別與來源限定體系不一致時拒絕發布；目標級別首版只選相同級別。
+- 跨版本歸檔：不綁版本的會考或校內卷題目可歸入多個出版社單元，題目原生 `book_version_id` 仍保持空值；原生教材題目的 `native` 單元不得和科目、年級、學期或版本衝突。
+- 課綱代碼：`N-7-5`、`Da-IV-1` 等通過目錄驗證後可查詢；未知原文進入人工校正，不得寫成知識點或自行建立正式代碼。
+- migration 往返：空資料庫前進、回滾、再次前進後 schema 與種子資料一致。
+- 正式種子資料：同一目錄版本重跑不新增資料；內容雜湊或筆數不符時整批停止；穩定鍵值與既有外鍵在升版後仍可追溯。
+- fixture 搬移：既有八種題型、圖片、兩個以上填空、小題、收藏、考試與動態來源欄位可重現；能確認出版社的既有 `code` 搬成 `publisher_question`，其餘才搬成 `legacy`；`Question.topic` 依核准對照表分流至題型或主題；系統題目第一版發布需有搬移稽核且不能產生虛構審核者。
+- 音訊內容：音訊檔案、錄音稿、顯示順序與權限可由同一內容模型重現，缺少必要錄音稿時不得發布英聽題。
+- 作答答案：選項、是非、文字與多值答案通過首版格式驗證；未知欄位、跨小題選項鍵值與不相容附件必須拒絕。
+- 判分政策：系統自動判分、人工檢視與 AI 輔助後人工確認都有允許及拒絕案例；AI 結果未經確認時維持待檢視。
+- 判分歷史：原始答案與初始結果不可覆寫；只有新增審核紀錄才能改變目前結果，不得因後續程式更新重新改判。
+- 出版來源去重：同一出版社、版本或來源文件範圍內的相同題號不能建立成兩個題目；fixture 搬入的出版社題號與後續匯入的同一題號必須解析到同一個 `questions.id`；不同合法範圍可使用相同題號。
+- 檔名解析：原始檔名保持不變；分類解析結果先建立候選，未確認候選不能污染正式單元、版本、來源或課綱目錄；題號直接進入匯入項目與來源位置，不建立題號分類候選。
+- 舊資料搬移：排程、後續相近題、匯入本、匯入批次與角色權限逐項核對筆數；無法建立的追溯關係必須出現在隔離報告。
+- 歷史一致性：更正答案後，舊作答仍引用舊版本，新練習使用新版本。
+- 題目審核：除一次性 fixture 搬移外，系統題目不能自行核准；退回原因、狀態轉換與目前發布版本保持一致。
+- 小題複習：只有答錯的小題進入複習；其他小題與大題共用內容仍可正確顯示。
+- 排程與佇列：同一計畫可建立多個固定排程；重送啟動要求不重複建立工作階段；後續練習項目消耗後仍能追溯來源。
+- 篩選一致性：總覽、錯題英雄榜與開始練習共用欄位解析及條件語意；一般候選題查詢結果一致，錯題英雄榜以歷史作答為資料範圍，不受目前年級與啟用科目限制。
+- 適用規則：驗證同一維度任一符合、跨維度全部符合、排除優先、全域規則及版本專屬選項；封存來源或版本後不得顯示失效選項。
+- 比例選題：比例合計、一般難度停用、難度不足補題及總題數不足都符合契約。
+- 相近題掌握：只計不同題目的最新已檢核答對結果，待審核與未確認群組不得觸發排除。
+- 相近題候選：分數只改變審核排序；未核准、已拒絕或已過期候選都不能進入正式相近題查詢、掌握判定或練習選題；題目改版後舊候選失效。
+- 相近題追溯：每筆正常流程的相近題結果可回到觸發它的歷史錯題小題作答，並可按該錯題重算累計結果。
+- 相近題選入依據：沒有已確認群組時，主題、知識點、單元或科目的實際命中依據會固定保存；後續修改題目分類不改變歷史追溯。
+- 歷史查詢：學習者升年級、停用科目或更換版本後，既有錯題與練習明細仍可查詢；由舊錯題產生相近題時使用原題年級。
+- 社群榜隱私：只有已發布系統題目能進入社群排行；未達有效政策最小樣本數的題目整列省略；跨日不重複學習者數不得由每日人數直接加總。
+- 權限與資料隔離：一般帳號、資料庫管理員、預設系統管理員、家長、學習者與家教的允許及拒絕案例。
+- 併發更新：兩個帳號同時修改學習者設定、收藏、考試或計畫時，後提交者收到衝突且不覆蓋前一筆更新。
+- 檔案與刪除：直接使用檔案識別碼不能繞過引用資源權限；核准的資料刪除要求依政策移除或去識別化且留下不含個資的摘要。
+- 作答附件：手寫與一般附件的用途、權限及順序可由作答結果重現；資產刪除前檢查所有引用，不能留下可繞過授權的孤立下載入口。
+- 冪等與交易：重送匯入、提交答案及敏感權限操作不產生重複資料或半套狀態。
+- 統計重建：清空彙總後可由不可覆寫的作答與審核明細重建相同結果。
+
+## 依據
+
+- `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
+- `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
+- `docs/plan.md`：目前模擬 API、前端狀態及正式資料庫施工確認節點。
+- `app/lib/demo-data.ts`：目前題目、學習者、考試、練習、收藏與作答資料契約。
+- `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
+- `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

@@ -11,25 +11,26 @@ import {
 import {
     ArrowLeft, ArrowRight, BarChart3, BookOpen, Bookmark, CalendarDays, CheckCircle2, ClipboardCheck,
     ChevronDown, ChevronRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Library, Link2, LogIn, LogOut, Mail,
-    FolderInput, KeyRound, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
+    FolderInput, KeyRound, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
-import { QuestionFilterPanel, SubjectFilter } from "./components/question-filter-panel";
+import { QuestionFilterPanel } from "./components/question-filter-panel";
 import { RolePinKeypad } from "./components/role-pin-keypad";
 import {
-    ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, CheckMode,
+    ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, BOOK_SETTING_OPTIONS, CheckMode,
+    DEFAULT_QUESTION_LIMIT_OPTIONS,
     DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer, getQuestionPartResults,
     GRADE_OPTIONS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PlanBasis, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
     PlanQuestionKind, QuestionMetadataField, ROLE_OPTIONS, RoleAccess, ScheduledPractice, Section,
     SEMESTER_OPTIONS, StoredState, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
 import {
-    DEFAULT_QUESTION_FILTERS, filterQuestions, getQuestionSourceCategory, normalizeQuestionFilters,
-    normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
+    ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getQuestionSourceCategory, normalizeQuestionFilters,
+    isSupplementalQuestionMetadata, normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
 
 interface QuestionFlowProps {
@@ -84,6 +85,8 @@ interface QuestionLimitControlProps {
     maximum?: number;
     /** 是否禁止操作。 */
     disabled?: boolean;
+    /** 下拉選單顯示的題數選項。 */
+    options: number[];
     /** 題數更新事件。 */
     onChange: (value: number) => void;
 }
@@ -194,9 +197,8 @@ function getQuestionConditions(question: Question) {
         { label: "題型", value: question.typeLabel ?? getQuestionKindLabel(question.kind) },
         { label: "來源", value: getQuestionSourceCategory(question) },
     ];
-    const hiddenMetadata = new Set(["source", "knowledge_point", "source_category", "source_type", "source_path"]);
     const importedConditions = question.metadata
-        ?.filter((field) => !hiddenMetadata.has(field.key))
+        ?.filter((field) => isSupplementalQuestionMetadata(field.key))
         .map((field) => ({ label: field.label, value: field.rawValue })) ?? [];
     const unique = new Set<string>();
     return [...fixedConditions, ...importedConditions].filter((condition): condition is { label: string; value: string } => {
@@ -329,8 +331,10 @@ const EMPTY_LEARNER: Learner = {
     grade: "",
     semester: "",
     bookVersions: { 數學: "", 國語: "", 英文: "", 理化: "", 生物: "", 歷史: "", 地理: "", 公民: "" },
+    customSubjects: [],
     school: "",
     defaultQuestionLimit: 10,
+    questionLimitOptions: [...DEFAULT_QUESTION_LIMIT_OPTIONS],
 };
 
 const NAV_ITEMS = [
@@ -364,8 +368,8 @@ const AUTH_PATHS: Record<AuthMode, string> = {
     "quick-register": "/quick-register",
     "account-link": "/account-link",
 };
-const QUICK_LIMIT_OPTIONS = [5, 10, 15].map((value) => ({ value: String(value), label: `${value} 題` }));
 const CUSTOM_IMPORT_VALUE = "__custom__";
+const CUSTOM_SUBJECT_VALUE = "__custom_subject__";
 const IMPORT_DIFFICULTY_OPTIONS = [
     { value: "", label: "交由 AI 分析" },
     { value: "易", label: "易" },
@@ -377,6 +381,41 @@ const PLAN_BASIS_OPTIONS = [
     { value: "assessment", label: "依考試練習" },
 ];
 const DEFAULT_DIFFICULTY_MIX: DifficultyMix = DEFAULT_PLAN.difficultyMix;
+
+/**
+ * 依指定比例挑選各難易度題目，個別難度不足時由其餘符合條件的題目補足。
+ * @param questions 已套用一般條件的候選題目。
+ * @param limit 本輪題數上限。
+ * @param mix 三種難易度的百分比。
+ * @returns 維持原候選順序的題目清單。
+ */
+function selectQuestionsByDifficulty(questions: Question[], limit: number, mix: DifficultyMix) {
+    const cappedLimit = Math.min(limit, questions.length);
+    const groups = [
+        { key: "easy" as const, label: "基礎" },
+        { key: "medium" as const, label: "中等" },
+        { key: "hard" as const, label: "進階" },
+    ].map((group) => {
+        const exact = cappedLimit * mix[group.key] / 100;
+        return { ...group, target: Math.floor(exact), remainder: exact - Math.floor(exact) };
+    });
+    let unassigned = cappedLimit - groups.reduce((total, group) => total + group.target, 0);
+    [...groups].sort((left, right) => right.remainder - left.remainder).forEach((group) => {
+        if (unassigned <= 0) return;
+        group.target += 1;
+        unassigned -= 1;
+    });
+
+    const selectedIds = new Set<number>();
+    groups.forEach((group) => questions
+        .filter((question) => question.difficulty === group.label)
+        .slice(0, group.target)
+        .forEach((question) => selectedIds.add(question.id)));
+    questions.forEach((question) => {
+        if (selectedIds.size < cappedLimit) selectedIds.add(question.id);
+    });
+    return questions.filter((question) => selectedIds.has(question.id));
+}
 const IMPORT_DEMO_QUESTIONS = [
     { code: "", prompt: "請計算圖中陰影部分的面積。", answer: "24 平方公分", subject: "數學" as const, version: "康軒", chapter: "第 5 單元", unit: "面積", topic: "複合圖形面積", difficulty: "中" as const, source: "校內練習卷" },
     { code: "", prompt: "一個平角是多少度？", answer: "180°", subject: "數學" as const, version: "康軒", chapter: "第 3 單元", unit: "角度", topic: "角的分類", difficulty: "易" as const, source: "康軒數學四上" },
@@ -617,6 +656,7 @@ async function hashRolePin(pin: string) {
 function getMetadataCatalog(questions: Question[]) {
     const catalog = new Map<string, { key: string; label: string; values: string[] }>();
     questions.forEach((question) => question.metadata?.forEach((field) => {
+        if (!isSupplementalQuestionMetadata(field.key)) return;
         const current = catalog.get(field.key) ?? { key: field.key, label: field.label, values: [] };
         current.values = [...new Set([...current.values, ...field.values])].sort((left, right) => left.localeCompare(right, "zh-Hant"));
         catalog.set(field.key, current);
@@ -624,13 +664,21 @@ function getMetadataCatalog(questions: Question[]) {
     return [...catalog.values()];
 }
 
-/** 依台北日期計算距離考試的完整天數。 */
+/** 依台北日期計算考試日期與今天相差的完整天數。 */
 function getDayDifference(examDate: string) {
     if (!examDate) return null;
     const today = new Date(Date.now() + TAIPEI_OFFSET_MS).toISOString().slice(0, 10);
     const examTimestamp = Date.parse(`${examDate}T00:00:00Z`);
     const todayTimestamp = Date.parse(`${today}T00:00:00Z`);
-    return Number.isNaN(examTimestamp) ? null : Math.max(0, Math.ceil((examTimestamp - todayTimestamp) / 86400000));
+    return Number.isNaN(examTimestamp) ? null : Math.ceil((examTimestamp - todayTimestamp) / 86400000);
+}
+
+/** 將考試日期差顯示為頁首可辨識的倒數狀態。 */
+function getExamCountdownLabel(dayDifference: number | null) {
+    if (dayDifference === null) return "";
+    if (dayDifference < 0) return "已結束";
+    if (dayDifference === 0) return "今天";
+    return `倒數 ${dayDifference} 天`;
 }
 
 /** 取得台北時區今天的日期字串。 */
@@ -673,12 +721,22 @@ function getAuthMode(pathname: string): AuthMode | undefined {
     return Object.entries(AUTH_PATHS).find(([, path]) => path === pathname)?.[0] as AuthMode | undefined;
 }
 
-/** 提供常用題數快速選擇與自訂整數輸入。 */
-function QuestionLimitControl({ value, maximum, disabled = false, onChange }: QuestionLimitControlProps) {
-    const quickValue = QUICK_LIMIT_OPTIONS.some((option) => Number(option.value) === value) ? String(value) : "";
+/** 將逗號分隔的題數清單轉成不重複的正整數。 */
+function parseQuestionLimitOptions(value: string) {
+    const parts = value.split(/[,，]/).map((part) => part.trim());
+    if (!parts.length || parts.some((part) => !/^\d+$/.test(part))) return null;
+    const limits = [...new Set(parts.map(Number))];
+    if (!limits.length || limits.length > 20 || limits.some((limit) => limit < 1 || limit > 500)) return null;
+    return limits;
+}
+
+/** 提供學習者設定的常用題數與單次自訂整數輸入。 */
+function QuestionLimitControl({ value, maximum, disabled = false, options: limits, onChange }: QuestionLimitControlProps) {
+    const quickOptions = limits.map((limit) => ({ value: String(limit), label: `${limit} 題` }));
+    const quickValue = limits.includes(value) ? String(value) : "";
     const options = quickValue
-        ? QUICK_LIMIT_OPTIONS
-        : [{ value: "", label: `自訂：${value} 題` }, ...QUICK_LIMIT_OPTIONS];
+        ? quickOptions
+        : [{ value: "", label: `自訂：${value} 題` }, ...quickOptions];
 
     return (
         <div className="grid gap-3 sm:grid-cols-[minmax(9rem,0.7fr)_minmax(10rem,1fr)]">
@@ -734,12 +792,15 @@ function CreatableSelectField({ label, items, value, customValue, placeholder, w
 }
 
 /** 依 API 題目資料取得指定年級可使用的科目。 */
-function getSubjectsForGrade(grade: string, questions: Question[]) {
+function getSubjectsForGrade(grade: string, questions: Question[], customSubjects: Subject[] = []) {
     const subjects = new Set(questions
         .filter((question) => !question.generatedFrom && question.grade === grade)
         .map((question) => question.subject));
-    if (grade.startsWith("國")) SUBJECTS.forEach((subject) => subjects.add(subject));
-    return SUBJECTS.filter((subject) => subjects.has(subject));
+    const systemSubjects = SUBJECTS.filter((subject) => subjects.has(subject));
+    return [
+        ...systemSubjects,
+        ...customSubjects.filter((subject) => !systemSubjects.includes(subject as typeof systemSubjects[number])),
+    ];
 }
 
 /** 顯示題目、答案或解析中的單一圖片區塊。 */
@@ -1140,10 +1201,12 @@ export default function Home() {
     const [answer, setAnswer] = useState("");
     const [handwriting, setHandwriting] = useState("");
     const [mistakeFilters, setMistakeFilters] = useState<QuestionFilters>(DEFAULT_QUESTION_FILTERS);
+    const [mistakeFiltersOpen, setMistakeFiltersOpen] = useState(false);
     const [mistakePage, setMistakePage] = useState(1);
     const [mistakeRankingView, setMistakeRankingView] = useState<"personal" | "community">("personal");
     const [selectedMistakes, setSelectedMistakes] = useState<number[]>([]);
     const [questionFilters, setQuestionFilters] = useState<QuestionFilters>(DEFAULT_QUESTION_FILTERS);
+    const [questionFiltersOpen, setQuestionFiltersOpen] = useState(false);
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
     const [selectedQuestionId, setSelectedQuestionId] = useState<number>();
     const [questionPage, setQuestionPage] = useState(1);
@@ -1188,7 +1251,6 @@ export default function Home() {
     const [editingScheduleCheckMode, setEditingScheduleCheckMode] = useState<CheckMode>("instant");
     const [scheduleStatus, setScheduleStatus] = useState<"pending" | "completed">("pending");
     const [selectedPracticeRecordId, setSelectedPracticeRecordId] = useState("");
-    const [resetArmed, setResetArmed] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
     const [storageError, setStorageError] = useState("");
     const [avatarError, setAvatarError] = useState("");
@@ -1203,6 +1265,12 @@ export default function Home() {
     const [roleCode, setRoleCode] = useState("");
     const [newRolePin, setNewRolePin] = useState("");
     const [roleCodeSent, setRoleCodeSent] = useState(false);
+    const [questionLimitOptionsDraft, setQuestionLimitOptionsDraft] = useState("");
+    const [questionLimitOptionsError, setQuestionLimitOptionsError] = useState("");
+    const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
+    const [subjectChoice, setSubjectChoice] = useState("");
+    const [subjectDraft, setSubjectDraft] = useState("");
+    const [subjectError, setSubjectError] = useState("");
     const headingRef = useRef<HTMLHeadingElement>(null);
     const overviewHeadingRef = useRef<HTMLHeadingElement>(null);
     const sessionHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -1232,19 +1300,55 @@ export default function Home() {
     const activePlanBasis = activePlan.basis;
     const activeDifficultyMix = activePlan.difficultyMix;
     const difficultyTotal = activeDifficultyMix.easy + activeDifficultyMix.medium + activeDifficultyMix.hard;
+    const difficultyMixValid = !activePlan.difficultyMixEnabled || difficultyTotal === 100;
     const activeAttempts = attemptsByLearner[activeLearnerId] ?? [];
     const practiceStreak = useMemo(() => getPracticeStreak(activeAttempts), [activeAttempts]);
     const activeQueue = queuedSimilarByLearner[activeLearnerId] ?? [];
     const activeSchedules = useMemo(() => [...(schedulesByLearner[activeLearnerId] ?? [])]
         .sort((left, right) => `${left.date}T${left.time ?? "23:59"}`.localeCompare(`${right.date}T${right.time ?? "23:59"}`)), [activeLearnerId, schedulesByLearner]);
     const isScheduleListPage = pathname === PRACTICE_SCHEDULES_PATH;
+    const configurableSubjects = useMemo(() => [...new Set([
+        ...SUBJECTS.filter((subject) => Boolean(activeLearner.bookVersions[subject])),
+        ...activeLearner.customSubjects,
+    ])], [activeLearner.bookVersions, activeLearner.customSubjects]);
+    const unselectedCatalogSubjects = useMemo(
+        () => SUBJECTS.filter((subject) => !configurableSubjects.includes(subject)),
+        [configurableSubjects],
+    );
+    const availableSubjects = useMemo(() => configurableSubjects
+        .filter((subject) => Boolean(activeLearner.bookVersions[subject])), [activeLearner.bookVersions, configurableSubjects]);
     const baseQuestions = useMemo(() => questions.filter((question) => !question.generatedFrom), [questions]);
-    const learnerQuestions = useMemo(() => baseQuestions.filter((question) => question.grade === activeLearner.grade), [activeLearner.grade, baseQuestions]);
-    const availableSubjects = useMemo(() => getSubjectsForGrade(activeLearner.grade, questions), [activeLearner.grade, questions]);
+    const learnerQuestions = useMemo(() => baseQuestions.filter((question) => question.grade === activeLearner.grade
+        && availableSubjects.includes(question.subject)), [activeLearner.grade, availableSubjects, baseQuestions]);
+
+    useEffect(() => {
+        setQuestionLimitOptionsDraft(activeLearner.questionLimitOptions.join(", "));
+        setQuestionLimitOptionsError("");
+    }, [activeLearner.id, activeLearner.questionLimitOptions]);
     const activeQuestionCollections = useMemo(
         () => questionCollectionsByLearner[activeLearnerId] ?? [],
         [activeLearnerId, questionCollectionsByLearner],
     );
+    const practiceFilters = useMemo<QuestionFilters>(() => ({
+        subject: activePlan.subject as Subject | "全部",
+        semester: activePlan.semester,
+        version: activePlan.subject === "全部"
+            ? ALL_QUESTION_FILTERS
+            : activePlan.bookVersion ?? activeLearner.bookVersions[activePlan.subject] ?? ALL_QUESTION_FILTERS,
+        scope: activePlanBasis === "chapter" ? activePlan.scope : ALL_UNITS,
+        topic: activePlan.topic,
+        knowledge: activePlan.knowledge === ALL_KNOWLEDGE ? ALL_QUESTION_FILTERS : activePlan.knowledge,
+        difficulty: activePlan.difficultyMixEnabled ? ALL_QUESTION_FILTERS : activePlan.difficulty,
+        kind: activePlan.questionKind,
+        source: activePlan.sourceFilters[0] ?? ALL_QUESTION_FILTERS,
+        creator: activePlan.creatorFilter,
+        metadata: Object.fromEntries(Object.entries(activePlan.metadataFilters).map(([key, values]) => [
+            key,
+            values[0] ?? ALL_QUESTION_FILTERS,
+        ])),
+        collection: activePlan.collection,
+        search: activePlan.search,
+    }), [activeLearner.bookVersions, activePlan, activePlanBasis]);
     const filteredOverviewQuestions = useMemo(
         () => filterQuestions(learnerQuestions, questionFilters, activeQuestionCollections),
         [activeQuestionCollections, learnerQuestions, questionFilters],
@@ -1263,22 +1367,10 @@ export default function Home() {
     const activeTargetCollectionId = activeQuestionCollections.some((collection) => collection.id === targetCollectionId)
         ? targetCollectionId
         : activeQuestionCollections[0]?.id ?? "";
-    const activeSubject = SUBJECTS.find((subject) => subject === activePlan.subject);
+    const activeSubject = availableSubjects.find((subject) => subject === activePlan.subject);
     const activeBookVersion = activeSubject
         ? activePlan.bookVersion ?? activeLearner.bookVersions[activeSubject]
         : "";
-    const bookVersionOptions = useMemo(() => {
-        if (!activeSubject) return [{ value: "", label: "依各科學習者設定" }];
-        const versions = new Set([
-            ...BOOK_OPTIONS.map((option) => option.value),
-            ...learnerQuestions
-            .filter((question) => question.subject === activeSubject)
-            .map((question) => question.bookVersion)
-            .filter((version): version is string => Boolean(version)),
-        ]);
-        versions.add(activeLearner.bookVersions[activeSubject]);
-        return [...versions].map((version) => ({ value: version, label: version }));
-    }, [activeLearner.bookVersions, activeSubject, learnerQuestions]);
     const versionedLearnerQuestions = useMemo(() => learnerQuestions.filter((question) => {
         const configuredVersion = activePlan.subject === question.subject && activePlan.bookVersion
             ? activePlan.bookVersion
@@ -1301,7 +1393,7 @@ export default function Home() {
         .filter((question) => {
             if (activePlanBasis === "chapter") return activePlan.scope === ALL_UNITS || getUnitScopeValue(question) === activePlan.scope;
             const options = assessmentOptionsBySubject[question.subject] ?? [];
-            const storedRange = activeExam.ranges[question.subject] ?? DEFAULT_ASSESSMENT_RANGES[question.subject];
+            const storedRange = activeExam.ranges[question.subject] ?? { start: ALL_UNITS, end: ALL_UNITS };
             const start = options.some((option) => option.value === storedRange.start) ? storedRange.start : options[0]?.value;
             const end = options.some((option) => option.value === storedRange.end) ? storedRange.end : options.at(-1)?.value;
             const questionIndex = options.findIndex((option) => option.value === getUnitScopeValue(question));
@@ -1309,9 +1401,6 @@ export default function Home() {
             const endIndex = options.findIndex((option) => option.value === end);
             return questionIndex >= Math.min(startIndex, endIndex) && questionIndex <= Math.max(startIndex, endIndex);
         }), [activeExam.ranges, activePlan.scope, activePlan.subject, activePlanBasis, assessmentOptionsBySubject, versionedLearnerQuestions]);
-    const sourceOptions = useMemo(() => QUESTION_SOURCE_CATEGORIES
-        .filter((source) => scopedQuestions.some((question) => getQuestionSourceCategory(question) === source)), [scopedQuestions]);
-    const metadataCatalog = useMemo(() => getMetadataCatalog(scopedQuestions), [scopedQuestions]);
     const recentImports = useMemo(() => [...imports]
         .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
         .slice(0, RECENT_IMPORT_LIMIT), [imports]);
@@ -1330,17 +1419,14 @@ export default function Home() {
         ? bankFilteredQuestions
         : selectedImportQuestions;
     const importReviewIndex = importReviewQuestions.findIndex((question) => question.id === importReviewQuestionId);
-    const knowledgeOptions = useMemo(() => [
-        { value: ALL_KNOWLEDGE, label: "全部知識點" },
-        ...[...new Set(scopedQuestions.map((question) => question.knowledge))].map((value) => ({ value, label: value })),
-    ], [scopedQuestions]);
-    const eligibleQuestions = useMemo(() => scopedQuestions
-        .filter((question) => !activePlan.sourceFilters.length || activePlan.sourceFilters.includes(getQuestionSourceCategory(question)))
-        .filter((question) => activePlan.questionKind === "all" || question.kind === activePlan.questionKind)
-        .filter((question) => activePlan.knowledge === ALL_KNOWLEDGE || question.knowledge === activePlan.knowledge)
-        .filter((question) => Object.entries(activePlan.metadataFilters).every(([key, values]) => !values.length
-            || question.metadata?.some((field) => field.key === key && field.values.some((value) => values.includes(value))))), [activePlan.knowledge, activePlan.metadataFilters, activePlan.questionKind, activePlan.sourceFilters, scopedQuestions]);
-    const plannedQuestions = useMemo(() => eligibleQuestions.slice(0, activePlan.questionLimit), [activePlan.questionLimit, eligibleQuestions]);
+    const practiceCandidateQuestions = activePlanBasis === "assessment" ? scopedQuestions : learnerQuestions;
+    const eligibleQuestions = useMemo(
+        () => filterQuestions(practiceCandidateQuestions, practiceFilters, activeQuestionCollections),
+        [activeQuestionCollections, practiceCandidateQuestions, practiceFilters],
+    );
+    const plannedQuestions = useMemo(() => activePlan.difficultyMixEnabled
+        ? selectQuestionsByDifficulty(eligibleQuestions, activePlan.questionLimit, activeDifficultyMix)
+        : eligibleQuestions.slice(0, activePlan.questionLimit), [activeDifficultyMix, activePlan.difficultyMixEnabled, activePlan.questionLimit, eligibleQuestions]);
     const latestAttempts = useMemo(() => getLatestAttempts(activeAttempts), [activeAttempts]);
     const selectedLatestAttempts = useMemo(() => {
         const eligibleQuestionIds = new Set(eligibleQuestions.map((question) => question.id));
@@ -1686,7 +1772,7 @@ export default function Home() {
             return;
         }
         if (!roleAccess.learnerIdsByRole[requestedRole].includes(activeLearnerId)) {
-            setRoleStatus(`「${requestedRole}」尚未被設定為可管理${activeLearner.name}。`);
+            setRoleStatus(`「${requestedRole}」尚未被設定為可管理目前的學習者。`);
             return;
         }
         if (requestedRole !== "學習者") {
@@ -1748,7 +1834,7 @@ export default function Home() {
         if (field === "grade" && value !== activeLearner.grade) {
             if (!canLeaveSession()) return;
             clearSession();
-            const nextSubjects = getSubjectsForGrade(String(value), questions);
+            const nextSubjects = getSubjectsForGrade(String(value), questions, activeLearner.customSubjects);
             const nextSubject = activePlan.subject === "全部" || nextSubjects.includes(activePlan.subject as Subject)
                 ? activePlan.subject
                 : "全部";
@@ -1765,6 +1851,105 @@ export default function Home() {
         setLearners((current) => current.map((learner) => learner.id === activeLearnerId
             ? { ...learner, bookVersions: { ...learner.bookVersions, [subject]: value } }
             : learner));
+    }
+
+    /** 新增目前學習者可使用的目錄科目或自訂科目。 */
+    function addSubject() {
+        const subject = subjectChoice === CUSTOM_SUBJECT_VALUE ? subjectDraft.trim() : subjectChoice;
+        if (!subject) {
+            setSubjectError(subjectChoice === CUSTOM_SUBJECT_VALUE ? "請輸入科目名稱。" : "請選擇科目或自訂新增。");
+            return;
+        }
+        if (subject.length > 40) {
+            setSubjectError("科目名稱不可超過 40 個字。");
+            return;
+        }
+        if (configurableSubjects.includes(subject)) {
+            setSubjectError("這個科目已存在。");
+            return;
+        }
+        if (subjectChoice === CUSTOM_SUBJECT_VALUE && SUBJECTS.some((systemSubject) => systemSubject === subject)) {
+            setSubjectError("目錄已有這個科目，請直接從清單選擇。");
+            return;
+        }
+        if (activeLearner.customSubjects.length >= 20) {
+            setSubjectError("最多新增 20 個自訂科目。");
+            return;
+        }
+        setLearners((current) => current.map((learner) => learner.id === activeLearnerId
+            ? {
+                ...learner,
+                customSubjects: [...learner.customSubjects, subject],
+                bookVersions: { ...learner.bookVersions, [subject]: "" },
+            }
+            : learner));
+        setPlansByLearner((current) => {
+            const plan = current[activeLearnerId] ?? DEFAULT_PLAN;
+            return {
+                ...current,
+                [activeLearnerId]: {
+                    ...plan,
+                    examSettings: plan.examSettings.map((exam) => ({
+                        ...exam,
+                        ranges: { ...exam.ranges, [subject]: { start: ALL_UNITS, end: ALL_UNITS } },
+                    })),
+                },
+            };
+        });
+        setSubjectChoice("");
+        setSubjectDraft("");
+        setSubjectError("");
+        setSubjectDialogOpen(false);
+    }
+
+    /** 移除目前學習者後續加入的科目設定。 */
+    function removeAddedSubject(subject: Subject) {
+        if (!activeLearner.customSubjects.includes(subject)) return;
+        const isSystemSubject = SUBJECTS.some((systemSubject) => systemSubject === subject);
+        setLearners((current) => current.map((learner) => {
+            if (learner.id !== activeLearnerId) return learner;
+            const { [subject]: _removedVersion, ...bookVersions } = learner.bookVersions;
+            return {
+                ...learner,
+                customSubjects: learner.customSubjects.filter((item) => item !== subject),
+                bookVersions: isSystemSubject ? { ...bookVersions, [subject]: "" } : bookVersions,
+            };
+        }));
+        setPlansByLearner((current) => {
+            const plan = current[activeLearnerId] ?? DEFAULT_PLAN;
+            return {
+                ...current,
+                [activeLearnerId]: {
+                    ...plan,
+                    subject: plan.subject === subject ? "全部" : plan.subject,
+                    scope: plan.subject === subject ? ALL_UNITS : plan.scope,
+                    examSettings: plan.examSettings.map((exam) => {
+                        const { [subject]: _removedRange, ...ranges } = exam.ranges;
+                        const nextRanges = isSystemSubject
+                            ? { ...ranges, [subject]: { start: ALL_UNITS, end: ALL_UNITS } }
+                            : ranges;
+                        return { ...exam, ranges: nextRanges };
+                    }),
+                },
+            };
+        });
+    }
+
+    /** 保存目前學習者可選的每輪題數，並確保預設值仍屬於清單。 */
+    function saveQuestionLimitOptions() {
+        const options = parseQuestionLimitOptions(questionLimitOptionsDraft);
+        if (!options) {
+            setQuestionLimitOptionsError("請用逗號分隔 1 至 500 的正整數，最多 20 個。");
+            return;
+        }
+        const defaultQuestionLimit = options.includes(activeLearner.defaultQuestionLimit)
+            ? activeLearner.defaultQuestionLimit
+            : options[0];
+        setLearners((current) => current.map((learner) => learner.id === activeLearnerId
+            ? { ...learner, questionLimitOptions: options, defaultQuestionLimit }
+            : learner));
+        setQuestionLimitOptionsDraft(options.join(", "));
+        setQuestionLimitOptionsError("");
     }
 
     /** 驗證並保存目前學習者的代表圖片。 */
@@ -1829,7 +2014,7 @@ export default function Home() {
 
     /** 將目前出題設定保存為指定學習者的預約練習。 */
     function addScheduledPractice() {
-        if (!scheduleDate || !plannedQuestions.length || difficultyTotal !== 100) return;
+        if (!scheduleDate || !plannedQuestions.length || !difficultyMixValid) return;
         const scheduledPractice: ScheduledPractice = {
             id: `schedule-${crypto.randomUUID()}`,
             creatorRole: roleAccess.activeRole,
@@ -1854,7 +2039,7 @@ export default function Home() {
 
     /** 以目前出題設定更新既有排程，並保留日期與建立者。 */
     function replaceScheduledPractice(schedule: ScheduledPractice) {
-        if (isScheduledPracticeLocked(schedule) || !plannedQuestions.length || difficultyTotal !== 100) return;
+        if (isScheduledPracticeLocked(schedule) || !plannedQuestions.length || !difficultyMixValid) return;
         setSchedulesByLearner((current) => ({
             ...current,
             [activeLearnerId]: (current[activeLearnerId] ?? []).map((item) => item.id === schedule.id ? {
@@ -1917,7 +2102,7 @@ export default function Home() {
     /** 取得可顯示且順序有效的科目考試範圍。 */
     function getAssessmentRange(exam: ExamSetting, subject: Subject): AssessmentRange {
         const options = assessmentOptionsBySubject[subject] ?? [];
-        const storedRange = exam.ranges[subject] ?? DEFAULT_ASSESSMENT_RANGES[subject];
+        const storedRange = exam.ranges[subject] ?? { start: ALL_UNITS, end: ALL_UNITS };
         const start = options.some((option) => option.value === storedRange.start) ? storedRange.start : options[0]?.value ?? ALL_UNITS;
         const end = options.some((option) => option.value === storedRange.end) ? storedRange.end : options.at(-1)?.value ?? ALL_UNITS;
         return { start, end };
@@ -1957,7 +2142,10 @@ export default function Home() {
             id: `exam-${Date.now()}`,
             name,
             date: "",
-            ranges: Object.fromEntries(SUBJECTS.map((subject) => [subject, { ...DEFAULT_ASSESSMENT_RANGES[subject] }])) as Record<Subject, AssessmentRange>,
+            ranges: Object.fromEntries(configurableSubjects.map((subject) => [
+                subject,
+                { ...(DEFAULT_ASSESSMENT_RANGES[subject as keyof typeof DEFAULT_ASSESSMENT_RANGES] ?? { start: ALL_UNITS, end: ALL_UNITS }) },
+            ])) as Record<Subject, AssessmentRange>,
         };
         setPlansByLearner((current) => ({
             ...current,
@@ -1988,19 +2176,43 @@ export default function Home() {
         updatePlan("difficultyMix", { ...activeDifficultyMix, [field]: percentage });
     }
 
-    /** 切換進階設定中的指定題目來源。 */
-    function togglePlanSource(source: string, checked: boolean) {
-        const nextSources = checked
-            ? [...new Set([...activePlan.sourceFilters, source])]
-            : activePlan.sourceFilters.filter((item) => item !== source);
-        updatePlan("sourceFilters", nextSources);
+    /** 將共用篩選元件的值保存至目前練習計畫。 */
+    function updatePracticeFilters(filters: QuestionFilters) {
+        const metadataFilters = Object.fromEntries(Object.entries(filters.metadata)
+            .filter(([, value]) => value !== ALL_QUESTION_FILTERS)
+            .map(([key, value]) => [key, [value]]));
+        setPlansByLearner((current) => ({
+            ...current,
+            [activeLearnerId]: {
+                ...(current[activeLearnerId] ?? DEFAULT_PLAN),
+                creatorRole: roleAccess.activeRole,
+                subject: filters.subject,
+                bookVersion: filters.version === ALL_QUESTION_FILTERS ? undefined : filters.version,
+                scope: activePlanBasis === "assessment" ? activePlan.scope : filters.scope,
+                semester: filters.semester,
+                topic: filters.topic,
+                difficulty: activePlan.difficultyMixEnabled ? ALL_QUESTION_FILTERS : filters.difficulty,
+                creatorFilter: filters.creator,
+                collection: filters.collection,
+                search: filters.search,
+                sourceFilters: filters.source === ALL_QUESTION_FILTERS ? [] : [filters.source],
+                questionKind: filters.kind as PlanQuestionKind,
+                knowledge: filters.knowledge === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : filters.knowledge,
+                metadataFilters,
+            },
+        }));
     }
 
-    /** 切換進階設定中的來源文件欄位值。 */
-    function toggleMetadataFilter(key: string, value: string, checked: boolean) {
-        const selected = activePlan.metadataFilters[key] ?? [];
-        const values = checked ? [...new Set([...selected, value])] : selected.filter((item) => item !== value);
-        updatePlan("metadataFilters", { ...activePlan.metadataFilters, [key]: values });
+    /** 啟用或停用依比例出題，避免一般難易度和比例條件同時生效。 */
+    function toggleDifficultyMix(enabled: boolean) {
+        setPlansByLearner((current) => ({
+            ...current,
+            [activeLearnerId]: {
+                ...(current[activeLearnerId] ?? DEFAULT_PLAN),
+                difficultyMixEnabled: enabled,
+                difficulty: enabled ? ALL_QUESTION_FILTERS : activePlan.difficulty,
+            },
+        }));
     }
 
     /** 切換題庫瀏覽中的來源文件欄位值。 */
@@ -2019,10 +2231,18 @@ export default function Home() {
             [activeLearnerId]: {
                 ...(current[activeLearnerId] ?? DEFAULT_PLAN),
                 difficultyMix: { ...DEFAULT_PLAN.difficultyMix },
+                difficultyMixEnabled: DEFAULT_PLAN.difficultyMixEnabled,
                 sourceFilters: [],
                 metadataFilters: {},
                 questionKind: "all",
                 knowledge: ALL_KNOWLEDGE,
+                semester: ALL_QUESTION_FILTERS,
+                topic: ALL_QUESTION_FILTERS,
+                difficulty: ALL_QUESTION_FILTERS,
+                creatorFilter: ALL_QUESTION_FILTERS,
+                collection: ALL_QUESTION_FILTERS,
+                search: "",
+                scope: ALL_UNITS,
                 questionLimit: activeLearner.defaultQuestionLimit,
                 bookVersion: activeSubject ? activeLearner.bookVersions[activeSubject] : undefined,
             },
@@ -2506,7 +2726,7 @@ export default function Home() {
 
     /** 更新匯入年級並清除不再適用的科目與教材資訊。 */
     function changeImportGrade(value: string) {
-        const subjects = getSubjectsForGrade(value, questions);
+        const subjects = getSubjectsForGrade(value, questions, activeLearner.customSubjects);
         setImportGrade(value);
         setImportDrafts((current) => current.map((draft) => ({
             ...draft,
@@ -2608,39 +2828,13 @@ export default function Home() {
         }
     }
 
-    /** 透過 API 將 runtime JSON 還原為 fixture。 */
-    async function resetDemo() {
-        if (!resetArmed) { setResetArmed(true); return; }
-        if (!canLeaveSession()) { setResetArmed(false); return; }
-        try {
-            const response = await fetch("/api/v1/reset", { method: "POST" });
-            if (!response.ok) throw new Error("RESET_FAILED");
-            const payload = await response.json() as { data: BootstrapResponse };
-            skipNextApiWriteRef.current = true;
-            setLearners(payload.data.state.learners);
-            setActiveLearnerId(payload.data.state.activeLearnerId);
-            setAttemptsByLearner(payload.data.state.attemptsByLearner);
-            setPlansByLearner(payload.data.state.plansByLearner);
-            setSchedulesByLearner(payload.data.state.schedulesByLearner);
-            setQueuedSimilarByLearner(payload.data.state.queuedSimilarByLearner);
-            setRoleAccess(payload.data.state.roleAccess);
-            setImportBooks(payload.data.state.importBooks);
-            setQuestions(payload.data.questions);
-            setImports(payload.data.imports);
-            clearSession(); setSelectedMistakes([]); setFileNames([]); setImportDrafts([]); setFileError(""); setImportStatus(""); setStorageError(""); setResetArmed(false);
-        }
-        catch {
-            setStorageError("JSON 模擬 API 無法重設資料，請稍後再試。");
-            setResetArmed(false);
-        }
-    }
-
     const sessionCorrect = session?.attempts.filter((attempt) => attempt.correct === true).length ?? 0;
     const pendingCount = session?.attempts.filter((attempt) => attempt.correct === null).length ?? 0;
     const wrongIds = session?.attempts.filter((attempt) => attempt.correct === false).map((attempt) => attempt.questionId) ?? [];
     const wrongPartIdsByQuestion = getWrongPartIdsByQuestion(session?.attempts.filter((attempt) => attempt.correct === false) ?? []);
     const similarIds = questions.filter((question) => question.generatedFrom && wrongIds.includes(question.generatedFrom)).map((question) => question.id);
     const dayDifference = getDayDifference(activeExam.date);
+    const examCountdownLabel = getExamCountdownLabel(dayDifference);
     const sessionModeLabel = session?.mode === "similar" ? "相關題目練習" : session?.mode === "review" ? "錯題複習" : "考前練習";
 
     /** 顯示作答中或完成結果。 */
@@ -2750,8 +2944,14 @@ export default function Home() {
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <p className="text-sm font-semibold text-primary">考前學習總覽</p>
-                            <h2 ref={overviewHeadingRef} data-focus-heading tabIndex={-1} className="mt-2 text-3xl font-bold">嗨，{activeLearner.name}</h2>
-                            <p className="mt-2 max-w-xl text-muted-foreground">{dayDifference === null ? `${activeExam.name}尚未設定日期` : `距離${activeExam.name}還有 ${dayDifference} 天`}，今天接著完成已設定的考試範圍。</p>
+                            <h2 ref={overviewHeadingRef} data-focus-heading tabIndex={-1} className="mt-2 text-3xl font-bold">準備開始今天的學習</h2>
+                            <p className="mt-2 max-w-xl text-muted-foreground">{dayDifference === null
+                                ? `${activeExam.name}尚未設定日期，今天接著完成已設定的考試範圍。`
+                                : dayDifference > 0
+                                    ? `距離${activeExam.name}還有 ${dayDifference} 天，今天接著完成已設定的考試範圍。`
+                                    : dayDifference === 0
+                                        ? `${activeExam.name}就是今天，先完成最後一輪練習。`
+                                        : `${activeExam.name}已結束，可切換到其他考試繼續安排。`}</p>
                             <Button className="button-blue mt-5" disabled={!plannedQuestions.length} onClick={() => beginSession("practice", plannedQuestions.map((question) => question.id))}>{sessionPaused ? "繼續目前練習" : "開始今日練習"}<ArrowRight /></Button>
                         </div>
                         <LearningScene />
@@ -2794,17 +2994,7 @@ export default function Home() {
             { value: "instant" as const, title: "逐題檢核", description: "每題送出後立即知道結果與解析。" },
             { value: "score" as const, title: "只顯示成績", description: "完成後只顯示分數與答錯題數，不提供解答。" },
         ];
-        const questionKindOptions = [
-            { value: "all", label: "全部題型" },
-            { value: "choice", label: getQuestionKindLabel("choice") },
-            { value: "boolean", label: getQuestionKindLabel("boolean") },
-            { value: "written", label: getQuestionKindLabel("written") },
-            { value: "multi-choice", label: getQuestionKindLabel("multi-choice") },
-        ];
         const selectedLimit = activePlan.questionLimit;
-        const scopeLabel = activePlan.scope === ALL_UNITS
-            ? "全部單元"
-            : activePlan.scope.split("::")[1] ?? scopeOptions.find((option) => option.value === activePlan.scope)?.label ?? "全部單元";
         const assessmentScopeLabel = activePlan.subject === "全部"
             ? `${availableSubjects.length} 科範圍`
             : (() => {
@@ -2818,7 +3008,7 @@ export default function Home() {
         return (
             <Card className="workspace-card practice-card border-border/80 shadow-sm">
                 <CardHeader className="practice-card-header">
-                    <WorkspaceHeading icon={BookOpen} title={`安排${activeLearner.name}的複習計畫`} description="選擇本次練習內容與方式；考試日期和範圍由學習者設定管理。" />
+                    <WorkspaceHeading icon={BookOpen} title="安排複習計畫" description="選擇本次練習內容與方式；考試日期和範圍由學習者設定管理。" />
                     <div className="practice-header-actions">
                         <div className="practice-streak" aria-label={`目前連續練習 ${practiceStreak} 天`}>
                             <span className="practice-streak-icon"><Flame aria-hidden="true" /></span>
@@ -2833,7 +3023,7 @@ export default function Home() {
                         <Button appearance="outline" aria-expanded={schedulePanelOpen || scheduleDialogOpen} onClick={openScheduleComposer}><CalendarDays />安排練習</Button>
                         <Button
                             className="practice-header-action"
-                            disabled={!sessionPaused && (!plannedQuestions.length || difficultyTotal !== 100)}
+                            disabled={!sessionPaused && (!plannedQuestions.length || !difficultyMixValid)}
                             onClick={sessionPaused ? resumeSession : () => beginSession("practice", plannedQuestions.map((question) => question.id))}
                         >
                             {sessionPaused ? "繼續目前練習" : "開始練習"}<ArrowRight />
@@ -2842,100 +3032,53 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="grid gap-8 p-5 sm:p-7">
                     <div className="practice-plan-editor contents">
-                    <section className="grid gap-4">
-                        <h3 className="font-bold">練習篩選</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <SubjectFilter className="col-span-2" subjects={availableSubjects} value={activePlan.subject as Subject | "全部"} onChange={(value) => updatePlan("subject", value)} />
-                            <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={Target} label="篩選方式" />}><NativeSelect options={PLAN_BASIS_OPTIONS} value={activePlanBasis} onChange={(event) => updatePlan("basis", event.target.value as PlanBasis)} /></FormField>
-                            {activePlanBasis === "chapter" ? (
-                                <FormField label={<PracticeFieldLabel className="field-dot-coral" icon={BookOpen} label="章節／單元" />}><NativeSelect options={scopeOptions} value={activePlan.scope} onChange={(event) => updatePlan("scope", event.target.value)} /></FormField>
-                            ) : <div className="workspace-surface col-span-2 grid gap-3 rounded-2xl p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                                <div><p className="font-semibold">{activeExam.name}</p><p className="mt-1 text-sm text-muted-foreground">{activeExam.date || "尚未設定日期"} · {assessmentScopeLabel}</p></div>
-                                <Button appearance="outline" tone="muted" onClick={() => navigateToSection("settings")}><Settings2 />前往學習者設定</Button>
-                            </div>}
-                        </div>
+                    <section className="practice-filter-basis grid gap-4">
+                        <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={Target} label="篩選方式" />}><NativeSelect options={PLAN_BASIS_OPTIONS} value={activePlanBasis} onChange={(event) => updatePlan("basis", event.target.value as PlanBasis)} /></FormField>
+                        {activePlanBasis === "assessment" && <div className="workspace-surface grid gap-3 rounded-2xl p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                            <div><p className="font-semibold">{activeExam.name}</p><p className="mt-1 text-sm text-muted-foreground">{activeExam.date || "尚未設定日期"} · {assessmentScopeLabel}</p></div>
+                            <Button appearance="outline" tone="muted" onClick={() => navigateToSection("settings")}><Settings2 />前往學習者設定</Button>
+                        </div>}
                     </section>
-                    <section className="grid gap-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h3 className="font-bold">進階設定</h3>
-                            <Button appearance="outline" tone="muted" aria-expanded={advancedPlanOpen} onClick={() => setAdvancedPlanOpen((current) => !current)}><Settings2 />{advancedPlanOpen ? "收合設定" : "展開設定"}</Button>
-                        </div>
-                        {!advancedPlanOpen && <p className="advanced-plan-summary rounded-xl px-4 py-3 text-sm">{activeSubject ? `${activeBookVersion}版` : "依各科版本"} · 易 {activeDifficultyMix.easy}% · 中 {activeDifficultyMix.medium}% · 難 {activeDifficultyMix.hard}% · {activePlan.sourceFilters.length ? `${activePlan.sourceFilters.length} 個來源` : "全部來源"} · {activePlan.questionKind === "all" ? "全部題型" : getQuestionKindLabel(activePlan.questionKind)} · {selectedLimit} 題</p>}
-                        {advancedPlanOpen && <div className="workspace-surface grid gap-5 rounded-2xl p-4 sm:p-5">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <p className="text-sm font-semibold">出題條件</p>
-                                <Button appearance="ghost" tone="muted" onClick={resetAdvancedPlan}><RotateCcw />恢復進階預設</Button>
-                            </div>
-                            <div className="advanced-filter-grid border-t border-border pt-4">
-                                <FormField label={<PracticeFieldLabel className="field-dot-violet" icon={BookOpen} label="版本" />}>
-                                    <NativeSelect disabled={!activeSubject} options={bookVersionOptions} value={activeBookVersion} onChange={(event) => updatePlan("bookVersion", event.target.value)} />
-                                </FormField>
-                                <div className="grid content-start gap-2">
-                                    <p><PracticeFieldLabel className="field-dot-violet" icon={FileUp} label="題目來源" /></p>
-                                    {sourceOptions.length ? (
-                                        <Dropdown>
-                                            <DropdownTrigger asChild>
-                                                <Button className="source-filter-trigger" appearance="outline" tone="muted" aria-label="選擇題目來源">
-                                                    <span className="truncate">{activePlan.sourceFilters.length === 0 ? "全部來源" : activePlan.sourceFilters.length === 1 ? activePlan.sourceFilters[0] : `已選 ${activePlan.sourceFilters.length} 個來源`}</span>
-                                                    <ChevronDown />
-                                                </Button>
-                                            </DropdownTrigger>
-                                            <DropdownContent align="start" className="source-filter-menu">
-                                                <DropdownLabel>選擇題目來源</DropdownLabel>
-                                                {activePlan.sourceFilters.length > 0 && <><DropdownItem onSelect={() => updatePlan("sourceFilters", [])}>清除選取，使用全部來源</DropdownItem><DropdownSeparator /></>}
-                                                {sourceOptions.map((source) => (
-                                                    <DropdownCheckboxItem
-                                                        checked={activePlan.sourceFilters.includes(source)}
-                                                        key={source}
-                                                        onCheckedChange={(checked) => togglePlanSource(source, checked === true)}
-                                                        onSelect={(event) => event.preventDefault()}
-                                                    >
-                                                        <DropdownIndicator>✓</DropdownIndicator>
-                                                        <span className="truncate">{source}</span>
-                                                    </DropdownCheckboxItem>
-                                                ))}
-                                            </DropdownContent>
-                                        </Dropdown>
-                                    ) : <p className="text-sm text-muted-foreground">目前科目與範圍沒有可選來源。</p>}
+                    <QuestionFilterPanel
+                        idPrefix="practice"
+                        subjects={availableSubjects}
+                        questions={learnerQuestions}
+                        grade={activeLearner.grade}
+                        preferredVersions={activeLearner.bookVersions}
+                        collections={activeQuestionCollections}
+                        value={practiceFilters}
+                        expanded={advancedPlanOpen}
+                        disabledFields={{
+                            difficulty: activePlan.difficultyMixEnabled,
+                            scope: activePlanBasis === "assessment",
+                        }}
+                        onChange={updatePracticeFilters}
+                        onExpandedChange={setAdvancedPlanOpen}
+                        onReset={resetAdvancedPlan}
+                    >
+                        <section className="practice-difficulty-mix">
+                            <label className="practice-difficulty-toggle">
+                                <Checkbox checked={activePlan.difficultyMixEnabled} onChange={(event) => toggleDifficultyMix(event.target.checked)} />
+                                <span><strong>按比例分配難易度</strong><small>啟用後，上方的一般難易度篩選不會生效。</small></span>
+                            </label>
+                            {activePlan.difficultyMixEnabled && <>
+                                <div className="practice-difficulty-fields">
+                                    <FormField label="基礎（%）"><Input type="number" min={0} max={100} value={activeDifficultyMix.easy} onChange={(event) => updateDifficulty("easy", event.target.value)} /></FormField>
+                                    <FormField label="中等（%）"><Input type="number" min={0} max={100} value={activeDifficultyMix.medium} onChange={(event) => updateDifficulty("medium", event.target.value)} /></FormField>
+                                    <FormField label="進階（%）"><Input type="number" min={0} max={100} value={activeDifficultyMix.hard} onChange={(event) => updateDifficulty("hard", event.target.value)} /></FormField>
                                 </div>
-                                <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={Library} label="題型" />}><NativeSelect options={questionKindOptions} value={activePlan.questionKind} onChange={(event) => updatePlan("questionKind", event.target.value as PlanQuestionKind)} /></FormField>
-                                <FormField label={<PracticeFieldLabel className="field-dot-coral" icon={Sparkles} label="知識點" />}><NativeSelect options={knowledgeOptions} value={activePlan.knowledge} onChange={(event) => updatePlan("knowledge", event.target.value)} /></FormField>
-                                <div className="grid content-start gap-2"><p><PracticeFieldLabel className="field-dot-violet" icon={UserCheck} label="建立者" /></p><div className="plan-creator-value"><Badge tone="primary">{roleAccess.activeRole}</Badge></div></div>
-                                {metadataCatalog.map((facet) => {
-                                    const selected = activePlan.metadataFilters[facet.key] ?? [];
-                                    return (
-                                        <div className="grid content-start gap-2" key={facet.key}>
-                                            <p><PracticeFieldLabel className="field-dot-blue" icon={Target} label={facet.label} /></p>
-                                            <Dropdown>
-                                                <DropdownTrigger asChild><Button className="source-filter-trigger" appearance="outline" tone="muted"><span className="truncate">{selected.length ? selected.length === 1 ? selected[0] : `已選 ${selected.length} 項` : `全部${facet.label}`}</span><ChevronDown /></Button></DropdownTrigger>
-                                                <DropdownContent align="start" className="source-filter-menu">
-                                                    <DropdownLabel>{facet.label}</DropdownLabel>
-                                                    {selected.length > 0 && <><DropdownItem onSelect={() => updatePlan("metadataFilters", { ...activePlan.metadataFilters, [facet.key]: [] })}>清除選取</DropdownItem><DropdownSeparator /></>}
-                                                    {facet.values.map((value) => <DropdownCheckboxItem checked={selected.includes(value)} key={value} onCheckedChange={(checked) => toggleMetadataFilter(facet.key, value, checked === true)} onSelect={(event) => event.preventDefault()}><DropdownIndicator>✓</DropdownIndicator><span className="truncate">{value}</span></DropdownCheckboxItem>)}
-                                                </DropdownContent>
-                                            </Dropdown>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="border-t border-border pt-4">
-                                <p><PracticeFieldLabel className="field-dot-gold" icon={BarChart3} label="難易度占比" /></p>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-3">
-                                <FormField label={<PracticeFieldLabel className="field-dot-blue" icon={Target} label="易（%）" />}><Input type="number" min={0} max={100} value={activeDifficultyMix.easy} onChange={(event) => updateDifficulty("easy", event.target.value)} /></FormField>
-                                <FormField label={<PracticeFieldLabel className="field-dot-violet" icon={Target} label="中（%）" />}><Input type="number" min={0} max={100} value={activeDifficultyMix.medium} onChange={(event) => updateDifficulty("medium", event.target.value)} /></FormField>
-                                <FormField label={<PracticeFieldLabel className="field-dot-coral" icon={Target} label="難（%）" />}><Input type="number" min={0} max={100} value={activeDifficultyMix.hard} onChange={(event) => updateDifficulty("hard", event.target.value)} /></FormField>
-                            </div>
-                            <p className={`text-sm font-semibold ${difficultyTotal === 100 ? "text-emerald-700" : "text-danger"}`} role="status">目前合計：{difficultyTotal}%{difficultyTotal === 100 ? "" : "，請調整為 100%"}</p>
-                            <FormField className="border-t border-border pt-4" label={<PracticeFieldLabel className="field-dot-gold" icon={ClipboardCheck} label="本輪題數（可臨時調整）" />}>
+                                <p className={`text-sm font-semibold ${difficultyMixValid ? "text-emerald-700" : "text-danger"}`} role="status">目前合計：{difficultyTotal}%{difficultyMixValid ? "" : "，請調整為 100%"}</p>
+                            </>}
+                            <FormField label={<PracticeFieldLabel className="field-dot-gold" icon={ClipboardCheck} label="本輪題數（可臨時調整）" />}>
                                 <QuestionLimitControl
                                     disabled={!eligibleQuestions.length}
+                                    options={activeLearner.questionLimitOptions}
                                     value={selectedLimit}
                                     onChange={(value) => updatePlan("questionLimit", value)}
                                 />
                             </FormField>
-                        </div>}
-                    </section>
+                        </section>
+                    </QuestionFilterPanel>
                     <section className="grid gap-4 border-t border-border pt-7">
                         <fieldset className="grid gap-4">
                             <legend><PracticeFieldLabel className="field-dot-gold" icon={ClipboardCheck} label="練習方式" /></legend>
@@ -2972,7 +3115,7 @@ export default function Home() {
                                 <span>{selectedReviewedAttempts.length ? `答對 ${selectedCorrectCount}／${selectedReviewedAttempts.length} 題` : "尚無紀錄"}</span>
                             </div>
                         </div>
-                        <div className="practice-selection-context"><p>{activeLearner.grade} · {planSubjectLabel} · {activePlanBasis === "chapter" ? scopeLabel : `${activeExam.name} · ${assessmentScopeLabel}`} · {activePlan.checkMode === "instant" ? "逐題檢核" : activePlan.checkMode === "score" ? "只顯示成績" : "全部作答後檢核"}</p>{!plannedQuestions.length && <p className="practice-footer-error" role="status">目前設定沒有可用的示範題，請調整科目、範圍或進階篩選。</p>}{difficultyTotal !== 100 && <p className="practice-footer-error" role="status">難易度占比合計需為 100% 才能開始。</p>}</div>
+                        {(!plannedQuestions.length || !difficultyMixValid) && <div className="practice-selection-context">{!plannedQuestions.length && <p className="practice-footer-error" role="status">目前設定沒有可用的示範題，請調整科目、範圍或篩選條件。</p>}{!difficultyMixValid && <p className="practice-footer-error" role="status">難易度占比合計需為 100% 才能開始。</p>}</div>}
                     </section>
                 </CardContent>
             </Card>
@@ -3017,7 +3160,7 @@ export default function Home() {
                     <p>把左側目前設定加入清單。日期必填，時間可留白。</p>
                     <FormField label="練習日期"><Input min={getTaipeiDate()} type="date" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} /></FormField>
                     <FormField label="時間（選填）"><Input type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} /></FormField>
-                    <Button className="w-full" disabled={!scheduleDate || !plannedQuestions.length || difficultyTotal !== 100} onClick={addScheduledPractice}><CalendarDays />加入練習計劃</Button>
+                    <Button className="w-full" disabled={!scheduleDate || !plannedQuestions.length || !difficultyMixValid} onClick={addScheduledPractice}><CalendarDays />加入練習計劃</Button>
                 </div>
             </section>}
             <section className="summary-card" aria-labelledby={calendarTitleId}>
@@ -3092,7 +3235,7 @@ export default function Home() {
                                             ? <span className="practice-schedule-locked">內容由{schedule.creatorRole}鎖定</span>
                                             : <div className="practice-schedule-actions">
                                                 {!schedule.result && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />編輯</Button>}
-                                                <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || difficultyTotal !== 100} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
+                                                <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
                                                 <Button appearance="ghost" tone="danger" size="sm" aria-label={`刪除 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>
                                             </div>}
                                     </div>
@@ -3127,7 +3270,7 @@ export default function Home() {
                                         ? <span className="practice-schedule-locked">內容由{schedule.creatorRole}鎖定</span>
                                         : <div className="practice-schedule-actions">
                                         {!schedule.result && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />編輯</Button>}
-                                        <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || difficultyTotal !== 100} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
+                                        <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
                                         <Button appearance="ghost" tone="danger" size="sm" aria-label={`刪除 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>
                                         </div>}
                                 </div>
@@ -3147,7 +3290,7 @@ export default function Home() {
         return (
             <Card className="workspace-card practice-schedule-page border-border/80 shadow-sm">
                 <CardHeader className="practice-card-header">
-                    <WorkspaceHeading icon={ClipboardCheck} title="練習計劃" description={`依日期排列${activeLearner.name}的全部練習，可直接選擇一筆開始。`} />
+                    <WorkspaceHeading icon={ClipboardCheck} title="練習計劃" description="依日期排列全部練習，可直接選擇一筆開始。" />
                     <div className="practice-header-actions">
                         <Button appearance="outline" onClick={() => router.push(SECTION_PATHS.practice)}><ArrowLeft />返回</Button>
                         <Button onClick={() => navigateToSection("practice")}><CalendarDays />安排練習</Button>
@@ -3200,7 +3343,9 @@ export default function Home() {
                         preferredVersions={activeLearner.bookVersions}
                         collections={activeQuestionCollections}
                         value={questionFilters}
+                        expanded={questionFiltersOpen}
                         onChange={(filters) => { setQuestionFilters(filters); setQuestionPage(1); setSelectedQuestionIds([]); }}
+                        onExpandedChange={setQuestionFiltersOpen}
                         onReset={resetQuestionFilters}
                     />
 
@@ -3314,7 +3459,7 @@ export default function Home() {
 
     /** 顯示題庫與匯入校正。 */
     function renderBank() {
-        const importSubjects = getSubjectsForGrade(importGrade, questions);
+        const importSubjects = getSubjectsForGrade(importGrade, questions, activeLearner.customSubjects);
         const importBookOptions = [
             { value: "", label: "系統預設" },
             ...availableImportBooks.map((book) => ({ value: book.id, label: book.name })),
@@ -3611,7 +3756,9 @@ export default function Home() {
                             preferredVersions={activeLearner.bookVersions}
                             collections={activeQuestionCollections}
                             value={mistakeFilters}
+                            expanded={mistakeFiltersOpen}
                             onChange={changeMistakeFilters}
+                            onExpandedChange={setMistakeFiltersOpen}
                             onReset={resetMistakeFilters}
                         />
                         <div className="mistake-list-heading">
@@ -3728,7 +3875,7 @@ export default function Home() {
         return (
             <div className="grid gap-5">
                 <Card className="workspace-card settings-card border-border/80 shadow-sm">
-                    <CardHeader><WorkspaceHeading icon={UserCheck} title={`${activeLearner.name}的基本設定`} description="切換學習者後，每位學習者的資料、各科版本與練習偏好會分開保存。" /></CardHeader>
+                    <CardHeader><WorkspaceHeading icon={UserCheck} title="基本設定" description="切換學習者後，每位學習者的資料、各科版本與練習偏好會分開保存。" /></CardHeader>
                     <CardContent className="grid gap-8 p-5 sm:p-7">
                         <section className="settings-section">
                             <div className="settings-section-heading"><div><h3>基本資料</h3><p>稱呼會顯示在首頁，年級會自動帶入題庫與複習計畫。</p></div><Badge className="tag-purple" tone="primary">個人資料</Badge></div>
@@ -3755,7 +3902,7 @@ export default function Home() {
                             <div className="role-access-summary">
                                 <div><span>註冊信箱</span><strong>{roleAccess.registrationEmail}</strong></div>
                                 <div><span>目前角色</span><strong>{roleAccess.activeRole}</strong></div>
-                                <div><span>目前學習者</span><strong>{activeLearner.name}</strong></div>
+                                <div><span>目前年級</span><strong>{activeLearner.grade}</strong></div>
                             </div>
                             <div className="role-access-grid">
                                 {ROLE_OPTIONS.map(({ value: role }) => (
@@ -3769,14 +3916,53 @@ export default function Home() {
                             </div>
                         </section>
                         <section className="settings-section">
-                            <div className="settings-section-heading"><div><h3>各科書籍版本</h3><p>國中自然分為理化、生物；社會分為歷史、地理、公民，每一科可分別設定版本。</p></div><Badge className="tag-pink" tone="danger">依科設定</Badge></div>
+                            <div className="settings-section-heading">
+                                <div><h3>各科書籍版本</h3><p>系統預設科目不可刪除；也可自行新增其他科目。版本選擇「無」時，該科不會出現在題目、練習與篩選介面。</p></div>
+                                <Button appearance="outline" onClick={() => setSubjectDialogOpen(true)}><Plus />新增科目</Button>
+                            </div>
+                            <Dialog open={subjectDialogOpen} onOpenChange={(open) => {
+                                setSubjectDialogOpen(open);
+                                if (!open) {
+                                    setSubjectChoice("");
+                                    setSubjectDraft("");
+                                    setSubjectError("");
+                                }
+                            }}>
+                                <DialogContent size="sm" closeLabel="關閉新增科目">
+                                    <DialogHeader><DialogTitle>新增科目</DialogTitle><DialogDescription>可加入目前尚未選擇的目錄科目，或自行建立其他科目。</DialogDescription></DialogHeader>
+                                    <DialogBody className="grid gap-4">
+                                        <FormField label="科目來源">
+                                            <NativeSelect
+                                                autoFocus
+                                                options={[
+                                                    { value: "", label: "請選擇科目" },
+                                                    ...unselectedCatalogSubjects.map((subject) => ({ value: subject, label: subject })),
+                                                    { value: CUSTOM_SUBJECT_VALUE, label: "自訂新增…" },
+                                                ]}
+                                                value={subjectChoice}
+                                                onChange={(event) => {
+                                                    setSubjectChoice(event.target.value);
+                                                    setSubjectDraft("");
+                                                    setSubjectError("");
+                                                }}
+                                            />
+                                        </FormField>
+                                        {subjectChoice === CUSTOM_SUBJECT_VALUE && <FormField label="自訂科目名稱"><Input maxLength={40} placeholder="例如：資訊科技" value={subjectDraft} onChange={(event) => { setSubjectDraft(event.target.value); setSubjectError(""); }} onKeyDown={(event) => { if (event.key === "Enter") addSubject(); }} /></FormField>}
+                                        {subjectError && <p className="text-sm font-semibold text-danger" role="alert">{subjectError}</p>}
+                                    </DialogBody>
+                                    <DialogFooter><DialogClose asChild><Button appearance="ghost" tone="muted">取消</Button></DialogClose><Button onClick={addSubject}><Save />儲存</Button></DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                             <div className="grid gap-4 sm:grid-cols-3">
-                                {availableSubjects.map((subject, index) => (
-                                    <FormField className={`field-dot ${index === 0 ? "field-dot-violet" : index === 1 ? "field-dot-coral" : "field-dot-blue"}`} label={`${subject}版本`} key={subject}>
-                                        <NativeSelect options={BOOK_OPTIONS} value={activeLearner.bookVersions[subject]} onChange={(event) => updateBookVersion(subject, event.target.value)} />
-                                    </FormField>
+                                {configurableSubjects.map((subject, index) => (
+                                    <div className="subject-book-setting" key={subject}>
+                                        <FormField className={`field-dot ${index === 0 ? "field-dot-violet" : index === 1 ? "field-dot-coral" : "field-dot-blue"}`} label={`${subject}版本`}>
+                                            <NativeSelect options={BOOK_SETTING_OPTIONS} value={activeLearner.bookVersions[subject] ?? ""} onChange={(event) => updateBookVersion(subject, event.target.value)} />
+                                        </FormField>
+                                        {activeLearner.customSubjects.includes(subject) && <Button appearance="ghost" tone="danger" size="sm" onClick={() => removeAddedSubject(subject)}><Trash2 />刪除科目</Button>}
+                                    </div>
                                 ))}
-                                {!availableSubjects.length && <p className="text-sm text-muted-foreground">目前年級尚無可設定版本的科目。</p>}
+                                {!configurableSubjects.length && <p className="text-sm text-muted-foreground">目前年級尚無可設定版本的科目。</p>}
                             </div>
                         </section>
                         <section className="settings-section" id="exam-settings">
@@ -3803,22 +3989,29 @@ export default function Home() {
                         </section>
                         <section className="settings-section">
                             <div className="settings-section-heading"><div><h3>練習偏好</h3><p>預設題數會用於新計畫；複習計畫中的「本輪題數」仍可臨時更改。</p></div><Badge className="tag-gold" tone="warning">預設值</Badge></div>
-                            <div className="max-w-sm">
-                                <FormField className="field-dot field-dot-gold" label="每輪預設題數" description="若目前範圍題目不足，實際練習會以可用題數為準。">
-                                    <QuestionLimitControl
-                                        value={activeLearner.defaultQuestionLimit}
-                                        onChange={(value) => updateLearner("defaultQuestionLimit", value)}
+                            <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+                                <FormField className="field-dot field-dot-gold" label="可選題數" description="使用逗號分隔，例如：5, 10, 15。">
+                                    <Input
+                                        aria-invalid={Boolean(questionLimitOptionsError)}
+                                        placeholder="5, 10, 15"
+                                        value={questionLimitOptionsDraft}
+                                        onBlur={saveQuestionLimitOptions}
+                                        onChange={(event) => {
+                                            setQuestionLimitOptionsDraft(event.target.value);
+                                            setQuestionLimitOptionsError("");
+                                        }}
+                                    />
+                                    {questionLimitOptionsError && <p className="text-sm font-semibold text-danger" role="alert">{questionLimitOptionsError}</p>}
+                                </FormField>
+                                <FormField className="field-dot field-dot-violet" label="預設題數" description="建立新計畫或重設進階條件時套用。">
+                                    <NativeSelect
+                                        options={activeLearner.questionLimitOptions.map((limit) => ({ value: String(limit), label: `${limit} 題` }))}
+                                        value={String(activeLearner.defaultQuestionLimit)}
+                                        onChange={(event) => updateLearner("defaultQuestionLimit", Number(event.target.value))}
                                     />
                                 </FormField>
                             </div>
                         </section>
-                    </CardContent>
-                </Card>
-                <Card className="workspace-card border-border/80 shadow-sm">
-                    <CardHeader><WorkspaceHeading icon={RotateCcw} title="示範資料" description="重設會清除 runtime JSON 中的學習者設定、作答紀錄、複習計畫與新增題目。" /></CardHeader>
-                    <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-                        <p className="text-sm text-muted-foreground">此操作只影響本機示範資料，不會影響任何外部帳號。</p>
-                        <Button appearance="outline" tone="danger" onClick={resetDemo}><RotateCcw />{resetArmed ? "再次點擊確認重設" : "重設示範資料"}</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -3944,8 +4137,8 @@ export default function Home() {
                             <div className="practice-focus-mark"><LerniqaMark className="h-6 w-6" /></div>
                             <h1 ref={sessionHeadingRef} data-focus-heading tabIndex={-1} className="truncate text-base font-bold sm:text-lg">
                                 {session.phase === "answering"
-                                    ? `${sessionModeLabel} · ${activeLearner.name} · ${sessionQuestionLabel}，共 ${session.questionIds.length} 題`
-                                    : `${sessionModeLabel} · ${activeLearner.name} · 本輪練習結果`}
+                                    ? `${sessionModeLabel} · ${sessionQuestionLabel}，共 ${session.questionIds.length} 題`
+                                    : `${sessionModeLabel} · 本輪練習結果`}
                             </h1>
                         </div>
                         <div className="practice-focus-actions">
@@ -3984,14 +4177,13 @@ export default function Home() {
             <DialogContent size="sm" closeLabel="關閉角色切換">
                 <DialogHeader>
                     <DialogTitle>切換角色</DialogTitle>
-                    <DialogDescription>目前使用「{roleAccess.activeRole}」身份。家長與家教需輸入六位數角色密碼。</DialogDescription>
                 </DialogHeader>
                 <DialogBody className="grid gap-4">
                     {roleStatus && <p className="role-status" role="status">{roleStatus}</p>}
                     <FormField label="要切換的角色"><NativeSelect options={ROLE_OPTIONS} value={requestedRole} onChange={(event) => { setRequestedRole(event.target.value as AccountRole); setRoleStatus(""); setRoleResetOpen(false); setRolePin(""); }} /></FormField>
                     {requestedRole !== "學習者" && requestedRole !== roleAccess.activeRole && !roleResetOpen && <>
                         <div className="role-pin-field">
-                            <div><p>六位數角色密碼</p><small>本機示範預設密碼為 123456。</small></div>
+                            <div><p>六位數角色密碼</p></div>
                             <RolePinKeypad value={rolePin} onChange={(value) => { setRolePin(value); setRoleStatus(""); }} />
                         </div>
                         <Button appearance="ghost" tone="muted" onClick={() => { setRoleResetOpen(true); setRoleStatus(""); }}>忘記角色密碼</Button>
@@ -4057,8 +4249,8 @@ export default function Home() {
                 <div className="sidebar-brand">
                     <LerniqaLogo />
                     <div className="sidebar-brand-meta">
-                        <p className="sidebar-brand-caption text-xs text-muted-foreground">智慧卡牌學習平台</p>
-                        <Badge className="sidebar-learning-badge" tone="primary">學習卡</Badge>
+                        <p className="sidebar-brand-caption text-xs text-muted-foreground">智慧題庫學習平台</p>
+                        <Badge className="sidebar-learning-badge" tone="primary">題庫</Badge>
                     </div>
                 </div>
                 <div className="learner-card mt-6">
@@ -4106,7 +4298,7 @@ export default function Home() {
             <div className="sidebar-tip mt-6"><Sparkles size={18} /><p>每天 15 分鐘，穩定累積練習進度。</p></div>
             </div>
         </aside>
-        <section className="workspace min-w-0 p-5 sm:p-7 lg:p-9" data-workspace={section}>{section !== "practice" && <header className="mb-7 flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold tracking-[0.15em] text-primary">{activeLearner.school}</p><h1 ref={headingRef} data-focus-heading tabIndex={-1} className="mt-1 text-2xl font-bold">{NAV_ITEMS.find((item) => item.id === section)?.label}</h1></div><div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarDays size={17} />{activeExam.name}</div></header>}{storageError && <p className="mb-5 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{storageError}</p>}{renderSection()}</section>
+        <section className="workspace min-w-0 p-5 sm:p-7 lg:p-9" data-workspace={section}>{section !== "practice" && <header className="mb-7 flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold tracking-[0.15em] text-primary">{activeLearner.school}</p><h1 ref={headingRef} data-focus-heading tabIndex={-1} className="mt-1 text-2xl font-bold">{NAV_ITEMS.find((item) => item.id === section)?.label}</h1></div><div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays size={17} /><span>{activeExam.name}</span>{examCountdownLabel && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{examCountdownLabel}</span>}</div></header>}{storageError && <p className="mb-5 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{storageError}</p>}{renderSection()}</section>
         {section !== "questions" && <aside className="summary-panel" data-mobile-open={mobileSummaryOpen} data-practice-list-page={isScheduleListPage} data-section={section}>
             <Button
                 className="mobile-panel-toggle"
@@ -4131,10 +4323,10 @@ export default function Home() {
                         <Badge className="tag-purple" tone="primary">即時同步</Badge>
                     </div>
                     <div className="summary-plan">
-                        <div><span>目前學習者</span><strong>{activeLearner.name}</strong></div>
+                        <div><span>目前年級</span><strong>{activeLearner.grade}</strong></div>
                         <div><span>目前考試</span><strong>{activeExam.name}</strong></div>
                         <div><span>目標日期</span><strong>{activeExam.date || "尚未設定"}</strong></div>
-                        <div><span>剩餘時間</span><strong>{dayDifference === null ? "—" : `${dayDifference} 天`}</strong></div>
+                        <div><span>剩餘時間</span><strong>{examCountdownLabel || "—"}</strong></div>
                     </div>
                 </section>
                 <section className="summary-card" aria-labelledby="metrics-title">

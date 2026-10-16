@@ -27,12 +27,13 @@ const SOURCE_ALIASES: Record<string, string> = {
 };
 const SOURCE_WITHOUT_TEXTBOOK_VERSION = new Set(["校內卷", "基測", "會考", "仿會考非選題"]);
 const SOURCE_WITHOUT_KNOWLEDGE = new Set(["校內卷"]);
-const CORE_METADATA_KEYS = new Set([
+const HIDDEN_METADATA_KEYS = new Set([
     "source",
     "source_category",
     "source_type",
     "source_path",
     "knowledge_point",
+    "learning_content",
     "creator",
     "creator_role",
     "owner_role",
@@ -122,6 +123,15 @@ export const DEFAULT_QUESTION_FILTERS: QuestionFilters = {
     collection: ALL_QUESTION_FILTERS,
     search: "",
 };
+
+/**
+ * 判斷匯入欄位是否適合顯示為補充條件，避免與正式篩選欄位重複。
+ * @param key 匯入欄位鍵值。
+ * @returns 欄位是否可顯示於篩選與題目條件。
+ */
+export function isSupplementalQuestionMetadata(key: string) {
+    return !HIDDEN_METADATA_KEYS.has(key);
+}
 
 /**
  * 將來源文件的歷史值轉成產品定義的來源分類。
@@ -223,7 +233,7 @@ export function getQuestionFilterOptions(
     ]));
     const facets = selectedSource ? [...sourceQuestions.reduce((catalog, question) => {
         question.metadata?.forEach((field) => {
-            if (CORE_METADATA_KEYS.has(field.key) || !field.values.length) return;
+            if (!isSupplementalQuestionMetadata(field.key) || !field.values.length) return;
             const current = catalog.get(field.key) ?? { key: field.key, label: field.label, values: new Set<string>() };
             field.values.forEach((value) => current.values.add(value));
             catalog.set(field.key, current);

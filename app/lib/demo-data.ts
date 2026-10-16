@@ -4,7 +4,8 @@ export type PlanBasis = "chapter" | "assessment";
 export type SessionMode = "practice" | "review" | "similar";
 export type QuestionKind = "choice" | "boolean" | "written" | "multi-choice";
 export type PlanQuestionKind = "all" | QuestionKind;
-export type Subject = "數學" | "國語" | "英文" | "理化" | "生物" | "歷史" | "地理" | "公民";
+export type Subject = string;
+export type SystemSubject = "數學" | "國語" | "英文" | "理化" | "生物" | "歷史" | "地理" | "公民";
 export type AccountRole = "家長" | "學習者" | "家教";
 export type ContentPlacement = "prompt" | "option" | "answer" | "explanation";
 export type ContentType = "text" | "image" | "formula" | "table" | "page_crop";
@@ -122,12 +123,16 @@ export interface Learner {
     semester: string;
     /** 各科目使用的書籍版本。 */
     bookVersions: Record<Subject, string>;
+    /** 學習者後續加入的目錄科目或自訂科目。 */
+    customSubjects: Subject[];
     /** 學校名稱。 */
     school: string;
     /** 學習者自行設定的代表圖片。 */
     avatar?: string;
     /** 每輪練習的預設題數。 */
     defaultQuestionLimit: number;
+    /** 每輪題數下拉選單可使用的選項。 */
+    questionLimitOptions: number[];
 }
 
 export interface AssessmentRange {
@@ -157,6 +162,18 @@ export interface PracticePlan {
     bookVersion?: string;
     /** 單元篩選。 */
     scope: string;
+    /** 學期篩選。 */
+    semester: string;
+    /** 主題篩選。 */
+    topic: string;
+    /** 一般難易度篩選。 */
+    difficulty: string;
+    /** 題目建立者篩選。 */
+    creatorFilter: string;
+    /** 收藏清單篩選。 */
+    collection: string;
+    /** 題目文字搜尋。 */
+    search: string;
     /** 可重複建立的考試設定。 */
     examSettings: ExamSetting[];
     /** 目前練習與摘要套用的考試設定。 */
@@ -169,6 +186,8 @@ export interface PracticePlan {
     basis: PlanBasis;
     /** 易、中、難題目占比。 */
     difficultyMix: { easy: number; medium: number; hard: number };
+    /** 是否依占比分配難易度；啟用時不套用一般難易度篩選。 */
+    difficultyMixEnabled: boolean;
     /** 指定題目來源；空陣列代表全部來源。 */
     sourceFilters: string[];
     /** 指定題型；all 代表全部題型。 */
@@ -401,7 +420,9 @@ export const ACCEPTED_FILE_TYPES = ["image/jpeg", "image/png", "application/pdf"
 export const GRADE_OPTIONS = ["小四", "小五", "國一", "國二", "國三"].map((value) => ({ value, label: value }));
 export const SEMESTER_OPTIONS = ["上學期", "下學期"].map((value) => ({ value, label: value }));
 export const BOOK_OPTIONS = ["康軒", "南一", "翰林"].map((value) => ({ value, label: value }));
-export const SUBJECTS: Subject[] = ["數學", "國語", "英文", "理化", "生物", "歷史", "地理", "公民"];
+export const BOOK_SETTING_OPTIONS = [{ value: "", label: "無" }, ...BOOK_OPTIONS];
+export const DEFAULT_QUESTION_LIMIT_OPTIONS = [5, 10, 15];
+export const SUBJECTS: SystemSubject[] = ["數學", "國語", "英文", "理化", "生物", "歷史", "地理", "公民"];
 export const ASSESSMENT_OPTIONS = ["第一次定期評量", "第二次定期評量", "第三次定期評量", "自訂練習"]
     .map((value) => ({ value, label: value }));
 export const ROLE_OPTIONS = (["家長", "學習者", "家教"] satisfies AccountRole[]).map((value) => ({ value, label: value }));
@@ -409,7 +430,7 @@ export const REVIEWER_OPTIONS = ["家長 · 林小姐", "家教 · 陳老師", "
     .map((value) => ({ value, label: value }));
 
 export const DEFAULT_ROLE_ACCESS: RoleAccess = {
-    activeRole: "家長",
+    activeRole: "學習者",
     registrationEmail: "parent@example.com",
     pinHashes: {
         家長: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
@@ -422,7 +443,7 @@ export const DEFAULT_ROLE_ACCESS: RoleAccess = {
     },
 };
 
-export const DEFAULT_ASSESSMENT_RANGES: Record<Subject, AssessmentRange> = {
+export const DEFAULT_ASSESSMENT_RANGES: Record<SystemSubject, AssessmentRange> = {
     數學: { start: ALL_UNITS, end: ALL_UNITS },
     國語: { start: ALL_UNITS, end: ALL_UNITS },
     英文: { start: ALL_UNITS, end: ALL_UNITS },
@@ -444,12 +465,19 @@ export const DEFAULT_PLAN: PracticePlan = {
     creatorRole: "家長",
     subject: "數學",
     scope: ALL_UNITS,
+    semester: "all",
+    topic: "all",
+    difficulty: "all",
+    creatorFilter: "all",
+    collection: "all",
+    search: "",
     examSettings: [DEFAULT_EXAM_SETTING],
     activeExamId: DEFAULT_EXAM_SETTING.id,
     checkMode: "complete",
     questionLimit: 10,
     basis: "chapter",
     difficultyMix: { easy: 40, medium: 40, hard: 20 },
+    difficultyMixEnabled: false,
     sourceFilters: [],
     questionKind: "all",
     knowledge: ALL_KNOWLEDGE,

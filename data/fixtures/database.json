@@ -1,8 +1,8 @@
 {
-  "version": 14,
+  "version": 17,
   "state": {
     "roleAccess": {
-      "activeRole": "家長",
+      "activeRole": "學習者",
       "registrationEmail": "parent@example.com",
       "pinHashes": {
         "家長": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
@@ -19,14 +19,16 @@
           "數學": "康軒",
           "國語": "翰林",
           "英文": "翰林",
-          "理化": "康軒",
+          "理化": "",
           "生物": "康軒",
           "歷史": "南一",
           "地理": "南一",
           "公民": "南一"
         },
+        "customSubjects": [],
         "school": "青禾國小",
-        "defaultQuestionLimit": 10
+        "defaultQuestionLimit": 10,
+        "questionLimitOptions": [5, 10, 15]
       },
       {
         "id": "learner-2",
@@ -43,8 +45,10 @@
           "地理": "南一",
           "公民": "南一"
         },
+        "customSubjects": [],
         "school": "青禾國小",
-        "defaultQuestionLimit": 10
+        "defaultQuestionLimit": 10,
+        "questionLimitOptions": [5, 10, 15]
       }
     ],
     "activeLearnerId": "learner-1",

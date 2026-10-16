@@ -1,6 +1,6 @@
 import { Button, FormField, Input, NativeSelect } from "@keel-design/ui";
-import { Library, RotateCcw, Search } from "lucide-react";
-import { useMemo } from "react";
+import { ChevronDown, ChevronUp, Library, RotateCcw, Search } from "lucide-react";
+import { ReactNode, useMemo } from "react";
 import { ALL_UNITS, Question, QuestionCollection, Subject } from "../lib/demo-data";
 import {
     ALL_QUESTION_FILTERS, getQuestionFilterOptions, QuestionFilters, sourceUsesTextbookVersion,
@@ -32,8 +32,16 @@ interface QuestionFilterPanelProps {
     collections: QuestionCollection[];
     /** 目前套用的篩選條件。 */
     value: QuestionFilters;
+    /** 是否顯示完整篩選欄位。 */
+    expanded: boolean;
+    /** 需要停用的欄位；仍保留目前值供畫面說明。 */
+    disabledFields?: Partial<Record<keyof QuestionFilters, boolean>>;
+    /** 篩選欄位後方的頁面專屬設定。 */
+    children?: ReactNode;
     /** 更新全部篩選條件。 */
     onChange: (value: QuestionFilters) => void;
+    /** 展開狀態更新事件。 */
+    onExpandedChange: (expanded: boolean) => void;
     /** 清除全部篩選條件。 */
     onReset: () => void;
 }
@@ -75,13 +83,33 @@ export function QuestionFilterPanel({
     preferredVersions,
     collections,
     value,
+    expanded,
+    disabledFields = {},
+    children,
     onChange,
+    onExpandedChange,
     onReset,
 }: QuestionFilterPanelProps) {
     const options = useMemo(
         () => getQuestionFilterOptions(questions, value, collections),
         [collections, questions, value],
     );
+    const activeFilterCount = [
+        value.subject !== "全部",
+        value.semester !== ALL_QUESTION_FILTERS,
+        value.version !== ALL_QUESTION_FILTERS,
+        value.scope !== ALL_UNITS,
+        value.topic !== ALL_QUESTION_FILTERS,
+        value.knowledge !== ALL_QUESTION_FILTERS,
+        value.difficulty !== ALL_QUESTION_FILTERS,
+        value.kind !== ALL_QUESTION_FILTERS,
+        value.source !== ALL_QUESTION_FILTERS,
+        value.creator !== ALL_QUESTION_FILTERS,
+        Object.values(value.metadata).some((item) => item !== ALL_QUESTION_FILTERS),
+        value.collection !== ALL_QUESTION_FILTERS,
+        Boolean(value.search.trim()),
+    ].filter(Boolean).length;
+    const contentId = `${idPrefix}-filter-content`;
 
     /**
      * 更新單一條件，並在上游條件改變時清除已失效的單元。
@@ -151,31 +179,46 @@ export function QuestionFilterPanel({
                     <h3 id={`${idPrefix}-filter-title`}>篩選題目</h3>
                     <p>{grade}由目前學習者帶入；切換科目會套用該科教材版本。</p>
                 </div>
-                <Button appearance="ghost" tone="muted" size="sm" onClick={onReset}><RotateCcw />清除篩選</Button>
+                <div className="question-filter-heading-actions">
+                    {activeFilterCount > 0 && <span>{activeFilterCount} 個條件</span>}
+                    <Button appearance="ghost" tone="muted" size="sm" onClick={onReset}><RotateCcw />清除篩選</Button>
+                    <Button
+                        appearance="outline"
+                        tone="muted"
+                        size="sm"
+                        aria-controls={contentId}
+                        aria-expanded={expanded}
+                        onClick={() => onExpandedChange(!expanded)}
+                    >
+                        {expanded ? <ChevronUp /> : <ChevronDown />}{expanded ? "收合篩選" : "展開篩選"}
+                    </Button>
+                </div>
             </div>
-            <div className="question-filter-grid">
+            {expanded && <div className="question-filter-grid" id={contentId}>
                 <SubjectFilter className="question-filter-subject" subjects={subjects} value={value.subject} onChange={(subject) => updateFilter("subject", subject)} />
-                <FormField label="學期"><NativeSelect options={options.semesters} value={value.semester} onChange={(event) => updateFilter("semester", event.target.value)} /></FormField>
-                {options.showVersion && <FormField label="版本"><NativeSelect options={options.versions} value={value.version} onChange={(event) => updateFilter("version", event.target.value)} /></FormField>}
-                <FormField label="來源"><NativeSelect options={options.sources} value={value.source} onChange={(event) => updateFilter("source", event.target.value)} /></FormField>
-                <FormField label="單元"><NativeSelect options={options.scopes} value={value.scope} onChange={(event) => updateFilter("scope", event.target.value)} /></FormField>
-                {options.showTopic && <FormField label="主題"><NativeSelect options={options.topics} value={value.topic} onChange={(event) => updateFilter("topic", event.target.value)} /></FormField>}
-                {options.showKnowledge && <FormField label="知識點"><NativeSelect options={options.knowledge} value={value.knowledge} onChange={(event) => updateFilter("knowledge", event.target.value)} /></FormField>}
-                <FormField label="難易度"><NativeSelect options={options.difficulties} value={value.difficulty} onChange={(event) => updateFilter("difficulty", event.target.value)} /></FormField>
-                <FormField label="題型"><NativeSelect options={options.kinds} value={value.kind} onChange={(event) => updateFilter("kind", event.target.value as QuestionFilters["kind"])} /></FormField>
-                {options.creators.length > 1 && <FormField label="建立者"><NativeSelect options={options.creators} value={value.creator} onChange={(event) => updateFilter("creator", event.target.value)} /></FormField>}
+                <FormField label="學期"><NativeSelect disabled={disabledFields.semester} options={options.semesters} value={value.semester} onChange={(event) => updateFilter("semester", event.target.value)} /></FormField>
+                {options.showVersion && <FormField label="版本"><NativeSelect disabled={disabledFields.version} options={options.versions} value={value.version} onChange={(event) => updateFilter("version", event.target.value)} /></FormField>}
+                <FormField label="來源"><NativeSelect disabled={disabledFields.source} options={options.sources} value={value.source} onChange={(event) => updateFilter("source", event.target.value)} /></FormField>
+                <FormField label="單元"><NativeSelect disabled={disabledFields.scope} options={options.scopes} value={value.scope} onChange={(event) => updateFilter("scope", event.target.value)} /></FormField>
+                {options.showTopic && <FormField label="主題"><NativeSelect disabled={disabledFields.topic} options={options.topics} value={value.topic} onChange={(event) => updateFilter("topic", event.target.value)} /></FormField>}
+                {options.showKnowledge && <FormField label="知識點"><NativeSelect disabled={disabledFields.knowledge} options={options.knowledge} value={value.knowledge} onChange={(event) => updateFilter("knowledge", event.target.value)} /></FormField>}
+                <FormField label="難易度"><NativeSelect disabled={disabledFields.difficulty} options={options.difficulties} value={value.difficulty} onChange={(event) => updateFilter("difficulty", event.target.value)} /></FormField>
+                <FormField label="題型"><NativeSelect disabled={disabledFields.kind} options={options.kinds} value={value.kind} onChange={(event) => updateFilter("kind", event.target.value as QuestionFilters["kind"])} /></FormField>
+                {options.creators.length > 1 && <FormField label="建立者"><NativeSelect disabled={disabledFields.creator} options={options.creators} value={value.creator} onChange={(event) => updateFilter("creator", event.target.value)} /></FormField>}
                 {options.facets.map((facet) => <FormField label={facet.label} key={facet.key}>
                     <NativeSelect
+                        disabled={disabledFields.metadata}
                         options={facet.options}
                         value={value.metadata[facet.key] ?? ALL_QUESTION_FILTERS}
                         onChange={(event) => updateFilter("metadata", { ...value.metadata, [facet.key]: event.target.value })}
                     />
                 </FormField>)}
-                <FormField label="收藏清單"><NativeSelect options={options.collections} value={value.collection} onChange={(event) => updateFilter("collection", event.target.value)} /></FormField>
+                <FormField label="收藏清單"><NativeSelect disabled={disabledFields.collection} options={options.collections} value={value.collection} onChange={(event) => updateFilter("collection", event.target.value)} /></FormField>
                 <FormField className="question-filter-search-field" label="搜尋">
-                    <div className="question-search"><Search aria-hidden="true" /><Input aria-label="搜尋題目" value={value.search} placeholder="搜尋題目、編號或來源" onChange={(event) => updateFilter("search", event.target.value)} /></div>
+                    <div className="question-search"><Search aria-hidden="true" /><Input disabled={disabledFields.search} aria-label="搜尋題目" value={value.search} placeholder="搜尋題目、編號或來源" onChange={(event) => updateFilter("search", event.target.value)} /></div>
                 </FormField>
-            </div>
+                {children && <div className="question-filter-extra">{children}</div>}
+            </div>}
         </section>
     );
 }

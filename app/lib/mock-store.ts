@@ -1,8 +1,8 @@
 import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import fixture from "@/data/fixtures/database.json";
-import { ALL_UNITS, DEFAULT_ROLE_ACCESS, getUnitLabel, SUBJECTS } from "./demo-data";
-import type { AccountRole, AssessmentRange, ExamSetting, ImportBook, MockDatabase, PracticePlan, Question, QuestionCollection, QuestionMetadataField, RoleAccess, ScheduledPractice, StoredState, Subject } from "./demo-data";
+import { ALL_UNITS, DEFAULT_QUESTION_LIMIT_OPTIONS, DEFAULT_ROLE_ACCESS, getUnitLabel, SUBJECTS } from "./demo-data";
+import type { AccountRole, AssessmentRange, ExamSetting, ImportBook, Learner, MockDatabase, PracticePlan, Question, QuestionCollection, QuestionMetadataField, RoleAccess, ScheduledPractice, StoredState, Subject } from "./demo-data";
 import { normalizeQuestionText } from "./question-text";
 import { getQuestionSourceCategory } from "./question-filters";
 
@@ -18,9 +18,16 @@ let writeQueue: Promise<unknown> = Promise.resolve();
 type LegacySubject = Subject | "自然" | "社會";
 type LegacyRanges = Partial<Record<LegacySubject, AssessmentRange>>;
 
-type LegacyPracticePlan = Omit<PracticePlan, "examSettings" | "activeExamId"> & {
+type LegacyPracticePlan = Omit<PracticePlan, "examSettings" | "activeExamId" | "semester" | "topic" | "difficulty" | "creatorFilter" | "collection" | "search" | "difficultyMixEnabled"> & {
     examSettings?: ExamSetting[];
     activeExamId?: string;
+    semester?: string;
+    topic?: string;
+    difficulty?: string;
+    creatorFilter?: string;
+    collection?: string;
+    search?: string;
+    difficultyMixEnabled?: boolean;
     assessment?: string;
     assessmentRanges?: LegacyRanges;
     assessmentScope?: string;
@@ -32,7 +39,13 @@ type LegacyRoleAccess = Omit<RoleAccess, "learnerIdsByRole"> & {
     learnerIdsByRole?: Record<AccountRole, string[]>;
 };
 
-type LegacyStoredState = Omit<StoredState, "roleAccess" | "schedulesByLearner" | "importBooks" | "questionCollectionsByLearner"> & {
+type LegacyLearner = Omit<Learner, "questionLimitOptions" | "customSubjects"> & {
+    questionLimitOptions?: number[];
+    customSubjects?: string[];
+};
+
+type LegacyStoredState = Omit<StoredState, "learners" | "roleAccess" | "schedulesByLearner" | "importBooks" | "questionCollectionsByLearner"> & {
+    learners: LegacyLearner[];
     roleAccess?: LegacyRoleAccess;
     schedulesByLearner?: Record<string, ScheduledPractice[]>;
     importBooks?: ImportBook[];
@@ -73,7 +86,7 @@ function migrateScope(value: string, legacySubject: LegacySubject, subject: Subj
  * @param versions 舊版或目前的科目版本資料。
  * @returns 包含所有目前科目的版本資料。
  */
-function migrateBookVersions(versions: Partial<Record<LegacySubject, string>>) {
+function migrateBookVersions(versions: Partial<Record<LegacySubject, string>>, customSubjects: string[]) {
     const legacySubjects: Partial<Record<Subject, LegacySubject>> = {
         理化: "自然",
         生物: "自然",
@@ -81,10 +94,12 @@ function migrateBookVersions(versions: Partial<Record<LegacySubject, string>>) {
         地理: "社會",
         公民: "社會",
     };
-    return Object.fromEntries(SUBJECTS.map((subject) => [
+    const systemVersions = SUBJECTS.map((subject) => [
         subject,
         versions[subject] ?? versions[legacySubjects[subject] as LegacySubject] ?? "",
-    ])) as Record<Subject, string>;
+    ]);
+    const customVersions = customSubjects.map((subject) => [subject, versions[subject] ?? ""]);
+    return Object.fromEntries([...systemVersions, ...customVersions]) as Record<Subject, string>;
 }
 
 /**
@@ -112,6 +127,20 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
         .replace("自然::", "生物::")
         .replace("社會::", "地理::");
     const scope = scopeAliases.get(current.scope) ?? scopeAliases.get(subjectScope) ?? subjectScope;
+    const normalized = {
+        ...current,
+        subject,
+        scope,
+        creatorRole,
+        semester: plan.semester ?? "all",
+        topic: plan.topic ?? "all",
+        difficulty: plan.difficulty ?? "all",
+        creatorFilter: plan.creatorFilter ?? "all",
+        collection: plan.collection ?? "all",
+        search: plan.search ?? "",
+        difficultyMixEnabled: plan.difficultyMixEnabled ?? false,
+        metadataFilters: plan.metadataFilters ?? {},
+    };
     if (plan.examSettings?.length) {
         const activeExamId = plan.examSettings.some((exam) => exam.id === plan.activeExamId)
             ? plan.activeExamId as string
@@ -120,7 +149,7 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
             ...exam,
             ranges: migrateRanges(exam.ranges as LegacyRanges, scopeAliases),
         }));
-        return { ...current, subject, scope, creatorRole, metadataFilters: plan.metadataFilters ?? {}, examSettings, activeExamId };
+        return { ...normalized, examSettings, activeExamId };
     }
     const legacySubjects: LegacySubject[] = [...SUBJECTS, "自然", "社會"];
     const legacySubject = legacySubjects.find((candidate) => assessmentScope?.startsWith(`${candidate}::`));
@@ -134,7 +163,7 @@ function migratePlan(plan: LegacyPracticePlan, scopeAliases: Map<string, string>
         date: plan.examDate ?? "",
         ranges,
     }];
-    return { ...current, subject, scope, creatorRole, metadataFilters: plan.metadataFilters ?? {}, examSettings, activeExamId: examSettings[0].id };
+    return { ...normalized, examSettings, activeExamId: examSettings[0].id };
 }
 
 /** 將既有核心欄位轉成可動態篩選的來源欄位。 */
@@ -226,10 +255,33 @@ function migrateDatabase(database: MockDatabase) {
     const questionById = new Map(questions.map((question) => [question.id, question]));
     const plansByLearner = Object.fromEntries(Object.entries(state.plansByLearner)
         .map(([learnerId, plan]) => [learnerId, migratePlan(plan as LegacyPracticePlan, scopeAliases)]));
-    const learners = state.learners.map((learner) => ({
-        ...learner,
-        bookVersions: migrateBookVersions(learner.bookVersions as Partial<Record<LegacySubject, string>>),
-    }));
+    const learners = state.learners.map((learner) => {
+        const customSubjects = [...new Set((learner.customSubjects ?? [])
+            .map((subject) => subject.trim())
+            .filter((subject) => subject && subject.length <= 40))]
+            .slice(0, 20);
+        const defaultQuestionLimit = Number.isInteger(learner.defaultQuestionLimit)
+            && learner.defaultQuestionLimit >= 1
+            && learner.defaultQuestionLimit <= 500
+            ? learner.defaultQuestionLimit
+            : DEFAULT_QUESTION_LIMIT_OPTIONS[1];
+        const storedOptions = learner.questionLimitOptions?.length
+            ? learner.questionLimitOptions
+            : DEFAULT_QUESTION_LIMIT_OPTIONS;
+        const validOptions = [...new Set(storedOptions)]
+            .filter((limit) => Number.isInteger(limit) && limit >= 1 && limit <= 500)
+            .slice(0, 20);
+        const questionLimitOptions = validOptions.includes(defaultQuestionLimit)
+            ? validOptions
+            : [...validOptions.slice(0, 19), defaultQuestionLimit];
+        return {
+            ...learner,
+            defaultQuestionLimit,
+            bookVersions: migrateBookVersions(learner.bookVersions as Partial<Record<LegacySubject, string>>, customSubjects),
+            customSubjects,
+            questionLimitOptions,
+        };
+    });
     const learnerIds = learners.map((learner) => learner.id);
     const roles: AccountRole[] = ["家長", "學習者", "家教"];
     const roleAccess: RoleAccess = {
@@ -262,7 +314,7 @@ function migrateDatabase(database: MockDatabase) {
     ]));
     return {
         ...database,
-        version: Math.max(database.version, 14),
+        version: Math.max(database.version, 17),
         questions,
         imports: [...fixtureImports.filter((batch) => !importIds.has(batch.id)), ...database.imports],
         state: {
@@ -338,6 +390,7 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
     const learnerIds: string[] = [];
     for (const learner of learners) {
         const bookVersions = isRecord(learner) ? learner.bookVersions : null;
+        const customSubjects = isRecord(learner) ? learner.customSubjects : null;
         if (!isRecord(learner)
             || typeof learner.id !== "string" || !learner.id || learner.id.length > 80
             || typeof learner.name !== "string" || learner.name.length > 80
@@ -347,8 +400,15 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             || (learner.avatar !== undefined && (typeof learner.avatar !== "string" || learner.avatar.length > 1_500_000))
             || !Number.isInteger(learner.defaultQuestionLimit) || Number(learner.defaultQuestionLimit) < 1
             || Number(learner.defaultQuestionLimit) > 500
+            || !Array.isArray(learner.questionLimitOptions) || !learner.questionLimitOptions.length || learner.questionLimitOptions.length > 20
+            || new Set(learner.questionLimitOptions).size !== learner.questionLimitOptions.length
+            || !learner.questionLimitOptions.every((limit) => Number.isInteger(limit) && Number(limit) >= 1 && Number(limit) <= 500)
+            || !learner.questionLimitOptions.includes(learner.defaultQuestionLimit)
+            || !Array.isArray(customSubjects) || customSubjects.length > 20
+            || new Set(customSubjects).size !== customSubjects.length
+            || !customSubjects.every((subject) => typeof subject === "string" && subject.trim() === subject && subject.length > 0 && subject.length <= 40)
             || !isRecord(bookVersions)
-            || !SUBJECTS.every((subject) => typeof bookVersions[subject] === "string" && String(bookVersions[subject]).length <= 80)) return null;
+            || ![...SUBJECTS, ...customSubjects].every((subject) => typeof bookVersions[subject] === "string" && String(bookVersions[subject]).length <= 80)) return null;
         learnerIds.push(learner.id);
     }
 
@@ -417,6 +477,12 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
         if (typeof plan.creatorRole !== "string"
             || typeof plan.subject !== "string"
             || typeof plan.scope !== "string"
+            || typeof plan.semester !== "string"
+            || typeof plan.topic !== "string"
+            || typeof plan.difficulty !== "string"
+            || typeof plan.creatorFilter !== "string"
+            || typeof plan.collection !== "string"
+            || typeof plan.search !== "string" || plan.search.length > 240
             || (plan.bookVersion !== undefined && (typeof plan.bookVersion !== "string" || plan.bookVersion.length > 80))
             || !Array.isArray(examSettings) || !examSettings.length || examSettings.length > 20
             || typeof plan.activeExamId !== "string"
@@ -426,6 +492,7 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             || !["chapter", "assessment"].includes(String(plan.basis))
             || !isRecord(plan.difficultyMix)
             || ![plan.difficultyMix.easy, plan.difficultyMix.medium, plan.difficultyMix.hard].every((item) => typeof item === "number" && item >= 0 && item <= 100)
+            || typeof plan.difficultyMixEnabled !== "boolean"
             || !Array.isArray(plan.sourceFilters)
             || !plan.sourceFilters.every((item) => typeof item === "string" && item.length <= 240)
             || !["all", "choice", "boolean", "written", "multi-choice"].includes(String(plan.questionKind))
