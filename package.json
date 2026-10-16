@@ -32,7 +32,7 @@
     "test:import-preflight": "node --test tests/hanlin-import-guardrails.test.mjs",
     "test:import-ownership": "node --test tests/hanlin-import-ownership.test.mjs tests/hanlin-import-ownership.integration.test.mjs",
     "test:auth": "node --no-warnings --experimental-strip-types --test tests/auth-core.test.ts",
-    "test:admin": "node --no-warnings --experimental-strip-types --test tests/admin-input.test.ts tests/admin-reporting.test.ts tests/admin-repository.test.ts tests/admin-http.test.ts tests/admin-view-model.test.ts tests/admin-asset-repository.test.ts tests/admin-asset-handler.test.ts tests/admin-report-repository.test.ts tests/admin-report-view.test.ts tests/admin-mutation-security.test.ts tests/admin-mutation-handler.test.ts tests/postgres-read-transaction.test.ts",
+    "test:admin": "node --no-warnings --experimental-strip-types --test tests/admin-input.test.ts tests/admin-reporting.test.ts tests/admin-repository.test.ts tests/admin-http.test.ts tests/admin-view-model.test.ts tests/admin-asset-repository.test.ts tests/admin-asset-handler.test.ts tests/admin-report-repository.test.ts tests/admin-report-view.test.ts tests/admin-mutation-security.test.ts tests/admin-mutation-handler.test.ts tests/admin-question-mutation.test.ts tests/postgres-read-transaction.test.ts",
     "test:mail": "node --no-warnings --experimental-strip-types --test tests/mail-service.test.mjs",
     "test:local-backup": "node --test tests/local-data-backup.test.mjs",
     "test:local-practice": "node scripts/verify-local-practice.mjs",
