@@ -3,14 +3,15 @@ import test from "node:test";
 
 import {
     ADMIN_DEFAULT_PAGE_SIZE,
+    ADMIN_DEFAULT_REVISION_PAGE_SIZE,
     ADMIN_MAX_PAGE,
     ADMIN_MAX_PAGE_SIZE,
     parseAccountListQuery,
     parseAccountStatusTransitionInput,
     parseAuditListQuery,
     parseDateOnly,
-    parseIdempotencyKey,
     parseQuestionDraftInput,
+    parseQuestionDetailQuery,
     parseQuestionListQuery,
     parseQuestionRevisionMutationInput,
     parseSubscriptionFeatureLimitInput,
@@ -28,7 +29,11 @@ const QUESTION_ID = "22222222-2222-4222-8222-222222222222";
 const REVISION_ID = "33333333-3333-4333-8333-333333333333";
 const DRAFT_ID = "44444444-4444-4444-8444-444444444444";
 const PLAN_ID = "55555555-5555-4555-8555-555555555555";
-const IDEMPOTENCY_KEY = "admin-request-0001";
+const IDEMPOTENCY_KEY = "0199ef00-1234-7abc-8abc-0123456789ab";
+const MUTATION_EVIDENCE = {
+    requestId: REQUEST_ID,
+    idempotencyKey: IDEMPOTENCY_KEY,
+};
 
 function assertAdminError(
     action: () => unknown,
@@ -118,11 +123,25 @@ test("parses question and audit filters without producing SQL fragments", () => 
     const questions = parseQuestionListQuery({
         status: "published,archived",
         origin: "system",
+        revisionStatus: "published,superseded",
+        reviewStatus: "approved,changes_requested",
+        bankId: PLAN_ID,
+        subjectId: QUESTION_ID,
+        gradeId: REVISION_ID,
+        semesterId: DRAFT_ID,
+        bookVersionId: REQUEST_ID,
+        publisherId: PLAN_ID,
+        sourceCategoryId: QUESTION_ID,
+        difficultyId: REVISION_ID,
         createdFrom: "2024-02-29",
         sort: "revisionNumber",
     });
     assert.deepEqual(questions.statuses, ["published", "archived"]);
     assert.deepEqual(questions.origins, ["system"]);
+    assert.deepEqual(questions.revisionStatuses, ["published", "superseded"]);
+    assert.deepEqual(questions.reviewStatuses, ["approved", "changes_requested"]);
+    assert.equal(questions.bankId, PLAN_ID);
+    assert.equal(questions.publisherId, PLAN_ID);
     assert.deepEqual(questions.orderBy, [
         { field: "revisionNumber", direction: "desc" },
         { field: "id", direction: "desc" },
@@ -142,6 +161,38 @@ test("parses question and audit filters without producing SQL fragments", () => 
         () => parseAuditListQuery({ action: "valid,drop table audit" }),
         "INVALID_QUERY",
     );
+    assertAdminError(
+        () => parseQuestionListQuery({ revisionStatus: "published;drop table questions" }),
+        "INVALID_QUERY",
+    );
+    assertAdminError(
+        () => parseQuestionListQuery({ bankId: "not-a-uuid" }),
+        "INVALID_QUERY",
+    );
+});
+
+test("parses bounded question revision history and selected revision", () => {
+    const detail = parseQuestionDetailQuery({
+        revision: REVISION_ID.toUpperCase(),
+        revisionPage: "3",
+        revisionPageSize: "20",
+    });
+    assert.deepEqual(detail, {
+        selectedRevisionId: REVISION_ID,
+        revisionPage: 3,
+        revisionPageSize: 20,
+        revisionOffset: 40,
+        revisionLimit: 20,
+    });
+    assert.equal(parseQuestionDetailQuery({}).revisionPageSize, ADMIN_DEFAULT_REVISION_PAGE_SIZE);
+    assertAdminError(
+        () => parseQuestionDetailQuery({ revisionPageSize: "26" }),
+        "INVALID_QUERY",
+    );
+    assertAdminError(
+        () => parseQuestionDetailQuery(new URLSearchParams("revisionPage=1&revisionPage=2")),
+        "INVALID_QUERY",
+    );
 });
 
 test("validates calendar dates and rejects reversed query ranges", () => {
@@ -155,15 +206,47 @@ test("validates calendar dates and rejects reversed query ranges", () => {
     );
 });
 
-test("validates canonical UUIDs and opaque idempotency keys", () => {
+test("validates canonical UUIDs", () => {
     assert.equal(parseUuid(REQUEST_ID.toUpperCase()), REQUEST_ID);
-    assert.equal(parseIdempotencyKey(IDEMPOTENCY_KEY), IDEMPOTENCY_KEY);
 
     for (const value of [null, "1111", `${REQUEST_ID} OR TRUE`]) {
         assertAdminError(() => parseUuid(value), "INVALID_UUID");
     }
-    for (const value of [null, "too-short", "spaces are forbidden", "a".repeat(129)]) {
-        assertAdminError(() => parseIdempotencyKey(value), "INVALID_IDEMPOTENCY_KEY");
+});
+
+test("rejects invalid, uppercase and non-v4-v7 mutation evidence", () => {
+    const body = {
+        expectedCurrentStatus: "active",
+        targetStatus: "suspended",
+        reason: "人工檢查期間暫停",
+    };
+    for (const requestId of [
+        "not-a-uuid",
+        "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+        "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
+    ]) {
+        assertAdminError(
+            () => parseAccountStatusTransitionInput(body, {
+                ...MUTATION_EVIDENCE,
+                requestId,
+            }),
+            "INVALID_INPUT",
+            422,
+        );
+    }
+    for (const idempotencyKey of [
+        "not-a-uuid",
+        IDEMPOTENCY_KEY.toUpperCase(),
+        "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
+    ]) {
+        assertAdminError(
+            () => parseAccountStatusTransitionInput(body, {
+                ...MUTATION_EVIDENCE,
+                idempotencyKey,
+            }),
+            "INVALID_IDEMPOTENCY_KEY",
+            422,
+        );
     }
 });
 
@@ -173,9 +256,7 @@ test("allows only explicit active and suspended account transitions with evidenc
             expectedCurrentStatus: "active",
             targetStatus: "suspended",
             reason: "  重複登入異常，暫時停用  ",
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         {
             expectedCurrentStatus: "active",
             targetStatus: "suspended",
@@ -190,9 +271,7 @@ test("allows only explicit active and suspended account transitions with evidenc
             expectedCurrentStatus: "closed",
             targetStatus: "active",
             reason: "嘗試重新開啟帳號",
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         "INVALID_STATUS_TRANSITION",
     );
     assertAdminError(
@@ -200,9 +279,7 @@ test("allows only explicit active and suspended account transitions with evidenc
             expectedCurrentStatus: "active",
             targetStatus: "active",
             reason: "重複送出相同狀態",
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         "INVALID_STATUS_TRANSITION",
         409,
     );
@@ -213,8 +290,6 @@ test("rejects attempts to submit admin grants, verification or trusted actors", 
         expectedCurrentStatus: "active",
         targetStatus: "suspended",
         reason: "人工檢查期間暫停",
-        requestId: REQUEST_ID,
-        idempotencyKey: IDEMPOTENCY_KEY,
     };
     for (const forbidden of [
         { isSystemAdmin: true },
@@ -223,8 +298,95 @@ test("rejects attempts to submit admin grants, verification or trusted actors", 
         { actorUserId: REQUEST_ID },
     ]) {
         assertAdminError(
-            () => parseAccountStatusTransitionInput({ ...base, ...forbidden }),
+            () => parseAccountStatusTransitionInput(
+                { ...base, ...forbidden },
+                MUTATION_EVIDENCE,
+            ),
             "INVALID_STATUS_TRANSITION",
+        );
+    }
+});
+
+test("every mutation parser rejects request evidence supplied in the body", () => {
+    const cases: ReadonlyArray<{
+        errorCode: string;
+        parse: (extra: Record<string, string>) => unknown;
+    }> = [
+        {
+            errorCode: "INVALID_STATUS_TRANSITION",
+            parse: (extra) => parseAccountStatusTransitionInput({
+                expectedCurrentStatus: "active",
+                targetStatus: "suspended",
+                reason: "人工檢查期間暫停",
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+        {
+            errorCode: "INVALID_SUBSCRIPTION_PLAN",
+            parse: (extra) => parseSubscriptionPlanInput({
+                code: "family_plus",
+                name: "家庭進階方案",
+                description: null,
+                status: "draft",
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+        {
+            errorCode: "INVALID_SUBSCRIPTION_PRICE",
+            parse: (extra) => parseSubscriptionPriceInput({
+                planId: PLAN_ID,
+                currency: "TWD",
+                amountMinor: 29900,
+                billingInterval: "month",
+                billingIntervalCount: 1,
+                status: "draft",
+                effectiveFrom: null,
+                effectiveUntil: null,
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+        {
+            errorCode: "INVALID_FEATURE_LIMIT",
+            parse: (extra) => parseSubscriptionFeatureLimitInput({
+                planId: PLAN_ID,
+                featureKey: "learners_per_account",
+                included: true,
+                unlimited: false,
+                limit: 3,
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+        {
+            errorCode: "INVALID_QUESTION_REVISION",
+            parse: (extra) => parseQuestionDraftInput({
+                questionId: QUESTION_ID,
+                baseRevisionId: REVISION_ID,
+                baseRevisionNumber: 3,
+                changeNote: "修正題目內容與答案",
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+        {
+            errorCode: "INVALID_QUESTION_REVISION",
+            parse: (extra) => parseQuestionRevisionMutationInput({
+                questionId: QUESTION_ID,
+                draftRevisionId: DRAFT_ID,
+                expectedCurrentRevisionId: REVISION_ID,
+                expectedCurrentRevisionNumber: 3,
+                changeNote: "補齊來源與答案說明",
+                ...extra,
+            }, MUTATION_EVIDENCE),
+        },
+    ];
+
+    for (const { errorCode, parse } of cases) {
+        assertAdminError(
+            () => parse({ requestId: REQUEST_ID }),
+            errorCode,
+        );
+        assertAdminError(
+            () => parse({ idempotencyKey: IDEMPOTENCY_KEY }),
+            errorCode,
         );
     }
 });
@@ -236,9 +398,7 @@ test("parses catalog-only subscription plans and rejects payment-provider fields
             name: " 家庭進階方案 ",
             description: "最多三位學習者",
             status: "draft",
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         {
             code: "family_plus",
             name: "家庭進階方案",
@@ -259,10 +419,8 @@ test("parses catalog-only subscription plans and rejects payment-provider fields
                 name: "家庭方案",
                 description: null,
                 status: "draft",
-                requestId: REQUEST_ID,
-                idempotencyKey: IDEMPOTENCY_KEY,
                 ...input,
-            }),
+            }, MUTATION_EVIDENCE),
             "INVALID_SUBSCRIPTION_PLAN",
         );
     }
@@ -279,9 +437,7 @@ test("validates ISO uppercase currencies, integer minor units and price periods"
             status: "draft",
             effectiveFrom: "2026-11-01",
             effectiveUntil: null,
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         {
             planId: PLAN_ID,
             currency: "TWD",
@@ -307,9 +463,7 @@ test("validates ISO uppercase currencies, integer minor units and price periods"
                 status: "draft",
                 effectiveFrom: null,
                 effectiveUntil: null,
-                requestId: REQUEST_ID,
-                idempotencyKey: IDEMPOTENCY_KEY,
-            }).currency,
+            }, MUTATION_EVIDENCE).currency,
             currency,
         );
     }
@@ -323,8 +477,6 @@ test("validates ISO uppercase currencies, integer minor units and price periods"
         status: "draft",
         effectiveFrom: null,
         effectiveUntil: null,
-        requestId: REQUEST_ID,
-        idempotencyKey: IDEMPOTENCY_KEY,
     };
     for (const invalid of [
         { currency: "twd" },
@@ -340,14 +492,16 @@ test("validates ISO uppercase currencies, integer minor units and price periods"
         { amount: 299.0 },
     ]) {
         assertAdminError(
-            () => parseSubscriptionPriceInput({ ...base, ...invalid }),
+            () => parseSubscriptionPriceInput(
+                { ...base, ...invalid },
+                MUTATION_EVIDENCE,
+            ),
             "INVALID_SUBSCRIPTION_PRICE",
         );
     }
 });
 
 test("requires coherent included, finite and unlimited feature limits", () => {
-    const evidence = { requestId: REQUEST_ID, idempotencyKey: IDEMPOTENCY_KEY };
     assert.deepEqual(
         parseSubscriptionFeatureLimitInput({
             planId: PLAN_ID,
@@ -355,15 +509,14 @@ test("requires coherent included, finite and unlimited feature limits", () => {
             included: true,
             unlimited: false,
             limit: 3,
-            ...evidence,
-        }),
+        }, MUTATION_EVIDENCE),
         {
             planId: PLAN_ID,
             featureKey: "learners_per_account",
             included: true,
             unlimited: false,
             limit: 3,
-            ...evidence,
+            ...MUTATION_EVIDENCE,
         },
     );
     assert.deepEqual(
@@ -373,8 +526,7 @@ test("requires coherent included, finite and unlimited feature limits", () => {
             included: true,
             unlimited: true,
             limit: null,
-            ...evidence,
-        }).limit,
+        }, MUTATION_EVIDENCE).limit,
         null,
     );
 
@@ -390,8 +542,7 @@ test("requires coherent included, finite and unlimited feature limits", () => {
                 planId: PLAN_ID,
                 featureKey: "practice_sessions",
                 ...invalid,
-                ...evidence,
-            }),
+            }, MUTATION_EVIDENCE),
             "INVALID_FEATURE_LIMIT",
         );
     }
@@ -404,9 +555,7 @@ test("requires immutable base revision evidence and a meaningful change note", (
             baseRevisionId: REVISION_ID,
             baseRevisionNumber: 3,
             changeNote: "修正標準答案與解析",
-            requestId: REQUEST_ID,
-            idempotencyKey: IDEMPOTENCY_KEY,
-        }),
+        }, MUTATION_EVIDENCE),
         {
             questionId: QUESTION_ID,
             baseRevisionId: REVISION_ID,
@@ -423,9 +572,7 @@ test("requires immutable base revision evidence and a meaningful change note", (
         expectedCurrentRevisionId: REVISION_ID,
         expectedCurrentRevisionNumber: 3,
         changeNote: "補齊來源與答案說明",
-        requestId: REQUEST_ID,
-        idempotencyKey: IDEMPOTENCY_KEY,
-    });
+    }, MUTATION_EVIDENCE);
     assert.equal(mutation.expectedCurrentRevisionId, REVISION_ID);
     assert.equal(mutation.expectedCurrentRevisionNumber, 3);
 
@@ -434,8 +581,6 @@ test("requires immutable base revision evidence and a meaningful change note", (
         baseRevisionId: REVISION_ID,
         baseRevisionNumber: 3,
         changeNote: "修正題目內容與答案",
-        requestId: REQUEST_ID,
-        idempotencyKey: IDEMPOTENCY_KEY,
     };
     for (const invalid of [
         { baseRevisionNumber: 0 },
@@ -446,7 +591,10 @@ test("requires immutable base revision evidence and a meaningful change note", (
         { origin: "system" },
     ]) {
         assertAdminError(
-            () => parseQuestionDraftInput({ ...base, ...invalid }),
+            () => parseQuestionDraftInput(
+                { ...base, ...invalid },
+                MUTATION_EVIDENCE,
+            ),
             "INVALID_QUESTION_REVISION",
         );
     }

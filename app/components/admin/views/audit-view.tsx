@@ -51,6 +51,19 @@ export function AuditView({
     rows,
     pagination,
 }: AuditViewProps) {
+    const hasActiveFilters =
+        Boolean(filters.search?.value.trim()) ||
+        Boolean(filters.selects?.some((select) => select.value.trim()));
+    const emptyState = hasActiveFilters
+        ? {
+              title: "找不到符合條件的稽核紀錄",
+              description: "請調整日期、操作類型或搜尋條件。",
+          }
+        : {
+              title: "尚無稽核紀錄",
+              description: "管理操作產生稽核紀錄後，會顯示在這裡。",
+          };
+
     return (
         <AdminPage
             title="稽核紀錄"
@@ -93,8 +106,8 @@ export function AuditView({
                         ) : rows.length === 0 ? (
                             <AdminTableEmptyState
                                 colSpan={7}
-                                title="找不到符合條件的稽核紀錄"
-                                description="請調整日期、操作類型或搜尋條件。"
+                                title={emptyState.title}
+                                description={emptyState.description}
                             />
                         ) : (
                             rows.map((entry) => (
@@ -154,8 +167,8 @@ export function AuditView({
                     ) : rows.length === 0 ? (
                         <MobileListState
                             kind="empty"
-                            title="找不到符合條件的稽核紀錄"
-                            description="請調整日期、操作類型或搜尋條件。"
+                            title={emptyState.title}
+                            description={emptyState.description}
                         />
                     ) : (
                         <>

@@ -26,6 +26,11 @@ function validBarPercent(value: number | null): number | null {
 function ReportSeries({ series }: { series: ReportSeriesDto }) {
     return (
         <ViewSection title={series.title} description={series.description}>
+            {series.summary ? (
+                <div className={styles.reportSeriesSummary}>
+                    <ViewMetricGrid metrics={[series.summary]} />
+                </div>
+            ) : null}
             {series.rows.length === 0 ? (
                 <AdminNotice tone="muted">無資料</AdminNotice>
             ) : (
@@ -96,8 +101,16 @@ export function ReportsView({
     filters,
     periodLabel,
     timeZone,
+    startLocalDate,
+    endLocalDate,
+    generatedAt,
+    granularityLabel,
+    privacyPolicyNotice,
     registrationTrend,
+    accountStatusDistribution,
+    activeRoleDistribution,
     gradeDistribution,
+    region,
     activity,
     completion,
     questionQuality,
@@ -112,8 +125,19 @@ export function ReportsView({
                 <ViewFilters filters={filters} />
 
                 <AdminNotice title={`統計期間：${periodLabel}`} tone="info">
-                    時區：{timeZone}。日期範圍包含開始日，並以下一日零時作為不包含的查詢上界。
+                    時區：{timeZone}；實際日期：{startLocalDate} 至 {endLocalDate}；
+                    趨勢粒度：{granularityLabel}。日期範圍包含開始日，並以下一日零時作為不包含的查詢上界。
+                    資料產生時間：{generatedAt ?? "尚未產生"}。
                 </AdminNotice>
+
+                {privacyPolicyNotice ? (
+                    <AdminNotice
+                        title={privacyPolicyNotice.title}
+                        tone={privacyPolicyNotice.tone}
+                    >
+                        {privacyPolicyNotice.message}
+                    </AdminNotice>
+                ) : null}
 
                 <ViewLoadNotice state={state} />
 
@@ -124,12 +148,17 @@ export function ReportsView({
                             <ReportSeries series={gradeDistribution} />
                         </div>
 
+                        <div className={styles.twoColumnGrid}>
+                            <ReportSeries series={accountStatusDistribution} />
+                            <ReportSeries series={activeRoleDistribution} />
+                        </div>
+
                         <ViewSection
                             title="學習者地區分布"
                             description="目前資料模型沒有可用的地區欄位，且不從學校名稱推測。"
                         >
                             <AdminNotice title="無資料（尚未蒐集）" tone="muted">
-                                若未來需要地區統計，須先完成蒐集目的、欄位定義、隱私規則與資料保存政策。
+                                {region.reason}
                             </AdminNotice>
                         </ViewSection>
 

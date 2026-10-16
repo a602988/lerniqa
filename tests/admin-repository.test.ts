@@ -24,6 +24,7 @@ import {
 import { AdminApiError } from "../app/lib/admin/admin-types.ts";
 import {
     getQuestionDetail,
+    listQuestionFilterOptions,
     listQuestions,
 } from "../app/lib/admin/question-repository.ts";
 
@@ -292,6 +293,14 @@ test("question list has deterministic sorting and marks account-owned questions 
         difficulty_name: "中等",
         revision_count: 2,
         source_count: 1,
+        bank_memberships: [
+            {
+                id: SESSION_ID,
+                name: "王家題庫",
+                origin: "account",
+                status: "active",
+            },
+        ],
         total_count: 1,
     }]);
     const query = parseQuestionListQuery({
@@ -303,6 +312,7 @@ test("question list has deterministic sorting and marks account-owned questions 
     const page = await listQuestions(runner, query);
     assert.equal(page.items[0]?.readOnly, true);
     assert.equal(page.items[0]?.currentRevision?.promptPreview, "解下列一元一次方程式");
+    assert.equal(page.items[0]?.banks[0]?.name, "王家題庫");
     assert.doesNotMatch(JSON.stringify(page), /不可當作預覽的索引內容/u);
     assert.match(page.items[0]?.readOnlyReason ?? "", /不跨帳號改寫/u);
     const call = runner.calls[0];
@@ -310,6 +320,66 @@ test("question list has deterministic sorting and marks account-owned questions 
     assert.match(call.text, /page_row\.sort_revision_number DESC, page_row\.id DESC/iu);
     assert.doesNotMatch(call.text, /方程式/u);
     assert.deepEqual(call.values, ["方程式", ["account"], 25, 0]);
+});
+
+test("question list applies only parameterized catalog, bank, revision and review filters", async () => {
+    const runner = new FakeRunner(() => []);
+    const query = parseQuestionListQuery({
+        revisionStatus: "published",
+        reviewStatus: "approved",
+        bankId: SESSION_ID,
+        subjectId: LEARNER_ID,
+        gradeId: USER_ID,
+        semesterId: PART_ID,
+        bookVersionId: OPTION_ID,
+        publisherId: REVISION_ID,
+        sourceCategoryId: QUESTION_ID,
+        difficultyId: SESSION_ID,
+    });
+    await listQuestions(runner, query);
+    const call = runner.calls[0];
+    assert.ok(call);
+    assert.match(call.text, /question_bank_items AS filtered_bank_item/iu);
+    assert.match(
+        call.text,
+        /SELECT filtered_review\.decision[\s\S]*ORDER BY filtered_review\.created_at DESC, filtered_review\.id DESC[\s\S]*LIMIT 1[\s\S]*\) = ANY/iu,
+    );
+    assert.doesNotMatch(
+        call.text,
+        /WHERE filtered_review\.question_revision_id = revision\.id\s+AND filtered_review\.decision = ANY/iu,
+    );
+    assert.match(call.text, /revision\.subject_id = \$4::uuid/iu);
+    assert.match(call.text, /filtered_book\.publisher_id = \$10::uuid/iu);
+    assert.doesNotMatch(call.text, new RegExp(REVISION_ID, "iu"));
+    assert.deepEqual(call.values, [
+        ["published"],
+        ["approved"],
+        SESSION_ID,
+        LEARNER_ID,
+        USER_ID,
+        PART_ID,
+        OPTION_ID,
+        QUESTION_ID,
+        SESSION_ID,
+        REVISION_ID,
+        25,
+        0,
+    ]);
+});
+
+test("question filter catalog exposes labels and IDs without inventing parallel data", async () => {
+    const runner = new FakeRunner(() => [
+        { kind: "banks", id: SESSION_ID, label: "系統題庫" },
+        { kind: "subjects", id: LEARNER_ID, label: "數學 (math)" },
+        { kind: "difficulties", id: REVISION_ID, label: "中等 (medium)" },
+    ]);
+    const options = await listQuestionFilterOptions(runner);
+    assert.deepEqual(options.banks, [{ id: SESSION_ID, label: "系統題庫" }]);
+    assert.deepEqual(options.subjects, [{ id: LEARNER_ID, label: "數學 (math)" }]);
+    assert.deepEqual(options.difficulties, [{ id: REVISION_ID, label: "中等 (medium)" }]);
+    assert.deepEqual(options.publishers, []);
+    assert.match(runner.calls[0]?.text ?? "", /FROM question_banks AS bank/iu);
+    assert.doesNotMatch(runner.calls[0]?.text ?? "", /owner_user_id|storage_key/iu);
 });
 
 test("question detail assembles revision children while omitting storage and import payloads", async () => {
@@ -335,6 +405,9 @@ test("question detail assembles revision children while omitting storage and imp
             book_version_name: null,
             source_document_id: null,
         }];
+        if (/SELECT count\(\*\) AS total_count\s+FROM question_revisions/iu.test(text)) {
+            return [{ total_count: 1 }];
+        }
         if (/FROM question_revisions AS revision/iu.test(text)) return [{
             id: REVISION_ID,
             revision_number: 1,
@@ -441,18 +514,58 @@ test("question detail assembles revision children while omitting storage and imp
     });
 
     const detail = await getQuestionDetail(runner, QUESTION_ID);
-    const revision = detail.revisions[0];
+    const revision = detail.displayRevision;
     assert.equal(revision?.parts[0]?.options[0]?.key, "A");
     assert.equal(revision?.parts[0]?.answers[0]?.answerKey, "A");
     assert.equal(revision?.sources[0]?.documentTitle, "題庫");
     assert.equal(revision?.reviews[0]?.decision, "approved");
+    assert.equal(detail.revisionHistory.total, 1);
+    assert.equal(detail.revisionHistory.pageSize, 10);
     assert.equal(detail.readOnly, false);
     const serialized = JSON.stringify(detail);
     assert.doesNotMatch(serialized, /must-not-leak/u);
     assert.doesNotMatch(serialized, /storage_key|draft_payload|pasted_text/iu);
-    for (const call of runner.calls.slice(3)) {
+    const historyCall = runner.calls.find((call) =>
+        /admin_question_revision_history/iu.test(call.text));
+    assert.deepEqual(historyCall?.values, [QUESTION_ID, 10, 0]);
+    const displayCall = runner.calls.find((call) =>
+        /admin_question_display_revision/iu.test(call.text));
+    assert.deepEqual(displayCall?.values, [QUESTION_ID, REVISION_ID]);
+    for (const call of runner.calls.filter((candidate) => /ANY\(\$1::uuid\[\]\)/u.test(candidate.text))) {
         assert.deepEqual(call.values, [[REVISION_ID]]);
     }
+});
+
+test("question list preserves a missing current revision instead of inventing version zero", async () => {
+    const runner = new FakeRunner(() => [{
+        id: QUESTION_ID,
+        origin: "system",
+        status: "draft",
+        created_method: "manual",
+        owner_user_id: null,
+        owner_display_name: null,
+        created_at: "2026-10-01T00:00:00Z",
+        current_revision_id: null,
+        current_revision_number: null,
+        current_revision_status: null,
+        prompt_preview: null,
+        published_at: null,
+        question_type_code: null,
+        question_type_name: null,
+        subject_code: null,
+        subject_name: null,
+        grade_code: null,
+        grade_name: null,
+        difficulty_code: null,
+        difficulty_name: null,
+        revision_count: 0,
+        source_count: 0,
+        bank_memberships: [],
+        total_count: 1,
+    }]);
+    const page = await listQuestions(runner, parseQuestionListQuery({}));
+    assert.equal(page.items[0]?.currentRevision, null);
+    assert.equal(JSON.stringify(page).includes('"number":0'), false);
 });
 
 test("audit repository applies action-specific JSON allowlists", async () => {

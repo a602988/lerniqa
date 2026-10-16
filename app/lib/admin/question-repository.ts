@@ -3,13 +3,20 @@ import type { QueryResultRow } from "pg";
 import type { AdminQueryRunner } from "./admin-auth.ts";
 import {
     AdminApiError,
+    type QuestionDetailQuery,
     type QuestionListQuery,
     type QuestionOrigin,
+    type QuestionRevisionStatus,
     type QuestionSortField,
     type QuestionStatus,
 } from "./admin-types.ts";
 
-type RevisionStatus = "draft" | "published" | "superseded" | "rejected";
+export interface AdminQuestionBankMembership {
+    id: string;
+    name: string;
+    origin: QuestionOrigin;
+    status: "active" | "archived";
+}
 
 export interface AdminQuestionListItem {
     id: string;
@@ -20,7 +27,7 @@ export interface AdminQuestionListItem {
     currentRevision: {
         id: string;
         number: number;
-        status: RevisionStatus;
+        status: QuestionRevisionStatus;
         promptPreview: string | null;
         questionType: { code: string; name: string };
         subject: { code: string; name: string } | null;
@@ -30,6 +37,7 @@ export interface AdminQuestionListItem {
     } | null;
     revisionCount: number;
     sourceCount: number;
+    banks: AdminQuestionBankMembership[];
     createdAt: string;
     readOnly: boolean;
     readOnlyReason: string | null;
@@ -52,10 +60,10 @@ export interface AdminQuestionPart {
     }>;
 }
 
-export interface AdminQuestionRevision {
+export interface AdminQuestionRevisionSummary {
     id: string;
     number: number;
-    status: RevisionStatus;
+    status: QuestionRevisionStatus;
     originalQuestionTypeLabel: string | null;
     searchText: string;
     changeNote: string | null;
@@ -70,6 +78,9 @@ export interface AdminQuestionRevision {
     createdBy: { type: string; userId: string | null; displayName: string | null };
     createdAt: string;
     publishedAt: string | null;
+}
+
+export interface AdminQuestionRevision extends AdminQuestionRevisionSummary {
     parts: AdminQuestionPart[];
     contentBlocks: Array<{
         id: string;
@@ -135,7 +146,30 @@ export interface AdminQuestionDetail {
         bookVersionName: string | null;
         sourceDocumentId: string | null;
     }>;
-    revisions: AdminQuestionRevision[];
+    selectedRevisionId: string | null;
+    displayRevision: AdminQuestionRevision | null;
+    revisionHistory: {
+        items: AdminQuestionRevisionSummary[];
+        total: number;
+        page: number;
+        pageSize: number;
+    };
+}
+
+export interface AdminQuestionFilterOption {
+    id: string;
+    label: string;
+}
+
+export interface AdminQuestionFilterOptions {
+    banks: AdminQuestionFilterOption[];
+    subjects: AdminQuestionFilterOption[];
+    grades: AdminQuestionFilterOption[];
+    semesters: AdminQuestionFilterOption[];
+    bookVersions: AdminQuestionFilterOption[];
+    publishers: AdminQuestionFilterOption[];
+    sourceCategories: AdminQuestionFilterOption[];
+    difficulties: AdminQuestionFilterOption[];
 }
 
 export interface AdminQuestionPage {
@@ -155,7 +189,7 @@ interface QuestionListRow extends QueryResultRow {
     created_at: Date | string | null;
     current_revision_id: string | null;
     current_revision_number: number | null;
-    current_revision_status: RevisionStatus | null;
+    current_revision_status: QuestionRevisionStatus | null;
     prompt_preview: string | null;
     published_at: Date | string | null;
     question_type_code: string | null;
@@ -168,6 +202,7 @@ interface QuestionListRow extends QueryResultRow {
     difficulty_name: string | null;
     revision_count: number | string | null;
     source_count: number | string | null;
+    bank_memberships: unknown;
     total_count: number | string;
 }
 
@@ -197,7 +232,7 @@ interface IdentifierRow extends QueryResultRow {
 interface RevisionRow extends QueryResultRow {
     id: string;
     revision_number: number;
-    status: RevisionStatus;
+    status: QuestionRevisionStatus;
     original_question_type_label: string | null;
     search_text: string;
     change_note: string | null;
@@ -229,6 +264,16 @@ interface RevisionRow extends QueryResultRow {
     creator_display_name: string | null;
     created_at: Date | string;
     published_at: Date | string | null;
+}
+
+interface RevisionCountRow extends QueryResultRow {
+    total_count: number | string;
+}
+
+interface FilterOptionRow extends QueryResultRow {
+    kind: keyof AdminQuestionFilterOptions;
+    id: string;
+    label: string;
 }
 
 interface PartRow extends QueryResultRow {
@@ -393,6 +438,54 @@ function buildQuestionFilters(query: QuestionListQuery): { sql: string; values: 
     if (query.origins.length > 0) {
         clauses.push(`question.origin = ANY(${bind(query.origins)}::varchar[])`);
     }
+    if (query.revisionStatuses.length > 0) {
+        clauses.push(`revision.status = ANY(${bind(query.revisionStatuses)}::varchar[])`);
+    }
+    if (query.reviewStatuses.length > 0) {
+        clauses.push(`(
+            SELECT filtered_review.decision
+            FROM question_revision_reviews AS filtered_review
+            WHERE filtered_review.question_revision_id = revision.id
+            ORDER BY filtered_review.created_at DESC, filtered_review.id DESC
+            LIMIT 1
+        ) = ANY(${bind(query.reviewStatuses)}::varchar[])`);
+    }
+    if (query.bankId) {
+        clauses.push(`EXISTS (
+            SELECT 1
+            FROM question_bank_items AS filtered_bank_item
+            WHERE filtered_bank_item.question_id = question.id
+                AND filtered_bank_item.question_bank_id = ${bind(query.bankId)}::uuid
+        )`);
+    }
+    const directRevisionFilters = [
+        ["subject_id", query.subjectId],
+        ["grade_id", query.gradeId],
+        ["semester_id", query.semesterId],
+        ["book_version_id", query.bookVersionId],
+        ["source_category_id", query.sourceCategoryId],
+        ["difficulty_level_id", query.difficultyId],
+    ] as const;
+    for (const [column, value] of directRevisionFilters) {
+        if (value) clauses.push(`revision.${column} = ${bind(value)}::uuid`);
+    }
+    if (query.publisherId) {
+        const parameter = bind(query.publisherId);
+        clauses.push(`(
+            EXISTS (
+                SELECT 1
+                FROM book_versions AS filtered_book
+                WHERE filtered_book.id = revision.book_version_id
+                    AND filtered_book.publisher_id = ${parameter}::uuid
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM question_identifiers AS filtered_identifier
+                WHERE filtered_identifier.question_id = question.id
+                    AND filtered_identifier.publisher_id = ${parameter}::uuid
+            )
+        )`);
+    }
     if (query.created.from) {
         clauses.push(`question.created_at >= (${bind(query.created.from)}::date::timestamp AT TIME ZONE 'Asia/Taipei')`);
     }
@@ -405,32 +498,66 @@ function buildQuestionFilters(query: QuestionListQuery): { sql: string; values: 
     };
 }
 
+function mapBankMemberships(value: unknown): AdminQuestionBankMembership[] {
+    if (!Array.isArray(value)) return [];
+    const memberships: AdminQuestionBankMembership[] = [];
+    for (const entry of value) {
+        if (!entry || typeof entry !== "object") continue;
+        const candidate = entry as Record<string, unknown>;
+        if (
+            typeof candidate.id !== "string"
+            || typeof candidate.name !== "string"
+            || (candidate.origin !== "system" && candidate.origin !== "account")
+            || (candidate.status !== "active" && candidate.status !== "archived")
+        ) {
+            throw new AdminApiError("INTERNAL_ERROR", "題庫歸屬資料格式不正確。", 500);
+        }
+        memberships.push({
+            id: candidate.id,
+            name: candidate.name,
+            origin: candidate.origin,
+            status: candidate.status,
+        });
+    }
+    return memberships;
+}
+
 function mapQuestionListRow(row: QuestionListRow): AdminQuestionListItem {
     if (!row.id || !row.origin || !row.status || !row.created_method || !row.created_at) {
         throw new AdminApiError("INTERNAL_ERROR", "題庫清單資料不完整。", 500);
     }
     const currentRevision = row.current_revision_id === null
         ? null
-        : {
-            id: row.current_revision_id,
-            number: row.current_revision_number ?? 0,
-            status: row.current_revision_status ?? "published" as RevisionStatus,
-            promptPreview: row.prompt_preview?.slice(0, 160) ?? null,
-            questionType: {
-                code: row.question_type_code ?? "unknown",
-                name: row.question_type_name ?? "未填",
-            },
-            subject: row.subject_code === null
-                ? null
-                : { code: row.subject_code, name: row.subject_name ?? "未填" },
-            grade: row.grade_code === null
-                ? null
-                : { code: row.grade_code, name: row.grade_name ?? "未填" },
-            difficulty: row.difficulty_code === null
-                ? null
-                : { code: row.difficulty_code, name: row.difficulty_name ?? "未填" },
-            publishedAt: asNullableIso(row.published_at),
-        };
+        : (() => {
+            if (
+                row.current_revision_number === null
+                || row.current_revision_status === null
+                || row.question_type_code === null
+                || row.question_type_name === null
+            ) {
+                throw new AdminApiError("INTERNAL_ERROR", "題目目前版本資料不完整。", 500);
+            }
+            return {
+                id: row.current_revision_id,
+                number: row.current_revision_number,
+                status: row.current_revision_status,
+                promptPreview: row.prompt_preview?.slice(0, 160) ?? null,
+                questionType: {
+                    code: row.question_type_code,
+                    name: row.question_type_name,
+                },
+                subject: row.subject_code === null
+                    ? null
+                    : { code: row.subject_code, name: row.subject_name ?? "未填" },
+                grade: row.grade_code === null
+                    ? null
+                    : { code: row.grade_code, name: row.grade_name ?? "未填" },
+                difficulty: row.difficulty_code === null
+                    ? null
+                    : { code: row.difficulty_code, name: row.difficulty_name ?? "未填" },
+                publishedAt: asNullableIso(row.published_at),
+            };
+        })();
     return {
         id: row.id,
         origin: row.origin,
@@ -442,6 +569,7 @@ function mapQuestionListRow(row: QuestionListRow): AdminQuestionListItem {
         currentRevision,
         revisionCount: asSafeCount(row.revision_count),
         sourceCount: asSafeCount(row.source_count),
+        banks: mapBankMemberships(row.bank_memberships),
         createdAt: asIso(row.created_at),
         ...readOnlyState(row.origin),
     };
@@ -480,6 +608,7 @@ export async function listQuestions(
                 difficulty.name AS difficulty_name,
                 coalesce(revision_summary.revision_count, 0) AS revision_count,
                 coalesce(source_summary.source_count, 0) AS source_count,
+                coalesce(bank_summary.bank_memberships, '[]'::jsonb) AS bank_memberships,
                 coalesce(revision.revision_number, 0) AS sort_revision_number
             FROM questions AS question
             LEFT JOIN users AS owner ON owner.id = question.owner_user_id
@@ -507,6 +636,20 @@ export async function listQuestions(
                 FROM question_revision_sources AS source
                 WHERE source.question_revision_id = revision.id
             ) AS source_summary ON true
+            LEFT JOIN LATERAL (
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'id', bank.id,
+                        'name', bank.name,
+                        'origin', bank.origin,
+                        'status', bank.status
+                    )
+                    ORDER BY bank.name, bank.id
+                ) AS bank_memberships
+                FROM question_bank_items AS bank_item
+                JOIN question_banks AS bank ON bank.id = bank_item.question_bank_id
+                WHERE bank_item.question_id = question.id
+            ) AS bank_summary ON true
             ${filters.sql}
         ),
         page AS (
@@ -532,6 +675,65 @@ export async function listQuestions(
     };
 }
 
+export async function listQuestionFilterOptions(
+    runner: AdminQueryRunner,
+): Promise<AdminQuestionFilterOptions> {
+    const result = await runner.query<FilterOptionRow>(`
+        SELECT 'banks'::text AS kind, bank.id, bank.name::text AS label
+        FROM question_banks AS bank
+        UNION ALL
+        SELECT 'subjects', subject.id, (subject.name || ' (' || subject.code || ')')::text
+        FROM subjects AS subject
+        UNION ALL
+        SELECT 'grades', grade.id, (grade.name || ' (' || grade.code || ')')::text
+        FROM grades AS grade
+        UNION ALL
+        SELECT 'semesters', semester.id, (semester.name || ' (' || semester.code || ')')::text
+        FROM semesters AS semester
+        UNION ALL
+        SELECT
+            'bookVersions',
+            book.id,
+            concat_ws(' · ', publisher.name, book.name)::text
+        FROM book_versions AS book
+        LEFT JOIN publishers AS publisher ON publisher.id = book.publisher_id
+        UNION ALL
+        SELECT 'publishers', publisher.id, publisher.name::text
+        FROM publishers AS publisher
+        UNION ALL
+        SELECT
+            'sourceCategories',
+            source_category.id,
+            (source_category.name || ' (' || source_category.code || ')')::text
+        FROM source_categories AS source_category
+        UNION ALL
+        SELECT
+            'difficulties',
+            difficulty.id,
+            (difficulty.name || ' (' || difficulty.code || ')')::text
+        FROM difficulty_levels AS difficulty
+        ORDER BY kind, label, id
+    `);
+    const options: AdminQuestionFilterOptions = {
+        banks: [],
+        subjects: [],
+        grades: [],
+        semesters: [],
+        bookVersions: [],
+        publishers: [],
+        sourceCategories: [],
+        difficulties: [],
+    };
+    for (const row of result.rows) {
+        const bucket = options[row.kind];
+        if (!Array.isArray(bucket) || !row.id || !row.label) {
+            throw new AdminApiError("INTERNAL_ERROR", "題庫篩選選項格式不正確。", 500);
+        }
+        bucket.push({ id: row.id, label: row.label });
+    }
+    return options;
+}
+
 function groupByRevision<Row extends { question_revision_id: string }>(
     rows: Row[],
 ): Map<string, Row[]> {
@@ -552,9 +754,116 @@ function nullableCatalog(
     return id === null ? null : { id, code: code ?? "unknown", name: name ?? "未填" };
 }
 
+function mapRevisionSummary(revision: RevisionRow): AdminQuestionRevisionSummary {
+    return {
+        id: revision.id,
+        number: revision.revision_number,
+        status: revision.status,
+        originalQuestionTypeLabel: revision.original_question_type_label,
+        searchText: revision.search_text,
+        changeNote: revision.change_note,
+        questionType: {
+            id: revision.question_type_id,
+            code: revision.question_type_code,
+            name: revision.question_type_name,
+        },
+        subject: nullableCatalog(
+            revision.subject_id,
+            revision.subject_code,
+            revision.subject_name,
+        ),
+        grade: nullableCatalog(revision.grade_id, revision.grade_code, revision.grade_name),
+        semester: nullableCatalog(
+            revision.semester_id,
+            revision.semester_code,
+            revision.semester_name,
+        ),
+        bookVersion: revision.book_version_id === null ? null : {
+            id: revision.book_version_id,
+            name: revision.book_version_name ?? "未填",
+        },
+        examLevel: nullableCatalog(
+            revision.exam_program_level_id,
+            revision.exam_level_code,
+            revision.exam_level_name,
+        ),
+        difficulty: nullableCatalog(
+            revision.difficulty_level_id,
+            revision.difficulty_code,
+            revision.difficulty_name,
+        ),
+        sourceCategory: nullableCatalog(
+            revision.source_category_id,
+            revision.source_category_code,
+            revision.source_category_name,
+        ),
+        createdBy: {
+            type: revision.created_by_type,
+            userId: revision.created_by_user_id,
+            displayName: revision.creator_display_name,
+        },
+        createdAt: asIso(revision.created_at),
+        publishedAt: asNullableIso(revision.published_at),
+    };
+}
+
+const QUESTION_REVISION_SELECT = `
+    SELECT
+        revision.id,
+        revision.revision_number,
+        revision.status,
+        revision.original_question_type_label,
+        revision.search_text,
+        revision.change_note,
+        revision.question_type_id,
+        question_type.code AS question_type_code,
+        question_type.name AS question_type_name,
+        revision.subject_id,
+        subject.code AS subject_code,
+        subject.name AS subject_name,
+        revision.grade_id,
+        grade.code AS grade_code,
+        grade.name AS grade_name,
+        revision.semester_id,
+        semester.code AS semester_code,
+        semester.name AS semester_name,
+        revision.book_version_id,
+        book.name AS book_version_name,
+        revision.exam_program_level_id,
+        exam_level.code AS exam_level_code,
+        exam_level.name AS exam_level_name,
+        revision.difficulty_level_id,
+        difficulty.code AS difficulty_code,
+        difficulty.name AS difficulty_name,
+        revision.source_category_id,
+        source_category.code AS source_category_code,
+        source_category.name AS source_category_name,
+        revision.created_by_type,
+        revision.created_by_user_id,
+        creator.display_name AS creator_display_name,
+        revision.created_at,
+        revision.published_at
+    FROM question_revisions AS revision
+    JOIN question_types AS question_type ON question_type.id = revision.question_type_id
+    LEFT JOIN subjects AS subject ON subject.id = revision.subject_id
+    LEFT JOIN grades AS grade ON grade.id = revision.grade_id
+    LEFT JOIN semesters AS semester ON semester.id = revision.semester_id
+    LEFT JOIN book_versions AS book ON book.id = revision.book_version_id
+    LEFT JOIN exam_program_levels AS exam_level ON exam_level.id = revision.exam_program_level_id
+    LEFT JOIN difficulty_levels AS difficulty ON difficulty.id = revision.difficulty_level_id
+    LEFT JOIN source_categories AS source_category ON source_category.id = revision.source_category_id
+    LEFT JOIN users AS creator ON creator.id = revision.created_by_user_id
+`;
+
 export async function getQuestionDetail(
     runner: AdminQueryRunner,
     questionId: string,
+    query: QuestionDetailQuery = {
+        revisionPage: 1,
+        revisionPageSize: 10,
+        revisionOffset: 0,
+        revisionLimit: 10,
+    },
 ): Promise<AdminQuestionDetail> {
     const coreResult = await runner.query<QuestionCoreRow>(`
         SELECT
@@ -592,57 +901,38 @@ export async function getQuestionDetail(
         WHERE identifier.question_id = $1
         ORDER BY identifier.identifier_type, identifier.normalized_value, identifier.id
     `, [questionId]);
-    const revisionResult = await runner.query<RevisionRow>(`
-        SELECT
-            revision.id,
-            revision.revision_number,
-            revision.status,
-            revision.original_question_type_label,
-            revision.search_text,
-            revision.change_note,
-            revision.question_type_id,
-            question_type.code AS question_type_code,
-            question_type.name AS question_type_name,
-            revision.subject_id,
-            subject.code AS subject_code,
-            subject.name AS subject_name,
-            revision.grade_id,
-            grade.code AS grade_code,
-            grade.name AS grade_name,
-            revision.semester_id,
-            semester.code AS semester_code,
-            semester.name AS semester_name,
-            revision.book_version_id,
-            book.name AS book_version_name,
-            revision.exam_program_level_id,
-            exam_level.code AS exam_level_code,
-            exam_level.name AS exam_level_name,
-            revision.difficulty_level_id,
-            difficulty.code AS difficulty_code,
-            difficulty.name AS difficulty_name,
-            revision.source_category_id,
-            source_category.code AS source_category_code,
-            source_category.name AS source_category_name,
-            revision.created_by_type,
-            revision.created_by_user_id,
-            creator.display_name AS creator_display_name,
-            revision.created_at,
-            revision.published_at
-        FROM question_revisions AS revision
-        JOIN question_types AS question_type ON question_type.id = revision.question_type_id
-        LEFT JOIN subjects AS subject ON subject.id = revision.subject_id
-        LEFT JOIN grades AS grade ON grade.id = revision.grade_id
-        LEFT JOIN semesters AS semester ON semester.id = revision.semester_id
-        LEFT JOIN book_versions AS book ON book.id = revision.book_version_id
-        LEFT JOIN exam_program_levels AS exam_level ON exam_level.id = revision.exam_program_level_id
-        LEFT JOIN difficulty_levels AS difficulty ON difficulty.id = revision.difficulty_level_id
-        LEFT JOIN source_categories AS source_category ON source_category.id = revision.source_category_id
-        LEFT JOIN users AS creator ON creator.id = revision.created_by_user_id
+    const revisionCountResult = await runner.query<RevisionCountRow>(`
+        SELECT count(*) AS total_count
+        FROM question_revisions
+        WHERE question_id = $1
+    `, [questionId]);
+    const revisionTotal = asSafeCount(revisionCountResult.rows[0]?.total_count ?? 0);
+    const historyResult = await runner.query<RevisionRow>(`
+        /* admin_question_revision_history */
+        ${QUESTION_REVISION_SELECT}
         WHERE revision.question_id = $1
         ORDER BY revision.revision_number DESC, revision.id
-    `, [questionId]);
+        LIMIT $2
+        OFFSET $3
+    `, [questionId, query.revisionLimit, query.revisionOffset]);
+    const displayRevisionId = query.selectedRevisionId ?? question.current_revision_id;
+    const displayRevisionResult = displayRevisionId === null
+        ? { rows: [] as RevisionRow[] }
+        : await runner.query<RevisionRow>(`
+            /* admin_question_display_revision */
+            ${QUESTION_REVISION_SELECT}
+            WHERE revision.question_id = $1
+                AND revision.id = $2
+            LIMIT 1
+        `, [questionId, displayRevisionId]);
+    if (displayRevisionId !== null && displayRevisionResult.rows.length === 0) {
+        if (query.selectedRevisionId) {
+            throw new AdminApiError("NOT_FOUND", "找不到這個題目的指定版本。", 404);
+        }
+        throw new AdminApiError("INTERNAL_ERROR", "題目目前版本資料不完整。", 500);
+    }
 
-    const revisionIds = revisionResult.rows.map((revision) => revision.id);
+    const revisionIds = displayRevisionResult.rows.map((revision) => revision.id);
     if (revisionIds.length === 0) {
         return {
             id: question.id,
@@ -669,7 +959,14 @@ export async function getQuestionDetail(
                 bookVersionName: identifier.book_version_name,
                 sourceDocumentId: identifier.source_document_id,
             })),
-            revisions: [],
+            selectedRevisionId: query.selectedRevisionId ?? null,
+            displayRevision: null,
+            revisionHistory: {
+                items: historyResult.rows.map(mapRevisionSummary),
+                total: revisionTotal,
+                page: query.revisionPage,
+                pageSize: query.revisionPageSize,
+            },
         };
     }
 
@@ -854,55 +1151,9 @@ export async function getQuestionDetail(
             bookVersionName: identifier.book_version_name,
             sourceDocumentId: identifier.source_document_id,
         })),
-        revisions: revisionResult.rows.map((revision) => ({
-            id: revision.id,
-            number: revision.revision_number,
-            status: revision.status,
-            originalQuestionTypeLabel: revision.original_question_type_label,
-            searchText: revision.search_text,
-            changeNote: revision.change_note,
-            questionType: {
-                id: revision.question_type_id,
-                code: revision.question_type_code,
-                name: revision.question_type_name,
-            },
-            subject: nullableCatalog(
-                revision.subject_id,
-                revision.subject_code,
-                revision.subject_name,
-            ),
-            grade: nullableCatalog(revision.grade_id, revision.grade_code, revision.grade_name),
-            semester: nullableCatalog(
-                revision.semester_id,
-                revision.semester_code,
-                revision.semester_name,
-            ),
-            bookVersion: revision.book_version_id === null ? null : {
-                id: revision.book_version_id,
-                name: revision.book_version_name ?? "未填",
-            },
-            examLevel: nullableCatalog(
-                revision.exam_program_level_id,
-                revision.exam_level_code,
-                revision.exam_level_name,
-            ),
-            difficulty: nullableCatalog(
-                revision.difficulty_level_id,
-                revision.difficulty_code,
-                revision.difficulty_name,
-            ),
-            sourceCategory: nullableCatalog(
-                revision.source_category_id,
-                revision.source_category_code,
-                revision.source_category_name,
-            ),
-            createdBy: {
-                type: revision.created_by_type,
-                userId: revision.created_by_user_id,
-                displayName: revision.creator_display_name,
-            },
-            createdAt: asIso(revision.created_at),
-            publishedAt: asNullableIso(revision.published_at),
+        selectedRevisionId: query.selectedRevisionId ?? null,
+        displayRevision: displayRevisionResult.rows.map((revision) => ({
+            ...mapRevisionSummary(revision),
             parts: (partsByRevision.get(revision.id) ?? []).map((part) => ({
                 id: part.id,
                 parentPartId: part.parent_part_id,
@@ -965,6 +1216,12 @@ export async function getQuestionDetail(
                 curriculumCodes: (curriculumByRevision.get(revision.id) ?? []).map(stripRevisionId),
                 filterValues: (filtersByRevision.get(revision.id) ?? []).map(stripRevisionId),
             },
-        })),
+        }))[0] ?? null,
+        revisionHistory: {
+            items: historyResult.rows.map(mapRevisionSummary),
+            total: revisionTotal,
+            page: query.revisionPage,
+            pageSize: query.revisionPageSize,
+        },
     };
 }

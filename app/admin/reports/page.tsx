@@ -4,33 +4,62 @@ import {
     adminViewErrorMessage,
     buildReportsViewModel,
     parseAdminReportRange,
+    resolveAdminReportQuery,
 } from "@/app/lib/admin/admin-view-model";
+import { getAdminReportSnapshot } from "@/app/lib/admin/report-repository";
+import { withAdminReadOnlySnapshot } from "@/app/lib/admin/admin-server";
 
-import { readAdminPageAccess } from "../admin-page-auth";
+import { readAdminPageAccessInSnapshot } from "../admin-page-auth";
 
 type ReportsPageProps = {
     searchParams: Promise<AdminPageSearchParams>;
 };
 
 export default async function AdminReportsPage({ searchParams }: ReportsPageProps) {
-    const access = await readAdminPageAccess();
-    if (access.kind !== "authorized") return null;
-
     try {
-        const range = parseAdminReportRange(await searchParams);
-        return <ReportsView {...buildReportsViewModel(range)} />;
+        return await withAdminReadOnlySnapshot(async (runner) => {
+            const access = await readAdminPageAccessInSnapshot(runner);
+            if (access.kind !== "authorized") return null;
+
+            const now = new Date();
+            const rawQuery = await searchParams;
+            let range;
+            let query;
+            try {
+                range = parseAdminReportRange(rawQuery);
+                query = resolveAdminReportQuery(range, now);
+            }
+            catch (error) {
+                const fallbackRange = "30d" as const;
+                const fallbackQuery = resolveAdminReportQuery(fallbackRange, now);
+                return (
+                    <ReportsView
+                        {...buildReportsViewModel({
+                            range: fallbackRange,
+                            query: fallbackQuery,
+                            report: null,
+                            errorMessage: adminViewErrorMessage(error),
+                        })}
+                    />
+                );
+            }
+
+            const report = await getAdminReportSnapshot(runner, query);
+            return (
+                <ReportsView
+                    {...buildReportsViewModel({ range, query, report })}
+                />
+            );
+        });
     }
     catch (error) {
-        const viewModel = buildReportsViewModel("30d");
-        return (
-            <ReportsView
-                {...viewModel}
-                state={{
-                    kind: "error",
-                    message: adminViewErrorMessage(error),
-                    retryHref: "/admin/reports",
-                }}
-            />
-        );
+        const fallbackRange = "30d" as const;
+        const fallbackQuery = resolveAdminReportQuery(fallbackRange, new Date());
+        return <ReportsView {...buildReportsViewModel({
+            range: fallbackRange,
+            query: fallbackQuery,
+            report: null,
+            errorMessage: adminViewErrorMessage(error),
+        })} />;
     }
 }

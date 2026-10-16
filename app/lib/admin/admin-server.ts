@@ -1,10 +1,11 @@
 import "server-only";
 
-import type { QueryResultRow } from "pg";
+import type { PoolClient, QueryResultRow } from "pg";
 
 import {
     LocalPostgresUnavailableError,
     queryLocalPostgres,
+    withLocalPostgresReadTransaction,
 } from "../local-postgres.ts";
 import {
     type AdminQueryResult,
@@ -18,6 +19,18 @@ type LocalPostgresQuery = <Row extends QueryResultRow>(
     text: string,
     values?: readonly unknown[],
 ) => Promise<AdminQueryResult<Row>>;
+
+type LocalPostgresReadTransaction = <T>(
+    operation: (client: PoolClient) => Promise<T>,
+) => Promise<T>;
+
+function unavailableAdminDatabaseError(): AdminApiError {
+    return new AdminApiError(
+        "INTERNAL_ERROR",
+        "管理後台資料庫暫時無法使用，請稍後再試。",
+        503,
+    );
+}
 
 /**
  * Adapts the shared PostgreSQL connection to the deliberately small admin
@@ -37,11 +50,7 @@ export function createAdminPostgresRunner(
             }
             catch (error) {
                 if (error instanceof LocalPostgresUnavailableError) {
-                    throw new AdminApiError(
-                        "INTERNAL_ERROR",
-                        "管理後台資料庫暫時無法使用，請稍後再試。",
-                        503,
-                    );
+                    throw unavailableAdminDatabaseError();
                 }
                 throw error;
             }
@@ -50,6 +59,34 @@ export function createAdminPostgresRunner(
 }
 
 export const adminPostgresRunner = createAdminPostgresRunner();
+
+/**
+ * Keeps authorization and every aggregate in one read-only repeatable-read
+ * database snapshot. The callback receives only the repository-sized query
+ * interface, never the connection lifecycle methods.
+ */
+export async function withAdminReadOnlySnapshot<T>(
+    operation: (runner: AdminQueryRunner) => Promise<T>,
+    transaction: LocalPostgresReadTransaction = withLocalPostgresReadTransaction,
+): Promise<T> {
+    try {
+        return await transaction(async (client) => {
+            const runner = createAdminPostgresRunner(
+                async <Row extends QueryResultRow>(
+                    text: string,
+                    values: readonly unknown[] = [],
+                ): Promise<AdminQueryResult<Row>> => client.query<Row>(text, [...values]),
+            );
+            return operation(runner);
+        });
+    }
+    catch (error) {
+        if (error instanceof LocalPostgresUnavailableError) {
+            throw unavailableAdminDatabaseError();
+        }
+        throw error;
+    }
+}
 
 export interface AdminReadContext {
     actor: SystemAdminActor;

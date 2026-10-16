@@ -10,15 +10,21 @@ import {
     type AccountStatus,
     type AccountStatusTransitionInput,
     type AdminDateFilter,
+    type AdminMutationEvidence,
     type AdminPagination,
     type AdminSort,
     type AuditListQuery,
     type AuditSortField,
     QUESTION_ORIGINS,
+    QUESTION_REVIEW_STATUSES,
+    QUESTION_REVISION_STATUSES,
     QUESTION_STATUSES,
+    type QuestionDetailQuery,
     type QuestionDraftInput,
     type QuestionListQuery,
     type QuestionOrigin,
+    type QuestionReviewStatus,
+    type QuestionRevisionStatus,
     type QuestionRevisionMutationInput,
     type QuestionSortField,
     type QuestionStatus,
@@ -37,12 +43,15 @@ import {
 export const ADMIN_DEFAULT_PAGE_SIZE = 25;
 export const ADMIN_MAX_PAGE = 10_000;
 export const ADMIN_MAX_PAGE_SIZE = 100;
+export const ADMIN_DEFAULT_REVISION_PAGE_SIZE = 10;
+export const ADMIN_MAX_REVISION_PAGE_SIZE = 25;
 
 type QueryRecord = Record<string, string | string[] | null | undefined>;
 export type AdminQueryInput = URLSearchParams | QueryRecord;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
+const MUTATION_EVIDENCE_UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/u;
 const MACHINE_KEY_PATTERN = /^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/u;
 
@@ -264,12 +273,82 @@ export function parseQuestionListQuery(query: AdminQueryInput): QuestionListQuer
         search: parseSearch(query),
         statuses: parseEnumList<QuestionStatus>(queryValue(query, "status"), QUESTION_STATUSES, "題目狀態"),
         origins: parseEnumList<QuestionOrigin>(queryValue(query, "origin"), QUESTION_ORIGINS, "題目來源"),
+        revisionStatuses: parseEnumList<QuestionRevisionStatus>(
+            queryValue(query, "revisionStatus"),
+            QUESTION_REVISION_STATUSES,
+            "版本狀態",
+        ),
+        reviewStatuses: parseEnumList<QuestionReviewStatus>(
+            queryValue(query, "reviewStatus"),
+            QUESTION_REVIEW_STATUSES,
+            "審核狀態",
+        ),
+        bankId: parseOptionalQueryUuid(query, "bankId", "題庫識別碼"),
+        subjectId: parseOptionalQueryUuid(query, "subjectId", "科目識別碼"),
+        gradeId: parseOptionalQueryUuid(query, "gradeId", "年級識別碼"),
+        semesterId: parseOptionalQueryUuid(query, "semesterId", "學期識別碼"),
+        bookVersionId: parseOptionalQueryUuid(query, "bookVersionId", "教材版本識別碼"),
+        publisherId: parseOptionalQueryUuid(query, "publisherId", "出版社識別碼"),
+        sourceCategoryId: parseOptionalQueryUuid(query, "sourceCategoryId", "來源類型識別碼"),
+        difficultyId: parseOptionalQueryUuid(query, "difficultyId", "難度識別碼"),
         created: parseDateFilter(query, "createdFrom", "createdTo"),
         orderBy: parseOrderBy<QuestionSortField>(
             query,
             ["createdAt", "origin", "revisionNumber", "status", "id"],
             "createdAt",
         ),
+    };
+}
+
+function parseOptionalQueryUuid(
+    query: AdminQueryInput,
+    key: string,
+    label: string,
+): string | undefined {
+    const value = queryValue(query, key);
+    if (value === undefined || value === "") return undefined;
+    try {
+        return parseUuid(value, label);
+    }
+    catch (error) {
+        if (error instanceof AdminApiError) {
+            throw new AdminApiError("INVALID_QUERY", error.message, 400);
+        }
+        throw error;
+    }
+}
+
+export function parseQuestionDetailQuery(query: AdminQueryInput): QuestionDetailQuery {
+    const revisionPageValue = queryValue(query, "revisionPage");
+    const revisionPageSizeValue = queryValue(query, "revisionPageSize");
+    const revisionPage = revisionPageValue === undefined
+        ? 1
+        : parseBoundedInteger(
+            revisionPageValue,
+            "版本歷史頁碼",
+            1,
+            ADMIN_MAX_PAGE,
+            "INVALID_QUERY",
+        );
+    const revisionPageSize = revisionPageSizeValue === undefined
+        ? ADMIN_DEFAULT_REVISION_PAGE_SIZE
+        : parseBoundedInteger(
+            revisionPageSizeValue,
+            "版本歷史每頁筆數",
+            1,
+            ADMIN_MAX_REVISION_PAGE_SIZE,
+            "INVALID_QUERY",
+        );
+    return {
+        selectedRevisionId: parseOptionalQueryUuid(
+            query,
+            "revision",
+            "版本識別碼",
+        ),
+        revisionPage,
+        revisionPageSize,
+        revisionOffset: (revisionPage - 1) * revisionPageSize,
+        revisionLimit: revisionPageSize,
     };
 }
 
@@ -293,17 +372,6 @@ export function parseUuid(value: unknown, label = "識別碼"): string {
         throw new AdminApiError("INVALID_UUID", `${label}格式不正確。`, 400);
     }
     return value.toLowerCase();
-}
-
-export function parseIdempotencyKey(value: unknown): string {
-    if (typeof value !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(value)) {
-        throw new AdminApiError(
-            "INVALID_IDEMPOTENCY_KEY",
-            "重複提交識別碼必須是 16 到 128 個安全字元。",
-            400,
-        );
-    }
-    return value;
 }
 
 function parseRequiredText(
@@ -349,20 +417,46 @@ function parseEnum<T extends string>(
     return value as T;
 }
 
-function parseRequestEvidence(value: Record<string, unknown>): { requestId: string; idempotencyKey: string } {
+function parseRequestEvidence(
+    evidence: Readonly<AdminMutationEvidence>,
+): AdminMutationEvidence {
+    if (
+        !evidence
+        || typeof evidence.requestId !== "string"
+        || !MUTATION_EVIDENCE_UUID_PATTERN.test(evidence.requestId)
+    ) {
+        throw new AdminApiError(
+            "INVALID_INPUT",
+            "請求識別碼必須是小寫 UUID v4 或 v7。",
+            422,
+        );
+    }
+    if (
+        typeof evidence.idempotencyKey !== "string"
+        || !MUTATION_EVIDENCE_UUID_PATTERN.test(evidence.idempotencyKey)
+    ) {
+        throw new AdminApiError(
+            "INVALID_IDEMPOTENCY_KEY",
+            "Idempotency-Key 必須是小寫 UUID v4 或 v7。",
+            422,
+        );
+    }
     return {
-        requestId: parseUuid(value.requestId, "requestId"),
-        idempotencyKey: parseIdempotencyKey(value.idempotencyKey),
+        requestId: evidence.requestId,
+        idempotencyKey: evidence.idempotencyKey,
     };
 }
 
-export function parseAccountStatusTransitionInput(value: unknown): AccountStatusTransitionInput {
+export function parseAccountStatusTransitionInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): AccountStatusTransitionInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_STATUS_TRANSITION", "帳號狀態異動資料格式不正確。", 400);
     }
     assertExactKeys(
         value,
-        ["expectedCurrentStatus", "targetStatus", "reason", "requestId", "idempotencyKey"],
+        ["expectedCurrentStatus", "targetStatus", "reason"],
         "INVALID_STATUS_TRANSITION",
     );
     const expectedCurrentStatus = parseEnum<AccountManageableStatus>(
@@ -384,7 +478,7 @@ export function parseAccountStatusTransitionInput(value: unknown): AccountStatus
         expectedCurrentStatus,
         targetStatus,
         reason: parseRequiredText(value.reason, "異動原因", 5, 500, "INVALID_STATUS_TRANSITION"),
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }
 
@@ -400,13 +494,16 @@ function parseMachineKey(
     return value;
 }
 
-export function parseSubscriptionPlanInput(value: unknown): SubscriptionPlanInput {
+export function parseSubscriptionPlanInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPlanInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_SUBSCRIPTION_PLAN", "方案資料格式不正確。", 400);
     }
     assertExactKeys(
         value,
-        ["code", "name", "description", "status", "requestId", "idempotencyKey"],
+        ["code", "name", "description", "status"],
         "INVALID_SUBSCRIPTION_PLAN",
     );
     return {
@@ -419,7 +516,7 @@ export function parseSubscriptionPlanInput(value: unknown): SubscriptionPlanInpu
             "方案狀態",
             "INVALID_SUBSCRIPTION_PLAN",
         ),
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }
 
@@ -428,7 +525,10 @@ function parseNullableDate(value: unknown, label: string): string | null {
     return parseDateOnly(value, label);
 }
 
-export function parseSubscriptionPriceInput(value: unknown): SubscriptionPriceInput {
+export function parseSubscriptionPriceInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPriceInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格資料格式不正確。", 400);
     }
@@ -436,7 +536,7 @@ export function parseSubscriptionPriceInput(value: unknown): SubscriptionPriceIn
         value,
         [
             "planId", "currency", "amountMinor", "billingInterval", "billingIntervalCount",
-            "status", "effectiveFrom", "effectiveUntil", "requestId", "idempotencyKey",
+            "status", "effectiveFrom", "effectiveUntil",
         ],
         "INVALID_SUBSCRIPTION_PRICE",
     );
@@ -487,17 +587,20 @@ export function parseSubscriptionPriceInput(value: unknown): SubscriptionPriceIn
         ),
         effectiveFrom,
         effectiveUntil,
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }
 
-export function parseSubscriptionFeatureLimitInput(value: unknown): SubscriptionFeatureLimitInput {
+export function parseSubscriptionFeatureLimitInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionFeatureLimitInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能限制資料格式不正確。", 400);
     }
     assertExactKeys(
         value,
-        ["planId", "featureKey", "included", "unlimited", "limit", "requestId", "idempotencyKey"],
+        ["planId", "featureKey", "included", "unlimited", "limit"],
         "INVALID_FEATURE_LIMIT",
     );
     if (typeof value.included !== "boolean" || typeof value.unlimited !== "boolean") {
@@ -528,7 +631,7 @@ export function parseSubscriptionFeatureLimitInput(value: unknown): Subscription
         included: value.included,
         unlimited: value.unlimited,
         limit,
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }
 
@@ -536,13 +639,16 @@ function parseQuestionChangeNote(value: unknown): string {
     return parseRequiredText(value, "修改原因", 5, 500, "INVALID_QUESTION_REVISION");
 }
 
-export function parseQuestionDraftInput(value: unknown): QuestionDraftInput {
+export function parseQuestionDraftInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): QuestionDraftInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_QUESTION_REVISION", "題目版本資料格式不正確。", 400);
     }
     assertExactKeys(
         value,
-        ["questionId", "baseRevisionId", "baseRevisionNumber", "changeNote", "requestId", "idempotencyKey"],
+        ["questionId", "baseRevisionId", "baseRevisionNumber", "changeNote"],
         "INVALID_QUESTION_REVISION",
     );
     return {
@@ -556,11 +662,14 @@ export function parseQuestionDraftInput(value: unknown): QuestionDraftInput {
             "INVALID_QUESTION_REVISION",
         ),
         changeNote: parseQuestionChangeNote(value.changeNote),
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }
 
-export function parseQuestionRevisionMutationInput(value: unknown): QuestionRevisionMutationInput {
+export function parseQuestionRevisionMutationInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): QuestionRevisionMutationInput {
     if (!isRecord(value)) {
         throw new AdminApiError("INVALID_QUESTION_REVISION", "題目版本異動資料格式不正確。", 400);
     }
@@ -568,7 +677,7 @@ export function parseQuestionRevisionMutationInput(value: unknown): QuestionRevi
         value,
         [
             "questionId", "draftRevisionId", "expectedCurrentRevisionId", "expectedCurrentRevisionNumber",
-            "changeNote", "requestId", "idempotencyKey",
+            "changeNote",
         ],
         "INVALID_QUESTION_REVISION",
     );
@@ -584,6 +693,6 @@ export function parseQuestionRevisionMutationInput(value: unknown): QuestionRevi
             "INVALID_QUESTION_REVISION",
         ),
         changeNote: parseQuestionChangeNote(value.changeNote),
-        ...parseRequestEvidence(value),
+        ...parseRequestEvidence(evidence),
     };
 }

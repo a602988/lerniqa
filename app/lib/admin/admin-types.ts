@@ -7,6 +7,17 @@ export const GRANTED_ROLES = [
 ] as const;
 export const QUESTION_STATUSES = ["draft", "published", "archived"] as const;
 export const QUESTION_ORIGINS = ["system", "account"] as const;
+export const QUESTION_REVISION_STATUSES = [
+    "draft",
+    "published",
+    "superseded",
+    "rejected",
+] as const;
+export const QUESTION_REVIEW_STATUSES = [
+    "approved",
+    "rejected",
+    "changes_requested",
+] as const;
 export const SUBSCRIPTION_PLAN_STATUSES = ["draft", "active", "retired"] as const;
 export const SUBSCRIPTION_PRICE_STATUSES = ["draft", "active", "retired"] as const;
 export const SUBSCRIPTION_BILLING_INTERVALS = ["day", "week", "month", "year"] as const;
@@ -19,6 +30,8 @@ export type AccountIdentityRole = (typeof ACCOUNT_IDENTITY_ROLES)[number];
 export type GrantedRole = (typeof GRANTED_ROLES)[number];
 export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 export type QuestionOrigin = (typeof QUESTION_ORIGINS)[number];
+export type QuestionRevisionStatus = (typeof QUESTION_REVISION_STATUSES)[number];
+export type QuestionReviewStatus = (typeof QUESTION_REVIEW_STATUSES)[number];
 export type SubscriptionPlanStatus = (typeof SUBSCRIPTION_PLAN_STATUSES)[number];
 export type SubscriptionPriceStatus = (typeof SUBSCRIPTION_PRICE_STATUSES)[number];
 export type SubscriptionBillingInterval = (typeof SUBSCRIPTION_BILLING_INTERVALS)[number];
@@ -57,8 +70,26 @@ export interface QuestionListQuery extends AdminPagination {
     search?: string;
     statuses: QuestionStatus[];
     origins: QuestionOrigin[];
+    revisionStatuses: QuestionRevisionStatus[];
+    reviewStatuses: QuestionReviewStatus[];
+    bankId?: string;
+    subjectId?: string;
+    gradeId?: string;
+    semesterId?: string;
+    bookVersionId?: string;
+    publisherId?: string;
+    sourceCategoryId?: string;
+    difficultyId?: string;
     created: AdminDateFilter;
     orderBy: AdminSort<QuestionSortField>[];
+}
+
+export interface QuestionDetailQuery {
+    selectedRevisionId?: string;
+    revisionPage: number;
+    revisionPageSize: number;
+    revisionOffset: number;
+    revisionLimit: number;
 }
 
 export type AuditSortField = "occurredAt" | "action" | "targetType" | "id";
@@ -71,24 +102,26 @@ export interface AuditListQuery extends AdminPagination {
     orderBy: AdminSort<AuditSortField>[];
 }
 
-export interface AccountStatusTransitionInput {
-    expectedCurrentStatus: AccountManageableStatus;
-    targetStatus: AccountManageableStatus;
-    reason: string;
+/** Trusted request evidence resolved from mutation headers on the server. */
+export interface AdminMutationEvidence {
     requestId: string;
     idempotencyKey: string;
 }
 
-export interface SubscriptionPlanInput {
+export interface AccountStatusTransitionInput extends AdminMutationEvidence {
+    expectedCurrentStatus: AccountManageableStatus;
+    targetStatus: AccountManageableStatus;
+    reason: string;
+}
+
+export interface SubscriptionPlanInput extends AdminMutationEvidence {
     code: string;
     name: string;
     description: string | null;
     status: SubscriptionPlanStatus;
-    requestId: string;
-    idempotencyKey: string;
 }
 
-export interface SubscriptionPriceInput {
+export interface SubscriptionPriceInput extends AdminMutationEvidence {
     planId: string;
     currency: string;
     amountMinor: number;
@@ -97,37 +130,29 @@ export interface SubscriptionPriceInput {
     status: SubscriptionPriceStatus;
     effectiveFrom: string | null;
     effectiveUntil: string | null;
-    requestId: string;
-    idempotencyKey: string;
 }
 
-export interface SubscriptionFeatureLimitInput {
+export interface SubscriptionFeatureLimitInput extends AdminMutationEvidence {
     planId: string;
     featureKey: string;
     included: boolean;
     unlimited: boolean;
     limit: number | null;
-    requestId: string;
-    idempotencyKey: string;
 }
 
-export interface QuestionDraftInput {
+export interface QuestionDraftInput extends AdminMutationEvidence {
     questionId: string;
     baseRevisionId: string;
     baseRevisionNumber: number;
     changeNote: string;
-    requestId: string;
-    idempotencyKey: string;
 }
 
-export interface QuestionRevisionMutationInput {
+export interface QuestionRevisionMutationInput extends AdminMutationEvidence {
     questionId: string;
     draftRevisionId: string;
     expectedCurrentRevisionId: string;
     expectedCurrentRevisionNumber: number;
     changeNote: string;
-    requestId: string;
-    idempotencyKey: string;
 }
 
 export type AdminApiErrorCode =

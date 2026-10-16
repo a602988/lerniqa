@@ -180,6 +180,13 @@
     min-width: 0;
 }
 
+.detailItemContent {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: 0.45rem;
+}
+
 .activityCopy a,
 .activityCopy strong,
 .quickLinkItem strong,
@@ -209,6 +216,77 @@
     color: var(--color-muted-foreground);
     font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
+}
+
+.mediaFigure {
+    display: grid;
+    width: min(100%, 48rem);
+    min-width: 0;
+    max-width: 100%;
+    gap: 0.5rem;
+    margin: 0.35rem 0 0;
+}
+
+.mediaImage {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 32rem;
+    object-fit: contain;
+    object-position: left top;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-background);
+}
+
+.sourceCropImage {
+    max-height: 14rem;
+}
+
+.mediaAudio {
+    display: block;
+    width: min(100%, 36rem);
+    min-width: 0;
+    max-width: 100%;
+}
+
+.mediaCaption {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 0.75rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.mediaCaption span,
+.mediaOpenLink {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.mediaCaption span {
+    flex: 1 1 14rem;
+    margin: 0;
+}
+
+.mediaOpenLink {
+    color: var(--color-primary);
+    font-weight: 700;
+    text-underline-offset: 0.2rem;
+}
+
+.mediaOpenLink:hover {
+    text-decoration-thickness: 0.12em;
+}
+
+.mediaOpenLink:focus-visible {
+    border-radius: 0.25rem;
+    outline: 3px solid var(--color-ring);
+    outline-offset: 0.2rem;
 }
 
 .detailList {
@@ -352,6 +430,10 @@
     display: grid;
     min-width: 0;
     gap: 1rem;
+}
+
+.reportSeriesSummary {
+    margin-bottom: 1rem;
 }
 
 .barChart {

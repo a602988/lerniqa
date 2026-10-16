@@ -3,8 +3,14 @@ import { NextResponse } from "next/server.js";
 import {
     AdminApiError,
     type AdminApiErrorBody,
-    toAdminApiErrorBody,
 } from "./admin-types.ts";
+import {
+    type AdminRequestIdGenerator,
+    type AdminServerFailureLogger,
+    parseAdminRequestId,
+    recordAdminServerFailure,
+    resolveAdminRequestId,
+} from "./admin-observability.ts";
 
 const ADMIN_RESPONSE_HEADERS = {
     "Cache-Control": "private, no-store, max-age=0",
@@ -36,34 +42,90 @@ export function adminDataResponse<Data>(
     );
 }
 
-export function adminErrorResponse(
+function serializedAdminErrorResponse(
     error: AdminApiError,
+    requestIdCandidate: unknown = error.requestId,
 ): NextResponse<AdminApiErrorBody> {
+    const requestId = parseAdminRequestId(requestIdCandidate);
+    const headers = requestId
+        ? { ...ADMIN_RESPONSE_HEADERS, "X-Request-Id": requestId }
+        : ADMIN_RESPONSE_HEADERS;
+
     return NextResponse.json(
-        toAdminApiErrorBody(error),
-        { status: error.status, headers: ADMIN_RESPONSE_HEADERS },
+        {
+            error: {
+                code: error.code,
+                message: error.message,
+                ...(requestId ? { requestId } : {}),
+            },
+        },
+        { status: error.status, headers },
     );
 }
 
-function safeErrorName(error: unknown): string {
-    if (!error || typeof error !== "object") return typeof error;
-    const name = "name" in error ? error.name : undefined;
-    return typeof name === "string" && /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/u.test(name)
-        ? name
-        : "UnknownError";
+/**
+ * Serializes expected 4xx errors directly. A caller cannot accidentally bypass
+ * correlation logging by passing a classified server error to this helper.
+ */
+export function adminErrorResponse(
+    error: AdminApiError,
+    requestIdCandidate: unknown = error.requestId,
+): NextResponse<AdminApiErrorBody> {
+    if (error.status >= 500) {
+        return handleAdminHttpError(error, { requestId: requestIdCandidate });
+    }
+    return serializedAdminErrorResponse(error, requestIdCandidate);
+}
+
+export interface AdminHttpErrorOptions {
+    requestId?: unknown;
+    generateRequestId?: AdminRequestIdGenerator;
+    logger?: AdminServerFailureLogger;
 }
 
 /**
  * Returns only client-safe errors. SQL, connection settings, submitted values
  * and stack traces remain server-side.
  */
-export function handleAdminHttpError(error: unknown): NextResponse<AdminApiErrorBody> {
-    if (error instanceof AdminApiError) return adminErrorResponse(error);
+export function handleAdminHttpError(
+    error: unknown,
+    options: AdminHttpErrorOptions = {},
+): NextResponse<AdminApiErrorBody> {
+    const classified = error instanceof AdminApiError;
+    const acceptedRequestId = parseAdminRequestId(options.requestId)
+        ?? (classified ? parseAdminRequestId(error.requestId) : null);
 
-    console.error("Admin API request failed", { errorName: safeErrorName(error) });
-    return adminErrorResponse(new AdminApiError(
-        "INTERNAL_ERROR",
-        "系統暫時無法完成操作，請稍後再試。",
-        500,
-    ));
+    if (classified && error.status < 500) {
+        return serializedAdminErrorResponse(error, acceptedRequestId);
+    }
+
+    const requestId = acceptedRequestId ?? resolveAdminRequestId(
+        null,
+        options.generateRequestId,
+    );
+    const status = classified && error.status >= 500 && error.status <= 599
+        ? error.status
+        : 500;
+    const responseError = classified && status === error.status
+        ? new AdminApiError(error.code, error.message, status, requestId)
+        : new AdminApiError(
+            "INTERNAL_ERROR",
+            "系統暫時無法完成操作，請稍後再試。",
+            status,
+            requestId,
+        );
+
+    recordAdminServerFailure(
+        {
+            scope: "admin_api",
+            requestId,
+            status,
+            failureKind: classified ? "classified" : "unhandled",
+            errorCode: classified ? error.code : "UNHANDLED_ERROR",
+            error,
+        },
+        options.logger,
+    );
+
+    return serializedAdminErrorResponse(responseError, requestId);
 }

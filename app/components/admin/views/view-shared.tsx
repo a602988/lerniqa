@@ -50,8 +50,10 @@ export function formatMetricValue(value: ViewMetricValueDto): string | number {
             return value.value;
         case "not_collected":
             return "無資料（尚未蒐集）";
-        case "privacy_suppressed":
+        case "suppressed":
             return "未達顯示門檻";
+        case "policy_required":
+            return "尚未設定統計隱私政策";
         case "integration_pending":
             return "尚未串接";
         case "no_data":

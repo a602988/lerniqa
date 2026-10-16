@@ -9,17 +9,22 @@ export type ViewLoadState =
       };
 
 export type ViewDisplayValue = string | number | null;
+type ViewUnavailableMetricState =
+    | "no_data"
+    | "not_collected"
+    | "suppressed"
+    | "policy_required"
+    | "integration_pending";
+
 export type ViewMetricValueDto =
     | { state: "available"; value: string | number }
     | {
-          state:
-              | "no_data"
-              | "not_collected"
-              | "privacy_suppressed"
-              | "integration_pending";
-          value: null;
-          reason?: string;
-      };
+          [State in ViewUnavailableMetricState]: {
+              state: State;
+              value: null;
+              reason?: string;
+          };
+      }[ViewUnavailableMetricState];
 export type ViewSortDirection = "asc" | "desc" | null;
 
 export interface ViewSortLinkDto {
@@ -187,8 +192,14 @@ export interface QuestionRowDto {
     prompt: string;
     origin: QuestionOrigin;
     status: string;
-    revisionNumber: number;
+    revisionNumber: number | null;
     sourceLabel: string | null;
+    banks: readonly {
+        id: string;
+        name: string;
+        origin: QuestionOrigin;
+        status: string;
+    }[];
     createdAt: string;
     detailHref: string;
 }
@@ -240,6 +251,7 @@ export interface QuestionContentBlockDto {
     position: number;
     textContent: string | null;
     assetId: string | null;
+    assetUrl: string | null;
     altText: string | null;
 }
 
@@ -253,6 +265,7 @@ export interface QuestionSourceDto {
     sourcePage: number | null;
     sourceQuestionNumber: string | null;
     cropAssetId: string | null;
+    cropAssetUrl: string | null;
     primary: boolean;
 }
 
@@ -283,7 +296,7 @@ export interface QuestionClassificationsDto {
     filterValues: readonly QuestionClassificationDto[];
 }
 
-export interface QuestionRevisionDto {
+export interface QuestionRevisionSummaryDto {
     id: string;
     number: number;
     status: string;
@@ -301,6 +314,9 @@ export interface QuestionRevisionDto {
     publishedAt: string | null;
     createdBy: QuestionActorDto;
     changeNote: string | null;
+}
+
+export interface QuestionRevisionDto extends QuestionRevisionSummaryDto {
     parts: readonly QuestionPartDto[];
     contentBlocks: readonly QuestionContentBlockDto[];
     sources: readonly QuestionSourceDto[];
@@ -325,7 +341,16 @@ interface QuestionDetailBaseDto {
         bookVersionName: string | null;
         sourceDocumentId: string | null;
     }[];
-    revisions: readonly QuestionRevisionDto[];
+    selectedRevisionId: string | null;
+    displayRevision: QuestionRevisionDto | null;
+    revisionHistory: {
+        items: readonly (QuestionRevisionSummaryDto & { detailHref: string })[];
+        total: number;
+        page: number;
+        pageSize: number;
+        previousHref: string | null;
+        nextHref: string | null;
+    };
 }
 
 export type QuestionDetailDto =
@@ -351,6 +376,7 @@ export interface QuestionsViewProps {
     pagination: ViewPaginationDto;
     detail: QuestionDetailDto | null;
     detailCloseHref: string;
+    hasActiveFilters: boolean;
     reviewQueueHref?: string;
 }
 
@@ -396,6 +422,7 @@ export interface ReportSeriesDto {
     key: string;
     title: string;
     description: string;
+    summary?: ViewMetricDto;
     rows: readonly ReportSeriesRowDto[];
 }
 
@@ -411,8 +438,16 @@ export interface ReportsViewProps {
     filters: ViewFilterDto;
     periodLabel: string;
     timeZone: "Asia/Taipei";
+    startLocalDate: string;
+    endLocalDate: string;
+    generatedAt: string | null;
+    granularityLabel: string;
+    privacyPolicyNotice?: ViewNoticeDto;
     registrationTrend: ReportSeriesDto;
+    accountStatusDistribution: ReportSeriesDto;
+    activeRoleDistribution: ReportSeriesDto;
     gradeDistribution: ReportSeriesDto;
+    region: Extract<ViewMetricValueDto, { state: "not_collected" }>;
     activity: ReportMetricGroupDto;
     completion: ReportMetricGroupDto;
     questionQuality: ReportMetricGroupDto;

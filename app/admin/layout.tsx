@@ -16,7 +16,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     const access = await readAdminPageAccess();
 
     if (access.kind !== "authorized") {
-        return <AdminAccessState kind={access.kind} />;
+        return (
+            <AdminAccessState
+                kind={access.kind}
+                requestId={access.kind === "unavailable" ? access.requestId : undefined}
+            />
+        );
     }
 
     return (

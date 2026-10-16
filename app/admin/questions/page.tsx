@@ -1,7 +1,9 @@
 import { QuestionsView } from "@/app/components/admin/views";
 import {
     getQuestionDetail,
+    listQuestionFilterOptions,
     listQuestions,
+    parseQuestionDetailQuery,
     parseQuestionListQuery,
     parseUuid,
 } from "@/app/lib/admin";
@@ -25,8 +27,10 @@ export default async function AdminQuestionsPage({ searchParams }: QuestionsPage
 
     const rawQuery = await searchParams;
     let query;
+    let detailQuery;
     try {
         query = parseQuestionListQuery(rawQuery);
+        detailQuery = parseQuestionDetailQuery(rawQuery);
     }
     catch (error) {
         const fallback = parseQuestionListQuery({});
@@ -44,16 +48,22 @@ export default async function AdminQuestionsPage({ searchParams }: QuestionsPage
 
     try {
         const detailId = readAdminDetailId(rawQuery, "question");
-        const [page, detail] = await Promise.all([
+        const [page, detail, filterOptions] = await Promise.all([
             listQuestions(adminPostgresRunner, query),
             detailId
                 ? getQuestionDetail(
                     adminPostgresRunner,
                     parseUuid(detailId, "題目識別碼"),
+                    detailQuery,
                 )
                 : Promise.resolve(null),
+            listQuestionFilterOptions(adminPostgresRunner),
         ]);
-        return <QuestionsView {...buildQuestionsViewModel({ query, page, detail })} />;
+        return (
+            <QuestionsView
+                {...buildQuestionsViewModel({ query, page, detail, filterOptions })}
+            />
+        );
     }
     catch (error) {
         return (

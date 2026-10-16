@@ -11,6 +11,7 @@ import {
     mapQuestionDetail,
     parseAdminReportRange,
     readAdminDetailId,
+    resolveAdminReportQuery,
 } from "../app/lib/admin/admin-view-model.ts";
 import type { AdminAccountDetail } from "../app/lib/admin/account-repository.ts";
 import type {
@@ -99,6 +100,10 @@ const questionQuery: QuestionListQuery = {
     search: "分數",
     statuses: ["published"],
     origins: ["system"],
+    revisionStatuses: ["published"],
+    reviewStatuses: ["approved"],
+    bankId: "33333333-3333-4333-8333-333333333333",
+    subjectId: "44444444-4444-4444-8444-444444444444",
     created: {},
     orderBy: [
         { field: "revisionNumber", direction: "desc" },
@@ -128,8 +133,8 @@ const questionDetail: AdminQuestionDetail = {
             sourceDocumentId: "document-1",
         },
     ],
-    revisions: [
-        {
+    selectedRevisionId: null,
+    displayRevision: {
             id: "revision-2",
             number: 2,
             status: "published",
@@ -170,7 +175,7 @@ const questionDetail: AdminQuestionDetail = {
                     contentType: "text",
                     position: 1,
                     textContent: "真實題幹",
-                    assetId: null,
+                    assetId: "55555555-5555-4555-8555-555555555555",
                     altText: null,
                 },
             ],
@@ -184,7 +189,7 @@ const questionDetail: AdminQuestionDetail = {
                     documentStatus: "ready",
                     sourcePage: 3,
                     sourceQuestionNumber: "12",
-                    cropAssetId: null,
+                    cropAssetId: "66666666-6666-4666-8666-666666666666",
                     primary: true,
                 },
             ],
@@ -208,8 +213,33 @@ const questionDetail: AdminQuestionDetail = {
                 curriculumCodes: [],
                 filterValues: [{ fieldKey: "lesson", normalizedValue: "4", sql: "drop" }],
             },
-        },
-    ],
+    },
+    revisionHistory: {
+        items: [
+            {
+                id: "revision-2",
+                number: 2,
+                status: "published",
+                originalQuestionTypeLabel: "選擇題",
+                searchText: "題幹搜尋文字",
+                changeNote: "修正答案說明",
+                questionType: { id: "type-1", code: "single", name: "單選題" },
+                subject: { id: "subject-1", code: "chinese", name: "國文" },
+                grade: { id: "grade-1", code: "G7", name: "七年級" },
+                semester: null,
+                bookVersion: { id: "book-1", name: "版本 A" },
+                examLevel: null,
+                difficulty: null,
+                sourceCategory: null,
+                createdBy: { type: "user", userId: "creator-1", displayName: "編修者" },
+                createdAt: "2026-10-15T01:00:00.000Z",
+                publishedAt: "2026-10-15T02:00:00.000Z",
+            },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+    },
 };
 
 describe("admin view model", () => {
@@ -254,10 +284,18 @@ describe("admin view model", () => {
 
     it("maps every question evidence collection and strips unknown classification fields", () => {
         const detail = mapQuestionDetail(questionDetail);
-        const revision = detail.revisions[0]!;
+        const revision = detail.displayRevision!;
         assert.equal(revision.parts[0]?.answers[0]?.answerKey, "A");
         assert.equal(revision.contentBlocks[0]?.textContent, "真實題幹");
+        assert.equal(
+            revision.contentBlocks[0]?.assetUrl,
+            "/api/v1/admin/assets/55555555-5555-4555-8555-555555555555",
+        );
         assert.equal(revision.sources[0]?.documentTitle, "第四課題庫");
+        assert.equal(
+            revision.sources[0]?.cropAssetUrl,
+            "/api/v1/admin/assets/66666666-6666-4666-8666-666666666666",
+        );
         assert.equal(revision.reviews[0]?.decision, "approved");
         assert.equal(revision.classifications.units[0]?.name, "第四課");
         assert.equal("secret" in revision.classifications.units[0]!, false);
@@ -266,6 +304,12 @@ describe("admin view model", () => {
             mode: "read-only",
             reason: "版本編修與發布寫入服務尚未完成整合；目前不會直接覆寫題目。",
         });
+        const historyHref = new URL(
+            detail.revisionHistory.items[0]!.detailHref,
+            "https://example.test",
+        );
+        assert.equal(historyHref.searchParams.get("question"), questionDetail.id);
+        assert.equal(historyHref.searchParams.get("revision"), "revision-2");
     });
 
     it("keeps question list filters in drawer and sorting links", () => {
@@ -288,6 +332,14 @@ describe("admin view model", () => {
             },
             revisionCount: 2,
             sourceCount: 1,
+            banks: [
+                {
+                    id: "33333333-3333-4333-8333-333333333333",
+                    name: "系統題庫",
+                    origin: "system",
+                    status: "active",
+                },
+            ],
             createdAt: "2026-10-15T00:00:00.000Z",
             readOnly: false,
             readOnlyReason: null,
@@ -301,18 +353,81 @@ describe("admin view model", () => {
         assert.equal(href.searchParams.get("search"), "分數");
         assert.equal(href.searchParams.get("status"), "published");
         assert.equal(href.searchParams.get("origin"), "system");
+        assert.equal(href.searchParams.get("revisionStatus"), "published");
+        assert.equal(href.searchParams.get("reviewStatus"), "approved");
+        assert.equal(href.searchParams.get("bankId"), questionQuery.bankId);
+        assert.equal(href.searchParams.get("subjectId"), questionQuery.subjectId);
         assert.equal(href.searchParams.get("sort"), "revisionNumber");
         assert.equal(href.searchParams.get("question"), questionDetail.id);
+        assert.equal(view.hasActiveFilters, true);
+        assert.ok(view.filters.selects?.some((filter) => filter.name === "difficultyId"));
+        const revisionHref = new URL(
+            view.detail!.revisionHistory.items[0]!.detailHref,
+            "https://example.test",
+        );
+        assert.equal(revisionHref.searchParams.get("search"), "分數");
+        assert.equal(revisionHref.searchParams.get("bankId"), questionQuery.bankId);
+        assert.equal(revisionHref.searchParams.get("revision"), "revision-2");
     });
 
-    it("marks every unintegrated report metric without fabricated values", () => {
-        const report = buildReportsViewModel("30d");
-        assert.equal(report.registrationTrend.rows[0]?.value.state, "integration_pending");
+    it("keeps a missing current revision null and marks a truly empty library", () => {
+        const emptyQuery: QuestionListQuery = {
+            ...questionQuery,
+            search: undefined,
+            statuses: [],
+            origins: [],
+            revisionStatuses: [],
+            reviewStatuses: [],
+            bankId: undefined,
+            subjectId: undefined,
+        };
+        const item: AdminQuestionListItem = {
+            id: questionDetail.id,
+            origin: "system",
+            status: "draft",
+            createdMethod: "manual",
+            owner: null,
+            currentRevision: null,
+            revisionCount: 0,
+            sourceCount: 0,
+            banks: [],
+            createdAt: "2026-10-15T00:00:00.000Z",
+            readOnly: false,
+            readOnlyReason: null,
+        };
+        const withRow = buildQuestionsViewModel({
+            query: emptyQuery,
+            page: { items: [item], page: 1, pageSize: 25, total: 1 },
+            detail: null,
+        });
+        assert.equal(withRow.rows[0]?.revisionNumber, null);
+        assert.equal(withRow.rows[0]?.prompt, "尚無目前版本內容");
+        const empty = buildQuestionsViewModel({
+            query: emptyQuery,
+            page: { items: [], page: 1, pageSize: 25, total: 0 },
+            detail: null,
+        });
+        assert.equal(empty.hasActiveFilters, false);
+    });
+
+    it("keeps a failed report read explicit without fabricated values", () => {
+        const query = resolveAdminReportQuery(
+            "30d",
+            new Date("2026-10-16T08:00:00.000Z"),
+        );
+        const report = buildReportsViewModel({
+            range: "30d",
+            query,
+            report: null,
+            errorMessage: "目前無法讀取管理資料，請稍後再試。",
+        });
+        assert.equal(report.state.kind, "error");
+        assert.equal(report.registrationTrend.rows[0]?.value.state, "no_data");
         assert.equal(report.registrationTrend.rows[0]?.barPercent, null);
-        assert.equal(report.gradeDistribution.rows[0]?.value.state, "integration_pending");
-        assert.ok(report.activity.metrics.every((metric) => metric.value.state === "integration_pending"));
-        assert.ok(report.completion.metrics.every((metric) => metric.value.state === "integration_pending"));
-        assert.ok(report.questionQuality.metrics.every((metric) => metric.value.state === "integration_pending"));
+        assert.equal(report.generatedAt, null);
+        assert.deepEqual(report.activity.metrics, []);
+        assert.deepEqual(report.completion.metrics, []);
+        assert.deepEqual(report.questionQuality.metrics, []);
     });
 
     it("rejects repeated detail and unsupported report range query values", () => {

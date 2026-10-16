@@ -97,6 +97,19 @@ export function AccountsView({
     detail,
     detailCloseHref,
 }: AccountsViewProps) {
+    const hasActiveFilters =
+        Boolean(filters.search?.value.trim()) ||
+        Boolean(filters.selects?.some((select) => select.value.trim()));
+    const emptyState = hasActiveFilters
+        ? {
+              title: "找不到符合條件的帳號",
+              description: "請調整搜尋字詞或篩選條件。",
+          }
+        : {
+              title: "尚無註冊帳號",
+              description: "帳號完成註冊後，會顯示在這裡。",
+          };
+
     return (
         <AdminPage
             title="帳號管理"
@@ -140,8 +153,8 @@ export function AccountsView({
                         ) : rows.length === 0 ? (
                             <AdminTableEmptyState
                                 colSpan={8}
-                                title="找不到符合條件的帳號"
-                                description="請調整搜尋字詞或篩選條件。"
+                                title={emptyState.title}
+                                description={emptyState.description}
                             />
                         ) : (
                             rows.map((account) => (
@@ -214,8 +227,8 @@ export function AccountsView({
                     ) : rows.length === 0 ? (
                         <MobileListState
                             kind="empty"
-                            title="找不到符合條件的帳號"
-                            description="請調整搜尋字詞或篩選條件。"
+                            title={emptyState.title}
+                            description={emptyState.description}
                         />
                     ) : (
                         <>

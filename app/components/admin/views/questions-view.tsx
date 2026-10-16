@@ -155,23 +155,93 @@ function blockVisibleText(block: QuestionContentBlockDto): string {
     if (block.textContent?.trim()) return block.textContent;
     if (block.altText?.trim()) return block.altText;
     if (block.assetId !== null) {
-        return `${labelFor(CONTENT_TYPE_LABELS, block.contentType)}內容（檔案定位未顯示）`;
+        return `${labelFor(CONTENT_TYPE_LABELS, block.contentType)}內容`;
     }
     return "未填";
 }
 
-function currentRevisionFor(detail: QuestionDetailDto): QuestionRevisionDto | null {
-    if (detail.currentRevisionId !== null) {
-        const current = detail.revisions.find(
-            (revision) => revision.id === detail.currentRevisionId,
+function blockMediaDescription(block: QuestionContentBlockDto): string {
+    if (block.altText?.trim()) return block.altText.trim();
+    return `${labelFor(PLACEMENT_LABELS, block.placement)}的${labelFor(
+        CONTENT_TYPE_LABELS,
+        block.contentType,
+    )}，未提供替代文字`;
+}
+
+function ProtectedAssetLink({
+    href,
+    children,
+}: {
+    href: string;
+    children: string;
+}) {
+    return (
+        <a
+            className={styles.mediaOpenLink}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            {children}
+        </a>
+    );
+}
+
+function ContentBlockAsset({ block }: { block: QuestionContentBlockDto }) {
+    if (block.assetUrl === null) return null;
+
+    const description = blockMediaDescription(block);
+    if (block.contentType === "image" || block.contentType === "page_crop") {
+        return (
+            <figure className={styles.mediaFigure}>
+                <img
+                    className={styles.mediaImage}
+                    src={block.assetUrl}
+                    alt={description}
+                    loading="lazy"
+                    decoding="async"
+                />
+                <figcaption className={styles.mediaCaption}>
+                    <span>{description}</span>
+                    <ProtectedAssetLink href={block.assetUrl}>
+                        在新分頁開啟或重試圖片
+                    </ProtectedAssetLink>
+                </figcaption>
+            </figure>
         );
-        if (current) return current;
     }
-    return detail.revisions[0] ?? null;
+
+    if (block.contentType === "audio") {
+        return (
+            <figure className={styles.mediaFigure}>
+                <audio
+                    className={styles.mediaAudio}
+                    controls
+                    preload="none"
+                    aria-label={description}
+                >
+                    <source src={block.assetUrl} />
+                    瀏覽器無法播放此音訊。
+                </audio>
+                <figcaption className={styles.mediaCaption}>
+                    <span>{description}</span>
+                    <ProtectedAssetLink href={block.assetUrl}>
+                        在新分頁開啟或重試音訊
+                    </ProtectedAssetLink>
+                </figcaption>
+            </figure>
+        );
+    }
+
+    return (
+        <ProtectedAssetLink href={block.assetUrl}>
+            在新分頁開啟或重試受保護資產
+        </ProtectedAssetLink>
+    );
 }
 
 function currentPrompt(revision: QuestionRevisionDto | null): string {
-    if (revision === null) return "未填";
+    if (revision === null) return "尚無目前版本";
     const prompt = revision.contentBlocks
         .filter((block) => block.placement === "prompt")
         .sort((left, right) => left.position - right.position)
@@ -202,7 +272,7 @@ function ContentBlockList({
                 .sort((left, right) => left.position - right.position)
                 .map((block) => (
                     <li key={block.id}>
-                        <div>
+                        <div className={styles.detailItemContent}>
                             <strong>
                                 {labelFor(PLACEMENT_LABELS, block.placement)} · {labelFor(
                                     CONTENT_TYPE_LABELS,
@@ -210,6 +280,7 @@ function ContentBlockList({
                                 )}
                             </strong>
                             <span>{blockVisibleText(block)}</span>
+                            <ContentBlockAsset block={block} />
                             {block.parentBlockId !== null ? (
                                 <span>此內容附屬於同版本的上層內容區塊。</span>
                             ) : null}
@@ -329,7 +400,7 @@ function SourcesList({ sources }: { sources: readonly QuestionSourceDto[] }) {
         <ul className={styles.detailItems}>
             {sources.map((source) => (
                 <li key={source.id}>
-                    <div>
+                    <div className={styles.detailItemContent}>
                         <div className={styles.badgeList}>
                             <strong>{sourceLabel(source)}</strong>
                             {source.primary ? (
@@ -346,7 +417,25 @@ function SourcesList({ sources }: { sources: readonly QuestionSourceDto[] }) {
                             {formatViewValue(sourceReference(source), "未提供頁碼或題號")}
                         </span>
                         {source.cropAssetId !== null ? (
-                            <span>附有來源裁切圖（檔案定位未顯示）。</span>
+                            source.cropAssetUrl !== null ? (
+                                <figure className={styles.mediaFigure}>
+                                    <img
+                                        className={`${styles.mediaImage} ${styles.sourceCropImage}`}
+                                        src={source.cropAssetUrl}
+                                        alt={`${sourceLabel(source)}的來源裁切預覽`}
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                    <figcaption className={styles.mediaCaption}>
+                                        <span>來源裁切預覽</span>
+                                        <ProtectedAssetLink href={source.cropAssetUrl}>
+                                            在新分頁開啟或重試來源裁切圖
+                                        </ProtectedAssetLink>
+                                    </figcaption>
+                                </figure>
+                            ) : (
+                                <span>附有來源裁切圖。</span>
+                            )
                         ) : null}
                     </div>
                 </li>
@@ -604,9 +693,10 @@ export function QuestionsView({
     pagination,
     detail,
     detailCloseHref,
+    hasActiveFilters,
     reviewQueueHref,
 }: QuestionsViewProps) {
-    const currentRevision = detail === null ? null : currentRevisionFor(detail);
+    const currentRevision = detail?.displayRevision ?? null;
     const currentSource =
         currentRevision?.sources.find((source) => source.primary)
         ?? currentRevision?.sources[0]
@@ -635,7 +725,7 @@ export function QuestionsView({
                 <div className={styles.desktopRecordTable}>
                     <AdminTableFrame
                         aria-label="題庫清單"
-                        minWidth={1040}
+                        minWidth={1160}
                         footer={<ViewPagination pagination={pagination} />}
                     >
                         <AdminTableHeader>
@@ -649,6 +739,7 @@ export function QuestionsView({
                                     label="目前版本"
                                 />
                                 <AdminTableHeadCell>來源文件</AdminTableHeadCell>
+                                <AdminTableHeadCell>所屬題庫</AdminTableHeadCell>
                                 <HeaderCell
                                     sorts={sorts}
                                     sortKey="createdAt"
@@ -660,21 +751,29 @@ export function QuestionsView({
                         <AdminTableBody>
                             {state.kind === "loading" ? (
                                 <AdminTableLoadingState
-                                    colSpan={7}
+                                    colSpan={8}
                                     title={state.message ?? "正在載入題庫"}
                                 />
                             ) : state.kind === "error" ? (
                                 <AdminTableErrorState
-                                    colSpan={7}
+                                    colSpan={8}
                                     description={state.message}
                                     retryHref={state.retryHref ?? ""}
                                     retryLabel={state.retryLabel}
                                 />
                             ) : rows.length === 0 ? (
                                 <AdminTableEmptyState
-                                    colSpan={7}
-                                    title="找不到符合條件的題目"
-                                    description="請調整關鍵字、題目範圍或版本篩選。"
+                                    colSpan={8}
+                                    title={
+                                        hasActiveFilters
+                                            ? "找不到符合條件的題目"
+                                            : "題庫尚無題目"
+                                    }
+                                    description={
+                                        hasActiveFilters
+                                            ? "請調整關鍵字、題目範圍或版本篩選。"
+                                            : "目前沒有可顯示的題目；匯入或建立題目後會出現在這裡。"
+                                    }
                                 />
                             ) : (
                                 rows.map((question) => (
@@ -710,10 +809,17 @@ export function QuestionsView({
                                             />
                                         </AdminTableCell>
                                         <AdminTableCell className={styles.numericCell}>
-                                            v{question.revisionNumber}
+                                            {question.revisionNumber === null
+                                                ? "尚無目前版本"
+                                                : `v${question.revisionNumber}`}
                                         </AdminTableCell>
                                         <AdminTableCell>
                                             {formatViewValue(question.sourceLabel)}
+                                        </AdminTableCell>
+                                        <AdminTableCell>
+                                            {question.banks.length === 0
+                                                ? "未加入題庫"
+                                                : question.banks.map((bank) => bank.name).join("、")}
                                         </AdminTableCell>
                                         <AdminTableCell>{question.createdAt}</AdminTableCell>
                                         <AdminTableActionCell>
@@ -755,8 +861,16 @@ export function QuestionsView({
                     ) : rows.length === 0 ? (
                         <MobileListState
                             kind="empty"
-                            title="找不到符合條件的題目"
-                            description="請調整關鍵字、題目範圍或版本篩選。"
+                            title={
+                                hasActiveFilters
+                                    ? "找不到符合條件的題目"
+                                    : "題庫尚無題目"
+                            }
+                            description={
+                                hasActiveFilters
+                                    ? "請調整關鍵字、題目範圍或版本篩選。"
+                                    : "目前沒有可顯示的題目；匯入或建立題目後會出現在這裡。"
+                            }
                         />
                     ) : (
                         <>
@@ -792,11 +906,19 @@ export function QuestionsView({
                                     fields={[
                                         {
                                             label: "目前版本",
-                                            value: `v${question.revisionNumber}`,
+                                            value: question.revisionNumber === null
+                                                ? "尚無目前版本"
+                                                : `v${question.revisionNumber}`,
                                         },
                                         {
                                             label: "來源文件",
                                             value: formatViewValue(question.sourceLabel),
+                                        },
+                                        {
+                                            label: "所屬題庫",
+                                            value: question.banks.length === 0
+                                                ? "未加入題庫"
+                                                : question.banks.map((bank) => bank.name).join("、"),
                                         },
                                         { label: "建立時間", value: question.createdAt },
                                     ]}
@@ -845,7 +967,7 @@ export function QuestionsView({
                         <Card>
                             <CardHeader>
                                 <CardTitle asChild>
-                                    <h2>目前內容</h2>
+                                    <h2>顯示內容</h2>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className={styles.contentStack}>
@@ -883,8 +1005,8 @@ export function QuestionsView({
                                                     : `v${currentRevision.number}${
                                                           currentRevision.id
                                                               === detail.currentRevisionId
-                                                              ? "（目前發布版本）"
-                                                              : "（最新版本）"
+                                                              ? "（目前版本）"
+                                                              : "（選定歷史版本）"
                                                       }`,
                                         },
                                         {
@@ -966,21 +1088,106 @@ export function QuestionsView({
                         <Card>
                             <CardHeader>
                                 <CardTitle asChild>
-                                    <h2>版本內容與歷程</h2>
+                                    <h2>顯示版本的完整內容</h2>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className={styles.contentStack}>
-                                {detail.revisions.length === 0 ? (
-                                    <AdminNotice tone="muted">無資料</AdminNotice>
+                                {detail.displayRevision === null ? (
+                                    <AdminNotice title="尚無目前版本" tone="muted">
+                                        這個題目沒有目前版本。若已有歷史版本，可從下方版本歷程選取查看。
+                                    </AdminNotice>
                                 ) : (
-                                    detail.revisions.map((revision) => (
-                                        <RevisionPanel
-                                            key={revision.id}
-                                            revision={revision}
-                                            currentRevisionId={detail.currentRevisionId}
-                                        />
-                                    ))
+                                    <RevisionPanel
+                                        revision={detail.displayRevision}
+                                        currentRevisionId={detail.currentRevisionId}
+                                    />
                                 )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle asChild>
+                                    <h2>版本歷程</h2>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className={styles.contentStack}>
+                                <p>
+                                    第 {detail.revisionHistory.page} 頁；每頁 {detail.revisionHistory.pageSize}
+                                    筆，共 {detail.revisionHistory.total} 個版本。
+                                </p>
+                                {detail.revisionHistory.items.length === 0 ? (
+                                    <AdminNotice tone="muted">
+                                        {detail.revisionHistory.total === 0
+                                            ? "此題目尚無版本歷史。"
+                                            : "這一頁沒有版本，請返回上一頁。"}
+                                    </AdminNotice>
+                                ) : (
+                                    <ol className={styles.timeline}>
+                                        {detail.revisionHistory.items.map((revision) => (
+                                            <li key={revision.id} className={styles.timelineItem}>
+                                                <div
+                                                    className={styles.timelineMarker}
+                                                    aria-hidden="true"
+                                                />
+                                                <div className={styles.timelineContent}>
+                                                    <div className={styles.timelineHeading}>
+                                                        <strong>v{revision.number}</strong>
+                                                        <div className={styles.badgeList}>
+                                                            <AdminStatusBadge
+                                                                status={revision.status}
+                                                                label={labelFor(
+                                                                    QUESTION_STATUS_LABELS,
+                                                                    revision.status,
+                                                                )}
+                                                            />
+                                                            {revision.id === detail.currentRevisionId ? (
+                                                                <AdminStatusBadge
+                                                                    status="current"
+                                                                    label="目前版本"
+                                                                    tone="primary"
+                                                                />
+                                                            ) : null}
+                                                            {revision.id === detail.selectedRevisionId ? (
+                                                                <AdminStatusBadge
+                                                                    status="selected"
+                                                                    label="正在查看"
+                                                                    tone="light"
+                                                                />
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                    <p>
+                                                        {revision.questionType.name}；建立於 {revision.createdAt}
+                                                    </p>
+                                                    <p>
+                                                        變更說明：{formatViewValue(revision.changeNote)}
+                                                    </p>
+                                                    <Button
+                                                        asChild
+                                                        size="sm"
+                                                        appearance="outline"
+                                                        tone="primary"
+                                                    >
+                                                        <a href={revision.detailHref}>查看此版本</a>
+                                                    </Button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
+                                <div className={styles.sectionActions}>
+                                    {detail.revisionHistory.previousHref ? (
+                                        <Button asChild appearance="outline" tone="muted">
+                                            <a href={detail.revisionHistory.previousHref}>上一頁版本</a>
+                                        </Button>
+                                    ) : null}
+                                    {detail.revisionHistory.nextHref ? (
+                                        <Button asChild appearance="outline" tone="muted">
+                                            <a href={detail.revisionHistory.nextHref}>下一頁版本</a>
+                                        </Button>
+                                    ) : null}
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
