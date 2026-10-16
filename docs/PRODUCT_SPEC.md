@@ -164,7 +164,7 @@
 - 大量資料下可使用每日彙總與常用期間的實體化檢視加速查詢，但必須保存最後更新時間、可重算範圍及處理進度，讓延遲與漏算可被發現及修復。
 
 ## 重要資料模型
-User, AccountIdentity, Student, StudentAccess, ReviewerRole, Subject, CurriculumUnit, CurriculumCode, SourceCategoryDimension, ExamProgram, ExamProgramLevel, ExamPlan, PracticePlan, QuestionBank, SourceDocument, Question, QuestionRevision, QuestionRevisionUnit, QuestionPart, QuestionType, QuestionChoice, QuestionTag, QuestionSimilarityCandidate, QuestionSimilarityGroup, QuestionSimilarityMembership, PracticeSession, AnswerAttempt, AnswerPartResult, AnswerPartAsset, AnswerReview, LearnerQuestionStat, QuestionDailyStat, AnalyticsPrivacyPolicy, SeedManifest, MistakeReview, GeneratedQuestion, AdminAuditLog。
+正式資料庫的實際資料表、欄位、關聯與限制，以 `database/migrations/0001` 至 `0005` 的原生 SQL schema 為權威；[題庫資料庫設計](question-database-design.md)說明完整契約，[正式資料庫完成對照](database-completion-matrix.md)負責對照產品需求與串接狀態。本文件不另維護第二份表名清單。
 
 關聯要求：一個帳號可關聯多位學習者，一位學習者也可授權給多個帳號；登入方式需關聯至同一帳號；題庫與帳號建立的題目需記錄擁有者；系統題目需有明確來源標記；練習計畫需記錄建立者與學習者；題目能追溯原始檔案及頁碼；學習者作答有時間戳並連結當時的題目版本；更正題目、答案或解析不得覆寫歷史作答的判定依據；手寫附件需連結到題目及作答紀錄；相近題需連結到原始錯題；正式目錄種子資料需保存版本、來源、內容雜湊與套用結果；管理員權限異動與系統題目修改需留下稽核紀錄。
 
@@ -179,9 +179,9 @@ User, AccountIdentity, Student, StudentAccess, ReviewerRole, Subject, Curriculum
 - 每次讀取或修改學習者資料時，都必須依帳號與學習者的分享關係檢查權限，不可只依前端目前選取的學習者判斷。
 
 ## MVP 範圍
-可操作介面、示範題目練習、錯題紀錄、篩選、練習日期，以及由模擬 API 寫入本機 JSON 的資料流程。初始資料由 repository 內的 fixture 提供，新增與修改資料寫入不進版控的 runtime JSON。正式帳號、雲端資料庫、真 OCR、AI 出題與 AI 手寫辨識均列入下一階段。
+可操作介面、示範題目練習、錯題紀錄、篩選、練習日期，以及由模擬 API 寫入本機 JSON 的資料流程。初始資料由 repository 內的 fixture 提供，新增與修改資料寫入不進版控的 runtime JSON。正式 PostgreSQL schema 與 migration 已完成本機隔離驗證；正式帳號、PostgreSQL runtime 串接與資料搬移、真 OCR、AI 出題及 AI 手寫辨識均列入下一階段。
 
-相近題關聯目前只保留產品與資料模型規格。正式資料庫、關聯分析與審核流程完成前，不在前端用科目或題目標籤模擬關聯，也不顯示會讓使用者誤以為關聯已建立的篩選結果。
+相近題候選、群組、成員及生成來源的正式資料表與限制已建立，但關聯分析、人工審核與查詢 API 尚未串接。這些流程完成前，不把前端 fixture 的固定關係或科目／題目標籤當成正式關聯，也不顯示會讓使用者誤以為正式關聯已建立的篩選結果。
 
 ## 模擬 API 與 JSON 資料契約
 
@@ -191,7 +191,7 @@ User, AccountIdentity, Student, StudentAccess, ReviewerRole, Subject, Curriculum
 - `kind` 只描述作答方式；`typeLabel` 保存來源文件的題型名稱，`sourceAnswer` 保存來源文件原樣的答案文字。複合題以 `parts` 保存每一個小題、選項與答案，避免把整組題目壓成單一選擇題。
 - 題幹、選項、答案與解析採有序內容區塊。圖片本體存入 runtime asset 目錄，JSON 保存檔案鍵值、MIME type、替代文字、尺寸、所屬區域與顯示順序。
 - 題目匯入確認會實際新增 JSON 題目與匯入批次；OCR 與 AI 拆題仍使用模擬結果，介面必須清楚區分兩者。
-- 未來改用資料庫時保留 API 路徑與回應格式，只替換資料存取層。
+- 正式切換可沿用 `/api/v1` 路徑，但不能只把 JSON 存取函式換成 SQL 或保留整份 state 覆寫。端點必須依正式資源拆分，從可信 session 建立權限範圍，使用交易、冪等與樂觀鎖定，並只回傳目前角色可見的最小資料；完整對照見 `docs/database-completion-matrix.md`。
 
 ## 待確認事項
 

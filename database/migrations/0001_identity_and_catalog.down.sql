@@ -1,0 +1,31 @@
+BEGIN;
+
+DROP TABLE seed_manifests;
+DROP TABLE source_category_dimensions;
+DROP TABLE source_categories;
+DROP TABLE curriculum_codes;
+DROP TABLE curriculum_units;
+DROP TABLE learner_subject_settings;
+DROP TABLE learner_preferences;
+DROP FUNCTION lerniqa_valid_question_limits(smallint[]);
+DROP TABLE auth_sessions;
+DROP TABLE learner_access;
+DROP TABLE learners;
+DROP TABLE assets;
+DROP TABLE exam_program_levels;
+DROP TABLE exam_programs;
+DROP TABLE book_versions;
+DROP TABLE grade_subjects;
+DROP TABLE subject_aliases;
+DROP TABLE subjects;
+DROP TABLE publishers;
+DROP TABLE semesters;
+DROP TABLE grades;
+DROP TABLE role_pin_credentials;
+DROP TABLE user_roles;
+DROP TABLE verification_challenges;
+DROP TABLE account_identities;
+DROP TABLE users;
+DROP TABLE schema_migrations;
+
+COMMIT;

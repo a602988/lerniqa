@@ -1,12 +1,24 @@
 # 題目與學習資料庫規劃
 
-狀態：正式 schema（資料庫結構）基底。欄位、關聯、限制、搬移規則與尚待決策項目已整理完成；migration（資料庫遷移）仍要等後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限確定後才施工。
+狀態：正式 schema（資料庫結構）基底。身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計五階段 migration（資料庫遷移）已完成本機隔離驗證。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
-本規劃已處理題目版本、文字／圖片／音訊內容、跨版本多單元歸檔、正式課綱代碼、來源適用維度、匯入來源、逐次作答、排程練習、相近題追溯、題目審核與統計重建。固定教材分類使用正式外鍵，來源特有欄位使用資料驅動規則；兩者不混用。正式 migration 前仍須確認後端服務與資料保存期限，不能先以應用程式預設值代替產品決策。
+本規劃已處理題目版本、文字／圖片／音訊內容、跨版本多單元歸檔、正式課綱代碼、來源適用維度、匯入來源、逐次作答、排程練習、相近題追溯、題目審核與統計重建。固定教材分類使用正式外鍵，來源特有欄位使用資料驅動規則；兩者不混用。正式應用程式切換前仍須確認後端服務與資料保存期限，不能先以應用程式預設值代替產品決策。
 
 正式資料庫以 PostgreSQL 為基準；大型 PDF、圖片及手寫內容放在物件儲存，資料庫只保存檔案資訊與儲存鍵值。
+
+## 實作狀態
+
+`database/migrations/0001_identity_and_catalog.up.sql` 已建立身份、學習者、檔案與基礎目錄資料表，並提供對應的回滾 migration。前進、欄位限制、回滾及再次前進已在可直接丟棄、只含合成資料的本機 PostgreSQL 測試資料庫通過。`learner_preferences.active_exam_id` 已由練習與作答階段加入，並以複合外鍵限制為同一學習者的考試。現有 JSON API 尚未切換到 PostgreSQL。
+
+`database/migrations/0002_question_core.up.sql` 已建立題庫、題目版本、小題、內容、答案、分類關聯及來源專屬篩選欄位。`database/migrations/0003_import_and_collections.up.sql` 已建立來源文件、匯入、來源追溯與收藏資料表，並補上文件內題號的欄位與限制。`database/migrations/0004_practice_and_attempts.up.sql` 已建立考試、計畫、排程、練習、逐次作答、小題結果、手寫檔案、審核、後續練習佇列及來源追溯。
+
+`database/migrations/0005_similarity_analytics_and_audit.up.sql` 已建立相近題、統計、隱私政策、outbox、重算工作、管理員稽核與資料刪除共 14 張業務資料表，並為 `learner_practice_queue_items` 與 `practice_session_item_origins` 加入 `similarity_group_id`、外鍵與 `confirmed_group` 值域。它也補上 `curriculum_units`、`source_categories` 的系統／帳號所有權，以及代表圖片、題目內容、來源文件、裁切圖、手寫與一般作答附件的用途、掃描狀態和刪除狀態完整性。`npm run db:test` 已通過五階段兩次前進與限制測試、逐階段反向回滾及 schema parity（結構一致性）比對。
+
+五階段合計 94 張業務資料表；技術性的 `schema_migrations` 不列入。現有題目 fixture 尚未搬入 PostgreSQL，現有 JSON API 與 UI 也尚未改用這些資料表。
+
+Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
 ## 共通規則
 
@@ -63,6 +75,8 @@
 | `created_at` | `timestamptz` | 必填；目前時間 | 登入時間 | — |
 | `revoked_at` | `timestamptz` | 選填 | 撤銷時間 | 權限重大異動時可撤銷既有工作階段 |
 
+建立、恢復或切換有效 session 時，必須和 `users` 狀態、`user_roles` 及 `learner_access` 異動使用同一個每帳號 transaction advisory lock，鎖後再重新驗證目前權限。migration 以 trigger 提供資料庫層防漏；正式服務仍應在相關 DML 前先取得同一把鎖並處理可重試的併發錯誤。
+
 ### `verification_challenges` 帳號與角色密碼驗證
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -91,7 +105,7 @@
 | `revoked_by_user_id` | `uuid` | 選填 | 移除角色者帳號 | — |
 | `revoked_at` | `timestamptz` | 選填 | 角色失效時間 | 同一帳號與角色只能有一筆有效授權 |
 
-新帳號建立時由後端一併建立有效的 `learner` 角色；前端不能用 `active_role` 自行授予角色。
+新帳號建立時由後端一併建立有效的 `learner` 角色；前端不能用 `active_role` 自行授予角色。角色授權對象、角色、授權者與授權時間不可改寫或刪除，撤銷只能從有效狀態單向發生。`system_admin` 的授予或撤銷必須由當下有效的管理員，或受控的 `bootstrap_admin` 路徑執行，並在同一交易建立目標為該 `user_roles.id` 的相符管理員稽核。
 
 ### `role_pin_credentials` 角色切換密碼
 
@@ -283,10 +297,10 @@
 | `content_checksum` | `varchar(128)` | 必填 | 種子內容雜湊 | 用於偵測檔案與已套用內容不一致 |
 | `item_count` | `integer` | 必填 | 項目數量 | 不得小於 0 |
 | `status` | `varchar(20)` | 必填；`pending` | 套用狀態 | `pending`、`applied`、`superseded`、`failed` |
-| `applied_at` | `timestamptz` | 選填 | 套用完成時間 | `status=applied` 時必填 |
+| `applied_at` | `timestamptz` | 選填 | 套用完成時間 | `status=applied` 或 `superseded` 時必填並保留原值 |
 | `migration_name` | `varchar(160)` | 必填 | 對應 migration 名稱 | 可由部署紀錄追溯 |
 
-正式目錄以版本化種子檔搭配 migration 管理，穩定代碼與固定 UUID 不因顯示名稱修改而改變。套用前驗證來源、雜湊、筆數與參照完整性；失敗時整批回滾。正式環境不得由前端自動建立系統題型、課綱代碼或考試級別。
+正式目錄以版本化種子檔搭配 migration 管理，穩定代碼與固定 UUID 不因顯示名稱修改而改變。紀錄只能以 `pending` 或 `failed` 建立；核對完成後由既定狀態流程標記為 `applied`，只有已套用版本能轉成 `superseded`。套用證據一旦成立，不得改寫來源、雜湊、筆數、migration 名稱或完成時間。套用前驗證來源、雜湊、筆數與參照完整性；失敗時整批回滾。正式環境不得由前端自動建立系統題型、課綱代碼或考試級別。
 
 ## 題目來源與資料驅動篩選
 
@@ -298,8 +312,12 @@
 | `code` | `varchar(60)` | 必填 | 來源穩定代碼 | 唯一 |
 | `name` | `varchar(100)` | 必填 | 來源名稱 | 首批包含題庫題目、課本自我評量、課本例題、課本隨堂、兩類習作、素養題、仿會考非選題、基測、會考、校內卷 |
 | `exam_program_id` | `uuid` | 選填 | 所屬考試體系 | 外鍵至 `exam_programs.id`；只在來源本身限定體系時填寫 |
+| `origin` | `varchar(20)` | 必填 | 來源建立範圍 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂來源建立者 | `origin=account` 時必填；系統來源為空 |
 | `status` | `varchar(20)` | 必填；`active` | 使用狀態 | 新來源以新增資料處理 |
 | `sort_order` | `smallint` | 必填 | 顯示順序 | — |
+
+系統來源由正式種子資料管理；帳號自訂來源只在建立者有權使用的題庫與匯入流程中可見。後端不得讓帳號把自訂來源偽裝成系統來源，也不得因同名就改寫正式來源。
 
 ### `source_category_dimensions` 來源固定維度規則
 
@@ -500,17 +518,19 @@
 | `source_category_id` | `uuid` | 選填 | 題目來源 | 外鍵至 `source_categories.id` |
 | `search_text` | `text` | 必填；空字串 | 搜尋用衍生文字 | 由內容區塊重建，不是題目內容來源 |
 | `status` | `varchar(20)` | 必填；`draft` | 版本狀態 | `draft`、`published`、`superseded`、`rejected` |
-| `change_note` | `varchar(500)` | 選填 | 修改原因 | 系統題目修改時必填 |
+| `change_note` | `varchar(500)` | 選填 | 修改原因 | 系統題目在 `revision_number > 1` 時必填，去除前後空白後不得為空；由 `0005` 在資料庫層強制 |
 | `created_by_type` | `varchar(30)` | 必填 | 建立者類型 | `user`、`bootstrap_admin`、`system_job`、`migration` |
 | `created_by_user_id` | `uuid` | 選填 | 建立此版本的帳號 | `created_by_type=user` 時必填 |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | 版本發布後不可原地修改 |
-| `published_at` | `timestamptz` | 選填 | 發布時間 | `status=published` 時必填 |
+| `published_at` | `timestamptz` | 選填 | 發布時間 | `status=published` 或 `superseded` 時必填並保留原發布時間 |
 
 `question_revisions` 的科目、年級、學期與版本表示題目原生分類。教材單元改由 `question_revision_units` 多對多保存，避免會考、基測或校內卷等不綁定出版社版本的題目，因後續歸入某一教材版本的單元而被迫填入錯誤版本。`book_version_id` 有值時，後端仍要驗證該版本的科目與年級不和題目版本衝突。
 
 發布版本時，後端依 `source_category_dimensions.native_requirement` 驗證固定分類。`required` 必須有對應原生欄位或正式關聯，`not_applicable` 不得保存原生值，`optional` 則允許空值。跨版本單元歸檔不算成題目原生 `book_version`，因此來源的版本規則為 `not_applicable` 時，仍可建立 `cross_version_alignment` 單元關聯。
 
 `exam_program_level_id` 有值且來源的 `exam_program_id` 也有值時，兩者必須屬於同一考試體系。來源未限定體系時，只要 `exam_level` 規則允許，仍可保存正式級別；這讓一般題庫來源能收錄已分類的檢定題，而不用複製來源類型。
+
+`0005` 會先執行 preflight，若既有系統題目在 `revision_number > 1` 時缺少非空白 `change_note`，migration 會停止，不替資料編造原因。套用後，`question_revisions_change_note_check` trigger 會在版本新增或相關欄位更新時拒絕缺少原因的系統題目後續版本；`questions_system_revision_change_note_check` 則在 `questions.origin` 變更時反查既有版本，並以 deferred constraint trigger 驗證交易最終狀態，讓帳號題目轉成系統題目時可在同一交易先補原因或先改來源，但提交前必須完整。這項規則已由資料庫強制並納入限制測試。正式 API 仍應在送出 SQL 前提供同樣的友善驗證與明確錯誤訊息，但 API 驗證不是唯一防線。
 
 ### `question_revision_reviews` 題目版本審核紀錄
 
@@ -541,7 +561,7 @@
 | `grading_policy` | `varchar(30)` | 必填 | 判分政策 | `automatic`、`manual_review`、`ai_assisted_review` |
 | `is_independently_gradable` | `boolean` | 必填；`true` | 是否可獨立判分 | 為真時可只複習此小題 |
 
-一般單題仍建立一筆根小題，讓所有答案與作答都使用同一條路徑，避免整題與小題出現兩套平行實作。`grading_policy` 表示題目設定的判分方式，`answer_attempts.grading_source` 與 `answer_part_results.grading_source` 記錄實際採用的初始判分方式；三個欄位共用同一組值，不做額外字串對照。
+一般單題仍建立一筆根小題，讓所有答案與作答都使用同一條路徑，避免整題與小題出現兩套平行實作。`grading_policy` 表示題目設定的判分方式；`answer_attempts.grading_source` 記錄送出時採用的初始判分方式，`answer_part_results.grading_source` 則記錄目前有效判定的來源，合法人工審核改判時可連同 `current_result` 一併更新。三個欄位共用同一組值，不做額外字串對照。
 
 ### `question_options` 選項
 
@@ -654,14 +674,16 @@
 | `width` | `integer` | 選填 | 圖片寬度 | 像素 |
 | `height` | `integer` | 選填 | 圖片高度 | 像素 |
 | `checksum` | `varchar(128)` | 必填 | 內容雜湊 | 用於完整性與重複檔案判斷 |
-| `purpose` | `varchar(30)` | 必填 | 檔案用途 | `question_content`、`source_document`、`handwriting`、`learner_avatar`、`page_crop` |
+| `purpose` | `varchar(30)` | 必填 | 檔案用途 | `question_content`、`source_document`、`handwriting`、`answer_attachment`、`learner_avatar`、`page_crop` |
 | `sensitivity` | `varchar(20)` | 必填；`private` | 存取敏感度 | `public_content` 或 `private`；手寫與學習者資料固定為 `private` |
 | `scan_status` | `varchar(20)` | 必填；`pending` | 惡意內容掃描狀態 | `pending`、`clean`、`rejected` |
 | `created_by_user_id` | `uuid` | 選填 | 上傳帳號 | — |
 | `created_at` | `timestamptz` | 必填；目前時間 | 上傳時間 | — |
 | `deleted_at` | `timestamptz` | 選填 | 邏輯刪除時間 | 確認無引用後才移除實體檔案 |
 
-`assets` 不直接授予存取權。讀取檔案時必須從題目內容、來源文件、手寫作答或學習者代表圖片等引用關係反查權限，再產生短效簽名網址；只知道 `asset_id` 或 `storage_key` 不代表可以下載。沒有正式引用的上傳檔案只能由上傳帳號在隔離區存取，並依保存政策清理。
+`assets` 不直接授予存取權。讀取檔案時必須從題目內容、來源文件、作答或學習者代表圖片等引用關係反查權限，再產生短效簽名網址；只知道 `asset_id` 或 `storage_key` 不代表可以下載。沒有正式引用的上傳檔案只能由上傳帳號在隔離區存取，並依保存政策清理。
+
+`handwriting` 只保存手寫板影像；其他經題型與表單核准的一般作答檔案使用 `answer_attachment`。兩種作答附件都必須是 `sensitivity=private`、`scan_status=clean` 且 `deleted_at IS NULL`，才能建立 `answer_part_assets` 關聯。用途分開可避免把一般附件假裝成手寫內容，也能讓後端依題型限制可接受的檔案；附件仍須從作答及學習者授權鏈反查權限，不因掃描通過而變成公開檔案。作答仍引用檔案時，`storage_key`、MIME、大小、圖片尺寸、內容雜湊、上傳者與建立時間視為證據，不可原地覆寫。
 
 ### `source_documents` 來源文件
 
@@ -793,7 +815,11 @@
 | `code` | `varchar(80)` | 選填 | 來源中的單元代碼 | 同一版本與父層下有值時唯一 |
 | `name` | `varchar(120)` | 必填 | 單元名稱 | — |
 | `position` | `smallint` | 必填 | 同層順序 | — |
+| `origin` | `varchar(20)` | 必填 | 單元建立範圍 | `system` 或 `account` |
+| `owner_user_id` | `uuid` | 選填 | 自訂單元建立者 | `origin=account` 時必填；系統單元為空 |
 | `status` | `varchar(20)` | 必填；`active` | 使用狀態 | — |
+
+系統單元由正式教材目錄建立；帳號自訂單元只能由建立者及其授權範圍使用。後端交易另須驗證父子單元的科目、版本、年級、學期與所有權相容；帳號自訂單元不得掛到其他帳號的單元下。
 
 ### `curriculum_codes` 正式課綱代碼
 
@@ -1115,6 +1141,8 @@
 | `position` | `integer` | 必填 | 題目順序 | 同一練習內唯一 |
 | `selection_reason` | `varchar(30)` | 必填 | 選入原因 | `filter`、`fixed`、`wrong_review`、`similar_review`、`difficulty_fill` |
 
+一旦練習項目已有來源追溯或作答，`practice_session_id`、題目、版本、小題與選入原因不可改寫；parent session 也不可換成另一位學習者。這些限制保留 `practice_sessions.status`、`completed_at` 等正常生命週期欄位可更新。
+
 ### `practice_session_item_origins` 練習項目來源追溯
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -1160,7 +1188,7 @@
 | `answer_payload` | `jsonb` | 必填 | 學習者原始答案 | 保存選項鍵值、文字或多值答案，不保存可執行內容 |
 | `initial_result` | `varchar(20)` | 必填 | 初始判定 | `correct`、`wrong`、`pending` |
 | `current_result` | `varchar(20)` | 必填 | 目前有效判定 | `correct`、`wrong`、`pending`；審核歷程另存 |
-| `grading_source` | `varchar(20)` | 必填 | 判定來源 | `automatic`、`manual_review`、`ai_assisted_review` |
+| `grading_source` | `varchar(20)` | 必填 | 目前判定來源 | `automatic`、`manual_review`、`ai_assisted_review`；合法審核改變目前判定時一併更新，原始答案與 `initial_result` 不變 |
 | `recognized_text` | `text` | 選填 | AI 手寫辨識文字 | 不能覆蓋原始手寫或使用者答案 |
 | `recognition_confidence` | `numeric(4,3)` | 選填 | 手寫辨識信心值 | 0 至 1 |
 
@@ -1175,7 +1203,7 @@
 | `asset_role` | `varchar(20)` | 必填 | 檔案用途 | 首版為 `handwriting`、`attachment` |
 | `position` | `smallint` | 必填；`0` | 同用途順序 | — |
 
-前三欄為主鍵。檔案讀取權限沿小題作答、練習與學習者授權反查；刪除或去識別化時不得只清掉 `answer_payload` 而留下可辨識的手寫檔案。
+前三欄為主鍵。`asset_role=handwriting` 只能引用 `assets.purpose=handwriting`；`asset_role=attachment` 只能引用 `assets.purpose=answer_attachment`。兩者都必須為 private、掃描狀態為 `clean` 且未邏輯刪除。檔案讀取權限沿小題作答、練習與學習者授權反查；刪除或去識別化時不得只清掉 `answer_payload` 而留下可辨識的作答檔案。此關聯可依受權限的保存／刪除流程更新或移除，不是 append-only；正式政策必須先定義解除引用、物件刪除與稽核的順序。
 
 ### `answer_reviews` 人工或輔助審核
 
@@ -1319,7 +1347,7 @@
 | `id` | `uuid` | 必填 | 稽核紀錄識別碼 | 主鍵 |
 | `actor_type` | `varchar(30)` | 必填 | 操作者類型 | `user`、`bootstrap_admin`、`system_job` |
 | `actor_user_id` | `uuid` | 選填 | 操作者帳號 | `actor_type=user` 時必填 |
-| `action` | `varchar(80)` | 必填 | 操作代碼 | 例如 `admin_role_granted`、`system_question_revised` |
+| `action` | `varchar(80)` | 必填 | 操作代碼 | 例如 `admin_role_granted`、`system_question_revision_status_changed`、`data_erasure_completed` |
 | `target_type` | `varchar(60)` | 必填 | 目標資源類型 | — |
 | `target_id` | `uuid` | 選填 | 目標資源識別碼 | 預設系統管理員使用固定文字目標時可為空 |
 | `before_data` | `jsonb` | 選填 | 異動前內容 | 排除密碼、token、完整答案影像等敏感資料 |
@@ -1339,13 +1367,15 @@
 | `target_learner_id` | `uuid` | 選填 | 要處理的學習者 | 外鍵至 `learners.id`；與目標帳號至少一項必填 |
 | `request_type` | `varchar(30)` | 必填 | 要求類型 | `account_closure`、`learner_erasure`、`asset_erasure` |
 | `status` | `varchar(20)` | 必填；`pending` | 處理狀態 | `pending`、`approved`、`processing`、`completed`、`rejected` |
-| `reviewed_by_user_id` | `uuid` | 選填 | 審核帳號 | 正式政策要求審核時使用 |
+| `reviewed_by_user_id` | `uuid` | 選填 | 審核帳號 | `pending` 時可空；任何非 `pending` 狀態都必須是當下有效的 `system_admin` |
 | `decision_reason` | `text` | 選填 | 核准或拒絕原因 | 拒絕時必填 |
 | `result_summary` | `jsonb` | 選填 | 處理結果摘要 | 只保存資料類別與筆數，不保存已刪除內容 |
 | `requested_at` | `timestamptz` | 必填；目前時間 | 提出時間 | — |
 | `completed_at` | `timestamptz` | 選填 | 完成時間 | `status=completed` 時必填 |
 
-保存期限由正式政策設定，不寫死在應用程式。帳號與學習者顯示資料在核准後去識別化；未達法定或契約保存期限的作答、審核與稽核資料保留不可回推個人的替代識別碼；手寫影像、代表圖片與未發布來源文件在沒有其他保存義務時刪除物件及 `assets` 引用。每次執行要產生不可含個資的處理摘要與管理員稽核紀錄。期限尚未核准前，不得把正式學習者資料搬入 production（正式環境）。
+要求只能以 `pending` 建立，再依 `pending -> approved -> processing -> completed` 或 `pending -> rejected` 單向推進；要求身份、目標、類型與提出時間不可改，離開 `pending` 後審核者與決定原因不可改，紀錄不可刪除且終態不可覆寫。完成必須在同一交易留下 `data_erasure_completed` 管理員稽核。
+
+這張表只保存要求與處理 ledger，不會自行刪除資料。保存期限由正式政策設定，不寫死在應用程式。帳號與學習者顯示資料在核准後去識別化；未達法定或契約保存期限的作答、審核與稽核資料保留不可回推個人的替代識別碼；手寫影像、代表圖片與未發布來源文件在沒有其他保存義務時刪除物件及 `assets` 引用。正式 worker 必須驗證 requester 與 target、依政策解除引用並刪除物件，每次執行產生不含個資的摘要與管理員稽核紀錄。期限尚未核准前，不得把正式學習者資料搬入 production（正式環境）。
 
 ## 關聯與權限規則
 
@@ -1418,9 +1448,9 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 
 - 一般帳號只能修改自己擁有的 `origin=account` 題目。系統題目只有有效的 `system_admin` 或預設系統管理員可建立新版本。
 - 系統題目版本須由另一位有效系統管理員審核；建立版本與審核決定要分離，不能自行核准。
-- 一次性的 fixture 搬移不建立虛構審核者。通過筆數、內容雜湊、必要欄位與來源檢查的既有系統題目第一版可由 migration 直接發布，並寫入 `admin_audit_logs`；搬移後建立的任何系統題目版本都不得使用此豁免。
+- 一次性的 fixture 搬移不建立虛構審核者。第一版直接發布的例外只適用於固定順序：先套用 `0001` 至 `0004`，再執行通過筆數、內容雜湊、必要欄位與來源檢查的受控 fixture 搬移並寫入 `admin_audit_logs`，最後套用 `0005`；若無法使用此順序，必須由專用、一次性且可稽核的受控 migration 明確處理。`0005` 套用後，新版本必須先以 `draft` 建立，發布或取代系統題目版本也必須在同一交易留下審核與稽核；一般搬移工具不得再使用直接發布例外。
 - 系統管理員授予與移除必須同時寫入 `user_roles` 及 `admin_audit_logs`，兩者在同一個 transaction（資料庫交易）提交。
-- 預設系統管理員從可信後端身份取得 `bootstrap_admin` 操作者，不在 `users` 建立假帳號。
+- 預設系統管理員從可信後端身份取得 `bootstrap_admin` 操作者，不在 `users` 建立假帳號。`bootstrap_admin` 與 `system_job` 只是資料列中的 actor 類型，正式資料庫必須另以受限應用程式角色、RLS／GRANT 及受控高權限程序驗證 caller，不能只相信這個字串。
 - 所有學習資料查詢同時限制 `learner_id` 及目前帳號有效的 `learner_access`，只知道資源 ID 不代表有權讀取。
 - 檔案下載權限由引用 `assets` 的正式資源決定，物件儲存鍵值與檔案識別碼都不是授權憑證。
 - 家長或家教建立的計畫可由學習者執行，但只有具修改權限的建立者能改變範圍與練習方式。
@@ -1433,15 +1463,18 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | --- | --- |
 | 登入身份去重 | `UNIQUE(provider, provider_subject)`；`email_normalized` 有值時唯一 |
 | 登入工作階段 | `UNIQUE(token_hash)`；索引 `user_id, revoked_at, expires_at` |
+| 登入與撤權併發 | session 建立／恢復、帳號狀態、角色及學習者存取權異動以同一個每帳號 transaction advisory lock 序列化，鎖後重新驗證有效權限 |
 | 一次性驗證 | `UNIQUE(token_hash)`；索引 `user_id, purpose, consumed_at, expires_at` |
 | 有效角色去重 | `user_roles(user_id, role)` 在 `revoked_at IS NULL` 時唯一 |
+| 角色授權歷史 | 授權證據不可改寫或刪除，撤銷只能單向進行；`system_admin` 授撤必須同交易寫入 actor 與 target 相符的管理員稽核 |
 | 學習者分享 | `learner_access(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一；另建 `user_id, revoked_at, learner_id` 索引 |
 | 學習者就學狀態 | CHECK constraint 確保 `enrolled` 時有 `grade_id`，`not_enrolled` 時 `grade_id`、`semester_id` 與 `school_name` 為空 |
 | 學習者科目 | `UNIQUE(learner_id, subject_id)`；索引 `learner_id, enabled, position` |
 | 科目名稱與階層 | 系統科目的 `normalized_name` 與 `subject_aliases.normalized_alias` 各自全域唯一；帳號科目 `UNIQUE(owner_user_id, normalized_name)`；後端另拒絕與可見系統科目名稱或別名重名，並防止 `parent_subject_id` 形成循環 |
-| 系統與帳號所有權 | `origin=system` 時 `owner_user_id IS NULL`；`origin=account` 時 `owner_user_id IS NOT NULL` |
+| 系統與帳號所有權 | `subjects`、`book_versions`、`curriculum_units`、`source_categories`、`topics`、`knowledge_points`、題庫與題目皆限制 `origin=system` 時 `owner_user_id IS NULL`、`origin=account` 時 `owner_user_id IS NOT NULL`；帳號目錄的可見與引用範圍仍由後端授權服務檢查 |
 | 預設題庫 | 每個 `owner_user_id` 在 `status=active AND is_default=true` 時最多一筆；系統題庫另以系統範圍限制 |
 | 題目版本 | `UNIQUE(question_id, revision_number)`；索引 `question_id, revision_number DESC` |
+| 系統題目修改原因 | `0005` preflight 拒絕既有缺漏；`question_revisions` trigger 拒絕新增、改號、換題或清空原因；`questions.origin` 的 deferred constraint trigger 反查後續版本，確保交易最終狀態下所有系統題目 `revision_number > 1` 都有非空白 `change_note` |
 | 考試體系與級別 | `UNIQUE(exam_programs.code)`；`UNIQUE(exam_program_id, code)`；索引 `exam_program_levels(parent_level_id, sort_order)` 與 `source_categories(exam_program_id, status)`；父子級別必須屬於同一體系並防止循環 |
 | 題目外部編號 | `legacy` 使用 `UNIQUE(identifier_type, normalized_value)`；出版社與文件題號依有效範圍建立部分唯一索引，禁止兩題取得同一有效來源識別 |
 | 題目審核 | 索引 `question_revision_reviews(question_revision_id, created_at DESC)`；`reviewer_type=user` 時審核帳號必須存在，預設系統管理員則不得建立假帳號 |
@@ -1461,6 +1494,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 相近題 | `PRIMARY KEY(similarity_group_id, question_id)`；索引 `question_id, status` |
 | 相近題候選 | `left_question_revision_id < right_question_revision_id`；`UNIQUE(left_question_revision_id, right_question_revision_id, method_key, method_version)`；索引 `status, similarity_score DESC`；已審核狀態必須有審核者與時間 |
 | 計畫、排程與練習順序 | `UNIQUE(practice_plan_id, position)`、`UNIQUE(practice_schedule_id, position)`、`UNIQUE(practice_session_id, position)` |
+| 作答來源固定 | 有來源追溯或作答後，練習項目的 session、題目、版本、小題及選入原因不可漂移；parent session 不可改換學習者 |
 | 預設計畫 | 每個 `learner_id` 在 `status <> archived AND is_default=true` 時最多一筆 |
 | 排程執行 | `practice_sessions.practice_schedule_id` 有值時唯一；索引 `practice_schedules(learner_id, status, scheduled_for)` |
 | 後續練習佇列 | 索引 `learner_practice_queue_items(learner_id, status, created_at)`；正常錯題與相近題流程必須有來源小題作答 |
@@ -1468,6 +1502,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 難易度比例 | 啟用比例的計畫必須有有效比例，且同一計畫比例合計為 100；在提交交易前驗證 |
 | 作答冪等 | `UNIQUE(learner_id, idempotency_key)`；`UNIQUE(practice_session_item_id, attempt_number)` |
 | 小題結果 | `UNIQUE(answer_attempt_id, question_part_id)`；索引 `question_part_id, current_result` |
+| 檔案引用完整性 | 代表圖片、題目內容、來源文件、頁面裁切圖與作答附件只接受用途相容、`scan_status=clean`、`deleted_at IS NULL` 的檔案；手寫與一般作答附件另要求 `sensitivity=private`，被引用後不得改成不相容或失效狀態；作答引用期間另凍結儲存鍵值、內容／尺寸雜湊與上傳證據 |
 | 作答附件 | `PRIMARY KEY(answer_part_result_id, asset_id, asset_role)`；索引 `asset_id`；引用資產的用途與附件角色必須相容 |
 | 錯題與最近作答 | 索引 `learner_question_stats(learner_id, last_result, last_attempted_at DESC)` 及 `learner_part_stats(learner_id, last_result, last_attempted_at DESC)` |
 | 錯題排行 | 索引 `question_daily_stats(stat_date, wrong_attempts DESC)` 與 `stat_date, wrong_learner_count DESC` |
@@ -1475,7 +1510,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 統計事件冪等 | `UNIQUE(event_type, source_record_id)`；索引 `processed_at, occurred_at` |
 | 稽核查詢 | 索引 `admin_audit_logs(target_type, target_id, created_at DESC)` 及 `actor_user_id, created_at DESC` |
 | 樂觀鎖定 | 更新 `learner_preferences`、`learner_subject_settings`、`question_collections`、`exams`、`practice_plans`、`practice_schedules` 時比對主鍵與 `lock_version`；成功後版本加 1 |
-| 資料刪除要求 | 索引 `data_erasure_requests(status, requested_at)`、`target_user_id` 及 `target_learner_id` |
+| 資料刪除要求 | 索引 `data_erasure_requests(status, requested_at)`、`target_user_id` 及 `target_learner_id`；只允許既定單向狀態流程，身份／目標不可改、不可刪、終態不可變，完成需同交易稽核 |
 | 正式種子資料 | `UNIQUE(catalog_key, version)`；同版本的來源、內容雜湊與筆數必須一致；已套用版本不得覆寫或重新解讀 |
 
 ## 寫入交易與資料生命週期
@@ -1487,7 +1522,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 發布考試題目 | 驗證來源固定維度、正式級別及來源限定的考試體系，發布版本並更新目前版本 | 體系或必要級別不一致時維持草稿 |
 | 補齊題號來源 | 鎖定 `legacy` 識別、查找目標出版社與版本範圍的相同正規化題號，確認無衝突後更新原識別 | 發現既有題目時進入合併審核，不新增識別、不合併作答 |
 | 審核系統題目 | 鎖定版本、驗證審核者不是建立者、新增審核紀錄、轉換版本狀態、更新目前發布版本及稽核 | 任一項失敗維持原狀態 |
-| 搬移既有系統題目 | 驗證 fixture 雜湊、題目筆數、必要欄位與來源後，建立第一版並直接發布，同時寫入 migration 稽核 | 任一核對失敗時整批不發布；不建立虛構審核紀錄 |
+| 搬移既有系統題目 | 僅在 `0001` 至 `0004` 完成、`0005` 尚未套用時，驗證 fixture 雜湊、題目筆數、必要欄位與來源後建立第一版並直接發布，同時寫入 migration 稽核；其他部署順序須使用專用的一次性受控 migration | 任一核對失敗時整批不發布；不建立虛構審核紀錄；`0005` 套用後一般搬移工具不得繞過 `draft`、審核與稽核 |
 | 確認匯入 | 鎖定批次、驗證全部核准項目、建立正式題目與來源關聯、標記批次確認 | 冪等重試回傳同一結果 |
 | 移動收藏 | 移除該學習者其他收藏項目，再加入目標收藏 | 失敗時維持原收藏狀態 |
 | 開始練習 | 依有效條件選題，固定版本與小題到 `practice_session_items` | 不建立空的練習工作階段；題數不足回傳實際題數 |
@@ -1499,6 +1534,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 套用正式種子資料 | 驗證來源、內容雜湊、筆數、穩定鍵值與外鍵後套用正式目錄，最後寫入 `seed_manifests` | 已存在相同版本且內容不同時停止；任一核對失敗時整批回滾 |
 | 授予管理員 | 驗證操作者、建立角色授權、寫入稽核 | 角色與稽核要一起成功 |
 | 啟用統計隱私政策 | 驗證系統管理員、停用同鍵舊政策、啟用新政策並寫入稽核 | 任一項失敗時沿用舊政策；沒有舊政策時社群榜保持關閉 |
+| 執行資料刪除要求 | 依既定狀態流程鎖定要求，驗證 requester、target、執行管理員及保存政策，刪除或去識別化資料與物件，寫入不含個資的結果摘要及完成稽核 | 任一項失敗時不得標記為 `completed`；保留要求與失敗診斷供重試，不製造半套刪除完成證據 |
 | 封存題目 | 標記題目封存，停止新的練習工作階段選入 | 保留歷史版本、作答與來源 |
 
 ## 共用篩選查詢規則
@@ -1527,7 +1563,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | --- | --- | --- |
 | `Learner` | `learners`、`learner_preferences` | 現有資料都有年級，搬移為 `education_status=enrolled`；常用題數轉成 `question_limit_options` 陣列，各科版本拆到 `learner_subject_settings`，空字串版本轉為空值 |
 | `customSubjects` | `subjects`、`learner_subject_settings` | 建立 `origin=account` 科目並保留建立帳號；找不到帳號則隔離，不自行指派 |
-| `Question` | `questions`、`question_revisions` | 一題建立穩定身份與第一版；既有 fixture 明確標記為系統題目。通過整批核對後第一版以 `created_by_type=migration` 直接發布並寫入 migration 稽核，不建立虛構審核者 |
+| `Question` | `questions`、`question_revisions` | 一題建立穩定身份與第一版；既有 fixture 明確標記為系統題目。直接發布只允許在 `0001` 至 `0004` 後、`0005` 前完成整批核對與 migration 稽核，或由專用的一次性受控 migration 執行，不建立虛構審核者；`0005` 套用後一般搬移工具只能走 `draft`、審核與稽核流程 |
 | `code` | `question_identifiers` | 先以核准對照規則及已確認的 `bookVersion`、出版社與來源文件判斷題號範圍；能唯一確認出版社時建立 `identifier_type=publisher_question` 並保存出版社及適用版本，無法確認時才建立 `legacy`。搬移前先查找同範圍的正規化題號，不能因識別種類不同而建立重複題目；對照規則、各類結果筆數及同一出版社範圍內一號多題的隔離紀錄寫入搬移報告，不自動合併 |
 | `subject`、`grade`、`semester`、`bookVersion` | `question_revisions` | 逐項對照正式目錄後寫入原生分類；找不到唯一對照時列入隔離報告，不依顯示文字自行新增系統目錄 |
 | `chapter`、`unit` | `curriculum_units`、`question_revision_units` | 只有能對照到既有教材層級時建立 `assignment_type=native` 關聯；「相近題模擬」等非教材位置不得建立單元，原文保留在搬移報告 |
@@ -1551,7 +1587,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 
 ## Migration 施工順序
 
-| 階段 | 建立範圍 | 完成條件 | 回滾界線 |
+| 階段 | 建立範圍 | 完成條件 | 可直接丟棄的本機資料庫之 down 測試界線 |
 | --- | --- | --- | --- |
 | 身份與目錄 | 帳號、登入身份、工作階段、角色、學習者、年級、科目樹、版本、考試體系、考試級別、教材單元、課綱代碼、來源固定維度及種子資料版本 | 所有權、角色、學習者隔離、正式考試目錄、來源維度限制及種子資料內容核對通過 | 回滾新 schema（資料庫結構），不修改 fixture |
 | 題目核心 | 題庫、題目身份、外部編號、版本、小題、內容、答案、多單元歸檔、課綱代碼、來源條件與檔案 | 既有題型、圖片、題目音訊與錄音稿可由單一題目模型重現；跨版本歸檔不改寫原生版本 | 保留身份與目錄，回滾題目核心 migration |
@@ -1559,9 +1595,11 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | 練習與作答 | 考試、計畫、排程、後續練習佇列、固定題目、練習工作階段、逐次作答、作答附件、小題結果及審核 | 歷史題目版本與原始判定不漂移，錯一小題只產生該小題複習；同一排程只能建立一個工作階段 | 停止新寫入，保留已提交作答 |
 | 相近題與統計 | 相近候選、相近群組、原始錯題追溯、掌握度、每日彙總、統計隱私政策、outbox（待處理事件表）與重算工作 | 每次相近題練習可追溯確切錯題作答；候選分數不能直接成為正式關聯；統計可從明細全量重建，未確認群組不參與排除；沒有有效隱私政策時社群榜保持關閉 | 清空可重建彙總，不動原始作答、政策版本與關聯審核紀錄 |
 
-每一階段都要有可前進、可回滾的 migration，並在接近正式資料量的環境驗證。正式切換前先停止 JSON 寫入、完成最後增量搬移及數量核對，再切換後端讀寫來源；不能讓 JSON 與 PostgreSQL 同時成為可寫入的權威資料。
+每一階段都有 up 與 down migration。down 只用於空白或只含合成資料、可直接丟棄的本機資料庫，以驗證物件移除順序與再次前進；正式資料庫開始承載耐久資料後，不執行這些 down migration，改用保留資料的 forward fix migration，並以停止寫入、切回上一版服務或關閉功能等營運方式回復服務。接近正式資料量的驗證也必須使用隔離副本，不得把 down 當成正式資料的復原方案。
 
-## 實作前仍需確認
+正式切換前先停止 JSON 寫入、完成最後增量搬移及數量核對，再切換後端讀寫來源；不能讓 JSON 與 PostgreSQL 同時成為可寫入的權威資料。若 fixture 系統題第一版要使用直接發布例外，部署順序固定為 `0001` 至 `0004`、受控 fixture 搬移、`0005`；否則另寫專用的一次性受控 migration。一般搬移工具在 `0005` 之後不得繞過 `draft`、審核與稽核限制。
+
+## 正式切換前仍需確認
 
 - 正式後端、PostgreSQL 託管位置、ORM、物件儲存、登入服務及 Secret Manager。
 - 資料庫系統管理員是否能修改其他帳號建立的題目；目前規則為拒絕。
@@ -1576,16 +1614,16 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 
 ## 驗證計畫
 
-- schema 限制：帳號身份、角色、題目所有權、版本歸屬、學習者科目、動態欄位適用規則、選項適用規則及各唯一鍵。
+- schema 限制：帳號身份、角色、題目與自訂目錄所有權、版本歸屬、學習者科目、動態欄位適用規則、選項適用規則及各唯一鍵。
 - 就學狀態：在學學習者必須有年級；不在學學習者不得保存年級、學期或學校，且能依啟用科目查到不綁年級的考試題。
-- 科目與來源目錄：社會、自然科學等上層科目可展開有效子科目；領域課綱代碼可套用到有效子科目；來源固定維度能分辨必填、選填與不適用，缺少規則時不得發布來源設定。
+- 科目與來源目錄：社會、自然科學等上層科目可展開有效子科目；領域課綱代碼可套用到有效子科目；系統單元／來源不可冒用帳號所有權，帳號自訂項目也不能跨帳號引用；來源固定維度能分辨必填、選填與不適用，缺少規則時不得發布來源設定。
 - 來源原生分類：單元設為 `not_applicable` 時禁止 `native` 關聯，但允許跨版本或人工歸檔；版本設為 `not_applicable` 時題目版本保持空值，跨版本單元歸檔仍可使用。
 - 考試體系：不綁年級的考試題可供任一年級及不在學學習者查詢；級別與來源限定體系不一致時拒絕發布；目標級別首版只選相同級別。
 - 跨版本歸檔：不綁版本的會考或校內卷題目可歸入多個出版社單元，題目原生 `book_version_id` 仍保持空值；原生教材題目的 `native` 單元不得和科目、年級、學期或版本衝突。
 - 課綱代碼：`N-7-5`、`Da-IV-1` 等通過目錄驗證後可查詢；未知原文進入人工校正，不得寫成知識點或自行建立正式代碼。
-- migration 往返：空資料庫前進、回滾、再次前進後 schema 與種子資料一致。
+- migration 結構往返：在空白或只含合成資料、可直接丟棄的本機資料庫前進、回滾並再次前進後，最終 schema 與第一次前進的 schema parity（結構一致性）相符。現有 verifier 不驗證種子資料的 round-trip parity（往返後資料一致性）；正式種子資料另依下一項的版本、雜湊、筆數與外鍵規則驗證。
 - 正式種子資料：同一目錄版本重跑不新增資料；內容雜湊或筆數不符時整批停止；穩定鍵值與既有外鍵在升版後仍可追溯。
-- fixture 搬移：既有八種題型、圖片、兩個以上填空、小題、收藏、考試與動態來源欄位可重現；能確認出版社的既有 `code` 搬成 `publisher_question`，其餘才搬成 `legacy`；`Question.topic` 依核准對照表分流至題型或主題；系統題目第一版發布需有搬移稽核且不能產生虛構審核者。
+- fixture 搬移：既有八種題型、圖片、兩個以上填空、小題、收藏、考試與動態來源欄位可重現；能確認出版社的既有 `code` 搬成 `publisher_question`，其餘才搬成 `legacy`；`Question.topic` 依核准對照表分流至題型或主題。系統題目第一版直接發布需有搬移稽核、不能產生虛構審核者，且只能依 `0001` 至 `0004`、受控 fixture 搬移、`0005` 的順序，或由專用的一次性受控 migration 執行。
 - 音訊內容：音訊檔案、錄音稿、顯示順序與權限可由同一內容模型重現，缺少必要錄音稿時不得發布英聽題。
 - 作答答案：選項、是非、文字與多值答案通過首版格式驗證；未知欄位、跨小題選項鍵值與不相容附件必須拒絕。
 - 判分政策：系統自動判分、人工檢視與 AI 輔助後人工確認都有允許及拒絕案例；AI 結果未經確認時維持待檢視。
@@ -1594,7 +1632,8 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 檔名解析：原始檔名保持不變；分類解析結果先建立候選，未確認候選不能污染正式單元、版本、來源或課綱目錄；題號直接進入匯入項目與來源位置，不建立題號分類候選。
 - 舊資料搬移：排程、後續相近題、匯入本、匯入批次與角色權限逐項核對筆數；無法建立的追溯關係必須出現在隔離報告。
 - 歷史一致性：更正答案後，舊作答仍引用舊版本，新練習使用新版本。
-- 題目審核：除一次性 fixture 搬移外，系統題目不能自行核准；退回原因、狀態轉換與目前發布版本保持一致。
+- 題目審核：`0005` 套用後，一般搬移工具與應用程式都不能繞過先建立 `draft`、另一位管理員審核及同交易稽核；退回原因、狀態轉換與目前發布版本保持一致。一次性 fixture 直接發布例外只適用於前述受控順序或專用受控 migration。
+- 系統題目修改原因：`0005` preflight 會拒絕既有缺漏；系統題目新增或更新 `revision_number > 1` 的版本時，缺少或只有空白的 `change_note` 會由 revision trigger 拒絕；帳號題目含有缺漏的後續版本時，`questions.origin` 的 deferred constraint trigger 會阻止交易以 `origin=system` 提交。這些允許與拒絕案例已納入資料庫限制測試；正式 API 另提供送出前的友善驗證。
 - 小題複習：只有答錯的小題進入複習；其他小題與大題共用內容仍可正確顯示。
 - 排程與佇列：同一計畫可建立多個固定排程；重送啟動要求不重複建立工作階段；後續練習項目消耗後仍能追溯來源。
 - 篩選一致性：總覽、錯題英雄榜與開始練習共用欄位解析及條件語意；一般候選題查詢結果一致，錯題英雄榜以歷史作答為資料範圍，不受目前年級與啟用科目限制。
@@ -1609,7 +1648,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 權限與資料隔離：一般帳號、資料庫管理員、預設系統管理員、家長、學習者與家教的允許及拒絕案例。
 - 併發更新：兩個帳號同時修改學習者設定、收藏、考試或計畫時，後提交者收到衝突且不覆蓋前一筆更新。
 - 檔案與刪除：直接使用檔案識別碼不能繞過引用資源權限；核准的資料刪除要求依政策移除或去識別化且留下不含個資的摘要。
-- 作答附件：手寫與一般附件的用途、權限及順序可由作答結果重現；資產刪除前檢查所有引用，不能留下可繞過授權的孤立下載入口。
+- 作答附件：手寫只接受 `handwriting`，一般附件只接受 `answer_attachment`；兩者都必須是 private、掃描通過且未刪除。用途、權限及順序可由作答結果重現；資產刪除前檢查所有引用，不能留下可繞過授權的孤立下載入口。
 - 冪等與交易：重送匯入、提交答案及敏感權限操作不產生重複資料或半套狀態。
 - 統計重建：清空彙總後可由不可覆寫的作答與審核明細重建相同結果。
 
@@ -1618,6 +1657,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
 - `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
 - `docs/plan.md`：目前模擬 API、前端狀態及正式資料庫施工確認節點。
+- `docs/database-completion-matrix.md`：目前規劃需求、94 張業務資料表、正式 API／表單與安全切換狀態對照。
 - `app/lib/demo-data.ts`：目前題目、學習者、考試、練習、收藏與作答資料契約。
 - `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
 - `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3500",
     "build": "next build",
+    "db:test": "sh scripts/verify-database-migrations.sh",
     "test": "node scripts/verify-question-fixtures.mjs",
     "start": "next start",
     "lint": "tsc --noEmit"

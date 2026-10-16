@@ -1,0 +1,44 @@
+BEGIN;
+
+DELETE FROM schema_migrations WHERE version = '0002';
+
+DROP TABLE question_bank_items;
+DROP TABLE question_revision_filter_values;
+DROP FUNCTION lerniqa_validate_revision_filter_value();
+DROP TABLE question_revision_curriculum_codes;
+DROP TABLE question_revision_knowledge_points;
+DROP TABLE question_revision_topics;
+DROP TABLE question_answers;
+DROP TABLE question_revision_units;
+DROP TABLE question_content_blocks;
+DROP TABLE question_options;
+DROP TABLE question_parts;
+DROP TABLE question_revision_reviews;
+ALTER TABLE questions DROP CONSTRAINT questions_current_revision_fk;
+DROP TABLE question_revisions;
+DROP FUNCTION lerniqa_validate_question_revision();
+DROP TABLE question_identifiers;
+DROP TABLE questions;
+DROP FUNCTION lerniqa_validate_current_revision_status();
+DROP TABLE question_bank_learners;
+DROP TABLE question_banks;
+DROP TABLE filter_field_option_scopes;
+DROP FUNCTION lerniqa_validate_filter_option_scope();
+DROP TABLE filter_field_options;
+DROP FUNCTION lerniqa_validate_filter_option();
+DROP TABLE filter_field_scope_exam_levels;
+DROP TABLE filter_field_scope_book_versions;
+DROP TABLE filter_field_scope_semesters;
+DROP TABLE filter_field_scope_grades;
+DROP TABLE filter_field_scope_subjects;
+DROP TABLE filter_field_scope_sources;
+DROP TABLE filter_field_scopes;
+DROP TABLE filter_fields;
+DROP TABLE difficulty_levels;
+DROP TABLE question_types;
+DROP TABLE unit_knowledge_points;
+DROP TABLE unit_topics;
+DROP TABLE knowledge_points;
+DROP TABLE topics;
+
+COMMIT;
