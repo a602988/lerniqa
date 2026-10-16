@@ -1,0 +1,200 @@
+export const ACCOUNT_STATUSES = ["active", "suspended", "closed"] as const;
+export const ACCOUNT_MANAGEABLE_STATUSES = ["active", "suspended"] as const;
+export const ACCOUNT_IDENTITY_ROLES = ["parent", "learner", "tutor"] as const;
+export const GRANTED_ROLES = [
+    ...ACCOUNT_IDENTITY_ROLES,
+    "system_admin",
+] as const;
+export const QUESTION_STATUSES = ["draft", "published", "archived"] as const;
+export const QUESTION_ORIGINS = ["system", "account"] as const;
+export const SUBSCRIPTION_PLAN_STATUSES = ["draft", "active", "retired"] as const;
+export const SUBSCRIPTION_PRICE_STATUSES = ["draft", "active", "retired"] as const;
+export const SUBSCRIPTION_BILLING_INTERVALS = ["day", "week", "month", "year"] as const;
+
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+export type AccountManageableStatus = (typeof ACCOUNT_MANAGEABLE_STATUSES)[number];
+/** The ordinary account classification stored by the account-role contract. */
+export type AccountIdentityRole = (typeof ACCOUNT_IDENTITY_ROLES)[number];
+/** An append-only role grant; only this domain may contain system_admin. */
+export type GrantedRole = (typeof GRANTED_ROLES)[number];
+export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
+export type QuestionOrigin = (typeof QUESTION_ORIGINS)[number];
+export type SubscriptionPlanStatus = (typeof SUBSCRIPTION_PLAN_STATUSES)[number];
+export type SubscriptionPriceStatus = (typeof SUBSCRIPTION_PRICE_STATUSES)[number];
+export type SubscriptionBillingInterval = (typeof SUBSCRIPTION_BILLING_INTERVALS)[number];
+export type SortDirection = "asc" | "desc";
+
+export interface AdminSort<Field extends string> {
+    field: Field;
+    direction: SortDirection;
+}
+
+export interface AdminPagination {
+    page: number;
+    pageSize: number;
+    offset: number;
+    limit: number;
+}
+
+export interface AdminDateFilter {
+    from?: string;
+    to?: string;
+}
+
+export type AccountSortField = "createdAt" | "displayName" | "email" | "status" | "updatedAt" | "id";
+
+export interface AccountListQuery extends AdminPagination {
+    search?: string;
+    statuses: AccountStatus[];
+    roles: GrantedRole[];
+    created: AdminDateFilter;
+    orderBy: AdminSort<AccountSortField>[];
+}
+
+export type QuestionSortField = "createdAt" | "origin" | "revisionNumber" | "status" | "id";
+
+export interface QuestionListQuery extends AdminPagination {
+    search?: string;
+    statuses: QuestionStatus[];
+    origins: QuestionOrigin[];
+    created: AdminDateFilter;
+    orderBy: AdminSort<QuestionSortField>[];
+}
+
+export type AuditSortField = "occurredAt" | "action" | "targetType" | "id";
+
+export interface AuditListQuery extends AdminPagination {
+    search?: string;
+    actions: string[];
+    targetTypes: string[];
+    occurred: AdminDateFilter;
+    orderBy: AdminSort<AuditSortField>[];
+}
+
+export interface AccountStatusTransitionInput {
+    expectedCurrentStatus: AccountManageableStatus;
+    targetStatus: AccountManageableStatus;
+    reason: string;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export interface SubscriptionPlanInput {
+    code: string;
+    name: string;
+    description: string | null;
+    status: SubscriptionPlanStatus;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export interface SubscriptionPriceInput {
+    planId: string;
+    currency: string;
+    amountMinor: number;
+    billingInterval: SubscriptionBillingInterval;
+    billingIntervalCount: number;
+    status: SubscriptionPriceStatus;
+    effectiveFrom: string | null;
+    effectiveUntil: string | null;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export interface SubscriptionFeatureLimitInput {
+    planId: string;
+    featureKey: string;
+    included: boolean;
+    unlimited: boolean;
+    limit: number | null;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export interface QuestionDraftInput {
+    questionId: string;
+    baseRevisionId: string;
+    baseRevisionNumber: number;
+    changeNote: string;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export interface QuestionRevisionMutationInput {
+    questionId: string;
+    draftRevisionId: string;
+    expectedCurrentRevisionId: string;
+    expectedCurrentRevisionNumber: number;
+    changeNote: string;
+    requestId: string;
+    idempotencyKey: string;
+}
+
+export type AdminApiErrorCode =
+    | "INVALID_INPUT"
+    | "INVALID_QUERY"
+    | "INVALID_UUID"
+    | "INVALID_IDEMPOTENCY_KEY"
+    | "INVALID_STATUS_TRANSITION"
+    | "INVALID_SUBSCRIPTION_PLAN"
+    | "INVALID_SUBSCRIPTION_PRICE"
+    | "INVALID_FEATURE_LIMIT"
+    | "INVALID_QUESTION_REVISION"
+    | "UNAUTHENTICATED"
+    | "FORBIDDEN"
+    | "NOT_FOUND"
+    | "CONFLICT"
+    | "STALE_VERSION"
+    | "RATE_LIMITED"
+    | "INTERNAL_ERROR";
+
+export interface AdminApiErrorBody {
+    error: {
+        code: AdminApiErrorCode;
+        message: string;
+        requestId?: string;
+    };
+}
+
+/**
+ * A deliberately small, client-safe error. Database errors, stack traces and
+ * submitted payloads must never be copied into `message` or the response body.
+ */
+export class AdminApiError extends Error {
+    readonly code: AdminApiErrorCode;
+    readonly status: number;
+    readonly requestId?: string;
+
+    constructor(
+        code: AdminApiErrorCode,
+        message: string,
+        status = 400,
+        requestId?: string,
+    ) {
+        super(message);
+        this.name = "AdminApiError";
+        this.code = code;
+        this.status = status;
+        this.requestId = requestId;
+    }
+
+    toBody(): AdminApiErrorBody {
+        return {
+            error: {
+                code: this.code,
+                message: this.message,
+                ...(this.requestId ? { requestId: this.requestId } : {}),
+            },
+        };
+    }
+}
+
+export function toAdminApiErrorBody(error: unknown): AdminApiErrorBody {
+    if (error instanceof AdminApiError) return error.toBody();
+    return {
+        error: {
+            code: "INTERNAL_ERROR",
+            message: "系統暫時無法完成操作，請稍後再試。",
+        },
+    };
+}

@@ -1,0 +1,56 @@
+.accessPage {
+    display: grid;
+    min-height: 100dvh;
+    padding: 24px;
+    place-items: center;
+    background:
+        radial-gradient(circle at top left, rgb(30 122 78 / 10%), transparent 34rem),
+        var(--keel-color-background-canvas, #f5f7f6);
+}
+.accessCard {
+    width: min(100%, 560px);
+    padding: clamp(24px, 5vw, 48px);
+    border: 1px solid var(--keel-color-border-subtle, #dce4e0);
+    border-radius: var(--keel-radius-xl, 20px);
+    background: var(--keel-color-background-surface, #fff);
+    box-shadow: 0 18px 60px rgb(21 44 33 / 10%);
+}
+
+.accessEyebrow {
+    margin: 0 0 12px;
+    color: var(--keel-color-text-accent, #176e48);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.accessCard h1 {
+    margin: 0;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    line-height: 1.15;
+}
+
+.accessCard > p:not(.accessEyebrow) {
+    margin: 16px 0 28px;
+    color: var(--keel-color-text-muted, #53635b);
+    line-height: 1.7;
+}
+
+.accessLink {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    border-radius: var(--keel-radius-md, 10px);
+    background: var(--keel-color-background-accent, #176e48);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.accessLink:focus-visible {
+    outline: 3px solid var(--keel-color-border-focus, #127c52);
+    outline-offset: 3px;
+}

@@ -1,0 +1,438 @@
+export type ViewLoadState =
+    | { kind: "ready" }
+    | { kind: "loading"; message?: string }
+    | {
+          kind: "error";
+          message: string;
+          retryHref?: string;
+          retryLabel?: string;
+      };
+
+export type ViewDisplayValue = string | number | null;
+export type ViewMetricValueDto =
+    | { state: "available"; value: string | number }
+    | {
+          state:
+              | "no_data"
+              | "not_collected"
+              | "privacy_suppressed"
+              | "integration_pending";
+          value: null;
+          reason?: string;
+      };
+export type ViewSortDirection = "asc" | "desc" | null;
+
+export interface ViewSortLinkDto {
+    key: string;
+    label: string;
+    href: string;
+    direction: ViewSortDirection;
+}
+
+export interface ViewFilterOptionDto {
+    label: string;
+    value: string;
+    disabled?: boolean;
+}
+
+export interface ViewFilterSelectDto {
+    name: string;
+    label: string;
+    value: string;
+    options: readonly ViewFilterOptionDto[];
+}
+
+export interface ViewFilterDto {
+    action: string;
+    search?: {
+        name: string;
+        label: string;
+        placeholder: string;
+        value: string;
+    };
+    selects?: readonly ViewFilterSelectDto[];
+    hiddenFields?: Readonly<Record<string, string>>;
+    resetHref?: string;
+    submitLabel?: string;
+}
+
+export interface ViewPaginationDto {
+    currentPage: number;
+    pageSize: number;
+    totalItems: number;
+    pageSizeOptions?: number[];
+}
+
+export interface ViewMetricDto {
+    key: string;
+    label: string;
+    value: ViewMetricValueDto;
+    detail?: string | null;
+    icon?: "accounts" | "questions" | "activity" | "completion" | "quality" | "plans";
+}
+
+export interface ViewNoticeDto {
+    key: string;
+    title?: string;
+    message: string;
+    tone?: "info" | "success" | "warning" | "danger" | "muted";
+}
+
+export interface ViewLinkDto {
+    href: string;
+    label: string;
+    description?: string | null;
+}
+
+export interface DashboardActivityDto {
+    id: string;
+    title: string;
+    description?: string | null;
+    occurredAt: string;
+    href?: string;
+}
+
+export interface DashboardViewProps {
+    state: ViewLoadState;
+    metrics: readonly ViewMetricDto[];
+    notices?: readonly ViewNoticeDto[];
+    activity: readonly DashboardActivityDto[];
+    quickLinks?: readonly ViewLinkDto[];
+}
+
+export interface AccountRowDto {
+    id: string;
+    displayName: string;
+    primaryEmail: string | null;
+    status: string;
+    accountRole: string | null;
+    activeRoles: readonly string[];
+    learnerCount: number;
+    createdAt: string;
+    detailHref: string;
+}
+
+export interface AccountIdentityDto {
+    id: string;
+    providerLabel: string;
+    identifier: string;
+    verificationState: "verified" | "unverified" | "not_applicable";
+    verifiedAt: string | null;
+}
+
+export interface AccountRoleGrantDto {
+    id: string;
+    role: string;
+    grantedAt: string;
+    revokedAt: string | null;
+}
+
+export interface AccountLearnerAccessDto {
+    id: string;
+    learnerName: string;
+    gradeLabel: string | null;
+    semesterLabel: string | null;
+    accessRole: string;
+    permissions: {
+        canViewResults: boolean;
+        canCreatePlans: boolean;
+        canReviewAnswers: boolean;
+        canManageSettings: boolean;
+    };
+    revokedAt: string | null;
+}
+
+export type ViewActionPolicyDto =
+    | {
+          mode: "locked";
+          label: string;
+          reason: string;
+      }
+    | {
+          mode: "available";
+          label: string;
+          reason: string;
+          href: string;
+      };
+
+export interface AccountDetailDto {
+    id: string;
+    displayName: string;
+    primaryEmail: string | null;
+    status: string;
+    accountRole: string | null;
+    createdAt: string;
+    updatedAt: string;
+    identities: readonly AccountIdentityDto[];
+    roles: readonly AccountRoleGrantDto[];
+    learnerAccess: readonly AccountLearnerAccessDto[];
+    statusPolicy: Extract<ViewActionPolicyDto, { mode: "locked" }>;
+    rolePolicy: Extract<ViewActionPolicyDto, { mode: "locked" }>;
+}
+
+export interface AccountsViewProps {
+    state: ViewLoadState;
+    filters: ViewFilterDto;
+    sorts: readonly ViewSortLinkDto[];
+    rows: readonly AccountRowDto[];
+    pagination: ViewPaginationDto;
+    detail: AccountDetailDto | null;
+    detailCloseHref: string;
+}
+
+export type QuestionOrigin = "system" | "account";
+
+export interface QuestionRowDto {
+    id: string;
+    prompt: string;
+    origin: QuestionOrigin;
+    status: string;
+    revisionNumber: number;
+    sourceLabel: string | null;
+    createdAt: string;
+    detailHref: string;
+}
+
+export interface QuestionCatalogRefDto {
+    id: string;
+    code: string;
+    name: string;
+}
+
+export interface QuestionActorDto {
+    type: string;
+    userId: string | null;
+    displayName: string | null;
+}
+
+export interface QuestionOptionDto {
+    id: string;
+    key: string;
+    position: number;
+}
+
+export interface QuestionAnswerDto {
+    id: string;
+    answerKey: string | null;
+    acceptedValue: string | null;
+    position: number;
+}
+
+export interface QuestionPartDto {
+    id: string;
+    parentPartId: string | null;
+    stableKey: string;
+    position: number;
+    answerMode: string;
+    gradingPolicy: string;
+    independentlyGradable: boolean;
+    options: readonly QuestionOptionDto[];
+    answers: readonly QuestionAnswerDto[];
+}
+
+export interface QuestionContentBlockDto {
+    id: string;
+    questionPartId: string | null;
+    questionOptionId: string | null;
+    parentBlockId: string | null;
+    placement: string;
+    contentType: string;
+    position: number;
+    textContent: string | null;
+    assetId: string | null;
+    altText: string | null;
+}
+
+export interface QuestionSourceDto {
+    id: string;
+    documentId: string;
+    inputType: string;
+    originalFileName: string | null;
+    documentTitle: string | null;
+    documentStatus: string;
+    sourcePage: number | null;
+    sourceQuestionNumber: string | null;
+    cropAssetId: string | null;
+    primary: boolean;
+}
+
+export interface QuestionReviewDto {
+    id: string;
+    reviewerType: string;
+    reviewerUserId: string | null;
+    reviewerDisplayName: string | null;
+    decision: string;
+    reason: string | null;
+    fromStatus: string;
+    toStatus: string;
+    createdAt: string;
+}
+
+/**
+ * The repository deliberately strips `question_revision_id` and returns only
+ * classification display data. Views still read an allowlist of known keys so
+ * newly added database columns are not exposed automatically.
+ */
+export type QuestionClassificationDto = Readonly<Record<string, unknown>>;
+
+export interface QuestionClassificationsDto {
+    units: readonly QuestionClassificationDto[];
+    topics: readonly QuestionClassificationDto[];
+    knowledgePoints: readonly QuestionClassificationDto[];
+    curriculumCodes: readonly QuestionClassificationDto[];
+    filterValues: readonly QuestionClassificationDto[];
+}
+
+export interface QuestionRevisionDto {
+    id: string;
+    number: number;
+    status: string;
+    originalQuestionTypeLabel: string | null;
+    searchText: string;
+    questionType: QuestionCatalogRefDto;
+    subject: QuestionCatalogRefDto | null;
+    grade: QuestionCatalogRefDto | null;
+    semester: QuestionCatalogRefDto | null;
+    bookVersion: { id: string; name: string } | null;
+    examLevel: QuestionCatalogRefDto | null;
+    difficulty: QuestionCatalogRefDto | null;
+    sourceCategory: QuestionCatalogRefDto | null;
+    createdAt: string;
+    publishedAt: string | null;
+    createdBy: QuestionActorDto;
+    changeNote: string | null;
+    parts: readonly QuestionPartDto[];
+    contentBlocks: readonly QuestionContentBlockDto[];
+    sources: readonly QuestionSourceDto[];
+    reviews: readonly QuestionReviewDto[];
+    classifications: QuestionClassificationsDto;
+}
+
+interface QuestionDetailBaseDto {
+    id: string;
+    status: string;
+    createdMethod: string;
+    currentRevisionId: string | null;
+    owner: { id: string; displayName: string } | null;
+    createdBy: { id: string; displayName: string } | null;
+    createdAt: string;
+    archivedAt: string | null;
+    identifiers: readonly {
+        id: string;
+        type: string;
+        value: string;
+        publisherName: string | null;
+        bookVersionName: string | null;
+        sourceDocumentId: string | null;
+    }[];
+    revisions: readonly QuestionRevisionDto[];
+}
+
+export type QuestionDetailDto =
+    | (QuestionDetailBaseDto & {
+          origin: "account";
+          accessPolicy: {
+              mode: "read-only";
+              reason: string;
+          };
+      })
+    | (QuestionDetailBaseDto & {
+          origin: "system";
+          accessPolicy:
+              | { mode: "read-only"; reason: string }
+              | { mode: "editable"; label: string; href: string; reason?: string };
+      });
+
+export interface QuestionsViewProps {
+    state: ViewLoadState;
+    filters: ViewFilterDto;
+    sorts: readonly ViewSortLinkDto[];
+    rows: readonly QuestionRowDto[];
+    pagination: ViewPaginationDto;
+    detail: QuestionDetailDto | null;
+    detailCloseHref: string;
+    reviewQueueHref?: string;
+}
+
+export interface SubscriptionPlanRowDto {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    status: string;
+    priceSummary: string | null;
+    billingSummary: string | null;
+    featureSummary: string | null;
+    updatedAt: string;
+    detailHref?: string;
+}
+
+export interface SubscriptionPlansViewProps {
+    state: ViewLoadState;
+    catalogState: "schema_pending" | "ready";
+    filters?: ViewFilterDto;
+    sorts?: readonly ViewSortLinkDto[];
+    rows: readonly SubscriptionPlanRowDto[];
+    pagination?: ViewPaginationDto;
+    catalogPolicy: ViewActionPolicyDto;
+}
+
+export type ReportSeriesRowDto = {
+    key: string;
+    label: string;
+} & (
+    | {
+          value: Extract<ViewMetricValueDto, { state: "available" }>;
+          /** Precomputed presentation ratio from 0 to 100. */
+          barPercent: number;
+      }
+    | {
+          value: Exclude<ViewMetricValueDto, { state: "available" }>;
+          barPercent: null;
+      }
+);
+
+export interface ReportSeriesDto {
+    key: string;
+    title: string;
+    description: string;
+    rows: readonly ReportSeriesRowDto[];
+}
+
+export interface ReportMetricGroupDto {
+    key: string;
+    title: string;
+    description: string;
+    metrics: readonly ViewMetricDto[];
+}
+
+export interface ReportsViewProps {
+    state: ViewLoadState;
+    filters: ViewFilterDto;
+    periodLabel: string;
+    timeZone: "Asia/Taipei";
+    registrationTrend: ReportSeriesDto;
+    gradeDistribution: ReportSeriesDto;
+    activity: ReportMetricGroupDto;
+    completion: ReportMetricGroupDto;
+    questionQuality: ReportMetricGroupDto;
+}
+
+export interface AuditRowDto {
+    id: string;
+    occurredAt: string;
+    actorLabel: string;
+    actionLabel: string;
+    targetTypeLabel: string;
+    targetLabel: string | null;
+    requestId: string | null;
+    detailHref?: string;
+}
+
+export interface AuditViewProps {
+    state: ViewLoadState;
+    filters: ViewFilterDto;
+    sorts: readonly ViewSortLinkDto[];
+    rows: readonly AuditRowDto[];
+    pagination: ViewPaginationDto;
+}
