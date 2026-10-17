@@ -80,7 +80,7 @@
     "01a1499d-2579-7e60-a2fa-bea6e8e3e1c0": {
       "session_id": "01a1499d-2579-7e60-a2fa-bea6e8e3e1c0",
       "leader_thread_id": "01a1499d-54ad-7352-82e4-a0ceee7f551c",
-      "updated_at": "2026-10-17T14:38:07.198Z",
+      "updated_at": "2026-10-17T14:45:08.355Z",
       "threads": {
         "01a1499d-54ad-7352-82e4-a0ceee7f551c": {
           "thread_id": "01a1499d-54ad-7352-82e4-a0ceee7f551c",
@@ -102,25 +102,25 @@
           "thread_id": "01a1499d-2579-7e60-a2fa-bea6e8e3e1c0",
           "kind": "subagent",
           "first_seen_at": "2026-10-17T11:30:04.262Z",
-          "last_seen_at": "2026-10-17T12:27:48.455Z",
-          "last_turn_id": "01a149c8-822b-7fa3-ac8d-cf2c6322c43b",
-          "turn_count": 7
+          "last_seen_at": "2026-10-17T14:43:59.396Z",
+          "last_turn_id": "01a14a4e-dcb2-7261-beac-c6443544978c",
+          "turn_count": 8
         },
         "01a14998-89a4-7c71-a270-d6c29251b041": {
           "thread_id": "01a14998-89a4-7c71-a270-d6c29251b041",
           "kind": "subagent",
           "first_seen_at": "2026-10-17T11:31:05.643Z",
-          "last_seen_at": "2026-10-17T14:38:07.198Z",
-          "last_turn_id": "01a14a3f-1304-7c53-aa53-08a7d0982552",
-          "turn_count": 27
+          "last_seen_at": "2026-10-17T14:43:03.320Z",
+          "last_turn_id": "01a14a4c-7484-7210-8ace-e7567160bd41",
+          "turn_count": 28
         },
         "01a14997-5268-71e1-9e0d-53e78c29f148": {
           "thread_id": "01a14997-5268-71e1-9e0d-53e78c29f148",
           "kind": "subagent",
           "first_seen_at": "2026-10-17T11:32:17.703Z",
-          "last_seen_at": "2026-10-17T14:27:37.245Z",
-          "last_turn_id": "01a14a40-401c-7d41-96a5-a64d455d00cd",
-          "turn_count": 12
+          "last_seen_at": "2026-10-17T14:45:08.355Z",
+          "last_turn_id": "01a14a52-ce34-7702-9826-2d51296eb6b8",
+          "turn_count": 14
         },
         "01a149ee-8763-7503-94f8-179751f97575": {
           "thread_id": "01a149ee-8763-7503-94f8-179751f97575",
