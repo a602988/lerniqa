@@ -131,16 +131,19 @@ export async function POST(request: Request) {
         void _handwritingDataUrl;
         let handwritingTranscriptionPartId: string | undefined;
         if (handwriting) {
-            handwritingTranscriptionPartId = await findLocalPracticeHandwritingPart(attemptInput, {
+            const handwritingTarget = await findLocalPracticeHandwritingPart(attemptInput, {
                 userId: account.userId,
                 learnerId: account.learner.id,
-            }) ?? undefined;
-            if (handwritingTranscriptionPartId) {
+            });
+            handwritingTranscriptionPartId = handwritingTarget?.partId;
+            if (handwritingTarget) {
                 try {
-                    const transcription = await transcribeLocalHandwriting(handwriting.bytes);
+                    const transcription = await transcribeLocalHandwriting(handwriting.bytes, {
+                        mode: handwritingTarget.mode,
+                    });
                     if (transcription.legibility === "clear" && transcription.transcription) {
                         attemptInput.answers.push({
-                            partId: handwritingTranscriptionPartId,
+                            partId: handwritingTarget.partId,
                             value: transcription.transcription,
                         });
                     }

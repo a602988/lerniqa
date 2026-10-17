@@ -11,6 +11,10 @@ import {
     HANDWRITING_SCHEMA_VERSION,
     HandwritingAnalysisError,
 } from "../../app/lib/handwriting-analysis.mjs";
+import {
+    HANDWRITING_RECOGNITION_TYPE_LABELS,
+    handwritingRecognitionModeForLabel,
+} from "../../app/lib/handwriting-recognition.mjs";
 
 export const HANDWRITING_JOBS_TABLE = "handwriting_analysis_jobs";
 export const HANDWRITING_RUNS_TABLE = "handwriting_analysis_runs";
@@ -160,6 +164,8 @@ JOIN public.practice_sessions AS session ON session.id = item.practice_session_i
 JOIN public.question_parts AS part
     ON part.id = result.question_part_id
     AND part.question_revision_id = item.question_revision_id
+JOIN public.question_revisions AS revision ON revision.id = item.question_revision_id
+JOIN public.question_types AS question_type ON question_type.id = revision.question_type_id
 JOIN public.answer_part_assets AS answer_asset
     ON answer_asset.answer_part_result_id = result.id
     AND answer_asset.asset_id = job.asset_id
@@ -184,6 +190,7 @@ WHERE job.status IN ('queued', 'retry')
   AND result.current_result = 'pending'
   AND result.grading_source = 'manual_review'
   AND part.answer_mode = 'text'
+  AND COALESCE(NULLIF(btrim(revision.original_question_type_label), ''), question_type.name) = ANY($1::text[])
   AND session.check_mode IN ('instant', 'complete')`;
 
 const CANDIDATE_COLUMNS = `
@@ -200,6 +207,7 @@ const CANDIDATE_COLUMNS = `
     result.current_result,
     result.grading_source,
     part.answer_mode,
+    COALESCE(NULLIF(btrim(revision.original_question_type_label), ''), question_type.name) AS type_label,
     asset.storage_key,
     asset.purpose AS asset_purpose,
     asset.sensitivity AS asset_sensitivity,
@@ -221,6 +229,7 @@ function mapCandidate(row, extra = {}) {
         currentResult: row.current_result,
         gradingSource: row.grading_source,
         answerMode: row.answer_mode,
+        recognitionMode: handwritingRecognitionModeForLabel(row.type_label),
         storageKey: row.storage_key,
         assetPurpose: row.asset_purpose,
         assetSensitivity: row.asset_sensitivity,
@@ -236,7 +245,7 @@ export async function previewEligibleHandwritingJob(client) {
         ${ELIGIBLE_JOB_FROM}
         ORDER BY job.available_at, job.created_at, job.id
         LIMIT 1
-    `);
+    `, [HANDWRITING_RECOGNITION_TYPE_LABELS]);
     return result.rows[0] ? mapCandidate(result.rows[0]) : null;
 }
 
@@ -286,7 +295,7 @@ export async function claimEligibleHandwritingJob(client, { workerId, runId, mod
             ORDER BY job.available_at, job.created_at, job.id
             FOR UPDATE OF job SKIP LOCKED
             LIMIT 1
-        `);
+        `, [HANDWRITING_RECOGNITION_TYPE_LABELS]);
         const row = selected.rows[0];
         if (!row) return null;
         const claimed = await client.query(`
@@ -330,6 +339,8 @@ EXISTS (
     JOIN public.practice_sessions AS session ON session.id = item.practice_session_id
     JOIN public.question_parts AS part
       ON part.id = result.question_part_id AND part.question_revision_id = item.question_revision_id
+    JOIN public.question_revisions AS revision ON revision.id = item.question_revision_id
+    JOIN public.question_types AS question_type ON question_type.id = revision.question_type_id
     JOIN public.answer_part_assets AS answer_asset
       ON answer_asset.answer_part_result_id = result.id
       AND answer_asset.asset_id = job.asset_id
@@ -342,6 +353,7 @@ EXISTS (
       AND result.current_result = 'pending'
       AND result.grading_source = 'manual_review'
       AND part.answer_mode = 'text'
+      AND COALESCE(NULLIF(btrim(revision.original_question_type_label), ''), question_type.name) = ANY($3::text[])
       AND session.check_mode IN ('instant', 'complete')
       AND asset.purpose = 'handwriting'
       AND asset.sensitivity = 'private'
@@ -360,7 +372,7 @@ export async function completeHandwritingJob(client, { workerId, candidate, tran
               AND job.lease_expires_at > CURRENT_TIMESTAMP
               AND ${STILL_ELIGIBLE}
             FOR UPDATE OF job
-        `, [candidate.jobId, workerId]);
+        `, [candidate.jobId, workerId, HANDWRITING_RECOGNITION_TYPE_LABELS]);
         if (eligible.rowCount !== 1) {
             await client.query(`
                 UPDATE public.handwriting_analysis_runs

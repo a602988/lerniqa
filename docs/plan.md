@@ -13,7 +13,7 @@
 - 推薦程式已依已確認模板、相似群組、共同正式關鍵字與共同主題逐層選題，保存方法版本與命中證據，不再把來源題型或同單元當成相同題。離線分析、pending 匯入與管理員核准／退回流程已接上；279 題尚未完成全量分析與人工核准，目前只有一題煙霧測試待審，confirmed 關聯仍為 0。`score` 禁止逐題推薦與手寫附件。
 - `instant`／`complete` 的手寫圖儲存為 private PNG。缺文字答案時保持 pending／manual；已有完整答案時只作為計算過程附件，不改變判分。
 - 題庫補全預設 dry-run，只能先建立 pending suggestion；279 題尚未 apply，必須先通過品質抽檢與人工核准。
-- 本地 AI 手寫分析沿用 ERP 的 Ollama 環境設定，已核實固定模型 metadata、digest 與 vision capability，並完成六張合成品質圖的真實 inference。作答交易只為手寫補足的文字答案建立 `0012` sidecar job；模型不得直接改判或更新錯題與統計。
+- 本地 AI 手寫分析沿用 ERP 的 Ollama 環境設定，已核實固定模型 metadata、digest 與 vision capability，並完成六張合成品質圖、四張單字真實筆跡與一張註釋雙字筆跡的 inference。「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式。作答交易只為手寫補足的文字答案建立 `0012` sidecar job；模型不得直接改判或更新錯題與統計。
 
 ## 目標與範圍
 

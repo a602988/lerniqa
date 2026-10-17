@@ -24,7 +24,7 @@
 
 `0012` 把密碼／角色 PIN 復原 challenge 固定綁定到電子郵件 identity，同時擴充錯題佇列與 session origin 的同細題型值域，新增 `question_enrichment_runs`、`question_revision_enrichment_suggestions`、`handwriting_analysis_jobs` 與 `handwriting_analysis_runs`；它不包含 SMTP outbox。欄位、限制與索引以已整合的 migration SQL 為權威。
 
-題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
+題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。辨識方式由 `question_revisions.original_question_type_label` 的正式細題型契約決定：「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式；未設定的細題型不進入 worker。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
 
 十五個 migration 合計 110 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
 

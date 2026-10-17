@@ -51,12 +51,21 @@ import {
 } from "@/app/lib/practice-catalog-knowledge";
 import { recommendationClassificationLabel } from "@/app/lib/practice-recommendations";
 import { getSubjectLookupLabels } from "@/app/lib/subject-labels";
+import {
+    handwritingRecognitionModeForLabel,
+    type HandwritingRecognitionMode,
+} from "@/app/lib/handwriting-recognition.mjs";
 
 const RECOMMENDATION_RELATION_METHOD_VERSION = "confirmed-relation-v1";
 
 export interface LocalPracticeActor {
     userId: string;
     learnerId: string;
+}
+
+export interface LocalPracticeHandwritingTarget {
+    partId: string;
+    mode: HandwritingRecognitionMode;
 }
 
 export class LocalPracticeRequestError extends Error {
@@ -3429,15 +3438,16 @@ export async function submitLocalPracticeAttempt(
  * 找出一次手寫送出可安全補入的唯一文字小題。
  * @param input 練習與已填答案識別。
  * @param actor 目前登入帳號與學習者。
- * @returns 唯一缺少答案的文字小題；不符合時回傳 null。
+ * @returns 唯一缺少答案且已設定辨識方式的文字小題；不符合時回傳 null。
  */
 export async function findLocalPracticeHandwritingPart(
     input: Pick<SubmitLocalPracticeAttemptInput, "sessionId" | "questionId" | "sessionItemId" | "partId" | "answers">,
     actor: LocalPracticeActor,
-): Promise<string | null> {
+): Promise<LocalPracticeHandwritingTarget | null> {
     const answeredPartIds = input.answers.map((answer) => answer.partId.toLowerCase());
-    const result = await queryLocalPostgres<{ id: string } & QueryResultRow>(`
-        SELECT part.id
+    const result = await queryLocalPostgres<{ id: string; type_label: string } & QueryResultRow>(`
+        SELECT part.id,
+            COALESCE(NULLIF(btrim(revision.original_question_type_label), ''), question_type.name) AS type_label
         FROM practice_session_items AS item
         JOIN practice_sessions AS session ON session.id = item.practice_session_id
         JOIN learner_access AS access
@@ -3449,6 +3459,8 @@ export async function findLocalPracticeHandwritingPart(
         JOIN question_parts AS part
           ON part.question_revision_id = item.question_revision_id
          AND (item.question_part_id IS NULL OR part.id = item.question_part_id)
+        JOIN question_revisions AS revision ON revision.id = item.question_revision_id
+        JOIN question_types AS question_type ON question_type.id = revision.question_type_id
         WHERE item.practice_session_id = $1
           AND item.question_id = $2
           AND ($3::uuid IS NULL OR item.id = $3)
@@ -3471,7 +3483,10 @@ export async function findLocalPracticeHandwritingPart(
         actor.userId,
         answeredPartIds,
     ]);
-    return result.rows.length === 1 ? result.rows[0]!.id : null;
+    if (result.rows.length !== 1) return null;
+    const row = result.rows[0]!;
+    const mode = handwritingRecognitionModeForLabel(row.type_label);
+    return mode ? { partId: row.id, mode } : null;
 }
 
 /** Hydrates durable attempts and pending wrong-review work without answer payloads. */

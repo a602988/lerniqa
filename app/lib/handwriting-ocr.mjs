@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { access, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { isHandwritingRecognitionMode } from "./handwriting-recognition.mjs";
+
 const PROCESS_TIMEOUT_MS = 60_000;
 const MAX_PROCESS_OUTPUT_BYTES = 64 * 1024;
 const PADDLE_IDLE_TIMEOUT_MS = 5 * 60 * 1_000;
@@ -214,10 +216,12 @@ function runProcess(command, commandArguments, input, environment = process.env)
  * 以 PP-OCRv6 辨識已正規化的手寫圖片。
  *
  * @param {Buffer} imageBytes 正規化 PNG。
+ * @param {"single_character" | "single_line"} mode 辨識方式。
  * @returns {Promise<Readonly<{engine: string, text: string | null, confidence: number}> | null>} 辨識候選；未安裝時回傳 null。
  */
-export async function recognizeWithPaddle(imageBytes) {
+export async function recognizeWithPaddle(imageBytes, mode = "single_character") {
     try {
+        if (!isHandwritingRecognitionMode(mode)) return null;
         const child = await paddleWorker();
         if (paddleState.pending.size >= PADDLE_MAXIMUM_PENDING) return null;
         const id = randomUUID();
@@ -232,7 +236,7 @@ export async function recognizeWithPaddle(imageBytes) {
                 reject(error);
             }, PROCESS_TIMEOUT_MS);
             paddleState.pending.set(id, { reject, resolve, timer });
-            const input = `${JSON.stringify({ id, image: imageBytes.toString("base64") })}\n`;
+            const input = `${JSON.stringify({ id, image: imageBytes.toString("base64"), mode })}\n`;
             child.stdin.write(input, "utf8", (error) => {
                 if (!error) return;
                 clearTimeout(timer);

@@ -106,6 +106,7 @@ export async function processClaim(client, candidate, model, workerId, {
             budgetMs: HANDWRITING_MODEL_TIMEOUT_MS,
             fetchImpl,
             model,
+            mode: candidate.recognitionMode,
         });
         await complete(client, { workerId, candidate, transcription });
         return Object.freeze({

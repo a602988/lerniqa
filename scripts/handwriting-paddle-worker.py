@@ -54,6 +54,21 @@ def character_variant(image):
     return cv2.cvtColor(padded, cv2.COLOR_GRAY2BGR)
 
 
+def line_variant(image):
+    """補強細筆畫但保留多字答案的字距與行寬。
+
+    Args:
+        image: OpenCV BGR 筆跡圖片。
+
+    Returns:
+        輕度加粗且維持原始版面的 BGR 圖片。
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    ink = 255 - gray
+    thickened = cv2.dilate(ink, numpy.ones((2, 2), dtype=numpy.uint8), iterations=1)
+    return cv2.cvtColor(255 - thickened, cv2.COLOR_GRAY2BGR)
+
+
 for line in sys.stdin:
     request_id = None
     try:
@@ -64,7 +79,13 @@ for line in sys.stdin:
         image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError("INVALID_IMAGE")
-        variants = [image, character_variant(image)]
+        mode = request.get("mode")
+        if mode == "single_character":
+            variants = [image, character_variant(image)]
+        elif mode == "single_line":
+            variants = [image, line_variant(image)]
+        else:
+            raise ValueError("INVALID_RECOGNITION_MODE")
         with contextlib.redirect_stdout(sys.stderr):
             predictions = list(model.predict(input=variants, batch_size=len(variants)))
         candidates = []
