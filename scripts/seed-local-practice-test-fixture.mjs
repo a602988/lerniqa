@@ -176,6 +176,7 @@ async function verifyIsolatedTarget() {
 }
 
 function createPlan() {
+    const fixtureTarget = Object.freeze({ ...TARGET_CLASSIFICATION, unitPosition: 4 });
     const originalSha256 = sha256(SOURCE_BYTES);
     const sanitizedSha256 = sha256(SANITIZED_BYTES);
     const sourceDocumentId = deterministicUuid(`source-document:sanitized-docx:${SANITIZER_VERSION}:${originalSha256}`);
@@ -268,7 +269,7 @@ function createPlan() {
     };
     const manifest = [{ relativePath: document.relativePath, originalSha256 }];
     const sourceSetHash = sha256(stableJson(manifest));
-    const idempotencyKey = `${PARSER_VERSION}:${TARGET_CLASSIFICATION.key}:${sourceSetHash}`;
+    const idempotencyKey = `${PARSER_VERSION}:${fixtureTarget.key}:${sourceSetHash}`;
     const batchId = deterministicUuid(`import-batch:${idempotencyKey}`);
     const questionGroups = records.map((record) => {
         const identityKey = `${originalSha256}:${record.normalizedQuestionNumber}`;
@@ -287,7 +288,7 @@ function createPlan() {
     });
     return {
         parserVersion: PARSER_VERSION,
-        target: TARGET_CLASSIFICATION,
+        target: fixtureTarget,
         sourceKind: "synthetic-isolated-test",
         ids: { ...LOCAL_CATALOG_IDS },
         idempotencyKey,

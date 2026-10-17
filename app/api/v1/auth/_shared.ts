@@ -112,6 +112,7 @@ export interface PublicLearnerProfile {
             } | null;
         }>;
     }>;
+    availableSubjects: Array<{ code: string; name: string }>;
 }
 
 export interface PublicAccount {
@@ -177,6 +178,7 @@ function publicLearnerProfile(
                     },
             })),
         })),
+        availableSubjects: learner.availableSubjects.map((subject) => ({ ...subject })),
     };
 }
 

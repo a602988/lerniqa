@@ -142,7 +142,7 @@ const ids = Object.freeze({
 
 const plan = Object.freeze({
     ids,
-    target: TARGET_CLASSIFICATION,
+    target: Object.freeze({ ...TARGET_CLASSIFICATION, unitPosition: 4 }),
     batchId: deterministicUuid("test:hanlin-real-data-ownership:batch"),
 });
 

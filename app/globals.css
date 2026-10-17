@@ -3093,6 +3093,64 @@ textarea:focus-visible,
     font-size: 0.875rem;
 }
 
+.settings-section-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.subject-setting-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.subject-setting-row {
+    display: grid;
+    grid-template-columns: max-content minmax(14rem, 24rem);
+    align-items: center;
+    gap: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    background: var(--color-card);
+    padding: 1rem;
+}
+
+.subject-setting-name,
+.subject-setting-version,
+.subject-setting-version-note {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.subject-setting-version > :last-child {
+    min-width: 0;
+    flex: 1;
+}
+
+.subject-setting-name > span,
+.subject-setting-version-note > span {
+    color: var(--color-muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.subject-setting-name > strong {
+    font-size: 1rem;
+}
+
+.subject-setting-version-note > p {
+    display: flex;
+    align-items: center;
+    color: var(--color-muted-foreground);
+    font-size: 0.875rem;
+}
+
+.subject-setting-saving {
+    grid-column: 1 / -1;
+}
+
 .subject-book-setting {
     display: grid;
     align-content: start;
@@ -3324,6 +3382,15 @@ textarea:focus-visible,
         flex-direction: column !important;
     }
 
+    .settings-section-actions {
+        justify-content: space-between;
+    }
+
+    .subject-setting-row {
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+
     .settings-detail-header > button {
         width: 100%;
     }
@@ -3486,6 +3553,52 @@ textarea:focus-visible,
     height: 1em;
     border: 0.09em solid currentColor;
     border-radius: 0.04em;
+}
+
+.question-inline-fraction {
+    display: inline-grid;
+    min-width: 1.35em;
+    margin-inline: 0.12em;
+    grid-template-rows: auto auto;
+    color: currentColor;
+    font-size: 0.9em;
+    font-variant-numeric: lining-nums tabular-nums;
+    line-height: 1.05;
+    text-align: center;
+    vertical-align: -0.42em;
+    white-space: nowrap;
+}
+
+.question-inline-fraction-numerator,
+.question-inline-fraction-denominator {
+    display: block;
+    padding-inline: 0.16em;
+}
+
+.question-inline-fraction-numerator {
+    padding-bottom: 0.06em;
+    border-bottom: 0.075em solid currentColor;
+}
+
+.question-inline-fraction-denominator {
+    padding-top: 0.06em;
+}
+
+.question-inline-script {
+    position: relative;
+    display: inline-block;
+    font-size: 0.72em;
+    font-variant-numeric: lining-nums tabular-nums;
+    line-height: 0;
+    white-space: nowrap;
+}
+
+.question-inline-superscript {
+    vertical-align: 0.55em;
+}
+
+.question-inline-subscript {
+    vertical-align: -0.22em;
 }
 
 .bopomofo-symbols {
@@ -4871,6 +4984,15 @@ textarea:focus-visible,
 }
 
 @media (min-width: 1024px) {
+    .practice-question-card {
+        overflow: visible;
+    }
+
+    .practice-handwriting-pane {
+        position: sticky;
+        top: 1rem;
+    }
+
     .lerniqa-shell {
         grid-template-columns: 17rem minmax(0, 1fr);
     }

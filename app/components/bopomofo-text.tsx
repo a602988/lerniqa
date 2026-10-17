@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { normalizeLegacyMathSymbols } from "../lib/question-presentation";
+import { normalizeLegacyMathSymbols, tokenizeInlineQuestionText } from "../lib/question-presentation";
 
 const INLINE_TEXT_SEQUENCE = /([\u3105-\u312f\u31a0-\u31bf]+[ˊˇˋ˙]?|□+)/gu;
 const BOPOMOFO_TONES = new Set(["ˊ", "ˇ", "ˋ", "˙"]);
@@ -39,8 +39,14 @@ function BopomofoSyllable({ value }: { value: string }) {
     </span>;
 }
 
-/** 將連續注音直式排列，並把方框缺字符號轉成與文字等高的框線。 */
-export function BopomofoText({ text }: { text: string }) {
+function InlineFraction({ numerator, denominator }: { numerator: string; denominator: string }) {
+    return <span className="question-inline-fraction" role="math" aria-label={`${denominator} 分之 ${numerator}`}>
+        <span aria-hidden="true" className="question-inline-fraction-numerator">{normalizeLegacyMathSymbols(numerator)}</span>
+        <span aria-hidden="true" className="question-inline-fraction-denominator">{normalizeLegacyMathSymbols(denominator)}</span>
+    </span>;
+}
+
+function InlinePlainText({ text }: { text: string }) {
     return <>{text.split(INLINE_TEXT_SEQUENCE).map((segment, index) => (
         /^[\u3105-\u312f\u31a0-\u31bf]+[ˊˇˋ˙]?$/u.test(segment)
             ? <BopomofoSyllable key={`${segment}-${index}`} value={segment} />
@@ -53,4 +59,24 @@ export function BopomofoText({ text }: { text: string }) {
                 </span>
                 : <Fragment key={`${segment}-${index}`}>{normalizeLegacyMathSymbols(segment)}</Fragment>
     ))}</>;
+}
+
+function InlineScript({ placement, value }: { placement: "superscript" | "subscript"; value: string }) {
+    const content = <BopomofoText text={value} />;
+    return placement === "superscript"
+        ? <sup className="question-inline-script question-inline-superscript">{content}</sup>
+        : <sub className="question-inline-script question-inline-subscript">{content}</sub>;
+}
+
+/** 共用題目文字呈現：注音、缺字方框、分數、上標與下標。 */
+export function BopomofoText({ text }: { text: string }) {
+    return <>{tokenizeInlineQuestionText(text).map((token, index) => {
+        if (token.kind === "fraction") {
+            return <InlineFraction key={`fraction-${index}`} numerator={token.numerator} denominator={token.denominator} />;
+        }
+        if (token.kind === "script") {
+            return <InlineScript key={`script-${index}`} placement={token.placement} value={token.value} />;
+        }
+        return <InlinePlainText key={`text-${index}`} text={token.value} />;
+    })}</>;
 }

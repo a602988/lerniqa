@@ -6,14 +6,20 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { parseMetadataLast } from "../scripts/import-grade-seven-fixtures.mjs";
+import { VISUAL_REFERENCE, parseMetadataLast, parseParts, parseWrittenParts } from "../scripts/import-grade-seven-fixtures.mjs";
 
 import {
     AUTHORIZED_HANLIN_LESSON_IMPORTS,
     AUTHORIZED_FOURTH_LESSON_FILE,
     AUTHORIZED_FOURTH_LESSON_SHA256,
+    approvedInlineMathImageText,
     correctedQuestionBody,
+    hasSuspiciousMissingMultiplicationSign,
+    hasFragmentedMathScript,
+    isApprovedMissingMultiplicationFalsePositive,
+    legacyMissingImageNames,
     normalizeLegacyWordSymbolArrows,
+    mergeFragmentedMathScripts,
     PARSER_VERSION,
     snapshotWordDocument,
     stripLegacyWordSequenceFieldPrefixes,
@@ -21,12 +27,83 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+test("social matching questions accept Chinese-labeled common options", () => {
+    const parsed = parseParts([
+        "請將文化與石器製作方法配對。",
+        "(甲)打製石器　(乙)磨製石器",
+        "(１)舊石器時代：【　　　　】。",
+        "(２)新石器時代：【　　　　】。",
+    ].join("\n"), "(１)(甲)；(２)(乙)");
+
+    assert.deepEqual(parsed?.parts.map((part) => part.answer), ["(甲)打製石器", "(乙)磨製石器"]);
+    assert.equal(parsed?.parts[0].options.length, 2);
+});
+
+test("science anatomy terms do not trigger the missing-table guardrail", () => {
+    assert.equal(VISUAL_REFERENCE.test("葉片的下表皮氣孔較多"), false);
+    assert.equal(VISUAL_REFERENCE.test("請依下表回答問題"), true);
+});
+
 test("the approved math source correction preserves multiplication signs", () => {
     assert.equal(
         correctedQuestionBody({ number: "1501003429", body: "原始轉換文字" }),
         "小強將 a 做質因數分解，計算過程如下，則下列敘述何者正確？\n(A)d＝5＋7\n(B)c＝3×5\n(C)b＝2×3×5×7\n(D)a＝2×3×5×7",
     );
     assert.equal(correctedQuestionBody({ number: "other", body: " 保留文字 " }), "保留文字");
+});
+
+test("math formula gaps are held for source review instead of guessed as multiplication", () => {
+    assert.equal(hasSuspiciousMissingMultiplicationSign("a＝2^(n) 3 5"), true);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("(B)10＝2 5"), true);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("可折抵650 10%＝65元"), true);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("4 月 10 日下午 6 點"), false);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("5 1/5 與－5.2"), false);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("a＝11、b＝7"), false);
+    assert.equal(hasSuspiciousMissingMultiplicationSign("2×3×5×7"), false);
+});
+
+test("fragmented Word superscripts are merged only when no baseline operand separates them", () => {
+    assert.equal(mergeFragmentedMathScripts("7^(2)^(＋3)＝7^(5)"), "7^(2＋3)＝7^(5)");
+    assert.equal(mergeFragmentedMathScripts("10^(3)× ^(5)＝10^(15)"), "10^(3×5)＝10^(15)");
+    assert.equal(
+        mergeFragmentedMathScripts("(－1)^(n)^(＋)^(n)^(＋1)＋1"),
+        "(－1)^(n＋n＋1)＋1",
+    );
+    assert.equal(mergeFragmentedMathScripts("(2^(3))^(2)"), "(2^(3))^(2)");
+    assert.equal(mergeFragmentedMathScripts("2^(3)× 5^(5)"), "2^(3)× 5^(5)");
+    assert.equal(hasFragmentedMathScript("7^(2)^(＋3)"), true);
+    assert.equal(hasFragmentedMathScript("10^(3)× ^(5)"), true);
+    assert.equal(hasFragmentedMathScript("7^(2＋3)"), false);
+    assert.equal(hasFragmentedMathScript("(2^(3))^(2)"), false);
+});
+
+test("written-part parsing never treats parenthesized exponents as question numbers", () => {
+    assert.deepEqual(
+        parseWrittenParts(
+            "(1)比較2^(12)與3^(8)。(2)比較4^(4)與8^(3)。",
+            "(1)3^(8)較大。(2)8^(3)較大。",
+        ),
+        [
+            { id: "1", prompt: "比較2^(12)與3^(8)。", answer: "3^(8)較大。" },
+            { id: "2", prompt: "比較4^(4)與8^(3)。", answer: "8^(3)較大。" },
+        ],
+    );
+});
+
+test("only individually source-verified math spacing false positives bypass the formula guardrail", () => {
+    assert.equal(isApprovedMissingMultiplicationFalsePositive("1501000032"), true);
+    assert.equal(isApprovedMissingMultiplicationFalsePositive("1501005654"), true);
+    assert.equal(isApprovedMissingMultiplicationFalsePositive("1501004386"), false);
+    assert.equal(isApprovedMissingMultiplicationFalsePositive("1501005035"), false);
+    assert.equal(isApprovedMissingMultiplicationFalsePositive("unknown"), false);
+});
+
+test("the verified legacy math glyph checksum restores only the multiplication sign", () => {
+    assert.equal(
+        approvedInlineMathImageText("03ba98dde16628b75c1caa26b510fb8195dd2ba44492dec8820fff01573e71c8"),
+        "×",
+    );
+    assert.equal(approvedInlineMathImageText("0".repeat(64)), null);
 });
 
 async function readRepositoryFile(relativePath) {
@@ -77,7 +154,8 @@ test("a formal import refuses different content renamed to an authorized lesson 
 
 test("the approved lesson manifest keeps separate targets, counts, checksums, and a narrowly scoped decorative image exception", () => {
     assert.deepEqual(
-        AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) => entry.target.publisherCode === "hanlin").map((entry) => ({
+        AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) =>
+            entry.target.publisherCode === "hanlin" && entry.target.subjectCode === "chinese").map((entry) => ({
             unit: entry.target.unitCode,
             position: entry.target.unitPosition,
             count: entry.expectedQuestionCount,
@@ -108,9 +186,46 @@ test("the approved lesson manifest keeps separate targets, counts, checksums, an
     for (const entry of AUTHORIZED_HANLIN_LESSON_IMPORTS) {
         assert.match(entry.originalSha256, /^[0-9a-f]{64}$/u);
     }
-    const mathEntries = AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) => entry.target.publisherCode === "kangxuan");
+    const mathEntries = AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) =>
+        entry.target.publisherCode === "kangxuan" && entry.target.subjectCode === "math");
+    assert.ok(mathEntries
+        .filter((entry) => entry.target.key.startsWith("jh1-math-kangxuan-v1-u2-"))
+        .every((entry) => entry.parserVersion === "kangxuan-math-doc-v4"));
     assert.equal(mathEntries.length, 11);
     assert.equal(mathEntries.reduce((total, entry) => total + entry.expectedQuestionCount, 0), 1020);
+    const scienceEntries = AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) =>
+        entry.target.publisherCode === "kangxuan" && entry.target.subjectCode === "biology");
+    assert.equal(scienceEntries.length, 40);
+    assert.equal(scienceEntries.reduce((total, entry) => total + entry.expectedQuestionCount, 0), 777);
+    assert.equal(scienceEntries.reduce((total, entry) => total + entry.expectedPublishedCount, 0), 759);
+    assert.equal(scienceEntries.reduce((total, entry) => total + entry.expectedPendingReviewCount, 0), 18);
+    assert.ok(scienceEntries.every((entry) => entry.parserVersion === "kangxuan-science-doc-v2"));
+    const scienceSyncThreeTwo = scienceEntries.find((entry) =>
+        entry.target.sourceCategoryCode === "synchronized-practice"
+        && entry.target.unitCode === "chapter-3-2");
+    assert.equal(scienceSyncThreeTwo?.approvedChoiceRepairs[0]?.questionNumber, "1501001293");
+    assert.equal(scienceSyncThreeTwo?.approvedChoiceRepairs[0]?.answerKey, "D");
+    const englishEntries = AUTHORIZED_HANLIN_LESSON_IMPORTS.filter((entry) =>
+        entry.target.publisherCode === "hanlin" && entry.target.subjectCode === "english");
+    assert.equal(englishEntries.length, 43);
+    assert.equal(englishEntries.reduce((total, entry) => total + entry.expectedQuestionCount, 0), 2643);
+    assert.equal(englishEntries.reduce((total, entry) => total + entry.expectedPublishedCount, 0), 2643);
+    assert.ok(englishEntries.every((entry) => entry.parserVersion === "hanlin-en-v2"
+        && entry.expectedPendingReviewCount === 0));
+    const starterTestEntry = englishEntries.find((entry) =>
+        entry.originalSha256 === "f95c59ad0917520d063363cfefbcd5dc04d94b70ebb7cd126a032d683a140ec0");
+    assert.deepEqual(starterTestEntry?.approvedQuestionImageMappings.map(({ checksum, questionNumber }) => ({
+        checksum,
+        questionNumber,
+    })), [
+        { checksum: "e93ef9e874ec182d721cf94a1d2b1aa07f5d0baceba4ceeacfc02b3c232b42aa", questionNumber: "05010088" },
+        { checksum: "41f8787933737b1b4716880c0eba5d3e3f03dc28f48303eb01e40796fe426896", questionNumber: "05010089" },
+        { checksum: "e79eef08b41b567201d59d4d2c41d34374a391e83f9ada3318db6a1a5cca923b", questionNumber: "05010090" },
+    ]);
+    const englishImageEntry = englishEntries.find((entry) =>
+        entry.originalSha256 === "e04e5b593258d20cdf1c3e75c5fcaed33cb62040744874571bf621d1095ec20e");
+    assert.equal(englishImageEntry?.approvedQuestionImageMappings.length, 4);
+    assert.equal(englishImageEntry?.approvedChoiceRepairs[0]?.answerKey, "B");
     assert.ok(mathEntries.every((entry) => entry.target.subjectCode === "math"
         && entry.parserStyle === "metadata-first"));
     const factorsEntry = mathEntries.find((entry) =>
@@ -210,7 +325,7 @@ test("the importer snapshots one stable byte sequence before conversion and quar
 });
 
 test("the parser removes known legacy Word sequence fields but preserves ordinary leading numbers", () => {
-    assert.equal(PARSER_VERSION, "hanlin-zh-doc-v6");
+    assert.equal(PARSER_VERSION, "hanlin-zh-doc-v7");
     assert.equal(
         stripLegacyWordSequenceFieldPrefixes("\\S\\do 9(１)１\\S\\do 9(１))\\S\\do 9(１)子曰：學而時習之。"),
         "子曰：學而時習之。",
@@ -220,6 +335,16 @@ test("the parser removes known legacy Word sequence fields but preserves ordinar
         "休養性情最好的方式之一便是讀書。",
     );
     assert.equal(stripLegacyWordSequenceFieldPrefixes("2026 年的題目內容"), "2026 年的題目內容");
+});
+
+test("legacy Word drawings without an embedded image relationship are treated as placeholders", () => {
+    const xml = [
+        '<wp:inline><wp:docPr id="1" name="Image7"></wp:docPr><a:blip></a:blip></wp:inline>',
+        '<wp:inline><wp:docPr id="2" name="Image8"/><a:blip r:embed="rId8"/></wp:inline>',
+        '<wp:anchor><wp:docPr id="3" name="Image9"/><a:blip/></wp:anchor>',
+    ].join("");
+
+    assert.deepEqual([...legacyMissingImageNames(xml)], ["Image7", "Image9"]);
 });
 
 test("the parser retains cognitive and knowledge dimensions as separate source fields", () => {
@@ -260,6 +385,9 @@ test("the PostgreSQL writer keeps the repaired parameter casts and parser-versio
     assert.match(writer, /key: "cognitive_dimension", name: "認知向度"/);
     assert.match(writer, /key: "knowledge_dimension", name: "知識向度"/);
     assert.match(writer, /question_revision_filter_values/);
+    assert.match(writer, /isApprovedMissingMultiplicationFalsePositive\(record\.sourceQuestionNumber\)/);
+    assert.match(writer, /SET status = 'draft', archived_at = NULL/);
+    assert.match(writer, /SET current_revision_id = \$2, status = 'published', archived_at = NULL/);
 });
 
 test("database and writer contracts retain answer integrity, rollback, source snapshots, and original classification evidence", async () => {
@@ -281,6 +409,8 @@ test("database and writer contracts retain answer integrity, rollback, source sn
     assert.match(importLibrary, /const sourceSnapshot = await snapshotWordDocument\(/);
     assert.match(importLibrary, /sourcePath = sourceSnapshot\.snapshotPath/);
     assert.match(importLibrary, /copyVerified\(document\.sourcePath, quarantineDestination, document\.originalSha256\)/);
+    assert.match(importLibrary, /if \(tag\.missingImagePlaceholder\) continue;/);
+    assert.match(importLibrary, /if \(!inspection\) \{[\s\S]*candidateIndexes\.forEach\(\(index\) => pendingIndexes\.add\(index\)\);[\s\S]*continue;/);
     assert.match(writer, /originalUnit: record\.originalUnit/);
     assert.match(writer, /raw_value: document\.originalTitle/);
     assert.match(verifier, /ORIGINAL_UNIT_METADATA_MISSING/);

@@ -81,7 +81,8 @@ function validateWriteScope(options, plan, authorizedLesson, summary) {
     }
     if (plan.target.key !== authorizedLesson.target.key
         || plan.ids.targetUnitId !== authorizedLesson.ids.targetUnitId
-        || summary.parsed !== authorizedLesson.expectedQuestionCount
+        || (authorizedLesson.expectedQuestionCount !== undefined
+            && summary.parsed !== authorizedLesson.expectedQuestionCount)
         || (authorizedLesson.expectedPublishedCount !== undefined
             && summary.published !== authorizedLesson.expectedPublishedCount)
         || (authorizedLesson.expectedPendingReviewCount !== undefined

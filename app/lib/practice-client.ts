@@ -408,6 +408,7 @@ export interface PracticeAccountLearner {
             publisher: { code: string; name: string } | null;
         }>;
     }>;
+    availableSubjects: Array<{ code: string; name: string }>;
     accessRole: PracticeAccountRole;
     canManageSettings: boolean;
     isSelf: boolean;
@@ -645,6 +646,17 @@ export function updatePracticeLearnerSubjectSetting(input: {
     });
 }
 
+export function enablePracticeLearnerSubject(input: {
+    learnerId: string;
+    subjectCode: string;
+}) {
+    return practiceApi<{ account: PracticeAccount }>("/api/v1/auth/learners/subject-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+}
+
 export async function loadPersistedPractice() {
     const { account } = await practiceApi<{ account: PracticeAccount }>("/api/v1/auth/me");
     if (!account.learner) return {
@@ -663,17 +675,22 @@ export async function loadPersistedPractice() {
         const response = await fetch(`/api/v1/local-practice/questions?${filters}&page=${page}`, { cache: "no-store" });
         return readPracticeApiEnvelope<{ data: { questions: LocalPracticeQuestion[] }; meta: { total: number } }>(response, "目前無法讀取題庫。");
     };
-    const [catalogs, history] = await Promise.all([
-        Promise.all(LOCAL_PRACTICE_CATALOG_TARGETS.map(async (target) => {
+    const loadCatalogTarget = async (target: typeof LOCAL_PRACTICE_CATALOG_TARGETS[number]) => {
             const first = await getPage(target, 1);
             const remaining = await Promise.all(Array.from(
                 { length: Math.max(0, Math.ceil(first.meta.total / catalogPageSize) - 1) },
                 (_, index) => getPage(target, index + 2),
             ));
             return [first, ...remaining];
-        })),
-        practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100"),
-    ]);
+    };
+    const historyPromise = practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100");
+    const catalogs = [];
+    for (let index = 0; index < LOCAL_PRACTICE_CATALOG_TARGETS.length; index += 4) {
+        catalogs.push(...await Promise.all(
+            LOCAL_PRACTICE_CATALOG_TARGETS.slice(index, index + 4).map(loadCatalogTarget),
+        ));
+    }
+    const history = await historyPromise;
     // Attempts, score-only summaries, and pending wrong-review sources paginate independently.
     const attempts = [...history.attempts];
     const sessions = [...history.sessions];

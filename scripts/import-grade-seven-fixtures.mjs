@@ -9,7 +9,7 @@ const DATABASE_PATH = new URL("../data/fixtures/database.json", import.meta.url)
 const ASSET_PATH = new URL("../data/fixtures/assets/", import.meta.url);
 const RUNTIME_DATABASE_PATH = new URL("../runtime-data/database.json", import.meta.url);
 const RUNTIME_ASSET_PATH = new URL("../runtime-data/assets/", import.meta.url);
-export const VISUAL_REFERENCE = /如圖|附圖|附表|下圖|圖中|下表|圖[（(]|圖示/;
+export const VISUAL_REFERENCE = /如圖|附圖|附表|下圖|圖中|下表(?!皮)|圖[（(]|圖示/;
 export const UNREADABLE_QUESTIONS = new Set(["1501003331", "1501003446"]);
 const LEGACY_QUESTION_NUMBERS = new Map([
     [3, "05010001"],
@@ -221,6 +221,22 @@ export function parseOptions(body)
     return { prompt, options };
 }
 
+/** Parse the Chinese stem labels used by social-studies matching questions. */
+function parseChineseLabeledOptions(body)
+{
+    const matcher = /[（(]([甲乙丙丁戊己庚辛壬癸])[）)]/g;
+    const matches = [...body.matchAll(matcher)];
+    if (matches.length < 2) return null;
+    return matches.map((match, index) => {
+        const start = (match.index ?? 0) + match[0].length;
+        const end = matches[index + 1]?.index ?? body.length;
+        return {
+            label: match[1],
+            value: `(${match[1]})${body.slice(start, end).replace(/[。.]\s*$/, "").trim()}`,
+        };
+    });
+}
+
 /** 從來源答案取出各題的選項代號。 */
 export function parseAnswerLetters(sourceAnswer)
 {
@@ -238,14 +254,23 @@ export function parseParts(body, sourceAnswer)
 {
     const lines = body.split("\n").map((line) => line.trim()).filter(Boolean);
     const partPattern = /^(?:[（(]\s*[）)]\s*)?[（(]([0-9０-９]+)[）)]/;
-    const partIndexes = lines.map((line, index) => partPattern.test(line) ? index : -1).filter((index) => index >= 0);
+    const choicePartPattern = /^(?:[（(]\s*[）)]\s*)?[（(][0-9０-９]+[）)]\s*[（(][Ａ-ＨA-H][）)]/;
+    const choicePartIndexes = lines.map((line, index) => choicePartPattern.test(line) ? index : -1)
+        .filter((index) => index >= 0);
+    const partIndexes = choicePartIndexes.length
+        ? choicePartIndexes
+        : lines.map((line, index) => partPattern.test(line) ? index : -1).filter((index) => index >= 0);
     if (!partIndexes.length) return null;
 
     const firstPart = partIndexes[0];
     const introLines = lines.slice(0, firstPart);
-    const commonLineIndex = introLines.findIndex((line) => /^參考選項[:：]/.test(line) || (parseOptions(line)?.options.length ?? 0) >= 2);
+    const commonLineIndex = introLines.findIndex((line) => /^參考選項[:：]/.test(line)
+        || (parseOptions(line)?.options.length ?? 0) >= 2
+        || (parseChineseLabeledOptions(line)?.length ?? 0) >= 2);
     const commonText = commonLineIndex >= 0 ? introLines.slice(commonLineIndex).join(" ") : "";
-    const labeledCommon = parseOptions(commonText)?.options ?? [];
+    const labeledCommon = parseOptions(commonText)?.options
+        ?? parseChineseLabeledOptions(commonText)
+        ?? [];
     const unlabeledCommon = labeledCommon.length ? [] : commonText
         .replace(/^參考選項[:：]\s*/, "")
         .split(/[　\s]+/)
@@ -254,6 +279,8 @@ export function parseParts(body, sourceAnswer)
     const common = labeledCommon.length ? labeledCommon : unlabeledCommon;
     const prompt = introLines.slice(0, commonLineIndex >= 0 ? commonLineIndex : introLines.length).join("\n").trim();
     const answerLetters = parseAnswerLetters(sourceAnswer);
+    const answerChineseLabels = [...sourceAnswer.matchAll(/[（(]([甲乙丙丁戊己庚辛壬癸])[）)]/g)]
+        .map((match) => match[1]);
     const answerValues = sourceAnswer.split(/[；;]/).map((value) => value.replace(/^[（(][0-9０-９]+[）)]/, "").trim());
     const parts = partIndexes.map((lineIndex, index) => {
         const end = partIndexes[index + 1] ?? lines.length;
@@ -261,7 +288,7 @@ export function parseParts(body, sourceAnswer)
         const number = value.match(partPattern)?.[1] ?? String(index + 1);
         const choice = parseOptions(value.replace(partPattern, "").trim());
         const options = choice?.options ?? common;
-        const answerLetter = answerLetters[index];
+        const answerLetter = answerLetters[index] ?? answerChineseLabels[index];
         const answerValue = answerValues[index];
         const answer = options.find((option) => option.label === answerLetter)?.value
             ?? options.find((option) => option.value === answerValue)?.value
@@ -286,7 +313,9 @@ export function parseParts(body, sourceAnswer)
  */
 export function parseWrittenParts(body, sourceAnswer)
 {
-    const pattern = /[（(]([0-9０-９]+)[）)]\s*([\s\S]*?)(?=[（(][0-9０-９]+[）)]|$)/g;
+    // Parenthesized exponents such as `2^(4)` are formula content, not part
+    // markers. Keep support for both line-leading and inline `(1)…(2)…` parts.
+    const pattern = /(?<!\^)[（(]([0-9０-９]+)[）)]\s*([\s\S]*?)(?=(?<!\^)[（(][0-9０-９]+[）)]|$)/g;
     const prompts = [...body.matchAll(pattern)];
     const answers = [...sourceAnswer.matchAll(pattern)];
     if (prompts.length >= 2 && prompts.length === answers.length) {

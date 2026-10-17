@@ -2670,7 +2670,7 @@ async function verifyImport(client, authenticatedLearnerId, profile) {
                     OR subject_name NOT IN ('國文', '國語')
                     OR semester_name <> '上學期'
                     OR publisher_name <> '翰林'
-                    OR book_version_name NOT LIKE '%第一冊%'
+                    OR book_version_name <> '翰林版'
                     OR primary_assignment_valid IS NOT TRUE
             )::integer AS violation_count
         FROM target

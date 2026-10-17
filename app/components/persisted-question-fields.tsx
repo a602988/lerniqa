@@ -10,18 +10,21 @@ import { CORRECTION_ANSWER_HINT, CORRECTION_ANSWER_PLACEHOLDER, isCorrectionQues
 import { getRepeatedNumberedPartLabel } from "../lib/question-presentation";
 
 function PublicContent({ blocks, duplicateText }: { blocks: LocalPracticeContentBlock[]; duplicateText?: string }) {
-    return <>{blocks.map((block) => {
+    const mediaBlocks = blocks.filter((block) => block.asset && ["image", "page_crop", "audio"].includes(block.contentType));
+    if (!mediaBlocks.length) return null;
+
+    return <span className="my-3 flex w-full flex-wrap items-start gap-3">{mediaBlocks.map((block) => {
         if (block.asset && (block.contentType === "image" || block.contentType === "page_crop")) {
-            return <img className="my-3 max-h-96 max-w-full object-contain" key={block.id} src={block.asset.url} alt={block.altText || "題目附圖"} />;
+            return <img className="max-h-96 max-w-full flex-none object-contain" key={block.id} src={block.asset.url} alt={block.altText || "題目附圖"} />;
         }
         if (block.asset && block.contentType === "audio") {
-            return <audio key={block.id} controls src={block.asset.url} aria-label={block.altText || "題目音訊"} />;
+            return <audio className="w-full" key={block.id} controls src={block.asset.url} aria-label={block.altText || "題目音訊"} />;
         }
         // Text blocks are already projected into the public prompt/option label. Rendering them here
         // would duplicate a reading passage when the source stores it as multiple ordered blocks.
         if (!block.text || block.text.trim() === duplicateText?.trim()) return null;
         return null;
-    })}</>;
+    })}</span>;
 }
 
 export function PersistedQuestionPromptContent({ question }: { question: LocalPracticeQuestion }) {

@@ -65,6 +65,7 @@
 | `0013_education_stage_catalog` | 0 | 擴充 `grades.stage` 至高中，建立小一至高三共十二個年級與上下學期正式目錄，不新增資料表 |
 | `0014_question_relation_profiles` | 4 | `question_templates`、`question_template_memberships`、`relation_keywords`、`question_revision_keywords`；另擴充 `practice_session_item_origins` 的模板、共同關聯數量、方法版本與證據欄位 |
 | `0015_relation_keyword_review` | 0 | AI／規則產生的 `relation_keywords` 先進 pending；新增來源、方法版本、證據、審核者與審核時間限制，不新增資料表 |
+| `0016_book_version_volume_boundary` | 0 | 修正既有教材版本名稱；出版社版本與 `curriculum_units.volume` 冊次分開保存，不變更題目及關聯識別碼 |
 
 `schema_migrations` 是技術性版本紀錄，不列入 110 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
 

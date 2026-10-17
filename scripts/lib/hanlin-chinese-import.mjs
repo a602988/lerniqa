@@ -17,7 +17,7 @@ import {
     parseWrittenParts,
 } from "../import-grade-seven-fixtures.mjs";
 
-export const PARSER_VERSION = "hanlin-zh-doc-v6";
+export const PARSER_VERSION = "hanlin-zh-doc-v7";
 export const SANITIZER_VERSION = "libreoffice-macro-disabled-docx-v1";
 export const AUTHORIZED_FOURTH_LESSON_FILE = "05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc";
 export const AUTHORIZED_FOURTH_LESSON_SHA256 = "c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2";
@@ -71,6 +71,12 @@ export const HANLIN_CHINESE_TYPES = [
 ];
 export const KANGXUAN_MATH_TYPES = ["選擇", "填充", "計算"];
 export const KANGXUAN_MATH_WRITTEN_TYPES = ["會考非選擇題"];
+export const KANGXUAN_SCIENCE_TYPES = ["選擇", "填充", "題組"];
+export const HANLIN_ENGLISH_TYPES = [
+    "字彙選擇", "文法選擇", "對話與完成句子", "填充題", "依提示作答",
+    "翻譯", "克漏字測驗", "閱讀測驗", "看圖回答問題", "文意字彙",
+];
+export const HANLIN_SOCIAL_TYPES = ["單題", "題組", "填充題", "配合題", "簡答題"];
 
 export const TARGET_CLASSIFICATION = Object.freeze({
     key: "jh1-zh-hanlin-v1-l4",
@@ -83,7 +89,7 @@ export const TARGET_CLASSIFICATION = Object.freeze({
     subjectAlias: "國文",
     publisherCode: "hanlin",
     publisherName: "翰林",
-    bookName: "第一冊",
+    bookName: "翰林版",
     volumeCode: "volume-1",
     volumeName: "第一冊",
     unitCode: "lesson-4",
@@ -192,7 +198,8 @@ export function catalogIdsForTarget(target) {
         publisherId: deterministicUuid(`catalog:publisher:${target.publisherCode}`),
         subjectId: deterministicUuid(`catalog:subject:${target.subjectCode}`),
         subjectAliasId: deterministicUuid(`catalog:subject-alias:${target.subjectCode}:${target.subjectAlias}`),
-        bookVersionId: deterministicUuid(`catalog:book:${target.subjectCode}:${target.gradeCode}:${target.publisherCode}:${target.volumeCode}`),
+        // 保留既有穩定 UUID；歷史 key 雖含 volume-1，但不同冊次不得再產生另一個書籍版本。
+        bookVersionId: deterministicUuid(`catalog:book:${target.subjectCode}:${target.gradeCode}:${target.publisherCode}:volume-1`),
         volumeUnitId: deterministicUuid(`catalog:unit:${target.publisherCode}:${target.subjectCode}:${target.volumeCode}`),
         targetUnitId: deterministicUuid(`catalog:unit:${target.publisherCode}:${target.subjectCode}:${target.volumeCode}:${target.unitCode}`),
         sourceCategoryId: deterministicUuid(`catalog:source-category:${target.sourceCategoryCode}`),
@@ -209,10 +216,33 @@ const KANGXUAN_MATH_BASE_TARGET = Object.freeze({
     subjectAlias: "數學",
     publisherCode: "kangxuan",
     publisherName: "康軒",
-    bookName: "第一冊",
+    bookName: "康軒版",
     volumeCode: "volume-1",
     volumeName: "第一冊",
 });
+
+const UNRESOLVED_INLINE_MATH_IMAGE = "⟦未解析公式圖⟧";
+const UNRESOLVED_INLINE_MATH_IMAGE_PATTERN = /⟦未解析公式圖(?::([a-f0-9]{64}))?⟧/gu;
+
+function hasUnresolvedInlineMathImage(value) {
+    return /⟦未解析公式圖(?::[a-f0-9]{64})?⟧/u.test(String(value ?? ""));
+}
+
+function unresolvedInlineMathImage(checksum) {
+    return checksum ? `⟦未解析公式圖:${checksum}⟧` : UNRESOLVED_INLINE_MATH_IMAGE;
+}
+
+function inlineMathImageChecksums(value) {
+    return [...String(value ?? "").matchAll(UNRESOLVED_INLINE_MATH_IMAGE_PATTERN)]
+        .map((match) => match[1] ?? null);
+}
+const APPROVED_INLINE_MATH_IMAGE_TEXT = new Map([
+    ["03ba98dde16628b75c1caa26b510fb8195dd2ba44492dec8820fff01573e71c8", "×"],
+]);
+
+export function approvedInlineMathImageText(checksum) {
+    return APPROVED_INLINE_MATH_IMAGE_TEXT.get(String(checksum ?? "").toLowerCase()) ?? null;
+}
 
 const KANGXUAN_MATH_21_BANK_IMAGE_MAPPINGS = Object.freeze([
     Object.freeze({
@@ -246,6 +276,175 @@ const KANGXUAN_MATH_DOCUMENTS = Object.freeze([
     ["2-3　分數的四則運算.doc", "8580c6aab7daa197f801b706cc3ec642f22b1c9451baa80048b3a2fd45c43399", 3, 3, "分數的四則運算", "mock-comprehensive-written", "仿會考非選題", "mock-cap"],
     ["2-4　指數律.doc", "c42e74824672f630256c159d54021f90ccd554b8447e6871905208c69d32bbfb", 1, 4, "指數律", "mock-comprehensive-written", "仿會考非選題", "mock-cap"],
 ]);
+
+const KANGXUAN_SCIENCE_BASE_TARGET = Object.freeze({
+    gradeCode: "junior-high-1", gradeName: "國一",
+    semesterCode: "semester-1", semesterName: "上學期",
+    subjectCode: "biology", subjectName: "生物", subjectAlias: "自然",
+    publisherCode: "kangxuan", publisherName: "康軒",
+    bookName: "康軒版", volumeCode: "volume-1", volumeName: "第一冊",
+});
+
+const KANGXUAN_SCIENCE_SOURCES = Object.freeze([
+    ["01_題庫題目", "publisher-test-bank", "出版社題庫", "bank"],
+    ["03_素養題", "literacy-question", "素養題", "literacy"],
+    ["04_隨課練", "classroom-practice", "隨課練", "classroom"],
+    ["06_KBOOK", "kbook", "KBOOK", "kbook"],
+    ["07_同步練習卷", "synchronized-practice", "同步練習卷", "sync"],
+]);
+const KANGXUAN_SCIENCE_UNITS = Object.freeze([
+    ["2-1", "食物中的養分"], ["2-2", "酵素"], ["2-3", "植物如何獲得養分"], ["2-4", "動物如何獲得養分"],
+    ["3-1", "植物的運輸構造"], ["3-2", "植物體內物質的運輸"], ["3-3", "人體內物質的運輸"], ["3-4", "人體的防禦作用"],
+]);
+const KANGXUAN_SCIENCE_HASHES = Object.freeze({
+    "01_題庫題目": Object.freeze(["ce2bbc0d04257751d4155b7323f333fe5ef76d98095dee3b2f0beae2b3b4f8f3", "077398f5cbf4c2e6baac8546a9be4ed4a78f7f2b1c9479c20958798bbf3516c3", "3da6a3335c05166e33b278ac96300f574830a12e4915d98837b4a78611bb951f", "15ac6ed8f533d0a2c08771e2f754a77d76aa6f9fea2a38ff1cea5a02d509cfc5", "6c59c5d8c7c48df394cdb7a4e2df2568dcff1d647f9ada8728d9c8db97da1e4d", "8602521a6db7d8610cc49787a7eba32f8b3c54215c1790957a19f04e022d9918", "3e51162bd52267b93fb5e01fdf330b51c63363af150ffbefa6bbff2905cf4251", "832f10454f86c4e50498454c8287ad27ed89a51b13aebc6478e431d07ba444ed"]),
+    "03_素養題": Object.freeze(["bee31ae638b092374121e3935187aedafe14509121828d3b962fecde436ca5a9", "41d086edddf44bad00e7defb45327221d65b920028d22919be04c89c31ca0dcd", "90513a1d13d676a1033173d48967c76f81cb53c72bb28dbe042f00a8ee0c762b", "a05faba0c614f37bc55719fc5157865a2bbfb7c4f08df1552da10be545b2e204", "44a6c1fd13d3e97c1a85c6a2109a09e6743ac1486645e9f656924db88ff148f7", "5ccfdd2500a59b25aa9d4f986ab18188567c1bd178000b018e8dc5581ba9fc1a", "74b2e0d70a81bed53e953c4b22ed2e6c168052a7718d476a348295e6f80563d9", "11f5a5de6e19c2cf1320dba26a58e943aca2772f85682e1e189fa8926696b239"]),
+    "04_隨課練": Object.freeze(["dbf1525ec30f3a2c4d815956f59e7baf667c48755d3fb54d3a7e905ee0002e13", "6c98655632e0510542177d30932b2dd268f8f3f191f14e5a8f33aad4cb26f571", "8855aeec0e9792bdff341c2561322e7a2c33d004b62efb40358343d7234d249f", "4517769e5378dfb5a664b64fee34394536dec0e8ff8b63a81e32bced90c616f3", "cea7b57ef0b2dbd8718672fa920b4c79ebd6774a225e5dca8a898449cce2297a", "41cb500c8acd90854fa1abc834719ae1c0f5cf2f51f72eb500ff097efec07f2b", "d622ac38b2f8d96a3afbb9db39f5b4c1dfcd0df6addd3db396d592c566c6ce9f", "def35efe0eba7eb504cf555bc5f865a1f54dffffd4a9b2bb6138f8671b3d8837"]),
+    "06_KBOOK": Object.freeze(["6e5056f4a49f25ca28c5b7a1d064c3d7c70f5a69ed3f409739b76f5e9192c6fd", "59ea9a24092a5b30dae089632e09ae4dd11006057eda44982f6a079c4a8e8454", "c644cda2f6f71644c7a11d8c398f5503bb2233a81e2c9cda65e817e5e0f3a04c", "52a282cd73ded457d390ba632006d5221586cb9e6c36978b12e1927802bf7aa3", "9b4c6f17efa377ba2b8e314767d91ea711363e1a11000252c240ec4eaf45e355", "305a5e256787d44429f7335a1fb2c40e3b127d2495e1ae2314505f5e0ac3d7aa", "a45e3a9d84ffb3215455e7f928c6c628e9ed918a51f6069499ab6dc311c0e03a", "359262b5aa3c5eaf13ec9b3627da14d0fe4069c85c57cef34e1f9fd9e34cfda1"]),
+    "07_同步練習卷": Object.freeze(["e0e4803ea5bd82799c0efa1044f34787293de475bd0746ae9d0d902c1bd1780e", "739841cabf51ce4e963d90323f55499a7de5744dc26d3641d7bec3552552672c", "ebf53e8739234296c3ce18f29aef44fb43db835903d9881fcba4efde5ae01066", "0aceb4f85a30bbe5d0e79515d44600f22a7e9872000db0c8ee7ef3c4b6f2beee", "e3990151a768377470727d04cd19c6501be89daf1d25ca27f53b0ae347fcd338", "359440ea1adfba316d2e8f7bb71686ae76927d08f7a17736bf419adec895673a", "4789f537739be7c272d4632276db7adac171717aaffb53d6dbfc3343432d52a6", "5806714d66aa10c0152d401ffba88387757843d80fafccbd9a375ff5b80303fb"]),
+});
+const KANGXUAN_SCIENCE_EXPECTATIONS = Object.freeze({
+    "01_題庫題目": Object.freeze([[67, 66, 1], [62, 60, 2], [54, 54, 0], [69, 69, 0], [63, 62, 1], [67, 66, 1], [91, 91, 0], [26, 24, 2]]),
+    "03_素養題": Object.freeze([[6, 6, 0], [4, 4, 0], [2, 2, 0], [1, 1, 0], [2, 2, 0], [8, 7, 1], [5, 5, 0], [4, 4, 0]]),
+    "04_隨課練": Object.freeze([[11, 9, 2], [8, 8, 0], [14, 14, 0], [10, 10, 0], [13, 11, 2], [14, 14, 0], [13, 12, 1], [9, 9, 0]]),
+    "06_KBOOK": Object.freeze([[6, 6, 0], [6, 6, 0], [6, 6, 0], [5, 4, 1], [6, 5, 1], [8, 7, 1], [7, 7, 0], [6, 6, 0]]),
+    "07_同步練習卷": Object.freeze([[15, 15, 0], [14, 14, 0], [15, 14, 1], [17, 17, 0], [8, 8, 0], [10, 9, 1], [18, 18, 0], [7, 7, 0]]),
+});
+
+const KANGXUAN_SCIENCE_SYNC_3_2_CHOICE_REPAIRS = Object.freeze([
+    Object.freeze({
+        questionNumber: "1501001293",
+        answerKey: "D",
+        prompt: "下列有關植物物質運輸的敘述，何者正確？",
+        options: Object.freeze([
+            Object.freeze({ key: "A", text: "木質部、韌皮部和形成層合稱為維管束" }),
+            Object.freeze({ key: "B", text: "木質部運輸物質方向為單向，只能由上往下運送" }),
+            Object.freeze({ key: "C", text: "根部吸收的礦物質經由韌皮部運送至葉" }),
+            Object.freeze({ key: "D", text: "蒸散作用為植物水分運送的主要動力來源" }),
+        ]),
+    }),
+]);
+
+function kangxuanScienceTarget(unitCode, unitName, sourceCode, sourceName, suffix, originalSourceName) {
+    const [chapter, section] = unitCode.split("-").map(Number);
+    return Object.freeze({ ...KANGXUAN_SCIENCE_BASE_TARGET,
+        key: `jh1-bio-kx-v1-${unitCode}-${suffix}`,
+        unitCode: `chapter-${unitCode}`, unitName: `${unitCode} ${unitName}`,
+        unitPosition: chapter * 10 + section, sourceCategoryCode: sourceCode, sourceCategoryName: sourceName });
+}
+
+const HANLIN_ENGLISH_BASE_TARGET = Object.freeze({
+    gradeCode: "junior-high-1", gradeName: "國一",
+    semesterCode: "semester-1", semesterName: "上學期",
+    subjectCode: "english", subjectName: "英文", subjectAlias: "英語",
+    publisherCode: "hanlin", publisherName: "翰林",
+    bookName: "翰林版", volumeCode: "volume-1", volumeName: "第一冊",
+});
+const HANLIN_ENGLISH_SOURCES = Object.freeze([
+    ["01_試題", "publisher-test-bank", "出版社題庫", "bank"],
+    ["02_素養題", "literacy-question", "素養題", "literacy"],
+    ["03_習作", "workbook", "習作", "workbook"],
+    ["04_各章節基測試題", "basic-competency-test", "基測", "bct"],
+    ["05_各章節會考試題", "comprehensive-assessment", "會考", "cap"],
+    ["06_附錄本", "appendix-book", "附錄本", "appendix"],
+]);
+const HANLIN_ENGLISH_DOCUMENTS = Object.freeze([
+    ["01_試題", "01_Starter Unit.doc", "f95c59ad0917520d063363cfefbcd5dc04d94b70ebb7cd126a032d683a140ec0", "starter", "Starter Unit", 0],
+    ["01_試題", "02_Unit 1 Who's That Handsome Boy_.doc", "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["01_試題", "03_Unit 2 Where Are My Pencils_.doc", "4506bf8eb30de242755f814a3734238f266746226f12d8711cc3d274fa7b58a9", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["01_試題", "04_Unit 3 Open the Magic Door.doc", "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["01_試題", "05_Unit 4 What Time Is the Concert_.doc", "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["01_試題", "06_Unit 5 What's the Date_.doc", "54f7eab7ca49d8599d7b57cbc6adf0e5c6d7ddc72cb69388c90cd87477e3d6aa", "unit-5", "Unit 5 What's the Date?", 5],
+    ["01_試題", "07_Unit 6 There Are Some Elephants Over There.doc", "ca5bad6a610fc5bd3afd62a053cc87e8639085763e6dfe83ee098422c0ff5630", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+    ["02_素養題", "01_Unit 1 Who's That Handsome Boy_.doc", "e04e5b593258d20cdf1c3e75c5fcaed33cb62040744874571bf621d1095ec20e", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["02_素養題", "02_Unit 2 Where Are My Pencils_.doc", "10b0e26b82329f0590def4811e513ff9db7d19d3ca90803151a6c7052eff3740", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["02_素養題", "03_Unit 3 Open the Magic Door.doc", "38288e2bec85304c669dce072738d57fe9610445f2a40da3ba3f7f829a9a4ecf", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["02_素養題", "04_Unit 4 What Time Is the Concert_.doc", "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["02_素養題", "05_Unit 5 What's the Date_.doc", "57932d7a9213392d0e5db2955065887e3416f88b1972a0ade24c242914eba6e0", "unit-5", "Unit 5 What's the Date?", 5],
+    ["02_素養題", "06_Unit 6 There Are Some Elephants Over There.doc", "2661ca1f729c4a5718123103c1949ff1fe45d6e33a1762d9adc71396bc15b683", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+    ["03_習作", "01_Starter Unit.doc", "747f21406e0d7c811bc3aba37fe66d3d274839fc23793d3d321e525ab4180e14", "starter", "Starter Unit", 0],
+    ["03_習作", "02_Unit 1 Who's That Handsome Boy_.doc", "c819ef34da1cca40b0f4c90a803b3841850a69b338332c3a3a497cd0d7b02bd4", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["03_習作", "03_Unit 2 Where Are My Pencils_.doc", "d4b4c5dbc7552384debfaa1d90e41751caa502061478023b6bb956c4f28c736c", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["03_習作", "04_Unit 3 Open the Magic Door.doc", "dca014bfecea09427be9808635d3ef5858c5400c50c74f3279cae0481334392b", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["03_習作", "05_Unit 4 What Time Is the Concert_.doc", "2e4deb47f90a4842ce12c06b74415594de73e9d3e6cdf8711e333adb964d2ab7", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["03_習作", "06_Unit 5 What's the Date_.doc", "2cce292a67f94e5601abd83a0dbc6d35ca48a8097ef95d7f9dea48b58cd0bcef", "unit-5", "Unit 5 What's the Date?", 5],
+    ["03_習作", "07_Unit 6 There Are Some Elephants Over There.doc", "7a0f57013a9262d2f09442cd469d210a13d547e80bc3057e94ab0dc508f63ce1", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+    ["03_習作", "08_Review 1.doc", "eff877e707f900073223376786edf6c912ec962ab26119a18d0f4cf33cf67e2f", "review-1", "Review 1", 7],
+    ["03_習作", "09_Review 2.doc", "433b14a58392cfcdeb6c0ca3c4ed644999507b1700cc03727f606b7f763080a0", "review-2", "Review 2", 8],
+    ["03_習作", "10_Review 3.doc", "b74ec122645297cf76971d41ee1fb06af39e6897a852af4f4762fc22930f3427", "review-3", "Review 3", 9],
+    ["04_各章節基測試題", "01_Starter Unit.doc", "22a69cfb4f4965f52a7592ab7449ace2a95a7f8a55718f91234defc121a05a02", "starter", "Starter Unit", 0],
+    ["04_各章節基測試題", "02_Unit 1 Who's That Handsome Boy_.doc", "eb28968326ecb07eab5e0453b1ab8e8fc51d315c57e10f477f6064f5bb8f887e", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["04_各章節基測試題", "03_Unit 2 Where Are My Pencils_.doc", "4f6c75d14284053254303fd592f476bdc616216157f285a712a2cba8adf1417a", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["04_各章節基測試題", "04_Unit 3 Open the Magic Door.doc", "0766fb60c66f44d3512edf0a6fba5f90f8b3af764dc431eba677b20759bc443d", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["04_各章節基測試題", "05_Unit 4 What Time Is the Concert_.doc", "86093a0a5215d8c6bb2ca03e746db96f40f751241757ae091b4115cf282c93a6", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["04_各章節基測試題", "06_Unit 5 What's the Date_.doc", "bef3807ed7abced5013bd4d75efa1272740d21eb9ca0b443d5d75b9ae32b0691", "unit-5", "Unit 5 What's the Date?", 5],
+    ["04_各章節基測試題", "07_Unit 6 There Are Some Elephants Over There.doc", "e3a2e8d37e9d7f5d0506c3b6534040394d6eef561861fe2c3faa3e1c6aa29c0f", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+    ["05_各章節會考試題", "01_Unit 1 Who's That Handsome Boy_.doc", "cb9fd4127f939718dbd8758ee63e16e638a48c1037231005c44a95f56db0f6eb", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["05_各章節會考試題", "02_Unit 2 Where Are My Pencils_.doc", "aa5275deb12476c85a34185717b1318076e482994602a99f38ef7eaba2f8bb1d", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["05_各章節會考試題", "03_Unit 3 Open the Magic Door.doc", "17f07594163339d68b9386e67fbc492f253f750ac9fa63efad0ee4450fee8b76", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["05_各章節會考試題", "04_Unit 4 What Time Is the Concert_.doc", "d01e74e5b44ea004c53f19e9f7dd2460506bb43f44dda13bda754af292f3d17e", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["05_各章節會考試題", "05_Unit 5 What's the Date_.doc", "b5d15108c0be66b9f631c54a3f0cefd8928fae3dad0845446e509042df6bbb60", "unit-5", "Unit 5 What's the Date?", 5],
+    ["05_各章節會考試題", "06_Unit 6 There Are Some Elephants Over There.doc", "9c27d9ee86248ca7cb3a6fefbc6d1ba0bb8cdc710007299ffbf6c7facd355b2f", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+    ["06_附錄本", "01_Starter Unit.doc", "4ea9ce5de45b701c66c60f2d419b7e9543b950001543eed7c68a0ef052058754", "starter", "Starter Unit", 0],
+    ["06_附錄本", "02_Unit 1 Who's That Handsome Boy_.doc", "5aa2daa2318772841c53b40b6623b794c53ad98a7192fa819c78b18dc1f4061a", "unit-1", "Unit 1 Who's That Handsome Boy?", 1],
+    ["06_附錄本", "03_Unit 2 Where Are My Pencils_.doc", "ce3d73f72c9f3c62141d21956b5542eeb626712d8d74af980ca7cd369070b6be", "unit-2", "Unit 2 Where Are My Pencils?", 2],
+    ["06_附錄本", "04_Unit 3 Open the Magic Door.doc", "f47985211663e8211379f3dce24790b3ccb622f8d8e20db022772f255b2d1d62", "unit-3", "Unit 3 Open the Magic Door", 3],
+    ["06_附錄本", "05_Unit 4 What Time Is the Concert_.doc", "f8a2dac70aa1cf53648f7fbac2f34f17b0f42e0a8c92a684bf30f94d27e44c1e", "unit-4", "Unit 4 What Time Is the Concert?", 4],
+    ["06_附錄本", "06_Unit 5 What's the Date_.doc", "8a5f7a531090b30dc072f3de9c7cb467cd814d37bf7825a9d7bd913d0eede753", "unit-5", "Unit 5 What's the Date?", 5],
+    ["06_附錄本", "07_Unit 6 There Are Some Elephants Over There.doc", "560a57ca89b2c9a8c053a6f924d493fe9e971f669211e89b24741e56135f2d45", "unit-6", "Unit 6 There Are Some Elephants Over There", 6],
+]);
+const HANLIN_ENGLISH_EXPECTATIONS = Object.freeze({
+    "01_試題": Object.freeze([159, 362, 324, 354, 347, 325, 318]),
+    "02_素養題": Object.freeze([23, 23, 23, 23, 23, 23]),
+    "03_習作": Object.freeze([31, 20, 21, 19, 15, 13, 18, 9, 7, 7]),
+    "04_各章節基測試題": Object.freeze([1, 2, 7, 4, 2, 3, 3]),
+    "05_各章節會考試題": Object.freeze([1, 10, 5, 5, 2, 5]),
+    "06_附錄本": Object.freeze([16, 15, 15, 16, 13, 15, 16]),
+});
+const HANLIN_ENGLISH_LITERACY_UNIT_ONE_IMAGE_MAPPINGS = Object.freeze([
+    Object.freeze({ checksum: "aabd1fa27397eeaa788a2744f29c4aa07129cd8841830ee9ee9ef38c1b5c9409", questionNumber: "05010853", optionKey: "A", altText: "選項 A：魚" }),
+    Object.freeze({ checksum: "10512cb9f5301007bf3bc5cfea3776e6110b6c9968094a60df5dd824d3b4cb9a", questionNumber: "05010853", optionKey: "B", altText: "選項 B：老虎" }),
+    Object.freeze({ checksum: "f40279eadbf2634a1512edcbabcb246bc4f3b3b0a31c827ee001c57510e3933b", questionNumber: "05010853", optionKey: "C", altText: "選項 C：雞" }),
+    Object.freeze({ checksum: "39cfa1094c2c5ec393870bd761713ab46c4ac2451f73ef2d6bffa38e511d5fe7", questionNumber: "05010853", optionKey: "D", altText: "選項 D：猴子" }),
+]);
+const HANLIN_ENGLISH_STARTER_TEST_IMAGE_MAPPINGS = Object.freeze([
+    Object.freeze({
+        checksum: "e93ef9e874ec182d721cf94a1d2b1aa07f5d0baceba4ceeacfc02b3c232b42aa",
+        questionNumber: "05010088",
+        altText: "教室中的學生與牆上時鐘",
+    }),
+    Object.freeze({
+        checksum: "41f8787933737b1b4716880c0eba5d3e3f03dc28f48303eb01e40796fe426896",
+        questionNumber: "05010089",
+        altText: "Andy、貓 Mimi、狗 Lucky 與手上的鉛筆",
+    }),
+    Object.freeze({
+        checksum: "e79eef08b41b567201d59d4d2c41d34374a391e83f9ada3318db6a1a5cca923b",
+        questionNumber: "05010090",
+        altText: "Class 1A 教室座位、老師 Emily 與學生編號",
+    }),
+]);
+const HANLIN_ENGLISH_LITERACY_UNIT_ONE_CHOICE_REPAIRS = Object.freeze([
+    Object.freeze({
+        questionNumber: "05010853",
+        answerKey: "B",
+        options: Object.freeze([
+            Object.freeze({ key: "A", text: "魚", imageChecksum: "aabd1fa27397eeaa788a2744f29c4aa07129cd8841830ee9ee9ef38c1b5c9409" }),
+            Object.freeze({ key: "B", text: "老虎", imageChecksum: "10512cb9f5301007bf3bc5cfea3776e6110b6c9968094a60df5dd824d3b4cb9a" }),
+            Object.freeze({ key: "C", text: "雞", imageChecksum: "f40279eadbf2634a1512edcbabcb246bc4f3b3b0a31c827ee001c57510e3933b" }),
+            Object.freeze({ key: "D", text: "猴子", imageChecksum: "39cfa1094c2c5ec393870bd761713ab46c4ac2451f73ef2d6bffa38e511d5fe7" }),
+        ]),
+    }),
+]);
+
+function hanlinEnglishTarget(folder, unitCode, unitName, unitPosition) {
+    const [, sourceCategoryCode, sourceCategoryName, suffix] = HANLIN_ENGLISH_SOURCES.find(([name]) => name === folder);
+    return Object.freeze({ ...HANLIN_ENGLISH_BASE_TARGET,
+        key: `jh1-en-hanlin-v1-${unitCode}-${suffix}`,
+        unitCode, unitName, unitPosition, sourceCategoryCode, sourceCategoryName,
+        originalSourceName: folder.replace(/^\d+_/u, ""),
+    });
+}
 
 const SIXTH_LESSON_DECORATIVE_BORDER_SHA256 = "cf335ba0de1c4025f416ca1932e9b2de5a815a72e98c87ac9f0d7be2d283ded8";
 const LANGUAGE_KNOWLEDGE_TWO_TARGET = unitTarget("language-knowledge-2", "語文常識（二）", 7);
@@ -556,10 +755,61 @@ export const AUTHORIZED_HANLIN_LESSON_IMPORTS = Object.freeze([
             target,
             ids: catalogIdsForTarget(target),
             parserStyle: "metadata-first",
-            parserVersion: "kangxuan-math-doc-v1",
+            parserVersion: "kangxuan-math-doc-v5",
             questionTypes: suffix === "mock-cap" ? KANGXUAN_MATH_WRITTEN_TYPES : KANGXUAN_MATH_TYPES,
             approvedDecorativeImageSha256s: Object.freeze([]),
             approvedQuestionImageMappings,
+        });
+    }),
+    ...KANGXUAN_SCIENCE_SOURCES.flatMap(([folder, sourceCode, sourceName, suffix]) =>
+        KANGXUAN_SCIENCE_UNITS.map(([unitCode, unitName], unitIndex) => {
+            const target = Object.freeze({
+                ...kangxuanScienceTarget(unitCode, unitName, sourceCode, sourceName, suffix),
+                originalSourceName: folder.replace(/^\d+_/u, ""),
+            });
+            const [expectedQuestionCount, expectedPublishedCount, expectedPendingReviewCount]
+                = KANGXUAN_SCIENCE_EXPECTATIONS[folder][unitIndex];
+            return Object.freeze({
+                fileName: `${unitCode}　${unitName}.doc`,
+                originalSha256: KANGXUAN_SCIENCE_HASHES[folder][unitIndex],
+                expectedQuestionCount,
+                expectedPublishedCount,
+                expectedPendingReviewCount,
+                target,
+                ids: catalogIdsForTarget(target),
+                parserStyle: "metadata-first",
+                parserVersion: "kangxuan-science-doc-v2",
+                questionTypes: KANGXUAN_SCIENCE_TYPES,
+                approvedDecorativeImageSha256s: Object.freeze([]),
+                approvedChoiceRepairs: folder === "07_同步練習卷" && unitCode === "3-2"
+                    ? KANGXUAN_SCIENCE_SYNC_3_2_CHOICE_REPAIRS
+                    : Object.freeze([]),
+            });
+        })),
+    ...HANLIN_ENGLISH_DOCUMENTS.map(([folder, fileName, originalSha256, unitCode, unitName, unitPosition], documentIndex) => {
+        const target = hanlinEnglishTarget(folder, unitCode, unitName, unitPosition);
+        const isStarterTestBank = originalSha256 === "f95c59ad0917520d063363cfefbcd5dc04d94b70ebb7cd126a032d683a140ec0";
+        const isLiteracyUnitOneImageQuestion = originalSha256 === "e04e5b593258d20cdf1c3e75c5fcaed33cb62040744874571bf621d1095ec20e";
+        const sourceIndex = HANLIN_ENGLISH_DOCUMENTS.slice(0, documentIndex)
+            .filter(([sourceFolder]) => sourceFolder === folder).length;
+        const expectedQuestionCount = HANLIN_ENGLISH_EXPECTATIONS[folder][sourceIndex];
+        return Object.freeze({
+            fileName, originalSha256, expectedQuestionCount,
+            expectedPublishedCount: expectedQuestionCount,
+            expectedPendingReviewCount: 0,
+            target, ids: catalogIdsForTarget(target),
+            parserVersion: "hanlin-en-v2",
+            questionTypes: HANLIN_ENGLISH_TYPES,
+            allowDerivedHtmlImages: true,
+            approvedDecorativeImageSha256s: Object.freeze([]),
+            approvedQuestionImageMappings: isStarterTestBank
+                ? HANLIN_ENGLISH_STARTER_TEST_IMAGE_MAPPINGS
+                : isLiteracyUnitOneImageQuestion
+                    ? HANLIN_ENGLISH_LITERACY_UNIT_ONE_IMAGE_MAPPINGS
+                    : Object.freeze([]),
+            approvedChoiceRepairs: isLiteracyUnitOneImageQuestion
+                ? HANLIN_ENGLISH_LITERACY_UNIT_ONE_CHOICE_REPAIRS
+                : Object.freeze([]),
         });
     }),
 ]);
@@ -658,8 +908,8 @@ function normalizeQuestionNumber(value) {
     return String(value ?? "").normalize("NFKC").trim().toLowerCase();
 }
 
-function normalizeSanitizedSectionHeaders(value) {
-    const escapedTypes = HANLIN_CHINESE_TYPES.map((type) => escapeRegex(type)).join("|");
+function normalizeSanitizedSectionHeaders(value, questionTypes = HANLIN_CHINESE_TYPES) {
+    const escapedTypes = questionTypes.map((type) => escapeRegex(type)).join("|");
     return String(value).replace(
         new RegExp(`^[\\t 　]*(?:[•●▪◦][\\t 　]*)?(${escapedTypes})[\\t 　]*$`, "gm"),
         "$1",
@@ -1070,6 +1320,24 @@ function parseDocumentRelationships(xml) {
     return relationships;
 }
 
+export function legacyMissingImageNames(documentXml) {
+    const names = new Set();
+    const drawings = documentXml.match(/<wp:(?:inline|anchor)\b[\s\S]*?<\/wp:(?:inline|anchor)>/g) ?? [];
+    for (const drawing of drawings) {
+        const imageReference = drawing.match(/<a:blip\b[^>]*>/)?.[0] ?? "";
+        const hasRelationship = /\br:(?:embed|link)="[^"]+"/.test(imageReference);
+        const hasEmptyImageReference = !hasRelationship && (
+            /<a:blip\b[^>]*\/>/.test(drawing)
+            || /<a:blip\b[^>]*>\s*<\/a:blip>/.test(drawing)
+        );
+        if (!hasEmptyImageReference) continue;
+        const documentProperties = drawing.match(/<wp:docPr\b[^>]*>/)?.[0] ?? "";
+        const name = xmlAttribute(documentProperties, "name");
+        if (name) names.add(name);
+    }
+    return names;
+}
+
 function resolveDocxRelationship(unpackedDocx, target) {
     if (!target || target.includes("\\") || path.posix.isAbsolute(target)) return null;
     const segments = path.posix.normalize(path.posix.join("word", target)).split("/");
@@ -1171,6 +1439,7 @@ async function extractStableEmbeddedImages(
     const documentXml = await readFile(path.join(unpackedDocx, "word", "document.xml"), "utf8");
     const relationshipsXml = await readFile(path.join(unpackedDocx, "word", "_rels", "document.xml.rels"), "utf8");
     const relationships = parseDocumentRelationships(relationshipsXml);
+    const missingImageNames = legacyMissingImageNames(documentXml);
     const tokens = [...documentXml.matchAll(/<w:object\b[\s\S]*?<\/w:object>|<a:blip\b[^>]*\br:embed="[^"]+"[^>]*\/?\s*>|<v:imagedata\b[^>]*\br:id="[^"]+"[^>]*\/?\s*>/g)];
     const outputRoot = path.join(documentWork, "stable-question-images");
     await mkdir(outputRoot, { recursive: true });
@@ -1229,7 +1498,7 @@ async function extractStableEmbeddedImages(
             dimensions: imageDimensions(payload.buffer, payload.mimeType),
         });
     }
-    return { images, ambiguous };
+    return { images, ambiguous, missingImageNames };
 }
 
 function escapeRegex(value) {
@@ -1278,7 +1547,21 @@ function questionImageAsset(stableImage, pdfImage = null, mapping = null) {
         height: dimensions.height ?? pdfImage?.height ?? null,
         temporaryPath,
         optionKey: mapping?.optionKey ?? null,
+        placement: mapping?.placement === "explanation" ? "explanation" : "prompt",
         altText: mapping?.altText ?? null,
+    };
+}
+
+function inlineMathImageAsset(inspection) {
+    return {
+        ...questionImageAsset({
+            ...inspection,
+            temporaryPath: inspection.imagePath,
+        }, null, {
+            placement: "prompt",
+            altText: "來源數學公式",
+        }),
+        inlineFormula: true,
     };
 }
 
@@ -1294,12 +1577,26 @@ async function extractImages({
     unresolvedImageQuestionNumbers = [],
     preferPrecedingAssociation = false,
     allowDocxMedia = false,
+    allowDerivedHtmlImages = false,
 }) {
-    const imageTags = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)].map((match) => ({
-        index: match.index ?? 0,
-        source: decodeURIComponent(match[1]),
-    }));
+    const imageTags = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)].map((match) => {
+        const width = Number(match[0].match(/\bwidth="([0-9]+)"/i)?.[1] ?? 0);
+        const height = Number(match[0].match(/\bheight="([0-9]+)"/i)?.[1] ?? 0);
+        const name = xmlAttribute(match[0], "name");
+        return {
+            index: match.index ?? 0,
+            source: decodeURIComponent(match[1]),
+            missingImagePlaceholder: Boolean(name && stableImages.missingImageNames?.has(name)),
+            decorative: width > 0 && height > 0 && width <= 24 && height <= 24,
+        };
+    });
     const numberMatches = parseHtmlNumberMatches(html);
+    for (const tag of imageTags) {
+        const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
+        const localHtml = preceding ? html.slice(preceding.index, tag.index) : "";
+        const localText = localHtml.replace(/<[^>]*>/g, " ").replace(/&#65306;|&colon;/g, "：");
+        tag.placement = /詳解\s*[：:]/u.test(localText) ? "explanation" : "prompt";
+    }
     const recordIndexesByNumber = new Map();
     records.forEach((record, index) => {
         const key = normalizeQuestionNumber(record.number);
@@ -1308,6 +1605,46 @@ async function extractImages({
     const pendingIndexes = new Set();
     const imagesByRecord = new Map();
     const approvedRecordIndexes = new Set();
+    if (allowDerivedHtmlImages) {
+        const inspectionCache = new Map();
+        const approvedMappingsByChecksum = new Map(approvedQuestionImageMappings.map((mapping) => [mapping.checksum, mapping]));
+        for (const tag of imageTags) {
+            if (tag.decorative) continue;
+            const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
+            const following = numberMatches.find((entry) => entry.index > tag.index);
+            const associated = preferPrecedingAssociation ? preceding : following;
+            if (tag.missingImagePlaceholder) continue;
+            const inspection = await inspectHtmlImage(htmlPath, tag.source, inspectionCache);
+            const approvedMapping = inspection ? approvedMappingsByChecksum.get(inspection.checksum) ?? null : null;
+            const candidateIndexes = approvedMapping
+                ? recordIndexesByNumber.get(approvedMapping.questionNumber) ?? []
+                : associated ? recordIndexesByNumber.get(associated.number) ?? [] : [];
+            if (!inspection) {
+                candidateIndexes.forEach((index) => pendingIndexes.add(index));
+                continue;
+            }
+            const isInlineFormula = inspection.mimeType === "image/gif"
+                && (inspection.dimensions.height ?? Number.POSITIVE_INFINITY) <= 64;
+            if (isInlineFormula) continue;
+            if (candidateIndexes.length !== 1) {
+                candidateIndexes.forEach((index) => pendingIndexes.add(index));
+                continue;
+            }
+            const candidateIndex = candidateIndexes[0];
+            const image = questionImageAsset({
+                buffer: inspection.buffer,
+                checksum: inspection.checksum,
+                mimeType: inspection.mimeType,
+                extension: inspection.extension,
+                dimensions: inspection.dimensions,
+                temporaryPath: inspection.imagePath,
+            }, null, approvedMapping ?? { placement: tag.placement });
+            imagesByRecord.set(candidateIndex, [...(imagesByRecord.get(candidateIndex) ?? []), image]);
+            if (approvedMapping) approvedRecordIndexes.add(candidateIndex);
+        }
+        approvedRecordIndexes.forEach((index) => pendingIndexes.delete(index));
+        return { imagesByRecord, pendingIndexes, imageTags: imageTags.length, pdfImages: pdfImageRows.length };
+    }
     if (approvedQuestionImageMappings.length) {
         const stableByChecksum = new Map(stableImages.images.map((image) => [image.checksum, image]));
         for (const mapping of approvedQuestionImageMappings) {
@@ -1332,6 +1669,39 @@ async function extractImages({
             return { imagesByRecord, pendingIndexes, imageTags: imageTags.length, pdfImages: pdfImageRows.length };
         }
     }
+    if (allowDocxMedia) {
+        const stableByChecksum = new Map(stableImages.images.map((image) => [image.checksum, image]));
+        const inspectionCache = new Map();
+        const mappedAssets = new Set();
+        for (const tag of imageTags) {
+            const inspection = await inspectHtmlImage(htmlPath, tag.source, inspectionCache);
+            if (!inspection) continue;
+            const isInlineFormula = inspection.mimeType === "image/gif"
+                && (inspection.dimensions.height ?? Number.POSITIVE_INFINITY) <= 64;
+            if (isInlineFormula || tag.decorative) continue;
+            const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
+            const candidateIndexes = preceding ? recordIndexesByNumber.get(preceding.number) ?? [] : [];
+            if (candidateIndexes.length !== 1) continue;
+            const recordIndex = candidateIndexes[0];
+            const stableImage = stableByChecksum.get(inspection.checksum);
+            if (stableImage) {
+                const assetKey = `${recordIndex}:${stableImage.checksum}:${tag.placement}`;
+                if (!mappedAssets.has(assetKey)) {
+                    const image = questionImageAsset(stableImage, null, { placement: tag.placement });
+                    imagesByRecord.set(recordIndex, [...(imagesByRecord.get(recordIndex) ?? []), image]);
+                    mappedAssets.add(assetKey);
+                }
+            }
+            pendingIndexes.add(recordIndex);
+        }
+        records.forEach((record, index) => {
+            if (VISUAL_REFERENCE.test(record.body) && !(imagesByRecord.get(index)?.length)) {
+                pendingIndexes.add(index);
+            }
+        });
+        approvedRecordIndexes.forEach((index) => pendingIndexes.delete(index));
+        return { imagesByRecord, pendingIndexes, imageTags: imageTags.length, pdfImages: pdfImageRows.length };
+    }
     const everyStableImageIsApprovedDecoration = stableImages.images.length > 0
         && pdfImageRows.length === stableImages.images.length
         && stableImages.images.every((image) => ignoredImageChecksums.has(image.checksum));
@@ -1339,11 +1709,12 @@ async function extractImages({
         return { imagesByRecord, pendingIndexes, imageTags: imageTags.length, pdfImages: pdfImageRows.length };
     }
     const acceptedProvenance = allowDocxMedia ? new Set(["ole-data", "docx-media"]) : new Set(["ole-data"]);
-    const countMismatch = imageTags.length !== pdfImageRows.length || imageTags.length !== stableImages.images.length
+    const countMismatch = imageTags.length !== stableImages.images.length
         || stableImages.ambiguous || stableImages.images.some((image) => !acceptedProvenance.has(image.provenance));
 
     if (countMismatch) {
         for (const tag of imageTags) {
+            if (tag.decorative) continue;
             const following = numberMatches.find((entry) => entry.index > tag.index);
             const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
             const match = preferPrecedingAssociation ? preceding : following;
@@ -1361,6 +1732,7 @@ async function extractImages({
         const tag = imageTags[imageIndex];
         const pdfImage = pdfImageRows[imageIndex];
         const stableImage = stableImages.images[imageIndex];
+        if (tag?.decorative) continue;
         if (stableImage && ignoredImageChecksums.has(stableImage.checksum)) continue;
         const associatedNumber = tag
             ? (preferPrecedingAssociation
@@ -1374,9 +1746,9 @@ async function extractImages({
         const candidateIndex = candidateIndexes.length === 1 ? candidateIndexes[0] : null;
         const pageMatches = candidateIndex !== null && pdfImage
             ? recordPages[candidateIndex].length === 1 && recordPages[candidateIndex][0] === pdfImage.page
-            : false;
+            : candidateIndex !== null;
 
-        if (!tag || !pdfImage || !stableImage || candidateIndex === null || !pageMatches) {
+        if (!tag || !stableImage || candidateIndex === null || !pageMatches) {
             const affected = new Set([...candidateIndexes, ...pageIndexes]);
             if (!affected.size) {
                 records.forEach((record, index) => {
@@ -1393,7 +1765,7 @@ async function extractImages({
             pendingIndexes.add(candidateIndex);
             continue;
         }
-        const image = questionImageAsset(stableImage, pdfImage);
+        const image = questionImageAsset(stableImage, pdfImage, { placement: tag.placement });
         imagesByRecord.set(candidateIndex, [...(imagesByRecord.get(candidateIndex) ?? []), image]);
     }
 
@@ -1420,6 +1792,53 @@ const QUESTION_BODY_CORRECTIONS = new Map([
     ],
 ]);
 
+// These questions were compared individually with the approved Word sources.
+// Their spaces are legitimate layout/prose spacing that the broad formula-risk
+// detector intentionally flags; they are not missing multiplication signs.
+const APPROVED_MISSING_MULTIPLICATION_FALSE_POSITIVES = new Set([
+    "1501000032",
+    "1501003555",
+    "1501003577",
+    "1501003806",
+    "1501003912",
+    "1501003966",
+    "1501004022",
+    "1501004076",
+    "1501004133",
+    "1501004179",
+    "1501004189",
+    "1501004195",
+    "1501004200",
+    "1501004397",
+    "1501004507",
+    "1501004657",
+    "1501004685",
+    "1501004856",
+    "1501004883",
+    "1501004935",
+    "1501004960",
+    "1501004970",
+    "1501004983",
+    "1501005041",
+    "1501005071",
+    "1501005122",
+    "1501005169",
+    "1501005171",
+    "1501005452",
+    "1501005468",
+    "1501005486",
+    "1501005531",
+    "1501005626",
+    "1501005653",
+    "1501005654",
+]);
+
+export function isApprovedMissingMultiplicationFalsePositive(questionNumber) {
+    return APPROVED_MISSING_MULTIPLICATION_FALSE_POSITIVES.has(
+        String(questionNumber ?? "").trim(),
+    );
+}
+
 export function correctedQuestionBody(record) {
     const sourceQuestionNumber = String(record.number ?? "").trim();
     return QUESTION_BODY_CORRECTIONS.get(sourceQuestionNumber)
@@ -1432,18 +1851,78 @@ function correctedExplanation(record) {
         ?? String(record.explanation ?? "").trim();
 }
 
+/**
+ * Detect formula text where Word conversion appears to have dropped a multiplication sign.
+ * This is a review guardrail, not an automatic replacement: ordinary spaces in dates,
+ * mixed numbers, coordinates and prose must never be rewritten as multiplication.
+ */
+export function hasSuspiciousMissingMultiplicationSign(value) {
+    return String(value ?? "").split("\n").some((line) => {
+        const factorGap = /(?:[A-Za-z0-9％%)\]])[ \t]+(?=[A-Za-z0-9％%(\[])/u;
+        if (!factorGap.test(line)) return false;
+        return /[＝=÷]/u.test(line) || /^\s*\([A-H]\)\s*[0-9]/u.test(line);
+    });
+}
+
+/**
+ * LibreOffice may split one visual Word superscript/subscript into multiple HTML
+ * tags whenever the font or italic styling changes. Legacy equation operators
+ * can also sit between two script fragments as inline images. At that point the
+ * visible exponent `3×5` has been serialized as `^(3)× ^(5)`, even though the
+ * approved Word source stores all three glyphs at the same script level.
+ *
+ * Only merge adjacent script fragments when there is no baseline operand
+ * between them. This keeps a real `(2^(3))^(2)` power-of-a-power intact while
+ * restoring fragmented `2^(3)^(＋2)` to `2^(3＋2)`.
+ */
+export function mergeFragmentedMathScripts(value) {
+    let normalized = String(value ?? "");
+    let previous;
+    do {
+        previous = normalized;
+        normalized = normalized
+            .replace(/\^\(([^)\r\n]*)\)[ \t]*\^\(([^)\r\n]*)\)/gu, "^($1$2)")
+            .replace(/\^\(([^)\r\n]*)\)[ \t]*([×÷＋+－-])[ \t]*\^\(([^)\r\n]*)\)/gu, "^($1$2$3)")
+            .replace(/_\(([^)\r\n]*)\)[ \t]*_\(([^)\r\n]*)\)/gu, "_($1$2)");
+    } while (normalized !== previous);
+    return normalized;
+}
+
+/** Hold any record whose serialized formula still contains a detached script. */
+export function hasFragmentedMathScript(value) {
+    const text = String(value ?? "");
+    return /\^\([^\r\n)]*\)[ \t]*(?:\^\(|[×÷＋+－-][ \t]*\^\()/u.test(text)
+        || /_\([^\r\n)]*\)[ \t]*_\(/u.test(text);
+}
+
 function structuredRecord(record, approvedChoiceRepair = null) {
     const pendingReasons = [];
-    const body = correctedQuestionBody(record);
+    const correctedBody = correctedQuestionBody(record);
+    const correctedExplanationText = correctedExplanation(record);
+    // Source math GIF markers must survive parsing. The writer later expands each
+    // checksum marker into an ordered image block, preserving the exact Word glyph.
+    const body = correctedBody.trim();
+    const explanation = correctedExplanationText.trim();
     const sourceAnswer = String(record.sourceAnswer ?? "").trim();
     const difficultyCode = strictDifficulty(record.difficulty);
     if (!body) pendingReasons.push("missing-prompt");
     if (!sourceAnswer) pendingReasons.push("missing-answer");
     if (!difficultyCode) pendingReasons.push("unknown-difficulty");
+    if (hasFragmentedMathScript(body) || hasFragmentedMathScript(explanation)) {
+        pendingReasons.push("fragmented-math-script");
+    }
+    if (!HANLIN_ENGLISH_TYPES.includes(record.type)
+        && !isApprovedMissingMultiplicationFalsePositive(record.number)
+        && (hasSuspiciousMissingMultiplicationSign(body)
+            || hasSuspiciousMissingMultiplicationSign(explanation))) {
+        pendingReasons.push("suspected-missing-multiplication-sign");
+    }
 
-    if (["單一選擇題", "選擇"].includes(record.type)) {
+    if (["單一選擇題", "選擇", "字彙選擇", "文法選擇", "對話與完成句子", "單題"].includes(record.type)) {
         if (approvedChoiceRepair) {
-            const sourceAnswerKey = parseAnswerLetters(sourceAnswer)[0];
+            const normalizedSourceAnswer = sourceAnswer.normalize("NFKC").trim();
+            const sourceAnswerKey = parseAnswerLetters(sourceAnswer)[0]
+                ?? normalizedSourceAnswer.match(/^([A-H])(?:\s+\d+)?$/u)?.[1];
             const options = approvedChoiceRepair.options.map((option) => ({
                 key: option.key,
                 text: option.text,
@@ -1452,14 +1931,16 @@ function structuredRecord(record, approvedChoiceRepair = null) {
             if (sourceAnswerKey !== approvedChoiceRepair.answerKey
                 || !optionKeys.has(approvedChoiceRepair.answerKey)
                 || optionKeys.size !== options.length
-                || options.length < 2) {
+                || options.length < 2
+                || (approvedChoiceRepair.prompt && !body.includes(approvedChoiceRepair.prompt))) {
                 pendingReasons.push("choice-repair-invalid");
             }
             return {
                 kind: "choice",
                 questionTypeCode: "single-choice",
                 difficultyCode,
-                prompt: body.replace(/(?:\s*\([A-H]\)\s*)+$/u, "").trim(),
+                prompt: approvedChoiceRepair.prompt
+                    ?? body.replace(/(?:\s*\([A-H]\)\s*)+$/u, "").trim(),
                 parts: pendingReasons.length ? [] : [{
                     stableKey: "main",
                     prompt: "",
@@ -1468,7 +1949,7 @@ function structuredRecord(record, approvedChoiceRepair = null) {
                     options,
                     answer: { answerKey: approvedChoiceRepair.answerKey },
                 }],
-                explanation: correctedExplanation(record),
+                explanation,
                 pendingReasons,
             };
         }
@@ -1497,13 +1978,45 @@ function structuredRecord(record, approvedChoiceRepair = null) {
                 options: parsed.options.map((option) => ({ key: option.label, text: option.value })),
                 answer: matchingAnswer ? { answerKey } : null,
             }] : [],
-            explanation: correctedExplanation(record),
+            explanation,
             pendingReasons,
         };
     }
 
-    if (["配合題", "選詞測驗", "題組"].includes(record.type)) {
+    if (["配合題", "選詞測驗", "題組", "克漏字測驗", "閱讀測驗"].includes(record.type)) {
         const parsed = parseParts(body, sourceAnswer);
+        if (!parsed && ["克漏字測驗", "閱讀測驗"].includes(record.type)) {
+            const writtenParts = parseWrittenParts(body, sourceAnswer);
+            if (writtenParts?.length) {
+                const stableKeys = new Set();
+                const parts = writtenParts.map((part, index) => {
+                    let stableKey = normalizeStableKey(part.id, `part-${index + 1}`);
+                    if (stableKeys.has(stableKey)) {
+                        pendingReasons.push("duplicate-part-key");
+                        stableKey = `${stableKey}-${index + 1}`;
+                    }
+                    stableKeys.add(stableKey);
+                    return {
+                        stableKey,
+                        prompt: part.prompt,
+                        answerMode: "text",
+                        gradingPolicy: "manual_review",
+                        options: [],
+                        answer: part.answer ? { acceptedValue: part.answer } : null,
+                    };
+                });
+                if (parts.some((part) => !part.answer)) pendingReasons.push("written-answer-incomplete");
+                return {
+                    kind: "written",
+                    questionTypeCode: "written",
+                    difficultyCode,
+                    prompt: body,
+                    parts,
+                    explanation,
+                    pendingReasons,
+                };
+            }
+        }
         if (!parsed) pendingReasons.push("multi-part-parse-failed");
         const stableKeys = new Set();
         const parts = (parsed?.parts ?? []).map((part, index) => {
@@ -1535,12 +2048,13 @@ function structuredRecord(record, approvedChoiceRepair = null) {
             difficultyCode,
             prompt: parsed?.prompt ?? body,
             parts,
-            explanation: correctedExplanation(record),
+            explanation,
             pendingReasons,
         };
     }
 
-    if (!["寫出國字、注音", "注釋", "改錯題", "填充題", "填充", "計算", "會考非選擇題"].includes(record.type)) {
+    if (!["寫出國字、注音", "注釋", "改錯題", "填充題", "填充", "計算", "會考非選擇題",
+        "依提示作答", "翻譯", "看圖回答問題", "文意字彙", "簡答題"].includes(record.type)) {
         pendingReasons.push("unsupported-question-type");
     }
     const parsedParts = body && sourceAnswer ? parseWrittenParts(body, sourceAnswer) : null;
@@ -1576,9 +2090,31 @@ function structuredRecord(record, approvedChoiceRepair = null) {
         difficultyCode,
         prompt: body,
         parts,
-        explanation: correctedExplanation(record),
+        explanation,
         pendingReasons,
     };
+}
+
+function hasUnresolvedVisualReference(body, images, allowTextualTables) {
+    if (!VISUAL_REFERENCE.test(body) || images.length) return false;
+    if (!allowTextualTables) return true;
+
+    // The legacy detector matches ordinary terms such as `地圖中` and `圖示比例尺`.
+    // These phrases do not refer to an omitted source illustration by themselves.
+    const withoutLexicalFalsePositives = body
+        .replaceAll("地圖中", "地圖內")
+        .replaceAll("圖示比例尺", "線段比例尺")
+        .replaceAll("圖示最適合", "表示方式最適合");
+    if (!VISUAL_REFERENCE.test(withoutLexicalFalsePositives)) return false;
+
+    // Word tables are converted into one text line per cell. Only accept a table
+    // reference when at least five non-empty cell/header lines survived conversion.
+    // Short or image-only tables stay pending for human reconstruction.
+    if (/附表|下表/u.test(body)) {
+        const lines = body.split("\n").map((line) => line.trim()).filter(Boolean);
+        if (lines.length >= 6) return false;
+    }
+    return true;
 }
 
 function recordFingerprint(record) {
@@ -1600,6 +2136,74 @@ function preserveMathScriptMarkup(html) {
     return html
         .replace(/<sup\b[^>]*>([\s\S]*?)<\/sup>/gi, (_, value) => `^(${plainInline(value)})`)
         .replace(/<sub\b[^>]*>([\s\S]*?)<\/sub>/gi, (_, value) => `_(${plainInline(value)})`);
+}
+
+function htmlImageMimeType(source) {
+    const extension = path.extname(source).toLowerCase();
+    if (extension === ".gif") return "image/gif";
+    if (extension === ".png") return "image/png";
+    if ([".jpg", ".jpeg"].includes(extension)) return "image/jpeg";
+    return null;
+}
+
+function safeHtmlImagePath(htmlPath, source) {
+    let decoded;
+    try {
+        decoded = decodeURIComponent(source);
+    }
+    catch {
+        return null;
+    }
+    const htmlRoot = `${path.resolve(path.dirname(htmlPath))}${path.sep}`;
+    const imagePath = path.resolve(path.dirname(htmlPath), decoded);
+    return imagePath.startsWith(htmlRoot) ? imagePath : null;
+}
+
+async function inspectHtmlImage(htmlPath, source, cache) {
+    if (cache.has(source)) return cache.get(source);
+    const imagePath = safeHtmlImagePath(htmlPath, source);
+    const mimeType = htmlImageMimeType(source);
+    if (!imagePath || !mimeType) {
+        cache.set(source, null);
+        return null;
+    }
+    const buffer = await readFile(imagePath).catch(() => null);
+    const inspection = buffer ? {
+        buffer,
+        checksum: sha256Buffer(buffer),
+        dimensions: imageDimensions(buffer, mimeType),
+        extension: path.extname(source).toLowerCase() === ".jpeg" ? ".jpg" : path.extname(source).toLowerCase(),
+        imagePath,
+        mimeType,
+    } : null;
+    cache.set(source, inspection);
+    return inspection;
+}
+
+async function normalizeMathInlineImages(html, htmlPath) {
+    const matches = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)];
+    const cache = new Map();
+    const imagesByChecksum = new Map();
+    let normalized = "";
+    let offset = 0;
+    for (const match of matches) {
+        const inspection = await inspectHtmlImage(htmlPath, match[1], cache);
+        const approvedText = approvedInlineMathImageText(inspection?.checksum);
+        const isInlineFormula = inspection?.mimeType === "image/gif"
+            && (inspection.dimensions.height ?? Number.POSITIVE_INFINITY) <= 64;
+        if (isInlineFormula && inspection?.checksum && !approvedText) {
+            imagesByChecksum.set(inspection.checksum, inspection);
+        }
+        normalized += html.slice(offset, match.index);
+        normalized += approvedText ?? (isInlineFormula
+            ? unresolvedInlineMathImage(inspection?.checksum)
+            : match[0]);
+        offset = (match.index ?? 0) + match[0].length;
+    }
+    return {
+        html: `${normalized}${html.slice(offset)}`,
+        imagesByChecksum,
+    };
 }
 
 async function convertAndParseDocument(sourceDir, fileName, documentIndex, temporaryRoot, authorizedLesson = null) {
@@ -1672,9 +2276,12 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         throw new HanlinImportError("PAGE_COUNT_MISMATCH", `${fileName} 的 PDF 頁數與文字頁面不一致。`, fileName);
     }
     let sanitizedText;
+    let inlineMathImagesByChecksum = new Map();
     if (authorizedLesson?.parserStyle === "metadata-first") {
         const semanticHtmlPath = path.join(documentWork, "semantic-math.html");
-        await writeFile(semanticHtmlPath, preserveMathScriptMarkup(await readFile(htmlPath, "utf8")), "utf8");
+        const normalizedInlineMath = await normalizeMathInlineImages(await readFile(htmlPath, "utf8"), htmlPath);
+        inlineMathImagesByChecksum = normalizedInlineMath.imagesByChecksum;
+        await writeFile(semanticHtmlPath, preserveMathScriptMarkup(normalizedInlineMath.html), "utf8");
         sanitizedText = runTool(TOOLS.textutil, ["-convert", "txt", "-stdout", semanticHtmlPath], fileName, {
             maxBuffer: 64 * 1024 * 1024,
         });
@@ -1684,15 +2291,15 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
             maxBuffer: 64 * 1024 * 1024,
         });
     }
-    const normalizedText = cleanText(stripLegacyWordSequenceFieldPrefixes(normalizeLegacyWordSymbolArrows(
-        normalizeSanitizedSectionHeaders(sanitizedText),
-    ))).replace(/^\s*\d+\s+(?=題號：)/gm, "");
+    const normalizedText = mergeFragmentedMathScripts(cleanText(stripLegacyWordSequenceFieldPrefixes(normalizeLegacyWordSymbolArrows(
+        normalizeSanitizedSectionHeaders(sanitizedText, authorizedLesson?.questionTypes ?? HANLIN_CHINESE_TYPES),
+    )))).replace(/^\s*\d+\s+(?=題號：)/gm, "");
     const records = authorizedLesson?.parserStyle === "metadata-first"
         ? parseMetadataFirst(normalizedText, authorizedLesson.questionTypes ?? KANGXUAN_MATH_TYPES, fileName)
-        : parseMetadataLast(normalizedText, HANLIN_CHINESE_TYPES, fileName);
+        : parseMetadataLast(normalizedText, authorizedLesson?.questionTypes ?? HANLIN_CHINESE_TYPES, fileName);
     if (authorizedLesson?.parserStyle === "metadata-first") {
         records.forEach((record) => {
-            record.origin = authorizedLesson.target.sourceCategoryName;
+            record.origin = authorizedLesson.target.originalSourceName ?? authorizedLesson.target.sourceCategoryName;
             record.unit = authorizedLesson.target.unitName;
         });
     }
@@ -1728,7 +2335,8 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
             ? authorizedLesson.unresolvedImageQuestionNumbers ?? []
             : [],
         preferPrecedingAssociation: authorizedLesson?.parserStyle === "metadata-first",
-        allowDocxMedia: authorizedLesson?.parserStyle === "metadata-first",
+        allowDocxMedia: authorizedLesson?.parserStyle === "metadata-first" || authorizedLesson?.allowDerivedHtmlImages === true,
+        allowDerivedHtmlImages: authorizedLesson?.parserStyle === "metadata-first" || authorizedLesson?.allowDerivedHtmlImages === true,
     });
     const originalTitle = path.basename(fileName, path.extname(fileName));
     const sourceDocumentId = deterministicUuid(`source-document:sanitized-docx:${SANITIZER_VERSION}:${validation.sha256}`);
@@ -1736,13 +2344,38 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
     const parsedRecords = records.map((record, recordIndex) => {
         const approvedChoiceRepair = authorizedLesson?.approvedChoiceRepairs?.find((repair) =>
             repair.questionNumber === normalizeQuestionNumber(record.number)) ?? null;
+        const unresolvedInlineMathImageEvidence = hasUnresolvedInlineMathImage(record.body)
+            || hasUnresolvedInlineMathImage(record.explanation)
+            ? {
+                body: String(record.body ?? ""),
+                explanation: String(record.explanation ?? ""),
+            }
+            : null;
         const structured = structuredRecord(record, approvedChoiceRepair);
         const pendingReasons = [...structured.pendingReasons];
         if (recordPages[recordIndex].length !== 1) pendingReasons.push("source-page-not-unique");
-        if (VISUAL_REFERENCE.test(record.body) && !(imageAnalysis.imagesByRecord.get(recordIndex)?.length)) {
+        if (hasUnresolvedVisualReference(
+            record.body,
+            imageAnalysis.imagesByRecord.get(recordIndex) ?? [],
+            authorizedLesson?.allowTextualTableVisualReferences === true,
+        )) {
             pendingReasons.push("visual-reference-without-image");
         }
-        const images = imageAnalysis.imagesByRecord.get(recordIndex) ?? [];
+        const sourceInlineChecksums = [
+            ...inlineMathImageChecksums(record.body),
+            ...inlineMathImageChecksums(record.explanation),
+        ];
+        if (sourceInlineChecksums.some((checksum) => !checksum || !inlineMathImagesByChecksum.has(checksum))) {
+            pendingReasons.push("unresolved-inline-math-image");
+        }
+        const inlineImages = [...new Set(sourceInlineChecksums.filter(Boolean))]
+            .map((checksum) => inlineMathImagesByChecksum.get(checksum))
+            .filter(Boolean)
+            .map(inlineMathImageAsset);
+        const images = [...(imageAnalysis.imagesByRecord.get(recordIndex) ?? [])];
+        for (const image of inlineImages) {
+            if (!images.some((candidate) => candidate.checksum === image.checksum)) images.push(image);
+        }
         const requiredChoiceImages = approvedChoiceRepair?.options
             .filter((option) => option.imageChecksum)
             .map((option) => ({ key: option.key, checksum: option.imageChecksum })) ?? [];
@@ -1767,6 +2400,7 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
             originalKnowledge: String(record.knowledge ?? "").trim(),
             originalSource: String(record.origin ?? "").trim(),
             originalUnit: String(record.unit ?? "").trim() || originalTitle,
+            unresolvedInlineMathImageEvidence,
             structured,
             images,
             pendingReasons: [...new Set(pendingReasons)],

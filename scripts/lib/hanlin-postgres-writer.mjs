@@ -10,6 +10,7 @@ import {
     AUTHORIZED_HANLIN_LESSON_IMPORTS,
     deterministicUuid,
     HanlinImportError,
+    isApprovedMissingMultiplicationFalsePositive,
     PARSER_VERSION,
     SANITIZER_VERSION,
     stableJson,
@@ -32,6 +33,7 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0013", "education_stage_catalog"],
     ["0014", "question_relation_profiles"],
     ["0015", "relation_keyword_review"],
+    ["0016", "book_version_volume_boundary"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -67,8 +69,13 @@ function sourceMetadataFieldId(key) {
     return deterministicUuid(`filter-field:hanlin:${key}`);
 }
 
-function sourceMetadataScopeId(key, publisherCode = "hanlin") {
-    return deterministicUuid(`filter-field-scope:${publisherCode}:${key}:publisher-question-bank`);
+function sourceMetadataScopeId(key, target) {
+    const usesLegacyPublisherScope = (target.publisherCode === "hanlin" && target.subjectCode === "chinese")
+        || (target.publisherCode === "kangxuan" && target.subjectCode === "math");
+    const catalogScope = usesLegacyPublisherScope
+        ? target.publisherCode
+        : `${target.publisherCode}:${target.subjectCode}`;
+    return deterministicUuid(`filter-field-scope:${catalogScope}:${key}:publisher-question-bank`);
 }
 
 function normalizeSourceMetadataValue(value) {
@@ -187,7 +194,12 @@ function sha256Text(value) {
 function assertCatalogPlan(plan) {
     const target = assertObject(plan.target, "plan.target");
     const ids = assertObject(plan.ids, "plan.ids");
-    const authorizedLesson = AUTHORIZED_HANLIN_LESSON_IMPORTS.find((entry) => entry.target.key === target.key);
+    const authorizedLesson = AUTHORIZED_HANLIN_LESSON_IMPORTS.find((entry) => entry.target.key === target.key)
+        ?? (["geography", "history", "civics"].includes(target.subjectCode)
+            && target.publisherCode === "hanlin"
+            && /^jh1-(?:geo|hist|civ)-hanlin-v1-(?:intro|[1-6]-[1-4])-(?:bank|literacy|workbook|bct|cap)$/u.test(target.key)
+            ? { target }
+            : null);
     if (!authorizedLesson) {
         fail("WRONG_TARGET_CLASSIFICATION", "plan.target.key 不是已核准的正式題庫單元。");
     }
@@ -343,8 +355,11 @@ function assertPublishableRecord(record, label) {
 export function validateHanlinPostgresPlan(plan) {
     assertObject(plan, "plan");
     assertString(plan.parserVersion, "plan.parserVersion", 80);
-    const authorizedParserVersion = AUTHORIZED_HANLIN_LESSON_IMPORTS
-        .find((entry) => entry.target.key === plan.target.key)?.parserVersion ?? PARSER_VERSION;
+    const authorizedParserVersion = ["geography", "history", "civics"].includes(plan.target?.subjectCode)
+        && plan.target?.publisherCode === "hanlin"
+        ? "hanlin-social-v2"
+        : AUTHORIZED_HANLIN_LESSON_IMPORTS
+            .find((entry) => entry.target.key === plan.target.key)?.parserVersion ?? PARSER_VERSION;
     if (plan.parserVersion !== authorizedParserVersion) {
         fail("INVALID_IMPORT_PLAN", "plan.parserVersion 與目前匯入器版本不一致。 ");
     }
@@ -446,7 +461,11 @@ export function validateHanlinPostgresPlan(plan) {
                 if (image.width !== null) assertPositiveInteger(image.width, `${document.fileName}.images[${imageOffset}].width`);
                 if (image.height !== null) assertPositiveInteger(image.height, `${document.fileName}.images[${imageOffset}].height`);
                 const optionKey = image.optionKey ?? null;
+                const placement = image.placement ?? "prompt";
                 const altText = image.altText ?? null;
+                if (image.inlineFormula !== undefined && image.inlineFormula !== true) {
+                    fail("INVALID_IMPORT_PLAN", `${document.fileName} 的行內公式圖標記不合法。`, document.fileName);
+                }
                 if (optionKey !== null) {
                     assertString(optionKey, `${document.fileName}.images[${imageOffset}].optionKey`, 30);
                     const optionKeys = record.structured.parts.flatMap((part) => part.options.map((option) => option.key));
@@ -456,6 +475,9 @@ export function validateHanlinPostgresPlan(plan) {
                 }
                 if (altText !== null) {
                     assertString(altText, `${document.fileName}.images[${imageOffset}].altText`, 300);
+                }
+                if (!["prompt", "explanation"].includes(placement)) {
+                    fail("INVALID_IMPORT_PLAN", `${document.fileName} 的圖片 placement 不合法。`, document.fileName);
                 }
                 if (image.assetId !== deterministicUuid(`asset:question-content:${image.checksum}`)) {
                     fail("INVALID_IMPORT_PLAN", `${document.fileName} 的題目圖片固定識別不一致。`, document.fileName);
@@ -723,7 +745,7 @@ async function assertSchema(client) {
     if (JSON.stringify(actual) !== JSON.stringify(EXPECTED_MIGRATIONS)) {
         fail(
             "SCHEMA_VERSION_MISMATCH",
-            `本機資料庫 migration 必須精確為 0001–0015；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
+            `本機資料庫 migration 必須精確為 0001–0016；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
         );
     }
 }
@@ -907,7 +929,7 @@ export async function seedHanlinCatalog(client, plan) {
         unit_type: "lesson",
         code: target.unitCode,
         name: target.unitName,
-        position: AUTHORIZED_HANLIN_LESSON_IMPORTS.find((entry) => entry.target.key === target.key).target.unitPosition,
+        position: target.unitPosition,
         status: "active",
         origin: "system",
         owner_user_id: null,
@@ -968,7 +990,7 @@ export async function seedHanlinCatalog(client, plan) {
     }
     for (const field of HANLIN_SOURCE_METADATA_FIELDS) {
         const filterFieldId = sourceMetadataFieldId(field.key);
-        const filterScopeId = sourceMetadataScopeId(field.key, target.publisherCode);
+        const filterScopeId = sourceMetadataScopeId(field.key, target);
         await ensureRow(client, "filter_fields", {
             id: filterFieldId,
             key: field.key,
@@ -1399,7 +1421,7 @@ async function resolveQuestionId(client, plan, group) {
     return existingIds.size === 1 ? [...existingIds][0] : group.questionId;
 }
 
-async function ensureQuestion(client, plan, questionId) {
+async function ensureQuestion(client, plan, group, questionId) {
     await ensureRow(client, "questions", {
         id: questionId,
         origin: HANLIN_REAL_DATA_OWNERSHIP.origin,
@@ -1409,9 +1431,10 @@ async function ensureQuestion(client, plan, questionId) {
         created_method: "import",
         created_by_user_id: HANLIN_IMPORT_PRINCIPAL.userId,
         archived_at: null,
-    }, ["id"], ["id", "origin", "owner_user_id", "created_method", "created_by_user_id", "archived_at"]);
+    }, ["id"], ["id", "origin", "owner_user_id", "created_method", "created_by_user_id"]);
     const result = await client.query(`
-        SELECT id, origin, owner_user_id, current_revision_id, status, created_method, created_by_user_id
+        SELECT id, origin, owner_user_id, current_revision_id, status, created_method,
+               created_by_user_id, archived_at
         FROM questions
         WHERE id = $1
         FOR UPDATE
@@ -1421,9 +1444,30 @@ async function ensureQuestion(client, plan, questionId) {
         || question.origin !== HANLIN_REAL_DATA_OWNERSHIP.origin
         || question.owner_user_id !== HANLIN_REAL_DATA_OWNERSHIP.ownerUserId
         || question.created_method !== "import"
-        || question.created_by_user_id !== HANLIN_IMPORT_PRINCIPAL.userId
-        || !["draft", "published"].includes(question.status)) {
+        || question.created_by_user_id !== HANLIN_IMPORT_PRINCIPAL.userId) {
         fail("QUESTION_IDENTITY_CONFLICT", "既有題目不是此匯入服務可安全延續的系統題目。 ");
+    }
+    if (question.status === "archived") {
+        const approvedReactivation = group.occurrences.every(({ record }) =>
+            isApprovedMissingMultiplicationFalsePositive(record.sourceQuestionNumber));
+        if (!approvedReactivation || question.archived_at === null) {
+            fail("QUESTION_IDENTITY_CONFLICT", "封存題目未列入逐題核准的重新發布範圍。 ");
+        }
+        const restored = await client.query(`
+            UPDATE questions
+            SET status = 'draft', archived_at = NULL
+            WHERE id = $1
+              AND status = 'archived'
+              AND archived_at IS NOT NULL
+            RETURNING id
+        `, [questionId]);
+        if (restored.rowCount !== 1) {
+            fail("QUESTION_IDENTITY_CONFLICT", "封存題目無法安全恢復為草稿。 ");
+        }
+        return { ...question, status: "draft", archived_at: null };
+    }
+    if (!["draft", "published"].includes(question.status) || question.archived_at !== null) {
+        fail("QUESTION_IDENTITY_CONFLICT", "既有題目的狀態與封存時間不一致。 ");
     }
     return question;
 }
@@ -1473,7 +1517,7 @@ async function insertSourceMetadataValues(client, plan, record, revisionId) {
         const normalizedValue = normalizeSourceMetadataValue(rawValue);
         if (!normalizedValue) continue;
         const filterFieldId = sourceMetadataFieldId(field.key);
-        const filterScopeId = sourceMetadataScopeId(field.key, plan.target.publisherCode);
+        const filterScopeId = sourceMetadataScopeId(field.key, plan.target);
         const filterOptionId = deterministicUuid(`filter-option:hanlin:${field.key}:${normalizedValue}`);
         await ensureRow(client, "filter_field_options", {
             id: filterOptionId,
@@ -1582,24 +1626,55 @@ export async function recordHanlinSystemRevisionTransition(client, plan, revisio
 
 async function insertRevisionContent(client, plan, group, questionId, revisionId) {
     const { document, record } = group.canonical;
-    let blockPosition = 0;
-    if (record.structured.prompt) {
-        await ensureRow(client, "question_content_blocks", {
-            id: deterministicUuid(`content:${revisionId}:prompt:text:0`),
-            question_revision_id: revisionId,
-            question_part_id: null,
-            question_option_id: null,
-            parent_block_id: null,
-            placement: "prompt",
-            content_type: "text",
-            position: blockPosition,
-            text_content: record.structured.prompt,
-            asset_id: null,
-            alt_text: null,
-        }, ["id"]);
-        blockPosition += 1;
+    const inlineFormulaImages = new Map(record.images
+        .filter((image) => image.inlineFormula === true)
+        .map((image) => [image.checksum, image]));
+    const markerPattern = /⟦未解析公式圖:([a-f0-9]{64})⟧/gu;
+
+    async function insertOrderedContent({ text, placement, partId = null, optionId = null, idPrefix, startPosition = 0 }) {
+        const segments = [];
+        let offset = 0;
+        for (const match of String(text ?? "").matchAll(markerPattern)) {
+            if ((match.index ?? 0) > offset) segments.push({ type: "text", value: text.slice(offset, match.index) });
+            segments.push({ type: "image", checksum: match[1] });
+            offset = (match.index ?? 0) + match[0].length;
+        }
+        if (offset < String(text ?? "").length) segments.push({ type: "text", value: text.slice(offset) });
+        if (!segments.length && text) segments.push({ type: "text", value: text });
+
+        let position = startPosition;
+        for (const [segmentIndex, segment] of segments.entries()) {
+            if (segment.type === "text" && !segment.value) continue;
+            const image = segment.type === "image" ? inlineFormulaImages.get(segment.checksum) : null;
+            if (segment.type === "image" && !image) {
+                fail("INVALID_IMPORT_PLAN", `${document.fileName} 的行內公式圖缺少對應資產。`, document.fileName);
+            }
+            await ensureRow(client, "question_content_blocks", {
+                id: deterministicUuid(`content:${revisionId}:${idPrefix}:${segment.type}:${segmentIndex}:${segment.checksum ?? "text"}`),
+                question_revision_id: revisionId,
+                question_part_id: partId,
+                question_option_id: optionId,
+                parent_block_id: null,
+                placement,
+                content_type: segment.type,
+                position,
+                text_content: segment.type === "text" ? segment.value : null,
+                asset_id: image?.assetId ?? null,
+                alt_text: image?.altText ?? null,
+            }, ["id"]);
+            position += 1;
+        }
+        return position;
     }
-    const promptImages = record.images.filter((image) => (image.optionKey ?? null) === null);
+
+    let blockPosition = await insertOrderedContent({
+        text: record.structured.prompt,
+        placement: "prompt",
+        idPrefix: "prompt",
+    });
+    const promptImages = record.images.filter((image) => (image.optionKey ?? null) === null
+        && image.inlineFormula !== true
+        && (image.placement ?? "prompt") === "prompt");
     for (const [imageIndex, image] of promptImages.entries()) {
         await ensureRow(client, "question_content_blocks", {
             id: deterministicUuid(`content:${revisionId}:prompt:image:${image.checksum}:${imageIndex}`),
@@ -1629,21 +1704,12 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
             grading_policy: part.gradingPolicy,
             is_independently_gradable: true,
         }, ["id"]);
-        if (part.prompt) {
-            await ensureRow(client, "question_content_blocks", {
-                id: deterministicUuid(`content:${revisionId}:part:${part.stableKey}:prompt`),
-                question_revision_id: revisionId,
-                question_part_id: partId,
-                question_option_id: null,
-                parent_block_id: null,
-                placement: "prompt",
-                content_type: "text",
-                position: 0,
-                text_content: part.prompt,
-                asset_id: null,
-                alt_text: null,
-            }, ["id"]);
-        }
+        await insertOrderedContent({
+            text: part.prompt,
+            placement: "prompt",
+            partId,
+            idPrefix: `part:${part.stableKey}:prompt`,
+        });
         for (const [optionIndex, option] of part.options.entries()) {
             const optionId = deterministicUuid(`question-option:${partId}:${option.key}`);
             await ensureRow(client, "question_options", {
@@ -1652,19 +1718,13 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
                 option_key: option.key,
                 position: optionIndex,
             }, ["id"]);
-            await ensureRow(client, "question_content_blocks", {
-                id: deterministicUuid(`content:${revisionId}:part:${part.stableKey}:option:${option.key}`),
-                question_revision_id: revisionId,
-                question_part_id: partId,
-                question_option_id: optionId,
-                parent_block_id: null,
+            const nextOptionPosition = await insertOrderedContent({
+                text: option.text,
                 placement: "option",
-                content_type: "text",
-                position: optionIndex,
-                text_content: option.text,
-                asset_id: null,
-                alt_text: null,
-            }, ["id"]);
+                partId,
+                optionId,
+                idPrefix: `part:${part.stableKey}:option:${option.key}`,
+            });
             const optionImage = record.images.find((image) => image.optionKey === option.key);
             if (optionImage) {
                 await ensureRow(client, "question_content_blocks", {
@@ -1675,7 +1735,7 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
                     parent_block_id: null,
                     placement: "option",
                     content_type: "image",
-                    position: part.options.length + optionIndex,
+                    position: nextOptionPosition,
                     text_content: null,
                     asset_id: optionImage.assetId,
                     alt_text: optionImage.altText ?? `${document.originalTitle} 選項 ${option.key}`,
@@ -1692,19 +1752,27 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
             }, ["id"]);
         }
     }
-    if (record.structured.explanation) {
+    const explanationPosition = await insertOrderedContent({
+        text: record.structured.explanation,
+        placement: "explanation",
+        idPrefix: "explanation",
+    });
+    const explanationImages = record.images.filter((image) => (image.optionKey ?? null) === null
+        && image.inlineFormula !== true
+        && image.placement === "explanation");
+    for (const [imageIndex, image] of explanationImages.entries()) {
         await ensureRow(client, "question_content_blocks", {
-            id: deterministicUuid(`content:${revisionId}:explanation:0`),
+            id: deterministicUuid(`content:${revisionId}:explanation:image:${image.checksum}:${imageIndex}`),
             question_revision_id: revisionId,
             question_part_id: null,
             question_option_id: null,
             parent_block_id: null,
             placement: "explanation",
-            content_type: "text",
-            position: 0,
-            text_content: record.structured.explanation,
-            asset_id: null,
-            alt_text: null,
+            content_type: "image",
+            position: explanationPosition + imageIndex,
+            text_content: null,
+            asset_id: image.assetId,
+            alt_text: image.altText ?? `${document.originalTitle} 解析附圖`,
         }, ["id"]);
     }
     await ensureRow(client, "question_revision_units", {
@@ -1775,7 +1843,7 @@ async function publishRevision(client, plan, question, revisionId) {
     }
     await client.query(`
         UPDATE questions
-        SET current_revision_id = $2, status = 'published'
+        SET current_revision_id = $2, status = 'published', archived_at = NULL
         WHERE id = $1
     `, [question.id, revisionId]);
 }
@@ -1789,7 +1857,7 @@ async function writeQuestionGroup(client, plan, group) {
     }
 
     const questionId = await resolveQuestionId(client, plan, group);
-    const question = await ensureQuestion(client, plan, questionId);
+    const question = await ensureQuestion(client, plan, group, questionId);
     await insertQuestionIdentifiers(client, plan, group, questionId);
     const revision = await createRevision(client, plan, group, question);
     if (!revision.reused) {
@@ -2129,7 +2197,8 @@ export async function writeHanlinPostgresImport({
         }
         if (error instanceof HanlinImportError) throw error;
         const code = typeof error?.code === "string" ? error.code : "UNKNOWN";
-        fail("DATABASE_WRITE_FAILED", `PostgreSQL 匯入失敗（${code}）。`);
+        const detail = typeof error?.message === "string" ? error.message.slice(0, 500) : "未知錯誤";
+        fail("DATABASE_WRITE_FAILED", `PostgreSQL 匯入失敗（${code}）：${detail}`);
     }
     finally {
         await client.end().catch(() => undefined);

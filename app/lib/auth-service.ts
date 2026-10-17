@@ -6,6 +6,7 @@ import { createSessionToken, hashAccountPassword, hashSessionToken, verifyAccoun
 import type {
     AccountRole,
     CreateAccountLearnerInput,
+    EnableLearnerSubjectInput,
     LearnerEducationStatus,
     LoginAccountInput,
     RegisterAccountInput,
@@ -78,6 +79,7 @@ export interface AuthenticatedLearnerProfile {
     isSelf: boolean;
     preferences: AuthenticatedLearnerPreferences | null;
     subjectSettings: AuthenticatedLearnerSubjectSetting[];
+    availableSubjects: Array<{ code: string; name: string }>;
 }
 
 export interface AuthenticatedAccount {
@@ -137,6 +139,7 @@ interface AccessibleLearnerRow extends QueryResultRow {
     is_self: boolean;
     learner_preferences: AuthenticatedLearnerPreferences | null;
     learner_subject_settings: AuthenticatedLearnerSubjectSetting[];
+    available_learner_subjects: Array<{ code: string; name: string }>;
 }
 
 interface LoginRow extends QueryResultRow {
@@ -227,6 +230,7 @@ function toLearnerProfile(row: AccessibleLearnerRow): AuthenticatedLearnerProfil
         isSelf: row.is_self,
         preferences: row.learner_preferences,
         subjectSettings: row.learner_subject_settings,
+        availableSubjects: row.available_learner_subjects,
     };
 }
 
@@ -737,7 +741,8 @@ async function readAccessibleLearners(
                     'defaultCheckMode', preference.default_check_mode
                 )
             END AS learner_preferences,
-            subject_profile.settings AS learner_subject_settings
+            subject_profile.settings AS learner_subject_settings,
+            subject_profile.available_subjects AS available_learner_subjects
         FROM (
             SELECT
                 access.learner_id,
@@ -822,7 +827,35 @@ async function readAccessibleLearners(
                     ORDER BY setting.position, subject.code, setting.id
                 ),
                 '[]'::jsonb
-            ) AS settings
+            ) AS settings,
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object('code', candidate.code, 'name', candidate.name)
+                    ORDER BY candidate.code
+                )
+                FROM subjects AS candidate
+                WHERE candidate.subject_kind = 'leaf'
+                    AND candidate.status = 'active'
+                    AND (candidate.origin = 'system' OR candidate.owner_user_id = $1)
+                    AND (
+                        learner.grade_id IS NULL
+                        OR EXISTS (
+                            SELECT 1
+                            FROM grade_subjects AS grade_subject
+                            WHERE grade_subject.grade_id = learner.grade_id
+                                AND grade_subject.subject_id = candidate.id
+                                AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
+                                AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+                        )
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM learner_subject_settings AS existing
+                        WHERE existing.learner_id = learner.id
+                            AND existing.subject_id = candidate.id
+                            AND existing.enabled = true
+                    )
+            ), '[]'::jsonb) AS available_subjects
             FROM learner_subject_settings AS setting
             JOIN subjects AS subject ON subject.id = setting.subject_id
             LEFT JOIN book_versions AS book_version ON book_version.id = setting.book_version_id
@@ -1633,6 +1666,87 @@ export async function updateLearnerSubjectSetting(
                     AND lock_version = $3
             `, [input.bookVersionId, setting.setting_id, input.lockVersion]);
         }
+
+        return readSessionById(client, session.session_id);
+    });
+}
+
+export async function enableLearnerSubject(
+    request: Request,
+    input: EnableLearnerSubjectInput,
+): Promise<AuthenticatedAccount> {
+    const token = sessionTokenFromRequest(request);
+    if (!token) throw new AuthServiceError("AUTH_REQUIRED", "請先登入後再繼續。", 401);
+    const tokenHash = hashSessionToken(token);
+
+    return withLocalPostgresTransaction(async (client) => {
+        const session = await lockAuthenticatedSession(client, tokenHash);
+        if (input.learnerId !== session.learner_id) {
+            throw new AuthServiceError("LEARNER_SETTINGS_FORBIDDEN", "只能修改目前使用中學習者的科目設定。", 403);
+        }
+
+        const learnerResult = await client.query<{ grade_id: string | null } & QueryResultRow>(`
+            SELECT learner.grade_id
+            FROM learners AS learner
+            JOIN learner_access AS access
+                ON access.learner_id = learner.id
+                AND access.user_id = $1
+                AND access.can_manage_settings = true
+                AND access.accepted_at IS NOT NULL
+                AND access.revoked_at IS NULL
+            WHERE learner.id = $2
+                AND learner.status = 'active'
+            FOR UPDATE OF learner
+        `, [session.user_id, input.learnerId]);
+        const learner = learnerResult.rows[0];
+        if (!learner) {
+            throw new AuthServiceError("LEARNER_SETTINGS_FORBIDDEN", "沒有權限修改這位學習者的科目設定。", 403);
+        }
+
+        const subjectResult = await client.query<{ subject_id: string } & QueryResultRow>(`
+            SELECT subject.id AS subject_id
+            FROM subjects AS subject
+            WHERE subject.code = $1
+                AND subject.subject_kind = 'leaf'
+                AND subject.status = 'active'
+                AND (subject.origin = 'system' OR subject.owner_user_id = $2)
+                AND (
+                    $3::uuid IS NULL
+                    OR EXISTS (
+                        SELECT 1
+                        FROM grade_subjects AS grade_subject
+                        WHERE grade_subject.grade_id = $3
+                            AND grade_subject.subject_id = subject.id
+                            AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
+                            AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+                    )
+                )
+            LIMIT 1
+        `, [input.subjectCode, session.user_id, learner.grade_id]);
+        const subject = subjectResult.rows[0];
+        if (!subject) {
+            throw new AuthServiceError("LEARNER_SUBJECT_NOT_AVAILABLE", "這個科目不適用於目前學習者。", 400);
+        }
+
+        await client.query(`
+            INSERT INTO learner_subject_settings (
+                id, learner_id, subject_id, book_version_id,
+                enabled, is_default_subject, position
+            )
+            VALUES (
+                $1, $2, $3, NULL, true, false,
+                COALESCE((SELECT max(position) + 1 FROM learner_subject_settings WHERE learner_id = $2), 0)
+            )
+            ON CONFLICT (learner_id, subject_id) DO UPDATE
+            SET
+                enabled = true,
+                position = CASE
+                    WHEN learner_subject_settings.enabled THEN learner_subject_settings.position
+                    ELSE EXCLUDED.position
+                END,
+                lock_version = learner_subject_settings.lock_version + 1,
+                updated_at = transaction_timestamp()
+        `, [randomUUID(), input.learnerId, subject.subject_id]);
 
         return readSessionById(client, session.session_id);
     });

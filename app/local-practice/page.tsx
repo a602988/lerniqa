@@ -194,8 +194,9 @@ function MediaFallback({ block }: { block: LocalPracticeContentBlock }) {
 }
 
 function ContentBlocks({ blocks, duplicateText }: { blocks: LocalPracticeContentBlock[]; duplicateText?: string }) {
+    const hasInlineFormula = blocks.some((block) => block.contentType === "image" && block.altText === "來源數學公式");
     return (
-        <div className={styles.contentBlocks}>
+        <div className={`${styles.contentBlocks} ${hasInlineFormula ? styles.inlineFormulaSequence : ""}`}>
             {blocks.map((block) => {
                 if (block.contentType === "text" || block.contentType === "transcript") {
                     if (!block.text || block.text.trim() === duplicateText?.trim()) return null;
@@ -211,11 +212,11 @@ function ContentBlocks({ blocks, duplicateText }: { blocks: LocalPracticeContent
                 const asset = block.asset;
                 if (asset?.url && (block.contentType === "image" || block.contentType === "page_crop")) {
                     return (
-                        <div className={styles.mediaAsset} key={block.id}>
+                        <div className={`${styles.mediaAsset} ${block.altText === "來源數學公式" ? styles.inlineFormulaAsset : ""}`} key={block.id}>
                             {/* Imported assets keep their source dimensions, so plain img is intentional here. */}
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                                className={styles.promptImage}
+                                className={block.altText === "來源數學公式" ? styles.inlineFormulaImage : styles.promptImage}
                                 src={asset.url}
                                 alt={block.altText || "題目圖片"}
                                 width={asset.width ?? undefined}

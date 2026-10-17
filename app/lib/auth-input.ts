@@ -74,6 +74,11 @@ export interface UpdateLearnerSubjectSettingInput {
     lockVersion: number;
 }
 
+export interface EnableLearnerSubjectInput {
+    learnerId: string;
+    subjectCode: string;
+}
+
 export const ACCOUNT_PASSWORD_MIN_LENGTH = 8;
 export const ACCOUNT_PASSWORD_MAX_LENGTH = 128;
 export const ACCOUNT_PASSWORD_HINT = "至少 8 個字元；不必混合大小寫、數字與符號，請避開常見弱密碼。";
@@ -405,6 +410,16 @@ export function parseUpdateLearnerSubjectSettingInput(
             ? null
             : normalizeUuid(value.bookVersionId, "書籍版本識別碼"),
         lockVersion: Number(value.lockVersion),
+    };
+}
+
+export function parseEnableLearnerSubjectInput(value: unknown): EnableLearnerSubjectInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "新增科目資料格式不正確。");
+    }
+    return {
+        learnerId: normalizeUuid(value.learnerId, "學習者識別碼"),
+        subjectCode: normalizeCatalogCode(value.subjectCode, "科目", 60),
     };
 }
 

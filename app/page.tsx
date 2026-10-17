@@ -53,6 +53,7 @@ import {
     clearPracticeSessionHint,
     createPracticeLearner,
     createInitialPracticePlan,
+    enablePracticeLearnerSubject,
     getPersistedQuestionReferenceAnswers,
     getPersistedPracticeSession,
     isDeterministicPracticeApiError,
@@ -981,9 +982,12 @@ function getSubjectsForGrade(grade: string, questions: Question[], customSubject
 
 /** 顯示題目、答案或解析中的單一圖片區塊。 */
 function ContentImage({ block }: { block: QuestionBlock }) {
+    const isInlineFormula = block.asset?.alt === "來源數學公式";
     return <img
         alt={block.asset?.alt ?? "題目附圖"}
-        className="max-h-64 w-full rounded-2xl border border-border bg-[#fafafa] object-contain p-2"
+        className={isInlineFormula
+            ? "inline-block h-auto max-w-full border-0 bg-transparent object-contain"
+            : "max-h-64 w-full rounded-2xl border border-border bg-[#fafafa] object-contain p-2"}
         src={`/api/v1/assets/${encodeURIComponent(block.asset?.storageKey ?? "")}`}
     />;
 }
@@ -1029,11 +1033,22 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     const promptClassName = [className, titleSize].filter(Boolean).join(" ");
     const blocks = question.blocks?.filter((block) => block.placement === "prompt")
         .sort((first, second) => first.order - second.order) ?? [];
+    const hasInlineFormula = blocks.some((block) => block.type === "image" && block.asset?.alt === "來源數學公式");
     const hasInterleavedContent = blocks.filter((block) => block.type === "text" && block.text).length > 1;
-    if (!hasInterleavedContent) {
+    if (!hasInterleavedContent && !hasInlineFormula) {
         return <>{title
             ? <CardTitle className={promptClassName} id={id}><PromptText text={question.prompt} /></CardTitle>
             : <p className={promptClassName} id={id}><PromptText text={question.prompt} /></p>}<ContentImages blocks={question.blocks} placement="prompt" /></>;
+    }
+
+    if (hasInlineFormula) {
+        return <div className={`flex flex-wrap items-center gap-x-1 gap-y-2 ${promptClassName}`} id={id} role={title ? "heading" : undefined}>
+            {blocks.map((block) => {
+                if (block.type === "image" && block.asset) return <ContentImage block={block} key={block.id} />;
+                if (block.type !== "text" || !block.text) return null;
+                return <span className="whitespace-pre-wrap" key={block.id}><PromptText text={block.text} /></span>;
+            })}
+        </div>;
     }
 
     let textIndex = 0;
@@ -1697,7 +1712,6 @@ export default function Home() {
     const [learnerProfileBusy, setLearnerProfileBusy] = useState(false);
     const [subjectSettingBusyCode, setSubjectSettingBusyCode] = useState("");
     const [subjectSettingStatus, setSubjectSettingStatus] = useState("");
-    const [selectedSubjectSettingCode, setSelectedSubjectSettingCode] = useState("");
     const createLearnerRequestRef = useRef<{ fingerprint: string; clientRequestId: string } | undefined>(undefined);
     const [roleSwitchBusy, setRoleSwitchBusy] = useState(false);
     const [identityRole, setIdentityRole] = useState<PracticeAccountRole>("learner");
@@ -2832,6 +2846,33 @@ export default function Home() {
         }
         catch (error) {
             setSubjectSettingStatus(error instanceof Error ? error.message : "教材版本未能保存，請重試。");
+        }
+        finally { setSubjectSettingBusyCode(""); }
+    }
+
+    /** 將目錄中的科目加入目前學習者，成功後由伺服器資料建立對應版本列。 */
+    async function addPracticeLearnerSubject() {
+        if (!activeAccountLearner?.canManageSettings || !subjectChoice || subjectSettingBusyCode) return;
+        setSubjectSettingBusyCode("add-subject");
+        setSubjectSettingStatus("");
+        setSubjectError("");
+        try {
+            const { account } = await enablePracticeLearnerSubject({
+                learnerId: activeAccountLearner.id,
+                subjectCode: subjectChoice,
+            });
+            const subject = activeAccountLearner.availableSubjects.find((candidate) => candidate.code === subjectChoice);
+            setPracticeAccount(account);
+            broadcastAuthSessionContextChanged();
+            setSubjectDialogOpen(false);
+            setSubjectChoice("");
+            setSubjectSettingStatus(`${normalizeSubjectLabel(subject?.name ?? "科目")}已新增。`);
+            setPracticeServiceError("");
+            setIsHydrated(false);
+            setPracticeReloadToken((current) => current + 1);
+        }
+        catch (error) {
+            setSubjectError(error instanceof Error ? error.message : "科目未能新增，請重試。");
         }
         finally { setSubjectSettingBusyCode(""); }
     }
@@ -5523,9 +5564,6 @@ export default function Home() {
     function renderSettings() {
         const selectedExamId = getSettingsExamId(pathname);
         const selectedExam = activePlan.examSettings.find((exam) => exam.id === selectedExamId);
-        const selectedSubjectSetting = activeAccountLearner?.subjectSettings.find(
-            (setting) => setting.subject.code === selectedSubjectSettingCode,
-        ) ?? activeAccountLearner?.subjectSettings[0];
 
         if (selectedExam) {
             return (
@@ -5601,27 +5639,54 @@ export default function Home() {
                             {renderLearnerProfileDialog()}
                         </section>
                         {practiceAccount ? <section className="settings-section">
-                            <div className="settings-section-heading"><div><h3>科目與版本</h3><p>先選科目，再設定該科已建立的版本。沒有版本的科目可直接使用。</p></div><Badge tone="muted">資料庫設定</Badge></div>
-                            {!activeAccountLearner?.subjectSettings.length ? <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未啟用科目。</p><p className="mt-1">請由有管理權限的帳號完成科目設定。</p></div> : <div className="workspace-surface grid gap-4 rounded-2xl p-4 sm:grid-cols-2">
-                                <FormField label="科目">
-                                    <NativeSelect
-                                        options={activeAccountLearner.subjectSettings.map((setting) => ({ value: setting.subject.code, label: normalizeSubjectLabel(setting.subject.name) }))}
-                                        value={selectedSubjectSetting?.subject.code ?? ""}
-                                        onChange={(event) => { setSelectedSubjectSettingCode(event.target.value); setSubjectSettingStatus(""); }}
-                                    />
-                                </FormField>
-                                {selectedSubjectSetting && selectedSubjectSetting.availableBookVersions.length > 0 ? <FormField label="版本">
-                                    <NativeSelect
-                                        disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
-                                        options={[
-                                            { value: "", label: "不指定版本" },
-                                            ...selectedSubjectSetting.availableBookVersions.map((bookVersion) => ({ value: bookVersion.id, label: [bookVersion.publisher?.name, bookVersion.name].filter(Boolean).join(" · ") })),
-                                        ]}
-                                        value={selectedSubjectSetting.bookVersion?.id ?? ""}
-                                        onChange={(event) => void saveLearnerSubjectSetting(selectedSubjectSetting, event.target.value)}
-                                    />
-                                </FormField> : <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">這個科目沒有建立版本，可直接使用，不會套用版本篩選。</div>}
-                                {selectedSubjectSetting && subjectSettingBusyCode === selectedSubjectSetting.subject.code && <p className="text-sm text-muted-foreground sm:col-span-2" role="status">正在保存…</p>}
+                            <div className="settings-section-heading">
+                                <div><h3>科目與版本</h3><p>新增科目後，每個科目會各自顯示一列版本設定。</p></div>
+                                <div className="settings-section-actions"><Badge tone="muted">資料庫設定</Badge>{activeAccountLearner?.canManageSettings && <Button appearance="outline" onClick={() => { setSubjectChoice(""); setSubjectError(""); setSubjectDialogOpen(true); }}><Plus />新增科目</Button>}</div>
+                            </div>
+                            <Dialog open={subjectDialogOpen} onOpenChange={(open) => {
+                                setSubjectDialogOpen(open);
+                                if (!open) { setSubjectChoice(""); setSubjectError(""); }
+                            }}>
+                                <DialogContent size="sm" closeLabel="關閉新增科目">
+                                    <DialogHeader><DialogTitle>新增科目</DialogTitle><DialogDescription>選擇一個尚未啟用、且適用於目前年級的科目。</DialogDescription></DialogHeader>
+                                    <DialogBody className="grid gap-4">
+                                        {activeAccountLearner?.availableSubjects.length ? <FormField label="科目">
+                                            <NativeSelect
+                                                autoFocus
+                                                options={[
+                                                    { value: "", label: "請選擇科目" },
+                                                    ...activeAccountLearner.availableSubjects.map((subject) => ({ value: subject.code, label: normalizeSubjectLabel(subject.name) })),
+                                                ]}
+                                                value={subjectChoice}
+                                                onChange={(event) => { setSubjectChoice(event.target.value); setSubjectError(""); }}
+                                            />
+                                        </FormField> : <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">目前年級可用的科目都已加入。</p>}
+                                        {subjectError && <p className="text-sm font-semibold text-danger" role="alert">{subjectError}</p>}
+                                    </DialogBody>
+                                    <DialogFooter><DialogClose asChild><Button appearance="ghost" tone="muted">取消</Button></DialogClose><Button disabled={!subjectChoice || Boolean(subjectSettingBusyCode)} onClick={() => void addPracticeLearnerSubject()}><Plus />{subjectSettingBusyCode === "add-subject" ? "新增中…" : "新增"}</Button></DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                            {!activeAccountLearner?.subjectSettings.length ? <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未新增科目。</p><p className="mt-1">請按「新增科目」選擇要使用的科目。</p></div> : <div className="subject-setting-list">
+                                {activeAccountLearner.subjectSettings.map((setting) => (
+                                    <div className="subject-setting-row" key={setting.subject.code}>
+                                        <div className="subject-setting-name"><span>科目</span><strong>{normalizeSubjectLabel(setting.subject.name)}</strong></div>
+                                        {setting.availableBookVersions.length > 0 ? <FormField className="subject-setting-version" label="版本">
+                                            <NativeSelect
+                                                disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
+                                                options={[
+                                                    { value: "", label: "不指定版本" },
+                                                    ...setting.availableBookVersions.map((bookVersion) => ({
+                                                        value: bookVersion.id,
+                                                        label: bookVersion.publisher?.name ?? bookVersion.name.replace(/版$/u, ""),
+                                                    })),
+                                                ]}
+                                                value={setting.bookVersion?.id ?? ""}
+                                                onChange={(event) => void saveLearnerSubjectSetting(setting, event.target.value)}
+                                            />
+                                        </FormField> : <div className="subject-setting-version-note"><span>版本</span><p>此科目沒有建立版本，可直接使用。</p></div>}
+                                        {subjectSettingBusyCode === setting.subject.code && <p className="subject-setting-saving text-sm text-muted-foreground" role="status">正在保存…</p>}
+                                    </div>
+                                ))}
                             </div>}
                             {subjectSettingStatus && <p className="mt-3 text-sm font-semibold" role="status">{subjectSettingStatus}</p>}
                         </section> : <section className="settings-section">

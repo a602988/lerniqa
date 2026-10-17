@@ -827,8 +827,14 @@
 }
 
 .contentBlocks {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 0.65rem;
+}
+
+.contentBlocks > :is(p, code, pre, .mediaFallback) {
+    flex: 0 0 100%;
 }
 
 .questionCard > .contentBlocks {
@@ -845,6 +851,32 @@
     font-size: 0.88rem;
     line-height: 1.7;
     white-space: pre-wrap;
+}
+
+.inlineFormulaSequence {
+    align-items: center;
+    column-gap: 0.18rem;
+    row-gap: 0.35rem;
+}
+
+.inlineFormulaSequence > p {
+    flex: 0 1 auto;
+}
+
+.inlineFormulaAsset {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    line-height: 1;
+}
+
+.inlineFormulaImage {
+    display: inline-block;
+    max-width: min(100%, 42rem);
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 
 .formula,
@@ -873,7 +905,9 @@
 }
 
 .mediaAsset {
+    width: fit-content;
     max-width: 100%;
+    flex: 0 1 auto;
 }
 
 .audio {

@@ -5,12 +5,50 @@ import {
     getRepeatedNumberedPartLabel,
     normalizeLegacyMathSymbols,
     reflowNumberedExplanation,
+    tokenizeInlineQuestionText,
 } from "../app/lib/question-presentation.ts";
 
 test("legacy Symbol implication marks become standard double arrows", () => {
     assert.equal(
         normalizeLegacyMathSymbols("432□6為倍數\n□＝9"),
         "432□6為倍數\n⇒□＝9",
+    );
+});
+
+test("explicit fraction markup becomes structured inline math without changing dates or ratios", () => {
+    assert.deepEqual(
+        tokenizeInlineQuestionText("介於 \\frac{13}{14} 與 \\frac{15}{16} 之間"),
+        [
+            { kind: "text", value: "介於 " },
+            { kind: "fraction", numerator: "13", denominator: "14" },
+            { kind: "text", value: " 與 " },
+            { kind: "fraction", numerator: "15", denominator: "16" },
+            { kind: "text", value: " 之間" },
+        ],
+    );
+    assert.deepEqual(
+        tokenizeInlineQuestionText("日期 2026/10/17，比例 3/4"),
+        [{ kind: "text", value: "日期 2026/10/17，比例 3/4" }],
+    );
+});
+
+test("explicit exponent and subscript markup becomes structured inline math", () => {
+    assert.deepEqual(
+        tokenizeInlineQuestionText("(10^(3))^(5)＝10^(3×5)，a_(n＋1)"),
+        [
+            { kind: "text", value: "(10" },
+            { kind: "script", placement: "superscript", value: "3" },
+            { kind: "text", value: ")" },
+            { kind: "script", placement: "superscript", value: "5" },
+            { kind: "text", value: "＝10" },
+            { kind: "script", placement: "superscript", value: "3×5" },
+            { kind: "text", value: "，a" },
+            { kind: "script", placement: "subscript", value: "n＋1" },
+        ],
+    );
+    assert.deepEqual(
+        tokenizeInlineQuestionText("來源截斷3^"),
+        [{ kind: "text", value: "來源截斷3^" }],
     );
 });
 
