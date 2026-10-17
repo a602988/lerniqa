@@ -3941,7 +3941,7 @@ textarea:focus-visible,
         "question handwriting"
         "review handwriting"
         "actions handwriting"
-        "conditions conditions";
+        "conditions handwriting";
     gap: 1rem 1.25rem;
     align-items: stretch;
 }
