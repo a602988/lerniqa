@@ -125,6 +125,7 @@ function assertCompatibleCheckpoint(checkpoint, expected) {
         || checkpoint.model?.name !== expected.model.name
         || checkpoint.model?.digest !== expected.model.digest
         || !Array.isArray(checkpoint.results)
+        || (checkpoint.failures !== undefined && !Array.isArray(checkpoint.failures))
         || checkpoint.result_count !== checkpoint.results.length
         || typeof checkpoint.run_id !== "string") {
         throw new TypeError("既有題型關係分析檔與目前題庫、模型或 schema 不相容；請指定新的輸出檔。 ");
@@ -137,7 +138,25 @@ function assertCompatibleCheckpoint(checkpoint, expected) {
         }
         seen.add(result.question_revision_id);
     }
+    for (const failure of checkpoint.failures ?? []) {
+        if (!selected.has(failure?.question_revision_id) || seen.has(failure.question_revision_id)) {
+            throw new TypeError("既有題型關係分析 checkpoint 含範圍外、重複或已完成的失敗題目版本。 ");
+        }
+    }
     return checkpoint;
+}
+
+function failureSummary(question, error) {
+    const summary = safeErrorSummary(error).error;
+    const cause = error?.cause instanceof Error ? safeErrorSummary(error.cause).error : null;
+    return {
+        question_id: question.questionId,
+        question_revision_id: question.revisionId,
+        code: summary.code,
+        message: summary.message,
+        cause_code: cause?.code ?? null,
+        cause_message: cause?.message ?? null,
+    };
 }
 
 export async function analyze(options, { environment = process.env, fetchImpl = fetch } = {}) {
@@ -163,17 +182,36 @@ export async function analyze(options, { environment = process.env, fetchImpl = 
         return { persisted: false, analyzed: questions.length, resumed: true, already_complete: true, output: path.relative(REPOSITORY_ROOT, options.output) };
     }
     const results = checkpoint ? [...checkpoint.results] : [];
+    const failures = checkpoint ? [...(checkpoint.failures ?? [])] : [];
     const completed = new Set(results.map((result) => result.question_revision_id));
     const runId = checkpoint?.run_id ?? expected.run_id;
     for (const question of questions) {
         if (completed.has(question.revisionId)) continue;
-        results.push(await analyzeQuestionRelations(question, model, { fetchImpl }));
-        const partial = buildRelationAnalysisDocument(questions, results, model, { runId, complete: false });
+        const failureIndex = failures.findIndex((failure) => failure.question_revision_id === question.revisionId);
+        try {
+            results.push(await analyzeQuestionRelations(question, model, { fetchImpl }));
+            if (failureIndex >= 0) failures.splice(failureIndex, 1);
+        }
+        catch (error) {
+            const failure = failureSummary(question, error);
+            if (failureIndex >= 0) failures[failureIndex] = failure;
+            else failures.push(failure);
+        }
+        const partial = buildRelationAnalysisDocument(questions, results, model, { runId, complete: false, failures });
         await writeDocument(options.output, partial);
     }
-    const document = buildRelationAnalysisDocument(questions, results, model, { runId, complete: true });
+    const complete = results.length === questions.length && failures.length === 0;
+    const document = buildRelationAnalysisDocument(questions, results, model, { runId, complete, failures });
     await writeDocument(options.output, document);
-    return { persisted: false, analyzed: results.length, resumed: Boolean(checkpoint), already_complete: false, output: path.relative(REPOSITORY_ROOT, options.output) };
+    return {
+        persisted: false,
+        analyzed: results.length,
+        failed: failures.length,
+        complete,
+        resumed: Boolean(checkpoint),
+        already_complete: false,
+        output: path.relative(REPOSITORY_ROOT, options.output),
+    };
 }
 
 export async function persist(options, { environment = process.env } = {}) {

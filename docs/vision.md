@@ -1,10 +1,10 @@
 # 教學小助教與教材來源閱讀器架構
 
-狀態：架構提案，等待確認後才進入施工計劃與實作
+狀態：架構已確認，施工中；學生教材頁面仍受授權 gate 阻擋
 
 ## 範圍與交付邊界
 
-第一階段只解析 `115上[翰林]國中新無敵國文自修(1).pdf` 的第四課〈論語選〉。教材印刷頁碼為第 93 至 114 頁，對應 PDF 第 95 至 116 頁，共 22 頁。
+第一階段只解析 `115上[翰林]國中新無敵國文自修(1).pdf` 的第四課〈論語選〉。教材印刷頁碼為第 93 至 114 頁，對應 PDF 第 95 至 116 頁，共 22 頁。來源教材範圍為 115 學年度、國一、國文、翰林版、上學期、第一冊、第四課。
 
 本階段建立可重跑的解析流程、受保護頁面影像、OCR 區塊及校對資料，不改寫 279 題正式題目、題目版本、既有解析或作答紀錄，也不部署至 Vercel。學生閱讀流程的目標是從題目解析直接跳到被引用的教材頁，不提供整本 PDF、跨課瀏覽或重新編排的網頁教材。
 
@@ -16,7 +16,7 @@
 - 正式匯入來源是 `05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc`。這份自修 PDF 是補充教學證據，不能取代既有 `question_revision_sources` 的主要匯入出處。
 - `assets`、`source_documents`、`question_revision_sources` 與受權媒體端點已存在；現有媒體端點上限為 20 MiB，適合頁面影像，不適合傳送約 200 MB 的原始 PDF。
 - `/api/v1/local-practice/questions/{questionId}/reference-answer` 已用目前學習者、題庫關聯及題目版本保護參考答案；`score` 模式刻意不揭露逐題答案及解析。
-- `system_admin` 的資料庫角色與審核限制已部分存在，但正式登入、可信管理 API 及管理介面尚未完成。第一階段因此採命令列匯入與只讀核對報告，不建立未受信任的臨時管理入口。
+- 本機 `system_admin` session、管理 API、管理介面、同交易稽核與題目審核流程已存在，可以作為教材校對功能的授權基礎。預設系統管理員、MFA、Secret Manager、production RLS／GRANT 與公開部署證據尚未完成，因此本機能力不能直接視為 production 授權已就緒。
 
 ## 系統責任
 
@@ -55,6 +55,22 @@ OCR 保存原始辨識文字、頁面座標、引擎版本、模型版本及信�
 
 ### 新增的資料表
 
+`source_document_catalog_profiles` 保存整份來源文件的正式教材範圍：
+
+| 欄位 | 用途 |
+| --- | --- |
+| `source_document_id` | 來源文件，一份文件只有一個目前有效的教材範圍 |
+| `academic_year` | 學年度，例如 115；不得從檔名於查詢時臨時推測 |
+| `grade_id` | 年級 |
+| `subject_id` | 科目 |
+| `semester_id` | 上、下學期 |
+| `book_version_id` | 出版社版本 |
+| `volume_unit_id` | 冊次在教材樹中的正式節點 |
+| `review_status` | `pending`、`approved` 或 `rejected` |
+| `reviewed_by_user_id`、`reviewed_at` | 審核者與時間 |
+
+`source_document_catalog_profiles` 必須檢查年級、科目、版本與冊次屬於同一條正式教材目錄。來源檔名保留作為證據，但不能代替這些外鍵。頁面所屬課次由頁面資料另行保存，因此整本來源可以涵蓋多課，不會被錯誤綁成單一課。
+
 `source_document_pages` 保存來源文件內可閱讀的頁面：
 
 | 欄位 | 用途 |
@@ -63,6 +79,7 @@ OCR 保存原始辨識文字、頁面座標、引擎版本、模型版本及信�
 | `source_document_id` | 所屬來源文件 |
 | `pdf_page_number` | PDF 實際頁序，從 1 起算 |
 | `printed_page_number` | 學生看見的印刷頁碼 |
+| `curriculum_unit_id` | 這一頁所屬課次；跨課頁面保持空值並等待人工確認 |
 | `asset_id` | private `source_page` 頁面影像 |
 | `width`、`height` | 標示區域換算及影像核對 |
 | `render_version` | 渲染工具與設定版本 |
@@ -126,7 +143,7 @@ app/api/v1/local-practice/questions/[questionId]/source-pages/[pageId]/route.ts
 
 頁面影像端點使用 question ID、revision ID 與 page ID 作為查詢範圍。後端只在該固定版本有核准證據、目前學習者能存取題目且答案揭露允許時提供影像，並回傳 `Cache-Control: private, no-store`。知道 asset ID、page ID 或檔名都不能直接取得內容。
 
-第一階段不提供管理寫入 API。校對資料只能由受控匯入腳本產生 pending 紀錄；正式核准功能須等可信 `system_admin` 登入與稽核寫入完成後再開放。若施工前決定先做本機人工核准，必須設計受控 caller 與 append-only 稽核，不能直接以資料列中的角色欄位充當權限。
+第一階段由受控匯入腳本產生 pending 紀錄，再擴充既有管理後台完成校對與核准。所有管理寫入沿用現有 `system_admin` session、same-origin 檢查、重新驗證與 append-only 稽核，不建立平行登入或只靠前端隱藏的入口。production 開放仍須補齊既有管理後台列出的部署與高權限身分條件。
 
 ## 本地 AI 邊界
 
@@ -154,6 +171,6 @@ app/api/v1/local-practice/questions/[questionId]/source-pages/[pageId]/route.ts
 ## 待確認決策
 
 - 教材局部頁面是否有權提供給 Lerniqa 學生線上查看。未確認前只做本機解析與內部校對。
-- 正式校對與核准角色。現有可落地的安全基準是 `system_admin`，但其可信登入與管理 API 尚未完成。
+- 正式校對與核准角色採 `system_admin`；production 的預設管理員、MFA、Secret Manager 與資料庫權限仍是部署 gate。
 - 題庫預覽頁是否可以在未作答時查看教材來源。建議第一版只從已解鎖的作答結果進入，降低答案與教材內容提前洩漏的風險。
 - OCR 引擎需用代表性的直排古文、注音、表格及圖片頁做品質實驗後再選定；現有手寫辨識 worker 不直接重用。

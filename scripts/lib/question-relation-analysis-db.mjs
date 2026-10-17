@@ -36,6 +36,9 @@ function validateDocument(document) {
         || document.schema_version !== RELATION_ANALYSIS_SCHEMA
         || document.method_version !== RELATION_ANALYSIS_VERSION
         || document.complete !== true
+        || document.failure_count !== 0
+        || !Array.isArray(document.failures)
+        || document.failures.length !== 0
         || !Array.isArray(document.results)
         || document.results.length !== document.result_count
         || typeof document.run_id !== "string") {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+    buildRelationAnalysisDocument,
     relationAnalysisJsonSchema,
     relationKeywordId,
     relationTemplateId,
@@ -56,4 +57,34 @@ test("relation schema is strict and limits keyword kinds", () => {
         schema.properties.keywords.items.properties.kind.enum,
         ["person", "work", "passage", "target_character", "concept", "topic", "knowledge_point", "other"],
     );
+});
+
+test("relation checkpoint records failures without marking the document complete", () => {
+    const questions = [{
+        questionId: "11111111-1111-4111-8111-111111111111",
+        revisionId: "22222222-2222-4222-8222-222222222222",
+        questionTypeCode: "single-choice",
+        questionTypeName: "單一選擇題",
+        parts: [],
+        contentBlocks: [],
+        options: [],
+        answers: [],
+    }];
+    const failures = [{
+        question_id: questions[0].questionId,
+        question_revision_id: questions[0].revisionId,
+        code: "MODEL_CLASSIFICATION_FAILED",
+        message: "分類失敗。",
+        cause_code: null,
+        cause_message: null,
+    }];
+    const document = buildRelationAnalysisDocument(
+        questions,
+        [],
+        { name: "model", digest: "a".repeat(64), version: "runtime" },
+        { complete: false, failures },
+    );
+    assert.equal(document.complete, false);
+    assert.equal(document.failure_count, 1);
+    assert.equal(document.failures[0].question_revision_id, questions[0].revisionId);
 });

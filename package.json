@@ -27,6 +27,7 @@
     "test:account-recovery": "node --no-warnings --experimental-strip-types --test tests/account-recovery.test.ts",
     "questions:enrich": "node scripts/enrich-question-bank.mjs",
     "questions:relations": "node scripts/analyze-question-relations.mjs",
+    "teaching-source:smoke": "local-data/handwriting-python/bin/python scripts/smoke-teaching-source-ocr.py",
     "test:question-enrichment": "node --test tests/question-enrichment.test.mjs tests/question-relation-analysis.test.mjs",
     "handwriting:worker": "node scripts/process-handwriting-analysis.mjs",
     "handwriting:setup": "sh scripts/setup-handwriting-ocr.sh",

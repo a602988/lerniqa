@@ -189,7 +189,7 @@ export function buildRelationAnalysisDocument(
     questions,
     results,
     model,
-    { runId = randomUUID(), complete = true } = {},
+    { runId = randomUUID(), complete = true, failures = [] } = {},
 ) {
     const prepared = questions.map(prepareQuestionInput).sort((left, right) => left.revisionId.localeCompare(right.revisionId, "en"));
     const orderedResults = [...results].sort((left, right) => left.question_revision_id.localeCompare(right.question_revision_id, "en"));
@@ -201,8 +201,10 @@ export function buildRelationAnalysisDocument(
         model: { name: model.name, digest: model.digest, version: model.version },
         source_manifest_sha256: sha256(prepared.map((item) => ({ question_id: item.questionId, question_revision_id: item.revisionId, input_sha256: item.inputSha256 }))),
         result_count: orderedResults.length,
+        failure_count: failures.length,
         complete,
         results: orderedResults,
+        failures: [...failures].sort((left, right) => left.question_revision_id.localeCompare(right.question_revision_id, "en")),
     });
 }
 

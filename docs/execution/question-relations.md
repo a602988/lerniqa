@@ -14,6 +14,7 @@
 - `0014_question_relation_profiles` 建立文字模板、模板成員、正式關鍵字、題目版本關鍵字關聯與推薦來源證據。
 - `0015_relation_keyword_review` 讓 AI／規則建立的關鍵字目錄先進 pending，並保存來源、方法版本、證據、審核者及審核時間。
 - `questions:relations` 只讀目前已發布的系統題目，以固定本機模型分析文字骨架、解題邏輯、可變值與關鍵字；分析產檔與 pending 匯入分開執行。
+- 全量分析遇到單題模型失敗時，checkpoint 會保存該題的安全錯誤摘要並繼續其他題目。只有全部題目成功、`failure_count` 為 0 且 `complete` 為 true 的檔案可以匯入 pending；重跑時保留成功結果，只重試失敗題。
 - `/admin/questions/relations` 只允許 `system_admin` 讀取與審核；核准／退回使用既有同源防護、交易內權限重驗、冪等收據與管理員稽核。
 - 推薦查詢只使用 confirmed 模板成員、confirmed 關鍵字關聯與 active 關鍵字。pending 資料不影響學生端。
 
