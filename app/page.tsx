@@ -1469,6 +1469,24 @@ function QuestionFlow(props: QuestionFlowProps) {
                 : handwritingAnalysis.status === "error"
                     ? "目前改由人工檢視"
                     : handwriting ? "停筆 1.5 秒後自動分析" : "等待手寫內容";
+    const feedbackMessage = feedback
+        ? serverQuestion
+            ? feedback.correct === true
+                ? "答對了，作答已保存"
+                : feedback.correct === false
+                    ? "答案不符標準答案，已加入錯題複習"
+                    : "作答已保存，等待批改或補齊標準答案"
+            : feedback.correct === true
+                ? "答對了"
+                : feedback.correct === false
+                    ? "答錯了"
+                    : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"
+        : "";
+    const feedbackAnswer = feedback
+        ? serverQuestion
+            ? feedback.referenceAnswers?.length ? formatReferenceAnswers(feedback.referenceAnswers) : ""
+            : feedback.correct === false ? formatAnswer(question, question.answer) : ""
+        : "";
 
     return (
         <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
@@ -1482,12 +1500,12 @@ function QuestionFlow(props: QuestionFlowProps) {
                         {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={Boolean(feedback)} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
                     </section>
                     {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
-                        <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{serverQuestion ? feedback.correct === true ? "答對了，作答已保存" : feedback.correct === false ? "答案不符標準答案，已加入錯題複習" : "作答已保存，等待批改或補齊標準答案" : feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
-                        {serverQuestion && feedback.referenceAnswers?.length ? <p className="mt-2 text-sm font-semibold">參考答案：{formatReferenceAnswers(feedback.referenceAnswers)}</p> : null}
+                        <div className="practice-feedback-status">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedbackMessage}</div>
+                        {feedbackAnswer && <p className="practice-feedback-answer"><span>{serverQuestion ? "參考答案" : "正確答案"}</span><strong>{feedbackAnswer}</strong></p>}
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
                         {feedback.correct !== null && (serverQuestion
-                            ? referenceExplanation ? <p className="mt-2 text-sm text-muted-foreground">解析：{referenceExplanation}</p> : null
-                            : <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>)}
+                            ? referenceExplanation ? <p className="practice-feedback-explanation">解析：{referenceExplanation}</p> : null
+                            : <p className="practice-feedback-explanation">{question.explanation}</p>)}
                     </aside>}
                     <div className="practice-question-meta"><QuestionConditions question={question} /></div>
                     <div className="practice-question-actions">{feedback

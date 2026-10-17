@@ -3977,6 +3977,46 @@ textarea:focus-visible,
     align-self: start;
 }
 
+.practice-feedback-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.practice-feedback-status svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+}
+
+.practice-feedback-answer {
+    display: grid;
+    gap: 0.15rem;
+    margin-top: 0.65rem;
+}
+
+.practice-feedback-answer > span {
+    color: var(--color-muted-foreground);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.practice-feedback-answer > strong {
+    overflow-wrap: anywhere;
+    font-size: clamp(1.25rem, 1.05rem + 0.5vw, 1.5rem);
+    line-height: 1.45;
+}
+
+.practice-feedback-explanation {
+    margin-top: 0.5rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
 .practice-question-meta {
     grid-area: conditions;
     min-width: 0;
