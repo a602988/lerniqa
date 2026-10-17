@@ -45,6 +45,12 @@ const accountStatusLabels: Record<string, string> = {
     closed: "已關閉",
 };
 
+const verificationLabels = {
+    verified: "已驗證",
+    unverified: "未驗證",
+    not_applicable: "不適用",
+} as const;
+
 const learnerPermissionLabels = {
     canViewResults: "查看學習成果",
     canCreatePlans: "建立練習計畫",
@@ -52,10 +58,31 @@ const learnerPermissionLabels = {
     canManageSettings: "修改學習者設定",
 } as const;
 
+const learnerStatusLabels = {
+    active: "學習者啟用中",
+    archived: "學習者已封存",
+} as const;
+
+const learnerAccessStateLabels = {
+    accepted: "關係已接受",
+    pending: "關係待接受",
+    revoked: "關係已撤銷",
+} as const;
+
 function identityVerificationLabel(
     state: "verified" | "unverified" | "not_applicable",
     verifiedAt: string | null,
+    lifecycleState: "active" | "revoked",
 ) {
+    if (lifecycleState === "revoked") {
+        if (state === "verified") {
+            return verifiedAt
+                ? `已撤銷；撤銷前已驗證（${verifiedAt}）`
+                : "已撤銷；撤銷前已驗證";
+        }
+        if (state === "unverified") return "已撤銷；撤銷前未驗證";
+        return "已撤銷；不適用";
+    }
     if (state === "not_applicable") return "不適用";
     if (state === "unverified") return "未驗證";
     return verifiedAt ? `已驗證（${verifiedAt}）` : "已驗證";
@@ -67,6 +94,26 @@ function RoleBadge({ role }: { role: string }) {
             status={role}
             label={roleLabels[role] ?? role}
             tone={role === "system_admin" ? "primary" : "light"}
+        />
+    );
+}
+
+function VerificationBadge({
+    state,
+}: {
+    state: "verified" | "unverified" | "not_applicable";
+}) {
+    return (
+        <AdminStatusBadge
+            status={state}
+            label={verificationLabels[state]}
+            tone={
+                state === "verified"
+                    ? "success"
+                    : state === "unverified"
+                      ? "warning"
+                      : "muted"
+            }
         />
     );
 }
@@ -99,7 +146,8 @@ export function AccountsView({
 }: AccountsViewProps) {
     const hasActiveFilters =
         Boolean(filters.search?.value.trim()) ||
-        Boolean(filters.selects?.some((select) => select.value.trim()));
+        Boolean(filters.selects?.some((select) => select.value.trim())) ||
+        Boolean(filters.dates?.some((date) => date.value.trim()));
     const emptyState = hasActiveFilters
         ? {
               title: "找不到符合條件的帳號",
@@ -122,13 +170,14 @@ export function AccountsView({
                 <div className={styles.desktopRecordTable}>
                     <AdminTableFrame
                         aria-label="帳號清單"
-                        minWidth={1080}
+                        minWidth={1180}
                         footer={<ViewPagination pagination={pagination} />}
                     >
                     <AdminTableHeader>
                         <AdminTableRow>
                             <HeaderCell sorts={sorts} sortKey="displayName" label="帳號" />
                             <HeaderCell sorts={sorts} sortKey="email" label="主要信箱" />
+                            <AdminTableHeadCell>信箱驗證</AdminTableHeadCell>
                             <HeaderCell sorts={sorts} sortKey="status" label="狀態" />
                             <HeaderCell sorts={sorts} sortKey="accountRole" label="帳號身份" />
                             <AdminTableHeadCell>有效權限</AdminTableHeadCell>
@@ -140,19 +189,19 @@ export function AccountsView({
                     <AdminTableBody>
                         {state.kind === "loading" ? (
                             <AdminTableLoadingState
-                                colSpan={8}
+                                colSpan={9}
                                 title={state.message ?? "正在載入帳號"}
                             />
                         ) : state.kind === "error" ? (
                             <AdminTableErrorState
-                                colSpan={8}
+                                colSpan={9}
                                 description={state.message}
                                 retryHref={state.retryHref ?? ""}
                                 retryLabel={state.retryLabel}
                             />
                         ) : rows.length === 0 ? (
                             <AdminTableEmptyState
-                                colSpan={8}
+                                colSpan={9}
                                 title={emptyState.title}
                                 description={emptyState.description}
                             />
@@ -167,6 +216,9 @@ export function AccountsView({
                                     </AdminTableCell>
                                     <AdminTableCell className={styles.longValue}>
                                         {formatViewValue(account.primaryEmail)}
+                                    </AdminTableCell>
+                                    <AdminTableCell>
+                                        <VerificationBadge state={account.emailVerificationState} />
                                     </AdminTableCell>
                                     <AdminTableCell>
                                         <AdminStatusBadge status={account.status} />
@@ -240,6 +292,7 @@ export function AccountsView({
                                     badges={
                                         <>
                                             <AdminStatusBadge status={account.status} />
+                                            <VerificationBadge state={account.emailVerificationState} />
                                             {account.accountRole ? (
                                                 <RoleBadge role={account.accountRole} />
                                             ) : null}
@@ -290,6 +343,10 @@ export function AccountsView({
                             items={[
                                 { label: "主要信箱", value: detail.primaryEmail },
                                 {
+                                    label: "信箱驗證",
+                                    value: verificationLabels[detail.emailVerificationState],
+                                },
+                                {
                                     label: "帳號狀態",
                                     value:
                                         accountStatusLabels[detail.status] ?? detail.status,
@@ -322,18 +379,29 @@ export function AccountsView({
                                     <ul className={styles.detailItems}>
                                         {detail.identities.map((identity) => (
                                             <li key={identity.id}>
-                                                <div>
+                                                <div className={styles.badgeList}>
                                                     <strong>{identity.providerLabel}</strong>
-                                                    <span className={styles.longValue}>
-                                                        {identity.identifier}
-                                                    </span>
+                                                    <AdminStatusBadge
+                                                        status={identity.lifecycleState}
+                                                        label={identity.lifecycleState === "active"
+                                                            ? "身份有效"
+                                                            : "身份已撤銷"}
+                                                    />
                                                 </div>
+                                                <span className={styles.longValue}>
+                                                    識別資料：{identity.identifier}
+                                                </span>
                                                 <span>
                                                     驗證：
                                                     {identityVerificationLabel(
                                                         identity.verificationState,
                                                         identity.verifiedAt,
+                                                        identity.lifecycleState,
                                                     )}
+                                                </span>
+                                                <span>
+                                                    撤銷：
+                                                    {formatViewValue(identity.revokedAt, "未撤銷")}
                                                 </span>
                                             </li>
                                         ))}
@@ -385,14 +453,33 @@ export function AccountsView({
                                     <ul className={styles.detailItems}>
                                         {detail.learnerAccess.map((learner) => (
                                             <li key={learner.id}>
-                                                <strong>{learner.learnerName}</strong>
+                                                <div className={styles.badgeList}>
+                                                    <strong>{learner.learnerName}</strong>
+                                                    <AdminStatusBadge
+                                                        status={learner.accessState}
+                                                        label={learnerAccessStateLabels[learner.accessState]}
+                                                        tone={learner.accessState === "accepted"
+                                                            ? "success"
+                                                            : undefined}
+                                                    />
+                                                    <AdminStatusBadge
+                                                        status={learner.learnerStatus}
+                                                        label={learnerStatusLabels[learner.learnerStatus]}
+                                                    />
+                                                </div>
                                                 <span>
                                                     年級：{formatViewValue(learner.gradeLabel)}；學期：
                                                     {formatViewValue(learner.semesterLabel)}；關係：
-                                                    {learner.accessRole}
+                                                    {roleLabels[learner.accessRole] ?? learner.accessRole}
                                                 </span>
                                                 <span>
-                                                    權限：
+                                                    接受：{formatViewValue(learner.acceptedAt, "尚未接受")}；撤銷：
+                                                    {formatViewValue(learner.revokedAt, "未撤銷")}
+                                                </span>
+                                                <span>
+                                                    {learner.effective
+                                                        ? "有效權限："
+                                                        : "權限設定（目前不生效）："}
                                                     {Object.entries(learner.permissions)
                                                         .filter(([, enabled]) => enabled)
                                                         .map(
@@ -402,11 +489,6 @@ export function AccountsView({
                                                                 ],
                                                         )
                                                         .join("、") || "無"}
-                                                    ；撤銷：
-                                                    {formatViewValue(
-                                                        learner.revokedAt,
-                                                        "未撤銷",
-                                                    )}
                                                 </span>
                                             </li>
                                         ))}

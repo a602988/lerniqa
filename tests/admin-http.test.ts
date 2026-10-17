@@ -13,9 +13,24 @@ import {
     type AdminServerFailureEvent,
 } from "../app/lib/admin/admin-observability.ts";
 import { AdminApiError } from "../app/lib/admin/admin-types.ts";
+import nextConfig from "../next.config.ts";
 
 const ACCEPTED_REQUEST_ID = "a1111111-b111-4c11-8d11-e11111111111";
 const GENERATED_REQUEST_ID = "77777777-7777-4777-8777-777777777777";
+
+test("admin documents deny framing and referrer leakage", async () => {
+    assert.equal(typeof nextConfig.headers, "function");
+    const routes = await nextConfig.headers!();
+    const adminRoute = routes.find((route) => route.source === "/admin/:path*");
+    assert.ok(adminRoute);
+
+    const headers = new Map(
+        adminRoute.headers.map((header) => [header.key.toLowerCase(), header.value]),
+    );
+    assert.equal(headers.get("content-security-policy"), "frame-ancestors 'none'");
+    assert.equal(headers.get("x-frame-options"), "DENY");
+    assert.equal(headers.get("referrer-policy"), "no-referrer");
+});
 
 test("admin success responses are private, non-cacheable and consistently shaped", async () => {
     const response = adminDataResponse(

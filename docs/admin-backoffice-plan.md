@@ -1,201 +1,133 @@
-# Lerniqa 管理後台施工計畫
+# Lerniqa 管理後台施工與交付計畫
 
-狀態：部分可執行。文件、UI 架構、隔離環境與合成資料測試可以開始；依賴前台 `0008` 至 `0011` 的資料庫施工、訂閱目錄 migration、production 帳號寫入與任何正式部署保持阻擋。
+狀態：原始碼功能已完成一輪，`0012` 的 migration 測試已由主線整合任務通過。後台合成資料 E2E、瀏覽器與截圖仍待專用 `55439`／`3617` 維護時段驗收。
 
-本計畫的架構依據是 `docs/admin-backoffice-architecture.md`。執行者應先讀該文件，再核對 repository 內的 `AGENTS.md`、相關 `.agents/skills`、實際 migration manifest 及 package lock。對話內容、未提交前台檔案與 fixture 顯示值都不是正式契約。
-
-## 施工就緒查核
-
-### 已由 repository 查證
-
-- 獨立 worktree 是 `/Users/jean/Documents/Codex/2026-10-16/task/lerniqa-admin`，分支是 `codex/lerniqa-admin-20261016`。
-- 基準 commit 是 `6ef62eb139d35693e31ed78ee966f2d1f37a61f9`。
-- 基準 schema 到 `0007_practice_answer_integrity`；帳號、角色、學習者、題目版本、練習、作答、統計及稽核資料模型已存在。
-- Lerniqa 直接使用 `@keel-design/ui@0.4.0-test.25` 及同一 lockfile 中的 KEEL icons、tokens、themes 與 Tailwind preset。
-- 第四課匯入流程有 279 題的既有驗收契約。原始資料及原 checkout 不在本分支的寫入範圍。
-
-### 尚待前台 commit 的依賴
-
-| 依賴 | 所需證據 | 責任角色 | 未完成時的停止行為 |
-| --- | --- | --- | --- |
-| `0008` 至 `0011` 正式 commit | commit hash、乾淨 diff、migration manifest、前台測試摘要 | 前台工程師、整合工程師 | 不建立新 migration，不實作依賴新增欄位的寫入或報表 |
-| `learner_access` 與 accountRole／activeRole mapping | migration SQL、型別及 auth API 測試 | 後端工程師 | 不建立平行表，不以 UI state 代替授權 |
-| `0011` score 統計語意 | 升級測試、receipt 與 session aggregate 驗證 | 後端工程師 | score 報表顯示未完成，不回頭讀已清除的答案明細 |
-| 下一個 migration 編號 | 整合後 manifest 的完整前綴 | 整合工程師 | 訂閱 catalog 僅保留 UI／service 契約，不寫 schema |
-
-### 需要產品或安全決策
-
-| 決策 | 目前安全預設 | 未確認時的停止行為 |
-| --- | --- | --- |
-| 管理員是否能修改其他帳號的題目 | `origin=account` 全部唯讀 | 不顯示可送出的編輯控制 |
-| 帳號狀態轉換、session 撤銷與關閉後保存 | production 寫入關閉 | 只用合成資料演練介面與交易 |
-| 社群或跨帳號報表門檻 | 關閉 | 只顯示不涉及跨帳號識別的管理總量，敏感聚合保持阻擋 |
-| 地區蒐集 | 不蒐集、不推測 | 地區報表顯示無資料 |
-| 正式方案、金額與功能限制 | 不預設 | catalog 保持空狀態，不建立假商業資料 |
-
-### 需要正式環境證據
-
-production 後端、登入服務、Secret Manager、MFA、資料庫受限角色、RLS／GRANT、物件儲存、資料保存政策、支付供應商及公開部署都沒有正式證據。本計畫不執行這些工作，也不能用本機 adapter 或合成 fixture 代替。
+本計畫以 `docs/admin-backoffice-architecture.md` 為產品與技術契約，以 `docs/reviews/admin-backoffice/` 下各領域紀錄為驗收證據。執行時仍要核對 repository 的 `AGENTS.md`、相關 `.agents/skills`、migration manifest 與 package lock。
 
 ## 固定隔離設定
 
-所有開發與驗收只使用下列資源：
-
-- web：`127.0.0.1:3617`
-- dev／preview dist：`.next-admin`
-- production build dist：`.next-admin-build`
-- PostgreSQL socket port：`55439`
-- database：`lerniqa_admin_e2e`
-- data：`local-data/admin-e2e/postgres`
-- socket：`local-data/admin-e2e/socket`
-
-禁止使用 `3500`、`8443`、`55432`、`local-data/postgres`、原 checkout 的 runtime 或任何真實資料庫。測試 runner 改用 `/tmp` cluster 時，要在驗收報告記錄替代值及清理證據。
-
-## 實作順序
-
-### 1. 接收前台 schema
-
-- 角色：整合工程師、架構師。
-- 輸入：前台提供的單一本機 commit、migration manifest、auth 與 score 測試摘要。
-- 產出：本分支的整合 commit、更新後 schema 對照、文件同步檢查。
-- 完成條件：`0001` 至 `0011` 形成完整且無重複的前綴；`learner_access`、accountRole／activeRole、答案完整性及 score receipt 的實際契約已逐項核對；未複製任何未提交檔案。
-- 驗證：隔離空庫前進、既有合成資料升級、完整性拒絕案例、migration manifest 檢查，以及前台指定測試。
-- 證據：`docs/reviews/admin-backoffice/schema-integration.md`，記錄 commit hash、命令、exit code 與契約差異。
-- 依賴：前台 commit；未收到時此任務阻擋，其餘不依賴新 schema 的 UI 骨架工作可並行。
-- 確認節點：若 migration SQL 與架構文件不一致，停止施工並請架構師確認，不自行選一套。
-- 回滾點：回到本 worktree 基準 commit，不修改原 checkout，也不 stash 或 reset 其他任務的變更。
-
-### 2. 建立管理後台外層與伺服器授權
-
-- 角色：後端工程師、前端工程師。
-- 輸入：既有 auth context、有效 `system_admin` 契約、KEEL 依賴與架構路由矩陣。
-- 產出：`/admin` layout、導覽、route guard、管理 API 共用授權函式、共用錯誤與分頁契約。
-- 完成條件：所有 `/admin` 頁面及 `/api/v1/admin/*` 在伺服器檢查管理員；未登入與無權者分別得到 `401`、`403`；前端不能以偽造角色打開資料；普通使用者設定與 admin layout 狀態互不混用。
-- 驗證：route integration tests、直接 API 呼叫、偽造 cookie／body 角色、session 撤銷、desktop／tablet／mobile 導覽及鍵盤焦點。
-- 證據：`docs/reviews/admin-backoffice/foundation.md` 與三種寬度截圖。
-- 依賴：不需要訂閱 migration；auth schema 整合完成後才能標記完整通過。
-- 確認節點：route guard 與 API 授權測試通過後才能加入管理寫入端點。
-- 回滾點：移除 `/admin` route group 與管理 API router，不改普通使用者頁面及共用 auth 資料。
-
-### 3. 帳號清單與詳情
-
-- 角色：後端工程師、前端工程師。
-- 輸入：`users`、`account_identities`、`user_roles`、`learner_access`、`learners` 及 server-side admin guard。
-- 產出：帳號 repository、分頁搜尋 API、帳號表格、詳情 Drawer、合成資料的狀態與角色操作流程。
-- 完成條件：搜尋、狀態、角色、驗證狀態、日期、白名單排序與分頁由伺服器執行；bootstrap admin 不在結果；回應不含密碼、token、session 或 MFA；重複查詢與分頁順序穩定。
-- 驗證：零筆、單筆、跨頁、重複顯示名稱、多身份、多角色、已撤銷角色、closed 帳號、無權存取、查詢失敗及手機摘要版。
-- 證據：`docs/reviews/admin-backoffice/accounts.md`。
-- 依賴：任務 2；角色寫入測試另依賴任務 1。
-- 確認節點：production 帳號狀態寫入保持關閉；只有產品與安全規則補齊後另行確認。
-- 回滾點：保留 read-only repository，關閉狀態與角色動作入口。
-
-### 4. 題庫瀏覽、版本編修與審核
-
-- 角色：後端工程師、前端工程師。
-- 輸入：既有題庫、題目、revision、來源、答案、審核及稽核模型。
-- 產出：全題庫清單、完整篩選與分頁、題目詳情、revision timeline、系統題目新 draft 表單及審核佇列。
-- 完成條件：題目修改建立新 revision；舊 revision、來源及作答不變；系統題目第二版起要求修改原因；建立者不能審核自己建立的版本；account-origin 題目固定唯讀；第四課 279 題沒有被覆寫或刪除。
-- 驗證：各 origin／狀態、答案缺漏、複合小題、來源文件、draft／approved／rejected／changes requested、同人審核拒絕、重複提交、交易失敗回滾及 revision 歷史一致性。
-- 證據：`docs/reviews/admin-backoffice/questions.md`，另保存修改前後題目與 revision 數量核對。
-- 依賴：任務 1、2。
-- 確認節點：任何跨帳號題目編修需求都停止，等待產品規則改版。
-- 回滾點：停用編修與審核 API，保留只讀題庫及已建立的耐久 revision；不執行破壞性 down migration。
-
-### 5. 訂閱方案目錄
-
-- 角色：架構師、後端工程師、前端工程師。
-- 輸入：整合後 migration manifest、四張 catalog 表契約、既有管理稽核模型。
-- 產出：下一個可用編號的 forward migration、catalog repository／API、方案表格與表單、支付未串接狀態。
-- 完成條件：方案、價格、ISO 幣別、minor-unit 金額、週期、功能限制與狀態可在隔離資料庫管理；已生效價格不可原地修改；沒有 account subscription、checkout、付款、發票、webhook 或收入資料；空資料庫不自動產生方案。
-- 驗證：金額與幣別格式、週期倍數、狀態轉換、重複 code、重複功能、樂觀鎖定、重複提交、失敗回滾、價格換版及 API 中不存在付款入口。
-- 證據：`docs/reviews/admin-backoffice/subscription-catalog.md`。
-- 依賴：任務 1 的 schema gate。gate 未完成時只能做不寫資料的 UI 原型，不能建立 migration。
-- 確認節點：migration 名稱與編號、正式方案值及任何支付整合都需另行確認。
-- 回滾點：關閉 catalog route 與寫入 API。已承載資料後使用新的 forward fix，不執行破壞性 down migration。
-
-### 6. 管理報表
-
-- 角色：資料工程師、後端工程師、前端工程師。
-- 輸入：架構文件的報表定義、`users`、`learners`、作答、session、`0011` score aggregate／receipt、題目及匯入資料。
-- 產出：統一日期解析、報表 queries／API、註冊、年級、活動、完成及題庫品質頁面。
-- 完成條件：所有日期以 UTC 保存、Asia/Taipei 分組；區間使用包含下界與不包含上界；未填、無資料、真實零、分母為零與隱私門檻分開顯示；地區不從學校名稱推測；score 報表不讀已清除的答案內容。
-- 驗證：臺北午夜、跨日、跨月、夏令時間無關性、空資料、null、零值、分母為零、多角色重複、共享 learner 去重、score／非 score 分流及已知 fixture 手算對照。
-- 證據：`docs/reviews/admin-backoffice/reports.md`，附 SQL／測試 fixture 定義與手算表。
-- 依賴：任務 1、2；score 結果依賴 `0011`。
-- 確認節點：跨帳號敏感聚合與地區蒐集保持阻擋，不能用 UI 文案掩蓋缺少政策。
-- 回滾點：停用個別報表區塊，保留原始資料及其他已驗證報表。
-
-### 7. 共用介面收斂與響應式驗收
-
-- 角色：前端工程師、審查員。
-- 輸入：任務 2 至 6 的畫面、KEEL 套件、ERP 唯讀參考。
-- 產出：一致的 admin layout、Table／filter／pagination／form／Drawer／Dialog 用法，以及 loading、empty、no-results、error、conflict 與 success 狀態。
-- 完成條件：沒有功能相同的平行元件；桌面表格、平板 Drawer 與手機摘要可完成相同任務；鍵盤、焦點、標籤、錯誤摘要及觸控尺寸通過檢查；普通使用者工作區不受 admin CSS 與 layout 影響。
-- 驗證：390、768、1024、1440 像素寬度，鍵盤導覽、螢幕閱讀器名稱、縮放、長文字、空表、慢速載入、API 失敗及 session 逾時。
-- 證據：`docs/reviews/admin-backoffice/interface.md` 與每個主要頁面的四種寬度截圖。
-- 依賴：任務 2 至 6 可分批進入，每批完成後做該批審查。
-- 確認節點：無額外產品決策時可持續收斂；若需要新共用元件，先確認 KEEL 沒有等價能力。
-- 回滾點：逐頁退回最近一個已通過響應式驗收的狀態，不改 KEEL 套件來源。
-
-### 8. 程式審查與效能收尾
-
-- 角色：審查員、優化師。
-- 輸入：已完成的 production code、測試及任務 1 至 7 的證據。
-- 產出：依嚴重度排序的問題、重複實作檢查、查詢計畫與效能修正。
-- 完成條件：授權與資料範圍沒有分散成互相矛盾的版本；列表沒有 N+1；分頁、排序與篩選使用適合的索引；報表不在瀏覽器聚合大量資料；優化前後行為測試一致。
-- 驗證：完整相關測試、代表性 `EXPLAIN`、大資料合成 fixture 的頁面回應、bundle 與 hydration 檢查。
-- 證據：`docs/reviews/admin-backoffice/code-review.md` 與 `performance.md`。
-- 依賴：任務 2 至 7 完成。
-- 確認節點：效能修正若改變外部契約，停止並回到架構確認。
-- 回滾點：退回個別優化，保留已通過的功能實作與測試。
-
-### 9. 安全審查
-
-- 角色：安全審查員。
-- 輸入：凍結後的後台程式、migration、API、測試與稽核證據。
-- 產出：authn／authz、敏感資料、輸入、注入、CSRF、session、冪等、稽核與依賴風險報告。
-- 完成條件：一般帳號不能開啟後台或直接呼叫管理 API；管理員不能偽造 owner、actor 或 origin；bootstrap admin 不在資料庫；敏感回應 no-store；沒有 Secret、客戶資料或支付憑證進版控；高權限寫入有重新驗證、交易與稽核。
-- 驗證：權限拒絕、IDOR、SQL 注入字串、XSS 內容、CSRF、重放、重複提交、session 撤銷、錯誤資料洩漏與依賴掃描。
-- 證據：`docs/reviews/admin-backoffice/security.md`。
-- 依賴：production code 凍結及任務 8 完成。
-- 確認節點：發現可升權、跨帳號讀寫或 Secret 外洩時停止交付，不以 UI 隱藏代替修正。
-- 回滾點：停用全部 `/admin` route 與管理 API，保留資料及稽核證據。
-
-### 10. 最終驗收與交付
-
-- 角色：驗收員。
-- 輸入：凍結程式、全部測試、審查與安全報告。
-- 產出：完整 QA 矩陣、本機 commit、預覽位置、截圖、已完成／未完成與整合依賴清單。
-- 完成條件：帳號、題庫、版本、方案目錄與報表核心流程在合成資料通過；權限拒絕、資料範圍、輸入驗證、重複提交、失敗回復與響應式狀態都有證據；原 checkout、保留端口、真實資料與第四課原始歷史未被修改。
-- 驗證：依序執行 Ai Slop Cleaner、Code Review、Security Review 與 UltraQA。後三項修正若改 production code，解除凍結並從 Ai Slop Cleaner 重跑；只改測試、文件或證據時重跑受影響項目。
-- 證據：`docs/reviews/admin-backoffice/acceptance.md`、截圖目錄、完整命令摘要及最終 commit hash。
-- 依賴：任務 1 至 9 全部完成；阻擋功能明確標為未完成，不能以 fixture 冒充。
-- 確認節點：本機交付後停止。推送、合併、production migration、公開部署與真實安全變更需要另一次明確授權。
-- 回滾點：保留可恢復的本機 commit，停止 `3617` 與 admin E2E database，不操作原 checkout 或其他任務程序。
-
-## 驗收矩陣
-
-| 範圍 | 必測案例 |
+| 資源 | 固定值 |
 | --- | --- |
-| 管理員權限 | 未登入 `401`、普通帳號 `403`、偽造 activeRole 拒絕、撤權 session 拒絕、bootstrap admin 不在清單 |
-| 資料範圍 | 帳號與題庫全域管理讀取只在 admin context；一般 API 仍依 learner access 隔離；asset 不能以 ID 直接繞過引用授權 |
-| 帳號 | 搜尋、狀態／角色篩選、排序、分頁、詳情、撤銷歷史、敏感欄位不回傳、production 寫入關閉 |
-| 題目 | 全題庫篩選、account-origin 唯讀、新 revision、修改原因、不同人審核、歷史作答固定 revision、279 題完整性 |
-| 訂閱目錄 | 空狀態、方案／價格／週期／幣別／功能驗證、換價不覆寫、沒有 checkout／付費用戶／收入 |
-| 報表 | 臺北時區邊界、日期範圍、null／empty／zero／零分母、年級與不在學、地區無資料、活動去重、score receipts |
-| 表格 | 伺服器排序、複合篩選、第一／中間／最後一頁、刪除或更新後頁數改變、穩定 tie-breaker |
-| 表單 | 前後端驗證一致、未知欄位拒絕、409 conflict、422 validation、失敗保留輸入、成功才更新畫面 |
-| 重複提交 | 同一 idempotency key 回相同結果、連點只產生一筆、逾時重試不產生半套角色／revision／price |
-| 失敗狀態 | DB 不可用、查詢逾時、session 失效、部分資料空缺、稽核寫入失敗時整筆回滾 |
-| 響應式與無障礙 | 390／768／1024／1440、鍵盤、焦點、標籤、錯誤摘要、Drawer／Dialog 關閉與焦點返回 |
-| 隔離 | 只使用 `3617`、`.next-admin*`、`55439` 與 admin E2E 路徑；保留服務沒有新增連線、檔案或程序變動 |
+| worktree | `/Users/jean/Documents/Codex/2026-10-16/task/lerniqa-admin` |
+| 分支 | `codex/lerniqa-admin-20261016` |
+| 建立 worktree 的基準 | `6ef62eb139d35693e31ed78ee966f2d1f37a61f9` |
+| web | `127.0.0.1:3617` |
+| dev／preview dist | `.next-admin` |
+| production build dist | `.next-admin-build` |
+| PostgreSQL port | `55439` |
+| database | `lerniqa_admin_e2e` |
+| data | `local-data/admin-e2e/postgres` |
+| socket | `local-data/admin-e2e/socket` |
 
-## 文件同步與除錯規則
+不得使用或停止 `3500`、`8443`、`5432`、`55432`，不得使用 `local-data/postgres`、原始 checkout 的 runtime 或任何真實資料庫。沒有使用者明確批准時，也不得清理 System V shared-memory segments。
 
-實作若改變欄位、索引、migration、狀態、權限、API、報表定義、路由、預設值或 UI 行為，完成條件包含同步更新 `docs/admin-backoffice-architecture.md` 與本計畫。兩份文件與實作不一致時，該任務不能進入下一階段。
+## 目前進度
 
-任何驗證失敗時，先固定重現步驟，再定位根因、做最小修正並用同一步驟回驗。同一方案連續失敗兩次後停止重試，回到該任務的架構、依賴或回滾點重新評估。不得用關閉測試、放寬授權、改連共用資料庫或硬編示意數字使驗收變綠。
+| 階段 | 狀態 | 完成或停止條件 |
+| --- | --- | --- |
+| 前台 schema 整合 | 原始碼完成 | 正式 commit `b21b9d4d74678f79a4146e850f9f75d22380dd50` 已整合為 `a52ee0b17be13c538e1ac5d62144026c3f85baa1`；`0008` 至 `0011` 已進本分支 |
+| 後台外層與授權 | 原始碼完成 | `/admin`、共同 KEEL layout、伺服器管理員授權、唯讀 snapshot、管理 API 回應與安全 header 已建立 |
+| 帳號 | 原始碼完成，維持唯讀 | 清單、詳情、狀態／角色／驗證／日期篩選及學習者關係已建立；真實帳號異動保持關閉 |
+| 題庫 | 原始碼完成 | 全題庫、版本歷史、草稿、不同人審核、發布、待審佇列與耐久冪等已建立；帳號題目唯讀 |
+| 訂閱方案目錄 | 原始碼完成 | 方案、價格、功能與限制的 catalog 已建立；支付、訂閱者、發票與收入不在範圍內 |
+| 報表 | 原始碼完成 | 註冊、帳號、年級、活動、完成、作答與題庫品質已建立；score 依 `0011` 的 aggregate 與 receipt |
+| 安全與介面審查 | source-level 完成一輪 | P1 修正已納入；仍需資料庫與瀏覽器回驗 |
+| `0012` | migration 已驗證 | 主線整合任務在 `55432` 建立 disposable database，前進、限制測試、逐層回滾、再次前進與 schema parity 均通過；本分支仍未使用 `55439` |
+| 無資料庫回歸 | 目前通過 | admin 161、runtime 31、其他既有 no-DB scripts、lint、隔離 build 與 diff check 通過 |
+| 資料庫 E2E | migration 完成，後台情境待驗收 | 主線已在獲准的 `55432` 完成 migration 驗證並清除 disposable database；管理 API、報表手算與併發情境仍需專用環境驗收 |
+| 瀏覽器與截圖 | 阻擋 | 必須在資料庫 E2E 通過後啟動 `3617`；目前沒有 preview 或截圖 |
+| 本機交付 commit | 待 `0012` 封版 | 所有原始碼、測試與文件凍結後建立；不推送、不合併 |
 
-## 交付限制
+## `0012` 封版
 
-交付內容是獨立分支上的本機 commit、測試摘要、審查報告、截圖與 `127.0.0.1:3617` 預覽。不得推送、合併、修改原 checkout、部署公開環境、建立 production 憑證、執行 production migration、接上真實支付或變更任何真實帳號。未完成的整合 gate、政策與外部服務要逐項列出；fixture 與本機 adapter 只能標為隔離驗收資料。
+`0012_admin_catalog_and_question_enrichment` 是這個分支唯一可用的下一個 migration。不得另開平行 migration，也不得把尚未提交的前台檔案複製進來。封版需涵蓋下列契約，精確表名與欄位以最終 SQL 為準：
+
+- 未連接支付的方案、價格、功能定義與功能限制，以及管理寫入的耐久收據。
+- 錯題後先找完整同題型集合，只有集合為空才可使用已確認相似群組的追溯欄位與來源限制。Migration 只保存並驗證追溯，不能宣稱已實作動態 selector 優先順序。
+- 固定題目版本的 knowledge、type、solution method 與 embedding 建議及人工審核狀態，不修改 frozen revision。
+- 手寫分析的 durable queue、每次嘗試紀錄、模型版本、輸入 checksum、證據與人工採用鏈結。模型不得冒充 reviewer，也不得直接改正式判定、錯題 queue 或統計。
+- 帳號復原 challenge 綁定建立當下的 active identity；舊資料不能唯一判定時要失效，不能猜測信箱。
+- 練習推薦開始請求的耐久識別、canonical request hash、來源 queue／result 對應與 session learner／creator／check mode 一致性。
+- 同題型與推薦來源不適用 score；session 改成 score 時，只要已有 origin 就拒絕。
+- 每個新契約的唯一性、狀態、append-only、稽核、索引、up/down 與 fail-closed 行為。
+
+帳號復原的 identity 綁定不包含 SMTP durable outbox。本輪不把既有郵件 service 或 mail unit test 說成具有耐久排程、重試與送達保證。
+
+SQL 靜態審查只能找出可由 source 判斷的問題。正式封版仍需在 PostgreSQL 驗證前進、回滾、重新前進、schema parity、升級前置檢查、constraint trigger、併發與 down 拒絕。
+
+## 功能完成條件
+
+### 帳號
+
+- 查詢、狀態、角色、驗證狀態、註冊日期、白名單排序與分頁在伺服器執行。
+- bootstrap admin 不在資料集；API 不回傳密碼、token、session、MFA 或 provider credential。
+- `users.account_role` 與有效 `user_roles` 分開呈現；帳號與學習者只使用 `learner_access`。
+- 多個有效 email identity 停止回傳，不用 `LIMIT 1` 任選。
+- production 帳號停權、關閉、角色授予、角色撤銷與人工驗證保持關閉。
+
+### 題庫與版本
+
+- 全題庫清單、正式分類、來源、狀態、審核與歷史分頁由伺服器查詢。
+- 修改系統題目時建立新 revision；舊 revision、來源與歷史作答保持不變。
+- 建立者不能審核自己的草稿；發布前檢查自動答案完整性與目前版本衝突。
+- `origin=account` 題目唯讀。第四課 279 題不得覆寫或刪除。
+- 同一 mutation 的重試可回放；不同內容或不同目標不能誤用同一冪等鍵。
+
+### 訂閱方案目錄
+
+- 方案、價格、ISO 4217 幣別、minor-unit 金額、週期、功能限制與狀態有前後端驗證。
+- 啟用價格不能原地改金額、幣別、週期或起日；改價建立新價格。
+- boolean 與 integer 功能使用不同有效欄位，跨表狀態不能留下無法維護的限制。
+- 空資料庫不建立假方案或假金額。畫面固定標示支付尚未串接。
+- 不建立 account subscription、checkout、payment、invoice、refund、webhook 或 revenue。
+
+### 報表
+
+- 時間以 UTC 保存，管理報表依 `Asia/Taipei` 分組，查詢包含起點、不包含結束日期次日零時。
+- `未填`、`無資料`、真實 `0`、零分母、未蒐集與未達顯示門檻分開呈現。
+- 地區沒有正式欄位時顯示尚未蒐集，不從學校名稱推測。
+- Score 送出量讀 `practice_score_receipts`，score 結果讀 completed session aggregate，不連接已清除的逐題答案。
+- 小樣本結果被抑制時，能用加減法反推它的總數也要抑制。
+
+### 共用介面與安全
+
+- 頁面與 GET API 在同一 read-only transaction 重新授權與查詢；寫入在交易內取得 auth lock 後再次授權。
+- Origin、CSRF、body size、欄位 allowlist、冪等鍵、稽核與錯誤遮罩使用共同實作。
+- 桌面表格、平板與手機摘要保留相同核心任務；loading、empty、no-results、error、conflict 與 success 各自可辨認。
+- 共同介面優先使用 KEEL。只有 KEEL 沒有輸出且專案沒有等價元件時，才建立 Lerniqa wrapper。
+- ERP 只作唯讀參考，不搬資料、Secret、環境設定、憑證或權限值。
+
+## 維護時段的驗收順序
+
+本分支只有在使用者明確通知可用時段後，才能進行下列工作：
+
+1. 重新確認 `55439` 未占用，System V 有可用 slot，且 `3500`、`8443`、`5432`、`55432` 狀態未受影響。
+2. 使用專用 data、socket、port 與 database 啟動 PostgreSQL。任何設定不符立即停止。
+3. 在空庫及可控升級 fixture 執行 `0001` 至 `0012` 的 up/down/up、schema parity 與 SQL tests。
+4. 以隔離合成資料驗證權限拒絕、資料範圍、輸入、分頁、排序、篩選、題目版本、報表手算、重複提交、併發與交易失敗回滾。
+5. 核對第四課 279 題、337 parts、答案鏈與歷史作答引用沒有被改寫或刪除。
+6. 啟動 `127.0.0.1:3617`，驗證 390、768、1024、1440 px、鍵盤、焦點、200% zoom、長文字、Drawer／Dialog、錯誤恢復與 session 失效。
+7. 保存 desktop、tablet、mobile 與焦點狀態截圖，更新驗收紀錄，再停止專用服務。
+
+主線整合任務可依它取得的授權，在既有 `55432` 建立 disposable test database 執行 `0012` 與 E2E。收到結果時要記錄執行者、命令、database 名稱、通過／失敗與清理證據；不能把這些結果寫成本分支在 `55439` 執行。主線的資料庫證據也不取代本分支的 `3617` 瀏覽器與截圖驗收。
+
+## 無資料庫驗證與交付
+
+每次凍結原始碼後，至少重新執行：
+
+```text
+npm run lint
+npm run test:admin
+npm run test:runtime-guardrails
+npm run test:auth
+npm run test:mail
+npm run test:email-verification
+npm run test:answer-disclosure
+npm run test:local-backup
+npm test
+git diff --check
+```
+
+Production build 使用 `.next-admin-build` 與專用資料庫環境值直接執行 `next build`，不能啟動或探測保留服務。KEEL 文件預覽器的選用套件 warning 要記錄，但不能把成功 build 說成 runtime 已驗收。
+
+最終交付是獨立分支上的本機 commit、測試摘要、審查報告、資料庫與瀏覽器證據，以及可用時的 `127.0.0.1:3617` 預覽。若維護時段沒有提供，則交付內容必須清楚標示沒有資料庫、預覽、瀏覽器或截圖。不得推送、合併、修改原 checkout、部署公開環境、建立 production 憑證、接上真實支付或變更任何真實帳號。

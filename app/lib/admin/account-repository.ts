@@ -2,12 +2,15 @@ import type { QueryResultRow } from "pg";
 
 import type { AdminQueryRunner } from "./admin-auth.ts";
 import {
+    ACCOUNT_IDENTITY_ROLES,
+    ACCOUNT_VERIFICATION_STATES,
     GRANTED_ROLES,
     AdminApiError,
     type AccountListQuery,
     type AccountIdentityRole,
     type AccountSortField,
     type AccountStatus,
+    type AccountVerificationState,
     type GrantedRole,
 } from "./admin-types.ts";
 
@@ -15,17 +18,29 @@ export interface AdminAccountListItem {
     id: string;
     displayName: string;
     email: string | null;
-    emailVerified: boolean;
+    emailVerificationState: AccountVerificationState;
     status: AccountStatus;
+    accountRole: AccountIdentityRole | null;
     roles: GrantedRole[];
     activeLearnerCount: number;
     activeSessionCount: number;
     createdAt: string;
     updatedAt: string;
 }
+
+export const ADMIN_ACCOUNT_IDENTITY_PROVIDERS = [
+    "email",
+    "google",
+    "line",
+    "facebook",
+] as const;
+export type AdminAccountIdentityProvider =
+    (typeof ADMIN_ACCOUNT_IDENTITY_PROVIDERS)[number];
+export type AdminLearnerStatus = "active" | "archived";
+
 export interface AdminAccountIdentity {
     id: string;
-    provider: string;
+    provider: AdminAccountIdentityProvider;
     email: string | null;
     verifiedAt: string | null;
     createdAt: string;
@@ -44,7 +59,7 @@ export interface AdminAccountLearnerAccess {
     id: string;
     learnerId: string;
     learnerDisplayName: string;
-    learnerStatus: string;
+    learnerStatus: AdminLearnerStatus;
     accessRole: AccountIdentityRole;
     gradeCode: string | null;
     gradeName: string | null;
@@ -77,29 +92,35 @@ interface AccountListRow extends QueryResultRow {
     id: string | null;
     display_name: string | null;
     status: AccountStatus | null;
+    account_role: AccountIdentityRole | null;
     created_at: Date | string | null;
     updated_at: Date | string | null;
     email_normalized: string | null;
     verified_at: Date | string | null;
+    email_verification_state: AccountVerificationState | null;
     role_names: string[] | null;
     active_learner_count: number | string | null;
     active_session_count: number | string | null;
     total_count: number | string;
+    ambiguous_active_email_account_count: number | string;
 }
 
 interface AccountCoreRow extends QueryResultRow {
     id: string;
     display_name: string;
     status: AccountStatus;
+    account_role: AccountIdentityRole | null;
     created_at: Date | string;
     updated_at: Date | string;
     closed_at: Date | string | null;
     email_normalized: string | null;
     verified_at: Date | string | null;
+    email_verification_state: AccountVerificationState;
     role_names: string[] | null;
     active_learner_count: number | string;
     active_session_count: number | string;
     last_session_seen_at: Date | string | null;
+    active_email_identity_count: number | string;
 }
 
 interface IdentityRow extends QueryResultRow {
@@ -141,11 +162,16 @@ const ACCOUNT_SORT_SQL: Readonly<Record<AccountSortField, string>> = {
     displayName: "page_row.sort_display_name",
     email: "page_row.sort_email",
     status: "page_row.status",
+    accountRole: "page_row.account_role",
     updatedAt: "page_row.updated_at",
     id: "page_row.id",
 };
 
 const ACTIVE_ROLE_SET = new Set<string>(GRANTED_ROLES);
+const ACCOUNT_IDENTITY_ROLE_SET = new Set<string>(ACCOUNT_IDENTITY_ROLES);
+const ACCOUNT_VERIFICATION_STATE_SET = new Set<string>(ACCOUNT_VERIFICATION_STATES);
+const ACCOUNT_IDENTITY_PROVIDER_SET = new Set<string>(ADMIN_ACCOUNT_IDENTITY_PROVIDERS);
+const LEARNER_STATUS_SET = new Set<string>(["active", "archived"]);
 
 function asIso(value: Date | string): string {
     const date = value instanceof Date ? value : new Date(value);
@@ -171,6 +197,35 @@ function asSafeCount(value: number | string | null): number {
 function normalizeRoles(value: string[] | null): GrantedRole[] {
     if (!value) return [];
     return value.filter((role): role is GrantedRole => ACTIVE_ROLE_SET.has(role));
+}
+
+function normalizeAccountRole(value: string | null): AccountIdentityRole | null {
+    if (value === null) return null;
+    if (!ACCOUNT_IDENTITY_ROLE_SET.has(value)) {
+        throw new AdminApiError("INTERNAL_ERROR", "帳號身份資料格式不正確。", 500);
+    }
+    return value as AccountIdentityRole;
+}
+
+function normalizeVerificationState(value: string | null): AccountVerificationState {
+    if (value === null || !ACCOUNT_VERIFICATION_STATE_SET.has(value)) {
+        throw new AdminApiError("INTERNAL_ERROR", "信箱驗證資料格式不正確。", 500);
+    }
+    return value as AccountVerificationState;
+}
+
+function normalizeIdentityProvider(value: string): AdminAccountIdentityProvider {
+    if (!ACCOUNT_IDENTITY_PROVIDER_SET.has(value)) {
+        throw new AdminApiError("INTERNAL_ERROR", "登入身份來源資料格式不正確。", 500);
+    }
+    return value as AdminAccountIdentityProvider;
+}
+
+function normalizeLearnerStatus(value: string): AdminLearnerStatus {
+    if (!LEARNER_STATUS_SET.has(value)) {
+        throw new AdminApiError("INTERNAL_ERROR", "學習者狀態資料格式不正確。", 500);
+    }
+    return value as AdminLearnerStatus;
 }
 
 function buildOrderBy(
@@ -217,6 +272,9 @@ function buildAccountFilters(query: AccountListQuery): {
     if (query.statuses.length > 0) {
         clauses.push(`app_user.status = ANY(${bind(query.statuses)}::varchar[])`);
     }
+    if (query.accountRoles.length > 0) {
+        clauses.push(`app_user.account_role = ANY(${bind(query.accountRoles)}::varchar[])`);
+    }
     if (query.roles.length > 0) {
         clauses.push(`EXISTS (
             SELECT 1
@@ -225,6 +283,15 @@ function buildAccountFilters(query: AccountListQuery): {
                 AND filtered_role.revoked_at IS NULL
                 AND filtered_role.role = ANY(${bind(query.roles)}::varchar[])
         )`);
+    }
+    if (query.verificationStates.length > 0) {
+        clauses.push(`(
+            CASE
+                WHEN primary_identity.email_normalized IS NULL THEN 'not_applicable'
+                WHEN primary_identity.verified_at IS NULL THEN 'unverified'
+                ELSE 'verified'
+            END
+        ) = ANY(${bind(query.verificationStates)}::varchar[])`);
     }
     if (query.created.from) {
         clauses.push(`app_user.created_at >= (${bind(query.created.from)}::date::timestamp AT TIME ZONE 'Asia/Taipei')`);
@@ -247,8 +314,9 @@ function mapAccountListRow(row: AccountListRow | AccountCoreRow): AdminAccountLi
         id: row.id,
         displayName: row.display_name,
         email: row.email_normalized,
-        emailVerified: row.verified_at !== null,
+        emailVerificationState: normalizeVerificationState(row.email_verification_state),
         status: row.status,
+        accountRole: normalizeAccountRole(row.account_role),
         roles: normalizeRoles(row.role_names),
         activeLearnerCount: asSafeCount(row.active_learner_count),
         activeSessionCount: asSafeCount(row.active_session_count),
@@ -266,30 +334,45 @@ export async function listAccounts(
     const offsetParameter = `$${filters.values.length + 2}`;
     const orderBy = buildOrderBy(query.orderBy);
     const result = await runner.query<AccountListRow>(`
-        WITH account_row AS (
+        WITH active_email_identity AS (
+            SELECT
+                identity.user_id,
+                min(identity.email_normalized) AS email_normalized,
+                min(identity.verified_at) AS verified_at,
+                count(*)::integer AS active_email_identity_count
+            FROM account_identities AS identity
+            WHERE identity.provider = 'email'
+                AND identity.revoked_at IS NULL
+            GROUP BY identity.user_id
+        ),
+        identity_integrity AS (
+            SELECT count(*)::integer AS ambiguous_active_email_account_count
+            FROM active_email_identity
+            WHERE active_email_identity_count > 1
+        ),
+        account_row AS (
             SELECT
                 app_user.id,
                 app_user.display_name,
                 app_user.status,
+                app_user.account_role,
                 app_user.created_at,
                 app_user.updated_at,
                 primary_identity.email_normalized,
                 primary_identity.verified_at,
+                CASE
+                    WHEN primary_identity.email_normalized IS NULL THEN 'not_applicable'
+                    WHEN primary_identity.verified_at IS NULL THEN 'unverified'
+                    ELSE 'verified'
+                END AS email_verification_state,
                 coalesce(active_roles.role_names, ARRAY[]::varchar[]) AS role_names,
                 coalesce(learner_summary.active_learner_count, 0) AS active_learner_count,
                 coalesce(session_summary.active_session_count, 0) AS active_session_count,
                 lower(app_user.display_name) AS sort_display_name,
                 lower(coalesce(primary_identity.email_normalized, '')) AS sort_email
             FROM users AS app_user
-            LEFT JOIN LATERAL (
-                SELECT identity.email_normalized, identity.verified_at
-                FROM account_identities AS identity
-                WHERE identity.user_id = app_user.id
-                    AND identity.provider = 'email'
-                    AND identity.revoked_at IS NULL
-                ORDER BY identity.created_at, identity.id
-                LIMIT 1
-            ) AS primary_identity ON true
+            LEFT JOIN active_email_identity AS primary_identity
+                ON primary_identity.user_id = app_user.id
             LEFT JOIN LATERAL (
                 SELECT array_agg(role.role ORDER BY role.role, role.id) AS role_names
                 FROM user_roles AS role
@@ -325,12 +408,26 @@ export async function listAccounts(
         account_count AS (
             SELECT count(*) AS total_count FROM account_row
         )
-        SELECT page_row.*, account_count.total_count
+        SELECT
+            page_row.*,
+            account_count.total_count,
+            identity_integrity.ambiguous_active_email_account_count
         FROM account_count
+        CROSS JOIN identity_integrity
         LEFT JOIN page AS page_row ON true
         ORDER BY ${orderBy}
     `, [...filters.values, query.limit, query.offset]);
 
+    const ambiguousActiveEmailAccountCount = asSafeCount(
+        result.rows[0]?.ambiguous_active_email_account_count ?? null,
+    );
+    if (ambiguousActiveEmailAccountCount > 0) {
+        throw new AdminApiError(
+            "INTERNAL_ERROR",
+            "帳號存在多個有效電子郵件登入身份，無法安全顯示清單。",
+            500,
+        );
+    }
     const total = asSafeCount(result.rows[0]?.total_count ?? 0);
     return {
         items: result.rows.filter((row) => row.id !== null).map(mapAccountListRow),
@@ -349,24 +446,32 @@ export async function getAccountDetail(
             app_user.id,
             app_user.display_name,
             app_user.status,
+            app_user.account_role,
             app_user.created_at,
             app_user.updated_at,
             app_user.closed_at,
             primary_identity.email_normalized,
             primary_identity.verified_at,
+            primary_identity.active_email_identity_count,
+            CASE
+                WHEN primary_identity.email_normalized IS NULL THEN 'not_applicable'
+                WHEN primary_identity.verified_at IS NULL THEN 'unverified'
+                ELSE 'verified'
+            END AS email_verification_state,
             coalesce(active_roles.role_names, ARRAY[]::varchar[]) AS role_names,
             coalesce(learner_summary.active_learner_count, 0) AS active_learner_count,
             coalesce(session_summary.active_session_count, 0) AS active_session_count,
             session_summary.last_session_seen_at
         FROM users AS app_user
         LEFT JOIN LATERAL (
-            SELECT identity.email_normalized, identity.verified_at
+            SELECT
+                min(identity.email_normalized) AS email_normalized,
+                min(identity.verified_at) AS verified_at,
+                count(*)::integer AS active_email_identity_count
             FROM account_identities AS identity
             WHERE identity.user_id = app_user.id
                 AND identity.provider = 'email'
                 AND identity.revoked_at IS NULL
-            ORDER BY identity.created_at, identity.id
-            LIMIT 1
         ) AS primary_identity ON true
         LEFT JOIN LATERAL (
             SELECT array_agg(role.role ORDER BY role.role, role.id) AS role_names
@@ -399,6 +504,13 @@ export async function getAccountDetail(
     `, [userId]);
     const core = coreResult.rows[0];
     if (!core) throw new AdminApiError("NOT_FOUND", "找不到指定帳號。", 404);
+    if (asSafeCount(core.active_email_identity_count) > 1) {
+        throw new AdminApiError(
+            "INTERNAL_ERROR",
+            "帳號存在多個有效電子郵件登入身份，無法安全顯示詳情。",
+            500,
+        );
+    }
 
     const identityResult = await runner.query<IdentityRow>(`
         SELECT
@@ -449,7 +561,7 @@ export async function getAccountDetail(
         lastSessionSeenAt: asNullableIso(core.last_session_seen_at),
         identities: identityResult.rows.map((identity) => ({
             id: identity.id,
-            provider: identity.provider,
+            provider: normalizeIdentityProvider(identity.provider),
             email: identity.email_normalized,
             verifiedAt: asNullableIso(identity.verified_at),
             createdAt: asIso(identity.created_at),
@@ -466,7 +578,7 @@ export async function getAccountDetail(
             id: access.id,
             learnerId: access.learner_id,
             learnerDisplayName: access.learner_display_name,
-            learnerStatus: access.learner_status,
+            learnerStatus: normalizeLearnerStatus(access.learner_status),
             accessRole: access.access_role,
             gradeCode: access.grade_code,
             gradeName: access.grade_name,

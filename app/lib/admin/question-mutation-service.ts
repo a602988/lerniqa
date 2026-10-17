@@ -4,10 +4,16 @@ import type {
     AdminQueryRunner,
     SystemAdminActor,
 } from "./admin-auth.ts";
+import type {
+    AdminMutationIdempotency,
+    AdminMutationReceiptCompletion,
+    AdminMutationReceiptRequest,
+} from "./admin-mutation-receipts.ts";
 import type { AdminMutationContext } from "./admin-mutation-handler.ts";
 import {
     acquireQuestionMutationLock,
     applyDraftRevisionContentEdits,
+    assertRevisionAutomaticAnswersComplete,
     insertDraftRevisionClone,
     insertQuestionMutationAudit,
     insertQuestionRevisionReview,
@@ -35,11 +41,7 @@ import {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const MUTATION_EVIDENCE_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
-export interface QuestionMutationIdempotencyRequest {
-    scope: string;
-    key: string;
-    payloadFingerprint: string;
-}
+export type QuestionMutationIdempotencyRequest = AdminMutationReceiptRequest;
 
 export interface QuestionMutationReceipt {
     targetType: "question_revision";
@@ -48,26 +50,16 @@ export interface QuestionMutationReceipt {
     responseStatus: 200 | 201;
 }
 
-export interface QuestionMutationCompletion<Result> {
-    result: Result;
-    receipt: QuestionMutationReceipt;
-}
+export type QuestionMutationCompletion<Result> = AdminMutationReceiptCompletion<Result>;
 
 /**
- * The adapter is intentionally required: migrations 0001-0007 have no durable
- * idempotency receipt table. Implementations must use the supplied transaction
- * runner to acquire and complete the shared receipt around `operation`, return
- * the stored result for the same fingerprint, and reject a different
- * fingerprint with AdminApiError(CONFLICT, 409). They must not open a second
- * transaction. No unsafe default exists.
+ * The adapter is intentionally required: production uses the 0012 shared
+ * receipt ledger on the supplied transaction runner. It returns the stored
+ * result for the same fingerprint and rejects a different fingerprint with
+ * AdminApiError(CONFLICT, 409). It must not open a second transaction. No
+ * unsafe default exists.
  */
-export interface QuestionMutationIdempotency {
-    execute<Result>(
-        runner: AdminQueryRunner,
-        request: QuestionMutationIdempotencyRequest,
-        operation: () => Promise<QuestionMutationCompletion<Result>>,
-    ): Promise<Result>;
-}
+export interface QuestionMutationIdempotency extends AdminMutationIdempotency {}
 
 export interface QuestionMutationIdGenerator {
     next(): string;
@@ -245,9 +237,9 @@ function assertRequestEvidence(evidence: QuestionMutationEvidence): void {
 }
 
 function fingerprint(values: readonly unknown[]): string {
-    return `sha256:v1:${createHash("sha256")
+    return createHash("sha256")
         .update(JSON.stringify(values))
-        .digest("hex")}`;
+        .digest("hex");
 }
 
 function assertSystemQuestionCanChange(question: LockedQuestionRecord): void {
@@ -553,7 +545,8 @@ export class QuestionMutationService {
         const contentPatch = normalizeContentPatch(input.contentPatch);
 
         return this.idempotency.execute(runner, {
-                scope: `system-question-draft:${actor.userId}`,
+                actorUserId: actor.userId,
+                operation: "system_question_draft",
                 key: evidence.idempotencyKey,
                 payloadFingerprint: fingerprint([
                     "system-question-draft",
@@ -564,6 +557,7 @@ export class QuestionMutationService {
                     changeNote,
                     contentPatch,
                 ]),
+                requestId: evidence.requestId,
             }, async () => {
             const question = await loadSystemQuestion(runner, input.questionId);
             if (question.currentRevisionId !== input.baseRevisionId) {
@@ -683,7 +677,8 @@ export class QuestionMutationService {
         const reason = normalizeText(input.reason, "審核原因", 5, 2_000);
 
         return this.idempotency.execute(runner, {
-                scope: `system-question-review:${actor.userId}`,
+                actorUserId: actor.userId,
+                operation: "system_question_review",
                 key: evidence.idempotencyKey,
                 payloadFingerprint: fingerprint([
                     "system-question-review",
@@ -694,6 +689,7 @@ export class QuestionMutationService {
                     input.decision,
                     reason,
                 ]),
+                requestId: evidence.requestId,
             }, async () => {
             await loadSystemQuestion(runner, input.questionId);
             const revision = await lockRevisionForMutation(
@@ -793,7 +789,8 @@ export class QuestionMutationService {
         const changeNote = normalizeText(input.changeNote, "修改原因", 5, 500);
 
         return this.idempotency.execute(runner, {
-                scope: `system-question-publish:${actor.userId}`,
+                actorUserId: actor.userId,
+                operation: "system_question_publish",
                 key: evidence.idempotencyKey,
                 payloadFingerprint: fingerprint([
                     "system-question-publish",
@@ -804,6 +801,7 @@ export class QuestionMutationService {
                     input.expectedCurrentRevisionNumber,
                     changeNote,
                 ]),
+                requestId: evidence.requestId,
             }, async () => {
             const question = await loadSystemQuestion(runner, input.questionId);
             if (question.currentRevisionId !== input.expectedCurrentRevisionId) {
@@ -878,6 +876,7 @@ export class QuestionMutationService {
             // old published -> superseded transition, to be reviewed by someone
             // other than that revision's creator.
             assertDifferentReviewer(actor, currentRevision);
+            await assertRevisionAutomaticAnswersComplete(runner, draftRevision.id);
 
             const draftReviewId = this.ids.next();
             const draftReviewAuditId = this.ids.next();

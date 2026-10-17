@@ -1,56 +1,67 @@
 # 管理後台安全審查證據
 
-狀態：唯讀基礎程式已完成靜態檢查與 unit test；寫入、資料庫、CSRF、瀏覽器與完整攻擊面尚未驗收。
+狀態：後台 production code 的靜態安全審查與無資料庫測試已完成。本輪沒有發現 P0；兩項 P1 已修正。仍在編輯的 `0012` migration 不在本輪範圍內，資料庫整合與瀏覽器實際回應仍待隔離環境可用後驗證。
 
-## 已檢查的範圍
+## 審查範圍
 
-本輪檢查限於目前分支中的管理員 guard、唯讀帳號／題目／稽核 repository、管理 HTTP response helper、輸入解析與隔離 runner。尚未整合的 migration、尚未建立的正式寫入端點、真實 session 撤銷、PostgreSQL 權限、瀏覽器 cookie 行為與 production 環境不在本輪結論內。
+本輪檢查 `/admin` 頁面、`/api/v1/admin` 讀寫端點，以及它們使用的管理員授權、repository 和 service。檢查內容包括：
 
-在這個範圍內，審查目前沒有發現 SQL 注入、SQL alias 錯用、以 `activeRole` 繞過管理權限，或把 credential 欄位送到管理 API 的問題。這個結論有以下程式與測試依據：
+- 管理員登入與 `system_admin` 授權。
+- GET 讀取的 repeatable-read snapshot，以及授權與資料查詢是否使用同一個 snapshot。
+- 寫入端點的 Origin／CSRF、body 大小、輸入欄位和冪等鍵驗證。
+- 交易開始後的管理員重新授權、auth lock、目標資料鎖與稽核紀錄。
+- 帳號個資、題目版本與答案、訂閱目錄的資料範圍。
+- SQL 注入、IDOR、資產檔案路徑、錯誤訊息與記錄內容。
+- 報表小樣本抑制，以及可由總數反推隱藏結果的情況。
 
-- 管理員 guard 只接受伺服器端 cookie，查詢前先雜湊 token，並重新檢查有效 session、有效使用者與未撤銷的 `system_admin` grant。
-- unit test 明確確認 `activeRole` 不參與管理員授權，且缺少登入與缺少管理角色會得到不同錯誤。
-- repository 的 filter value 使用 query parameters；排序欄位與方向由固定 allowlist 映射，不把 query string 拼成 SQL expression。
-- 帳號 DTO 不包含密碼雜湊、token、token hash、provider subject 或完整 credential payload；題目 DTO 不回傳 storage 與 import payload。
-- 未知例外經安全錯誤契約處理，不會回傳 SQL、連線字串或 stack message。
-- 管理資料 response 固定使用 `private, no-store`。
-- 稽核資料的 `before` 與 `after` 依 action 使用欄位 allowlist，不直接把整份 JSON payload 回傳。
+`0012` migration 的 constraint、trigger、權限與 up/down 行為由資料庫審查另行驗證。本文件不把 unit fixture 當成 migration 已可上線的證據。
 
-相關 unit tests 包含在 `npm run test:admin` 的 33 個通過案例中。這些測試使用 fake query runner，沒有連到 PostgreSQL，因此仍需 DB integration test 證明資料範圍與 SQL 行為。
+## P0
 
-## 權限與資料範圍判斷
+沒有發現 P0 問題。
 
-正式的帳號與學習者關聯表是 `learner_access`。`accountRole` 與 `activeRole` 是應用程式欄位，不是管理員授權來源。前台 `0010` 整合後，後台還要把 `users.account_role` 納入讀取 DTO 與查詢測試；完成前不能說帳號角色資料已完整。
+## P1 修正
 
-題目讀取目前將 `origin=account` 標成唯讀。只有 `origin=system` 能進入未來的管理版本流程。這項 UI 提示不能代替後端檢查；建立 revision、審核與發布端點完成時仍要在同一交易重新取得並鎖定題目和權限資料。
+### 管理頁可被外站框架嵌入
 
-## 寫入功能的安全門檻
+管理頁原本沒有明確禁止被 iframe 嵌入。攻擊者如果能在同站的另一個 origin 控制頁面，就可能把已登入的管理介面蓋在誘導操作之下。頁面內的 fetch 仍由真正的 Lerniqa origin 發出，因此 Origin 與自訂 CSRF header 不會擋下被誘導的點擊。
 
-任何帳號狀態、角色、題目版本、審核、發布或訂閱目錄寫入，在滿足下列條件前都不能通過安全驗收：
+`next.config.ts` 現在對 `/admin/:path*` 回傳 `Content-Security-Policy: frame-ancestors 'none'` 與 `X-Frame-Options: DENY`，並使用 `Referrer-Policy: no-referrer` 避免管理頁路徑與查詢字串經 Referer 外流。`tests/admin-http.test.ts` 固定檢查這三個 header。
 
-- 在交易內重新驗證操作者仍有 `system_admin`，並鎖定對應 auth grant。
-- 鎖定目標資料，再檢查狀態轉換、owner、origin 與目前 revision。
-- 使用冪等鍵，重複送出只能得到同一結果，不能產生第二筆角色 grant、revision、審核或價格。
-- 業務資料與 `admin_audit_logs` 在同一交易寫入；稽核失敗時整筆回滾。
-- 寫入 route 驗證 `Origin`／CSRF，不能只依賴 SameSite cookie，也不能接受 body 內的 actor、owner 或可信角色。
-- 錯誤 response 延續 `no-store` 與安全遮罩，不回傳資料庫或內部授權細節。
+### Non-score 報表可用總數反推被隱藏的結果
 
-目前尚未以隔離資料庫證明這些條件，所以不能把表單原型或 unit fixture 視為可安全操作真實資料的功能。
+報表原本分別判斷 correct、wrong、pending 是否達到不同學習者門檻，但只用全部活躍學習者判斷作答總數。若總數和兩個結果可見，第三個被抑制的結果仍可用減法求出。
 
-## 正在修正與待回驗
+現在只要任一 non-score 結果被抑制，`nonScoreActivity.attempts` 也會被抑制；其餘達到門檻的結果仍可顯示。回歸測試使用門檻 5、總數 20、correct 12、wrong 7、pending 1，確認 pending 和總數都不會回傳數字。
 
-- migration runner checksum 檢查正在修正。這項修正要先通過靜態 guardrail，再於隔離 cluster 驗證 manifest 前綴與檔案內容沒有漂移。
-- `0008` 至 `0011` 尚未整合；`0010` 的 `users.account_role` 和 `0011` 的 score 資料契約仍是 gate。
-- 題目詳情歷史分頁尚未完成。完成前要限制讀取範圍，不能一次無上限載入完整 revision 歷史。
-- 寫入端點的交易重授權、auth lock、target lock、冪等、稽核與 Origin／CSRF 測試尚未完成。
+## 已確認的安全邊界
 
-以上項目修正後要重新執行 lint、unit tests、migration tests、DB integration tests 與瀏覽器驗收。本輪沒有啟動資料庫或伺服器，也沒有對任何真實帳號升權、停權、人工驗證或變更角色。
+- 共用登入流程會簽發 HttpOnly session cookie；管理員 guard 只從 cookie 讀取格式固定的 token。伺服器先雜湊 token，再檢查帳號狀態、session 有效性及未撤銷的 `system_admin` grant；`activeRole` 不是授權依據。
+- 每個會讀取管理資料的頁面與 GET API 都在同一個 read-only repeatable-read transaction 內重新授權、解析受保護輸入並查詢資料。未通過授權時不解析 route ID，也不執行 repository 查詢。
+- 寫入先完成初次管理員授權，再驗證精確 Origin、`Sec-Fetch-Site`、固定 CSRF header、UUID v4/v7 冪等鍵和最多 64 KiB 的 JSON。JSON 只接受各 route 明列的欄位，不能從 body 指定 actor、request ID 或冪等證據。
+- 寫入交易先取得與帳號／session／角色異動共用的 auth advisory lock，再用原 cookie 重新授權。操作者的 user ID 或 session ID 有變化就停止寫入。
+- 管理寫入使用 PostgreSQL receipt。receipt、業務資料與 `admin_audit_logs` 共用同一個 transaction runner；相同 actor、operation、key 和 payload 只回放同一份結果，不同 payload 會回覆 conflict。
+- 題目修改只接受 `origin=system`，並以 `question_id` 同時限定 revision。建立草稿會複製固定版本；發布時保留舊版本並檢查草稿基準、目前版本、審核者和建立者。account-owned 題目在後台保持唯讀。
+- 訂閱寫入只處理 catalog。價格必須同時符合 route 的 plan ID 與 price ID，功能限制必須同時符合 plan ID 與 feature definition ID；所有查詢均使用參數，不接受付款 provider、訂閱者或收入欄位。
+- 帳號 API 只回傳管理流程需要的身分、角色與學習者存取資料，不回傳 password hash、session token、token hash 或 provider credential。多筆有效 email identity 會使 repository 停止回傳結果。
+- 題目資產必須是仍有效、掃描結果為 clean，且正式連到題目內容或來源裁切圖的 raster image／audio。檔案讀取會檢查相對 storage key、根目錄範圍、symlink、大小、checksum 和 MIME allowlist；回應不包含 storage key 或本機路徑。
+- repository 的 filter value 全部使用 query parameters。排序 SQL 只能由固定 allowlist 產生。React 畫面不使用 `dangerouslySetInnerHTML`，由資料庫讀出的文字不會直接成為 HTML。
+- API 對未知錯誤只回傳固定訊息與 UUID request ID。伺服器錯誤事件使用固定欄位，不記錄 cookie、token、URL、查詢字串、body、SQL、錯誤訊息或 stack。稽核畫面也只顯示 action 對應的欄位 allowlist。
 
-## 尚未執行的安全測試
+## P2 與待驗證事項
 
-- 真實 PostgreSQL 上的 `401`、`403`、撤銷 session 與撤銷角色。
-- IDOR、跨帳號讀取、owner／actor／origin 偽造與 asset 引用授權。
-- SQL 注入 payload 在實際 route 與 PostgreSQL 的結果。
-- CSRF、Origin、cookie 與重放行為。
-- 寫入失敗、稽核失敗、deadlock、連點與逾時重試的整筆回滾。
-- dependency audit、Secret scan 與 production 設定審查。
+- 本機資產讀取在檢查路徑與 `readFile` 之間仍有檔案系統 TOCTOU 視窗。要利用它必須能同時修改 repository 管理的資產目錄；這不構成遠端 IDOR，但部署時仍應限制該目錄的寫入者，或改用能綁定已開啟 file descriptor 的安全讀取方式。
+- 報表的小樣本門檻不是 differential privacy。API 只接受固定的最近 7、30、90 日，已降低任意區間差分風險，但有權限的人仍可能長期保存多次快照做差分分析。若報表日後提供任意日期或更多交叉篩選，需先設計固定發布 bucket、query budget 或其他抗差分措施。
+- 管理頁 repository 的讀取錯誤會顯示固定安全訊息，但部分頁面不會產生 request ID 或伺服器失敗事件。這不會把內部錯誤送給瀏覽器，卻會降低異常調查能力。
+- 應用程式尚未限制每位管理員的寫入頻率。冪等 receipt 只防止同一個 key 重複寫入，不能限制持續使用新 key 的大量請求；若後台日後開放到公網，需在應用程式或可信 reverse proxy 加入管理端點的速率限制。
+- `0012` 尚未納入本輪安全結論。receipt 唯一性、append-only 稽核、訂閱狀態約束和跨列併發規則，必須在 migration 凍結後做 SQL 靜態審查與隔離資料庫測試。
+- 目前沒有啟動 PostgreSQL 或 Next server。真實 `401`／`403`、session 或角色在交易中被撤銷、DB rollback、deadlock、實際 response header、cookie 與瀏覽器 clickjacking 行為仍待整合測試。
+- dependency audit、secret scan 與 production reverse-proxy 設定不在本輪執行範圍。
+
+## 本輪驗證
+
+- `npm run test:admin`：158 個測試通過，0 失敗。
+- `npm run lint`：`tsc --noEmit` 通過。
+- `git diff --check`：通過。
+
+上述命令沒有啟動資料庫或伺服器，也沒有讀寫真實帳號、學習者、題庫或付款資料。

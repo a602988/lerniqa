@@ -93,6 +93,7 @@ class FakeRunner implements AdminQueryRunner {
 
 class MemoryIdempotency implements QuestionMutationIdempotency {
     readonly runners: AdminQueryRunner[] = [];
+    readonly requests: QuestionMutationIdempotencyRequest[] = [];
     readonly completions: QuestionMutationCompletion<unknown>[] = [];
     private readonly records = new Map<
         string,
@@ -105,7 +106,8 @@ class MemoryIdempotency implements QuestionMutationIdempotency {
         operation: () => Promise<QuestionMutationCompletion<Result>>,
     ): Promise<Result> {
         this.runners.push(runner);
-        const recordKey = `${request.scope}:${request.key}`;
+        this.requests.push(request);
+        const recordKey = `${request.actorUserId}:${request.operation}:${request.key}`;
         const existing = this.records.get(recordKey);
         if (existing) {
             if (existing.fingerprint !== request.payloadFingerprint) {
@@ -276,6 +278,14 @@ test("creates a system draft on the supplied transaction runner without mutating
         status: "draft",
     });
     assert.deepEqual(idempotency.runners, [runner]);
+    assert.deepEqual(idempotency.requests[0], {
+        actorUserId: ACTOR_ID,
+        operation: "system_question_draft",
+        key: IDEMPOTENCY_KEY,
+        payloadFingerprint: idempotency.requests[0]?.payloadFingerprint,
+        requestId: REQUEST_ID,
+    });
+    assert.match(idempotency.requests[0]?.payloadFingerprint ?? "", /^[0-9a-f]{64}$/u);
     assert.deepEqual(idempotency.completions[0]?.receipt, {
         targetType: "question_revision",
         targetId: generatedIds[0],
@@ -720,6 +730,46 @@ test("publishes a newer draft and supersedes the old current revision with match
         CURRENT_REVISION_ID,
         DRAFT_REVISION_ID,
     ]);
+});
+
+test("publish returns a safe 422 for single-choice and boolean split-key answer sets", async () => {
+    for (const answerMode of ["single_choice", "boolean"] as const) {
+        const baseResolver = successfulResolver();
+        const runner = new FakeRunner((text, values, callIndex) => {
+            if (/lerniqa_automatic_part_has_complete_answer/iu.test(text)) {
+                return [{ id: sequenceUuid(200), answer_mode: answerMode }];
+            }
+            return baseResolver(text, values, callIndex);
+        });
+        const service = new QuestionMutationService({
+            idempotency: new MemoryIdempotency(),
+        });
+
+        await assertAdminError(
+            () => service.publishDraftRevision(mutationContext(runner), {
+                questionId: QUESTION_ID,
+                draftRevisionId: DRAFT_REVISION_ID,
+                expectedCurrentRevisionId: CURRENT_REVISION_ID,
+                expectedCurrentRevisionNumber: 1,
+                changeNote: "修正題目內容與答案",
+            }),
+            "INVALID_QUESTION_REVISION",
+            422,
+        );
+
+        const preflight = runner.calls.find((call) => (
+            /lerniqa_automatic_part_has_complete_answer/iu.test(call.text)
+        ));
+        assert.ok(preflight, `${answerMode} must run the 0009 completeness preflight`);
+        assert.deepEqual(preflight.values, [DRAFT_REVISION_ID]);
+        assert.match(preflight.text, /part\.grading_policy = 'automatic'/iu);
+        assert.equal(
+            runner.calls.some((call) => (
+                /INSERT INTO question_revision_reviews|UPDATE question_revisions/iu.test(call.text)
+            )),
+            false,
+        );
+    }
 });
 
 test("publish rejects a draft cloned from an older published revision", async () => {

@@ -1,3 +1,5 @@
+import { unstable_rethrow } from "next/navigation";
+
 import { ReportsView } from "@/app/components/admin/views";
 import {
     type AdminPageSearchParams,
@@ -53,6 +55,7 @@ export default async function AdminReportsPage({ searchParams }: ReportsPageProp
         });
     }
     catch (error) {
+        unstable_rethrow(error);
         const fallbackRange = "30d" as const;
         const fallbackQuery = resolveAdminReportQuery(fallbackRange, new Date());
         return <ReportsView {...buildReportsViewModel({

@@ -101,6 +101,11 @@ interface LatestReviewRow extends QueryResultRow {
     decision: string;
 }
 
+interface IncompleteAutomaticPartRow extends QueryResultRow {
+    id: string;
+    answer_mode: string;
+}
+
 interface DraftBaseRevisionRow extends QueryResultRow {
     base_revision_id: string;
 }
@@ -444,6 +449,36 @@ export async function readLatestRevisionReviewDecision(
         throw new AdminApiError("INTERNAL_ERROR", "題目審核資料格式不正確。", 500);
     }
     return decision;
+}
+
+/**
+ * Mirrors migration 0009 by calling its canonical completeness predicate.
+ * This keeps a malformed draft on the safe side of the deferred publish
+ * constraint and lets the API return a stable 422 instead of a commit-time 500.
+ */
+export async function assertRevisionAutomaticAnswersComplete(
+    runner: AdminQueryRunner,
+    revisionId: string,
+): Promise<void> {
+    const result = await runner.query<IncompleteAutomaticPartRow>(`
+        SELECT part.id, part.answer_mode
+        FROM question_parts AS part
+        WHERE part.question_revision_id = $1::uuid
+            AND part.grading_policy = 'automatic'
+            AND NOT lerniqa_automatic_part_has_complete_answer(
+                part.id,
+                part.answer_mode
+            )
+        ORDER BY part.position, part.id
+        LIMIT 1
+    `, [revisionId]);
+    if (result.rows.length > 0) {
+        throw new AdminApiError(
+            "INVALID_QUESTION_REVISION",
+            "草稿含有參考答案不完整的自動判分小題，不能發布；請建立新的修正版。",
+            422,
+        );
+    }
 }
 
 /**

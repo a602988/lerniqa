@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getAccountDetail } from "@/app/lib/admin/account-repository";
+import { loadAdminAccountDetailRequest } from "@/app/lib/admin/admin-account-handler";
 import { adminDataResponse, handleAdminHttpError } from "@/app/lib/admin/admin-http";
-import { parseUuid } from "@/app/lib/admin/admin-input";
-import { requireAdminReadContext } from "@/app/lib/admin/admin-server";
+import {
+    requireAdminReadContext,
+    withAdminReadOnlySnapshot,
+} from "@/app/lib/admin/admin-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,10 +20,15 @@ export async function GET(
     context: AccountRouteContext,
 ): Promise<NextResponse> {
     try {
-        const { runner } = await requireAdminReadContext(request);
-        const { userId: rawUserId } = await context.params;
-        const userId = parseUuid(rawUserId, "帳號識別碼");
-        const account = await getAccountDetail(runner, userId);
+        const { account } = await loadAdminAccountDetailRequest(
+            request,
+            () => context.params,
+            {
+                withSnapshot: withAdminReadOnlySnapshot,
+                authorize: requireAdminReadContext,
+                load: getAccountDetail,
+            },
+        );
 
         return adminDataResponse({ account });
     }

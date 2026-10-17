@@ -50,10 +50,8 @@ export function AuditView({
     sorts,
     rows,
     pagination,
+    hasActiveFilters,
 }: AuditViewProps) {
-    const hasActiveFilters =
-        Boolean(filters.search?.value.trim()) ||
-        Boolean(filters.selects?.some((select) => select.value.trim()));
     const emptyState = hasActiveFilters
         ? {
               title: "找不到符合條件的稽核紀錄",

@@ -6,6 +6,8 @@ import {
     type QuestionDetailQuery,
     type QuestionListQuery,
     type QuestionOrigin,
+    type QuestionReviewQueueQuery,
+    type QuestionReviewQueueState,
     type QuestionRevisionStatus,
     type QuestionSortField,
     type QuestionStatus,
@@ -132,6 +134,8 @@ export interface AdminQuestionDetail {
     status: QuestionStatus;
     createdMethod: string;
     currentRevisionId: string | null;
+    currentRevisionNumber: number | null;
+    currentRevisionCreatedByUserId: string | null;
     owner: { id: string; displayName: string } | null;
     createdBy: { id: string; displayName: string } | null;
     createdAt: string;
@@ -179,6 +183,33 @@ export interface AdminQuestionPage {
     total: number;
 }
 
+export interface AdminQuestionReviewQueueItem {
+    questionId: string;
+    questionStatus: QuestionStatus;
+    currentRevisionId: string;
+    currentRevisionNumber: number;
+    draftRevisionId: string;
+    draftRevisionNumber: number;
+    promptPreview: string | null;
+    changeNote: string | null;
+    state: QuestionReviewQueueState;
+    latestReviewReason: string | null;
+    latestReviewAt: string | null;
+    createdBy: {
+        type: string;
+        userId: string | null;
+        displayName: string | null;
+    };
+    createdAt: string;
+}
+
+export interface AdminQuestionReviewQueuePage {
+    items: AdminQuestionReviewQueueItem[];
+    page: number;
+    pageSize: number;
+    total: number;
+}
+
 interface QuestionListRow extends QueryResultRow {
     id: string | null;
     origin: QuestionOrigin | null;
@@ -206,12 +237,33 @@ interface QuestionListRow extends QueryResultRow {
     total_count: number | string;
 }
 
+interface QuestionReviewQueueRow extends QueryResultRow {
+    question_id: string | null;
+    question_status: QuestionStatus | null;
+    current_revision_id: string | null;
+    current_revision_number: number | string | null;
+    draft_revision_id: string | null;
+    draft_revision_number: number | string | null;
+    prompt_preview: string | null;
+    change_note: string | null;
+    latest_review_decision: string | null;
+    latest_review_reason: string | null;
+    latest_review_at: Date | string | null;
+    created_by_type: string | null;
+    created_by_user_id: string | null;
+    creator_display_name: string | null;
+    created_at: Date | string | null;
+    total_count: number | string;
+}
+
 interface QuestionCoreRow extends QueryResultRow {
     id: string;
     origin: QuestionOrigin;
     status: QuestionStatus;
     created_method: string;
     current_revision_id: string | null;
+    current_revision_number: number | null;
+    current_revision_created_by_user_id: string | null;
     owner_user_id: string | null;
     owner_display_name: string | null;
     created_by_user_id: string | null;
@@ -675,6 +727,172 @@ export async function listQuestions(
     };
 }
 
+/**
+ * Returns only actionable system-owned drafts. The latest review is resolved
+ * before filtering so a previously returned draft cannot remain in the queue
+ * merely because it has an older `changes_requested` record.
+ */
+export async function listQuestionReviewQueue(
+    runner: AdminQueryRunner,
+    query: QuestionReviewQueueQuery,
+): Promise<AdminQuestionReviewQueuePage> {
+    const clauses = [
+        "question.origin = 'system'",
+        "question.status <> 'archived'",
+        "draft.status = 'draft'",
+        "(latest_review.decision IS NULL OR latest_review.decision = 'changes_requested')",
+    ];
+    const values: unknown[] = [];
+    const bind = (value: unknown): string => {
+        values.push(value);
+        return `$${values.length}`;
+    };
+    if (query.search) {
+        const parameter = bind(query.search);
+        clauses.push(`(
+            question.id::text = lower(${parameter})
+            OR draft.id::text = lower(${parameter})
+            OR position(lower(${parameter}) in lower(coalesce(draft.search_text, ''))) > 0
+            OR position(lower(${parameter}) in lower(coalesce(draft.change_note, ''))) > 0
+            OR EXISTS (
+                SELECT 1
+                FROM question_content_blocks AS searched_block
+                WHERE searched_block.question_revision_id = draft.id
+                    AND searched_block.text_content IS NOT NULL
+                    AND position(lower(${parameter}) in lower(searched_block.text_content)) > 0
+            )
+        )`);
+    }
+    if (query.states.length > 0) {
+        const parameter = bind(query.states);
+        clauses.push(`(
+            ('unreviewed' = ANY(${parameter}::varchar[]) AND latest_review.decision IS NULL)
+            OR (
+                'changes_requested' = ANY(${parameter}::varchar[])
+                AND latest_review.decision = 'changes_requested'
+            )
+        )`);
+    }
+    const limitParameter = bind(query.limit);
+    const offsetParameter = bind(query.offset);
+    const result = await runner.query<QuestionReviewQueueRow>(`
+        WITH pending_review AS (
+            SELECT
+                question.id AS question_id,
+                question.status AS question_status,
+                current_revision.id AS current_revision_id,
+                current_revision.revision_number AS current_revision_number,
+                draft.id AS draft_revision_id,
+                draft.revision_number AS draft_revision_number,
+                prompt_preview.prompt_preview,
+                draft.change_note,
+                latest_review.decision AS latest_review_decision,
+                latest_review.reason AS latest_review_reason,
+                latest_review.created_at AS latest_review_at,
+                draft.created_by_type,
+                draft.created_by_user_id,
+                creator.display_name AS creator_display_name,
+                draft.created_at
+            FROM questions AS question
+            JOIN question_revisions AS current_revision
+                ON current_revision.id = question.current_revision_id
+            JOIN question_revisions AS draft
+                ON draft.question_id = question.id
+            LEFT JOIN users AS creator ON creator.id = draft.created_by_user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    review.decision,
+                    review.reason,
+                    review.created_at
+                FROM question_revision_reviews AS review
+                WHERE review.question_revision_id = draft.id
+                ORDER BY review.created_at DESC, review.id DESC
+                LIMIT 1
+            ) AS latest_review ON true
+            LEFT JOIN LATERAL (
+                SELECT block.text_content AS prompt_preview
+                FROM question_content_blocks AS block
+                WHERE block.question_revision_id = draft.id
+                    AND block.placement = 'prompt'
+                    AND block.text_content IS NOT NULL
+                ORDER BY block.position, block.id
+                LIMIT 1
+            ) AS prompt_preview ON true
+            WHERE ${clauses.join("\n                AND ")}
+        ),
+        page AS (
+            SELECT *
+            FROM pending_review
+            ORDER BY created_at ASC, draft_revision_id ASC
+            LIMIT ${limitParameter}
+            OFFSET ${offsetParameter}
+        ),
+        pending_count AS (
+            SELECT count(*) AS total_count FROM pending_review
+        )
+        SELECT page.*, pending_count.total_count
+        FROM pending_count
+        LEFT JOIN page ON true
+        ORDER BY page.created_at ASC NULLS LAST, page.draft_revision_id ASC NULLS LAST
+    `, values);
+
+    return {
+        items: result.rows
+            .filter((row) => row.question_id !== null)
+            .map((row) => {
+                if (
+                    row.question_id === null
+                    || row.question_status === null
+                    || row.current_revision_id === null
+                    || row.current_revision_number === null
+                    || row.draft_revision_id === null
+                    || row.draft_revision_number === null
+                    || row.created_by_type === null
+                    || row.created_at === null
+                ) {
+                    throw new AdminApiError(
+                        "INTERNAL_ERROR",
+                        "待審題目資料不完整。",
+                        500,
+                    );
+                }
+                const state: QuestionReviewQueueState = row.latest_review_decision === null
+                    ? "unreviewed"
+                    : row.latest_review_decision === "changes_requested"
+                        ? "changes_requested"
+                        : (() => {
+                            throw new AdminApiError(
+                                "INTERNAL_ERROR",
+                                "待審題目狀態不正確。",
+                                500,
+                            );
+                        })();
+                return {
+                    questionId: row.question_id,
+                    questionStatus: row.question_status,
+                    currentRevisionId: row.current_revision_id,
+                    currentRevisionNumber: asSafeCount(row.current_revision_number),
+                    draftRevisionId: row.draft_revision_id,
+                    draftRevisionNumber: asSafeCount(row.draft_revision_number),
+                    promptPreview: row.prompt_preview?.slice(0, 160) ?? null,
+                    changeNote: row.change_note,
+                    state,
+                    latestReviewReason: row.latest_review_reason,
+                    latestReviewAt: asNullableIso(row.latest_review_at),
+                    createdBy: {
+                        type: row.created_by_type,
+                        userId: row.created_by_user_id,
+                        displayName: row.creator_display_name,
+                    },
+                    createdAt: asIso(row.created_at),
+                };
+            }),
+        page: query.page,
+        pageSize: query.pageSize,
+        total: asSafeCount(result.rows[0]?.total_count ?? 0),
+    };
+}
+
 export async function listQuestionFilterOptions(
     runner: AdminQueryRunner,
 ): Promise<AdminQuestionFilterOptions> {
@@ -872,6 +1090,8 @@ export async function getQuestionDetail(
             question.status,
             question.created_method,
             question.current_revision_id,
+            current_revision.revision_number AS current_revision_number,
+            current_revision.created_by_user_id AS current_revision_created_by_user_id,
             question.owner_user_id,
             owner.display_name AS owner_display_name,
             question.created_by_user_id,
@@ -879,6 +1099,9 @@ export async function getQuestionDetail(
             question.created_at,
             question.archived_at
         FROM questions AS question
+        LEFT JOIN question_revisions AS current_revision
+            ON current_revision.id = question.current_revision_id
+            AND current_revision.question_id = question.id
         LEFT JOIN users AS owner ON owner.id = question.owner_user_id
         LEFT JOIN users AS creator ON creator.id = question.created_by_user_id
         WHERE question.id = $1
@@ -940,6 +1163,9 @@ export async function getQuestionDetail(
             status: question.status,
             createdMethod: question.created_method,
             currentRevisionId: question.current_revision_id,
+            currentRevisionNumber: question.current_revision_number ?? null,
+            currentRevisionCreatedByUserId:
+                question.current_revision_created_by_user_id ?? null,
             owner: question.owner_user_id === null ? null : {
                 id: question.owner_user_id,
                 displayName: question.owner_display_name ?? "未填",
@@ -1132,6 +1358,9 @@ export async function getQuestionDetail(
         status: question.status,
         createdMethod: question.created_method,
         currentRevisionId: question.current_revision_id,
+        currentRevisionNumber: question.current_revision_number ?? null,
+        currentRevisionCreatedByUserId:
+            question.current_revision_created_by_user_id ?? null,
         owner: question.owner_user_id === null ? null : {
             id: question.owner_user_id,
             displayName: question.owner_display_name ?? "未填",

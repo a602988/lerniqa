@@ -16,6 +16,12 @@ import {
     AdminTableRow,
 } from "../admin-table";
 import { RouteDrawer } from "./route-drawer";
+import { QuestionMutationWorkflow } from "./question-mutation-workflow";
+import {
+    questionContentBlockLabel,
+    questionContentPlacementLabel,
+    questionContentTypeLabel,
+} from "./question-presentation-labels";
 import type {
     QuestionClassificationDto,
     QuestionContentBlockDto,
@@ -59,24 +65,6 @@ const GRADING_POLICY_LABELS: Readonly<Record<string, string>> = {
     automatic: "自動判定",
     manual_review: "人工審核",
     ai_assisted_review: "AI 輔助後人工確認",
-};
-
-const PLACEMENT_LABELS: Readonly<Record<string, string>> = {
-    prompt: "題幹",
-    option: "選項",
-    answer: "答案內容",
-    explanation: "解析",
-    transcript: "逐字稿",
-};
-
-const CONTENT_TYPE_LABELS: Readonly<Record<string, string>> = {
-    text: "文字",
-    image: "圖片",
-    audio: "音訊",
-    transcript: "逐字稿",
-    formula: "公式",
-    table: "表格",
-    page_crop: "頁面裁切",
 };
 
 const INPUT_TYPE_LABELS: Readonly<Record<string, string>> = {
@@ -155,15 +143,14 @@ function blockVisibleText(block: QuestionContentBlockDto): string {
     if (block.textContent?.trim()) return block.textContent;
     if (block.altText?.trim()) return block.altText;
     if (block.assetId !== null) {
-        return `${labelFor(CONTENT_TYPE_LABELS, block.contentType)}內容`;
+        return `${questionContentTypeLabel(block.contentType)}內容`;
     }
     return "未填";
 }
 
 function blockMediaDescription(block: QuestionContentBlockDto): string {
     if (block.altText?.trim()) return block.altText.trim();
-    return `${labelFor(PLACEMENT_LABELS, block.placement)}的${labelFor(
-        CONTENT_TYPE_LABELS,
+    return `${questionContentPlacementLabel(block.placement)}的${questionContentTypeLabel(
         block.contentType,
     )}，未提供替代文字`;
 }
@@ -274,8 +261,8 @@ function ContentBlockList({
                     <li key={block.id}>
                         <div className={styles.detailItemContent}>
                             <strong>
-                                {labelFor(PLACEMENT_LABELS, block.placement)} · {labelFor(
-                                    CONTENT_TYPE_LABELS,
+                                {questionContentBlockLabel(
+                                    block.placement,
                                     block.contentType,
                                 )}
                             </strong>
@@ -963,6 +950,14 @@ export function QuestionsView({
                                 </Button>
                             </div>
                         )}
+
+                        {detail.origin === "system"
+                            && detail.accessPolicy.mode === "editable" ? (
+                                <QuestionMutationWorkflow
+                                    detail={detail}
+                                    accessPolicy={detail.accessPolicy}
+                                />
+                            ) : null}
 
                         <Card>
                             <CardHeader>

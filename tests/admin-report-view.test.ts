@@ -121,9 +121,26 @@ function reportFixture(): AdminReportSnapshot {
                 },
             },
             scoreActivity: {
-                state: "integration_pending",
-                value: null,
-                reason: "score 模式等待正式 0011 契約整合。",
+                activeLearners: { state: "available", value: 4 },
+                submittedItems: { state: "available", value: 8 },
+                completedSessions: { state: "available", value: 3 },
+                totalItems: {
+                    state: "suppressed",
+                    value: null,
+                    reason: "未達顯示門檻",
+                },
+                answeredItems: {
+                    state: "suppressed",
+                    value: null,
+                    reason: "未達顯示門檻",
+                },
+                correctItems: { state: "available", value: 8 },
+                wrongItems: {
+                    state: "suppressed",
+                    value: null,
+                    reason: "未達顯示門檻",
+                },
+                pendingItems: { state: "available", value: 3 },
             },
         },
         questionQuality: {
@@ -142,9 +159,10 @@ function reportFixture(): AdminReportSnapshot {
             sourceDocumentStatuses: noDataDistribution(),
             currentRevisionSourceCoverage: noDataDistribution(),
             automaticAnswerCompleteness: {
-                state: "integration_pending",
-                value: null,
-                reason: "自動答案完整性等待正式 0009 契約整合。",
+                totalParts: { state: "available", value: 337 },
+                completeParts: { state: "available", value: 337 },
+                incompleteParts: { state: "available", value: 0 },
+                rate: { state: "available", value: 1 },
             },
         },
     };
@@ -274,11 +292,16 @@ describe("admin report range and view model", () => {
         const attempts = view.activity.metrics.find((metric) =>
             metric.key === "non-score-attempts");
         const score = view.activity.metrics.find((metric) =>
-            metric.key === "score-activity");
+            metric.key === "score-submitted-items");
+        const scoreWrong = view.activity.metrics.find((metric) =>
+            metric.key === "score-wrong-items");
+        const scoreTotal = view.activity.metrics.find((metric) =>
+            metric.key === "score-total-items");
         assert.deepEqual(activeLearners?.value, { state: "available", value: 4 });
         assert.equal(attempts?.value.state, "suppressed");
-        assert.equal(score?.value.state, "integration_pending");
-        assert.match(score?.value.reason ?? "", /0011/u);
+        assert.deepEqual(score?.value, { state: "available", value: 8 });
+        assert.equal(scoreWrong?.value.state, "suppressed");
+        assert.equal(scoreTotal?.value.state, "suppressed");
 
         const completionRate = view.completion.metrics.find((metric) =>
             metric.key === "started-cohort-completion-rate");
@@ -288,10 +311,12 @@ describe("admin report range and view model", () => {
         const published = view.questionQuality.metrics.find((metric) =>
             metric.key === "question-origin-system-published");
         const answerCompleteness = view.questionQuality.metrics.find((metric) =>
-            metric.key === "automatic-answer-completeness");
+            metric.key === "automatic-answer-completeness-rate");
+        const incompleteAnswers = view.questionQuality.metrics.find((metric) =>
+            metric.key === "automatic-answer-incomplete");
         assert.deepEqual(published?.value, { state: "available", value: 279 });
-        assert.equal(answerCompleteness?.value.state, "integration_pending");
-        assert.match(answerCompleteness?.value.reason ?? "", /0009/u);
+        assert.deepEqual(answerCompleteness?.value, { state: "available", value: "100%" });
+        assert.deepEqual(incompleteAnswers?.value, { state: "available", value: 0 });
     });
 
     it("keeps policy-required and no-data datasets distinct", () => {

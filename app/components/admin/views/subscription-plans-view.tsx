@@ -15,6 +15,15 @@ import {
     AdminTableLoadingState,
     AdminTableRow,
 } from "../admin-table";
+import {
+    SubscriptionCatalogActions,
+    SubscriptionPlanActions,
+} from "./subscription-catalog-actions";
+import {
+    subscriptionBillingIntervalLabel,
+    subscriptionCatalogStatusLabel,
+} from "./subscription-catalog-labels";
+import { RouteDrawer } from "./route-drawer";
 import type {
     SubscriptionPlansViewProps,
     ViewSortLinkDto,
@@ -24,8 +33,10 @@ import {
     MobileListState,
     MobileRecordCard,
     MobileRecordList,
+    DetailList,
     ViewFilters,
     ViewPagination,
+    ViewSection,
     ViewSortHeader,
     formatViewValue,
     sortLinkFor,
@@ -58,9 +69,29 @@ export function SubscriptionPlansView({
     rows,
     pagination,
     catalogPolicy,
+    detail = null,
+    detailCloseHref = "/admin/subscription-plans",
+    featureDefinitions = [],
 }: SubscriptionPlansViewProps) {
     const catalogReady = catalogState === "ready";
     const visibleRows = catalogReady ? rows : [];
+    const hasActiveFilters = Boolean(
+        filters
+        && (
+            (filters.search?.value.trim().length ?? 0) > 0
+            || (filters.selects?.some((filter) => filter.value.trim().length > 0) ?? false)
+        )
+    );
+    const emptyTitle = !catalogReady
+        ? "方案目錄尚未串接"
+        : hasActiveFilters
+            ? "找不到符合條件的方案"
+            : "尚未建立方案";
+    const emptyDescription = !catalogReady
+        ? "資料表與服務契約完成前，不會顯示合成方案、價格或功能限制。"
+        : hasActiveFilters
+            ? "請調整搜尋字詞或狀態篩選條件。"
+            : "正式方案值尚未確認時，系統不會自動建立示意方案或價格。";
 
     return (
         <AdminPage
@@ -82,6 +113,10 @@ export function SubscriptionPlansView({
                 <div className={styles.policyPanel}>
                     <ActionPolicyControl title="方案目錄異動" policy={catalogPolicy} />
                 </div>
+
+                {catalogReady ? (
+                    <SubscriptionCatalogActions featureDefinitions={featureDefinitions} />
+                ) : null}
 
                 {filters ? <ViewFilters filters={filters} /> : null}
 
@@ -123,12 +158,8 @@ export function SubscriptionPlansView({
                         ) : visibleRows.length === 0 ? (
                             <AdminTableEmptyState
                                 colSpan={8}
-                                title={catalogReady ? "尚未建立方案" : "方案目錄尚未串接"}
-                                description={
-                                    catalogReady
-                                        ? "正式方案值尚未確認時，系統不會自動建立示意方案或價格。"
-                                        : "資料表與服務契約完成前，不會顯示合成方案、價格或功能限制。"
-                                }
+                                title={emptyTitle}
+                                description={emptyDescription}
                             />
                         ) : (
                             visibleRows.map((plan) => (
@@ -198,12 +229,8 @@ export function SubscriptionPlansView({
                     ) : visibleRows.length === 0 ? (
                         <MobileListState
                             kind="empty"
-                            title={catalogReady ? "尚未建立方案" : "方案目錄尚未串接"}
-                            description={
-                                catalogReady
-                                    ? "正式方案值尚未確認時，不會自動建立示意方案或價格。"
-                                    : "資料表與服務契約完成前，不會顯示合成方案、價格或功能限制。"
-                            }
+                            title={emptyTitle}
+                            description={emptyDescription}
                         />
                     ) : (
                         <>
@@ -247,6 +274,110 @@ export function SubscriptionPlansView({
                         </>
                     )}
                 </MobileRecordList>
+
+                <RouteDrawer
+                    open={detail !== null}
+                    closeHref={detailCloseHref}
+                    title={detail?.name ?? "方案詳情"}
+                    description={detail
+                        ? `${detail.code}；catalog-only，支付尚未串接。`
+                        : "方案詳情"}
+                    size="xl"
+                >
+                    {detail ? (
+                        <div className={styles.drawerStack}>
+                            <AdminNotice title="Catalog-only" tone="warning">
+                                啟用方案或價格只會更新未來商品目錄；不會建立帳號訂閱、checkout、付款、發票或收入。
+                            </AdminNotice>
+
+                            <ViewSection title="方案資料">
+                                <DetailList
+                                    items={[
+                                        { label: "方案代碼", value: detail.code },
+                                        { label: "名稱", value: detail.name },
+                                        { label: "說明", value: detail.description },
+                                        {
+                                            label: "狀態",
+                                            value: subscriptionCatalogStatusLabel(detail.status),
+                                        },
+                                        { label: "資料版本", value: detail.lockVersion },
+                                        { label: "建立時間", value: detail.createdAt },
+                                        { label: "更新時間", value: detail.updatedAt },
+                                    ]}
+                                />
+                            </ViewSection>
+
+                            <ViewSection
+                                title="價格版本"
+                                description="金額固定顯示 minor unit；已啟用價格不原地修改。"
+                            >
+                                {detail.prices.length === 0 ? (
+                                    <AdminNotice tone="muted">尚無價格。</AdminNotice>
+                                ) : (
+                                    <ul className={styles.detailItems}>
+                                        {detail.prices.map((price) => (
+                                            <li key={price.id}>
+                                                <div className={styles.detailItemContent}>
+                                                    <div className={styles.badgeList}>
+                                                        <AdminStatusBadge status={price.status} />
+                                                    </div>
+                                                    <strong>
+                                                        {price.currency} {price.amountMinor}（minor unit）
+                                                    </strong>
+                                                    <span>
+                                                        每 {price.billingIntervalCount} {subscriptionBillingIntervalLabel(price.billingInterval)}；
+                                                        生效 {price.effectiveFrom ?? "未填"}；
+                                                        結束 {price.effectiveUntil ?? "未填"}；
+                                                        版本 {price.lockVersion}
+                                                    </span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </ViewSection>
+
+                            <ViewSection
+                                title="功能限制"
+                                description="未設定與不包含分開顯示；不從方案名稱推測功能。"
+                            >
+                                {detail.featureLimits.length === 0 ? (
+                                    <AdminNotice tone="muted">尚未設定功能限制。</AdminNotice>
+                                ) : (
+                                    <ul className={styles.detailItems}>
+                                        {detail.featureLimits.map((limit) => (
+                                            <li key={limit.id}>
+                                                <div className={styles.detailItemContent}>
+                                                    <strong>{limit.displayName}</strong>
+                                                    <span>
+                                                        {limit.included
+                                                            ? limit.unlimited
+                                                                ? "包含，無上限"
+                                                                : limit.limit === null
+                                                                    ? "包含"
+                                                                    : `包含，上限 ${limit.limit} ${limit.unit ?? ""}`
+                                                            : "不包含"}
+                                                        ；功能狀態 {subscriptionCatalogStatusLabel(limit.featureStatus)}；版本 {limit.lockVersion}
+                                                    </span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </ViewSection>
+
+                            <ViewSection
+                                title="目錄操作"
+                                description="所有操作都會重新驗證管理員、檢查版本、寫入冪等收據與稽核。"
+                            >
+                                <SubscriptionPlanActions
+                                    plan={detail}
+                                    featureDefinitions={featureDefinitions}
+                                />
+                            </ViewSection>
+                        </div>
+                    ) : null}
+                </RouteDrawer>
             </div>
         </AdminPage>
     );

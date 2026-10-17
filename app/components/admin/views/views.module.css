@@ -13,6 +13,16 @@
     overscroll-behavior: contain;
 }
 
+.drawerHeader {
+    padding-inline-end: calc(var(--keel-drawer-content-padding) + 2.5rem);
+}
+
+.drawerHeading,
+.drawerDescription {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .metricGrid {
     display: grid;
     min-width: 0;
@@ -44,6 +54,77 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
+}
+
+.mutationWorkflow,
+.mutationForm {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.mutationWorkflow {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.9rem;
+    background: var(--color-card);
+    scroll-margin-top: 1rem;
+}
+
+.mutationFeedback {
+    min-width: 0;
+    scroll-margin-block: 1rem;
+}
+
+.mutationFeedback:focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 0.25rem;
+}
+
+.mutationColumns {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.mutationForm {
+    align-content: start;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-background);
+}
+
+.mutationForm h3,
+.mutationWorkflow h2,
+.mutationWorkflow p {
+    margin: 0;
+}
+
+.adminTextarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 6rem;
+    padding: 0.75rem;
+    resize: vertical;
+    border: 1px solid var(--color-input, var(--color-border));
+    border-radius: 0.55rem;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font: inherit;
+    line-height: 1.55;
+}
+
+.adminTextarea:focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 2px;
+}
+
+.adminTextarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
 }
 
 .compactField {
@@ -365,6 +446,73 @@
     gap: 0.5rem;
 }
 
+.catalogActions {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.catalogForm,
+.catalogFormBody,
+.subscriptionActionStack,
+.catalogSubsection {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.catalogFormBody {
+    max-height: min(65vh, 40rem);
+    overflow-y: auto;
+}
+
+.catalogFieldGrid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+}
+
+.catalogSubsection {
+    gap: 0.65rem;
+}
+
+.catalogSubsection h3,
+.catalogSubsection p {
+    margin: 0;
+}
+
+.catalogSubsection p {
+    color: var(--color-muted-foreground);
+    font-size: 0.84rem;
+}
+
+.catalogActionList {
+    display: grid;
+    min-width: 0;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.catalogActionList > li {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.catalogActionList > li > span:first-child {
+    min-width: 0;
+    font-size: 0.84rem;
+    overflow-wrap: anywhere;
+}
+
 .inlineActionNotice {
     display: grid;
     min-width: 0;
@@ -664,6 +812,19 @@
 }
 
 @media (min-width: 48rem) {
+    .catalogFieldGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .catalogActionList > li {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .catalogActionList > li > span:first-child {
+        flex: 1 1 auto;
+    }
     .desktopRecordTable {
         display: block;
     }
@@ -685,6 +846,10 @@
     .sectionActions {
         flex: 0 1 auto;
         justify-content: flex-end;
+    }
+
+    .mutationColumns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

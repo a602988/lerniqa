@@ -10,12 +10,14 @@ import {
 } from "./admin-asset-repository.ts";
 import { AdminApiError } from "./admin-types.ts";
 
-interface AdminAssetReadContext {
-    runner: AdminQueryRunner;
-}
-
 export interface AdminAssetGetDependencies {
-    requireReadContext(request: Request): Promise<AdminAssetReadContext>;
+    withSnapshot<T>(
+        operation: (runner: AdminQueryRunner) => Promise<T>,
+    ): Promise<T>;
+    authorize(
+        request: Request,
+        runner: AdminQueryRunner,
+    ): Promise<unknown>;
     findAsset(
         runner: AdminQueryRunner,
         assetId: string,
@@ -89,13 +91,20 @@ export function createAdminAssetGetHandler(
         context: AdminAssetRouteContext,
     ): Promise<Response> {
         try {
-            // Authorization intentionally precedes route input parsing and all
-            // asset lookups so malformed IDs cannot probe this admin surface.
-            const { runner } = await dependencies.requireReadContext(request);
-            const { assetId: rawAssetId } = await context.params;
-            const assetId = parseUuid(rawAssetId, "題目資產識別碼");
-            const asset = await dependencies.findAsset(runner, assetId);
-            if (!asset) throw notFound();
+            // Authorization, route input parsing and the asset metadata lookup
+            // share one repeatable-read snapshot. File I/O starts only after
+            // that snapshot has committed so a slow disk read never keeps a
+            // database transaction open.
+            const { assetId, asset } = await dependencies.withSnapshot(
+                async (runner) => {
+                    await dependencies.authorize(request, runner);
+                    const { assetId: rawAssetId } = await context.params;
+                    const assetId = parseUuid(rawAssetId, "題目資產識別碼");
+                    const asset = await dependencies.findAsset(runner, assetId);
+                    if (!asset) throw notFound();
+                    return { assetId, asset };
+                },
+            );
 
             const file = await dependencies.readAsset(asset);
             if (!file) throw notFound();

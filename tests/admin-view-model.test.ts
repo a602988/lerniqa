@@ -4,7 +4,10 @@ import { describe, it } from "node:test";
 import {
     adminViewErrorMessage,
     buildAccountsViewModel,
+    buildAuditViewModel,
+    buildDashboardViewModel,
     buildQuestionsViewModel,
+    buildQuestionReviewQueueViewModel,
     buildReportsViewModel,
     formatAdminDateTime,
     mapAccountDetail,
@@ -14,14 +17,18 @@ import {
     resolveAdminReportQuery,
 } from "../app/lib/admin/admin-view-model.ts";
 import type { AdminAccountDetail } from "../app/lib/admin/account-repository.ts";
+import type { AdminAuditListItem } from "../app/lib/admin/audit-repository.ts";
 import type {
     AdminQuestionDetail,
     AdminQuestionListItem,
+    AdminQuestionReviewQueuePage,
 } from "../app/lib/admin/question-repository.ts";
 import { AdminApiError } from "../app/lib/admin/admin-types.ts";
 import type {
     AccountListQuery,
+    AuditListQuery,
     QuestionListQuery,
+    QuestionReviewQueueQuery,
 } from "../app/lib/admin/admin-types.ts";
 
 const accountQuery: AccountListQuery = {
@@ -31,7 +38,9 @@ const accountQuery: AccountListQuery = {
     limit: 25,
     search: "王 小明",
     statuses: ["active"],
+    accountRoles: ["learner"],
     roles: ["system_admin"],
+    verificationStates: ["not_applicable"],
     created: { from: "2026-10-01", to: "2026-10-15" },
     orderBy: [
         { field: "email", direction: "asc" },
@@ -43,8 +52,9 @@ const accountDetail: AdminAccountDetail = {
     id: "11111111-1111-4111-8111-111111111111",
     displayName: "王小明",
     email: null,
-    emailVerified: false,
+    emailVerificationState: "not_applicable",
     status: "active",
+    accountRole: "learner",
     roles: ["learner", "system_admin"],
     activeLearnerCount: 1,
     activeSessionCount: 1,
@@ -55,11 +65,19 @@ const accountDetail: AdminAccountDetail = {
     identities: [
         {
             id: "identity-1",
-            provider: "oidc",
+            provider: "google",
             email: null,
             verifiedAt: null,
             createdAt: "2026-10-15T16:30:00.000Z",
             revokedAt: null,
+        },
+        {
+            id: "identity-2",
+            provider: "email",
+            email: "old@example.test",
+            verifiedAt: "2026-10-10T02:00:00.000Z",
+            createdAt: "2026-10-01T00:00:00.000Z",
+            revokedAt: "2026-10-14T03:00:00.000Z",
         },
     ],
     roleGrants: [
@@ -89,7 +107,57 @@ const accountDetail: AdminAccountDetail = {
             canReviewAnswers: true,
             canManageSettings: false,
         },
+        {
+            id: "access-2",
+            learnerId: "learner-2",
+            learnerDisplayName: "學習者 B",
+            learnerStatus: "archived",
+            accessRole: "parent",
+            gradeCode: null,
+            gradeName: null,
+            semesterCode: null,
+            semesterName: null,
+            acceptedAt: null,
+            revokedAt: null,
+            canViewResults: true,
+            canCreatePlans: true,
+            canReviewAnswers: false,
+            canManageSettings: true,
+        },
+        {
+            id: "access-3",
+            learnerId: "learner-3",
+            learnerDisplayName: "學習者 C",
+            learnerStatus: "active",
+            accessRole: "tutor",
+            gradeCode: "G8",
+            gradeName: "八年級",
+            semesterCode: null,
+            semesterName: null,
+            acceptedAt: "2026-10-10T00:00:00.000Z",
+            revokedAt: "2026-10-12T00:00:00.000Z",
+            canViewResults: true,
+            canCreatePlans: true,
+            canReviewAnswers: true,
+            canManageSettings: false,
+        },
     ],
+};
+
+const auditItem: AdminAuditListItem = {
+    id: "77777777-7777-4777-8777-777777777777",
+    actor: {
+        type: "user",
+        userId: "88888888-8888-4888-8888-888888888888",
+        displayName: "管理員甲",
+    },
+    action: "account_suspended",
+    targetType: "user",
+    targetId: "11111111-1111-4111-8111-111111111111",
+    before: null,
+    after: null,
+    requestId: "request-1",
+    occurredAt: "2026-10-15T16:30:00.000Z",
 };
 
 const questionQuery: QuestionListQuery = {
@@ -117,6 +185,8 @@ const questionDetail: AdminQuestionDetail = {
     status: "published",
     createdMethod: "import",
     currentRevisionId: "revision-2",
+    currentRevisionNumber: 2,
+    currentRevisionCreatedByUserId: "creator-1",
     owner: null,
     createdBy: { id: "creator-1", displayName: "匯入管理員" },
     createdAt: "2026-10-15T00:00:00.000Z",
@@ -247,16 +317,40 @@ describe("admin view model", () => {
         assert.equal(formatAdminDateTime("2026-10-15T16:30:00.000Z"), "2026/10/16 00:30");
     });
 
-    it("keeps accountRole null instead of inferring it from grants", () => {
+    it("maps users.account_role directly and preserves a missing value", () => {
         const detail = mapAccountDetail(accountDetail);
-        assert.equal(detail.accountRole, null);
+        assert.equal(detail.accountRole, "learner");
+        assert.equal(detail.emailVerificationState, "not_applicable");
+        assert.equal(
+            mapAccountDetail({ ...accountDetail, accountRole: null }).accountRole,
+            null,
+        );
         assert.deepEqual(detail.identities[0]?.verificationState, "not_applicable");
+        assert.equal(detail.identities[0]?.lifecycleState, "active");
+        assert.equal(detail.identities[0]?.providerLabel, "Google");
+        assert.deepEqual(detail.identities[1], {
+            id: "identity-2",
+            providerLabel: "電子郵件",
+            identifier: "old@example.test",
+            lifecycleState: "revoked",
+            verificationState: "verified",
+            verifiedAt: "2026/10/10 10:00",
+            revokedAt: "2026/10/14 11:00",
+        });
         assert.deepEqual(detail.learnerAccess[0]?.permissions, {
             canViewResults: true,
             canCreatePlans: false,
             canReviewAnswers: true,
             canManageSettings: false,
         });
+        assert.equal(detail.learnerAccess[0]?.accessState, "accepted");
+        assert.equal(detail.learnerAccess[0]?.learnerStatus, "active");
+        assert.equal(detail.learnerAccess[0]?.effective, true);
+        assert.equal(detail.learnerAccess[1]?.accessState, "pending");
+        assert.equal(detail.learnerAccess[1]?.learnerStatus, "archived");
+        assert.equal(detail.learnerAccess[1]?.effective, false);
+        assert.equal(detail.learnerAccess[2]?.accessState, "revoked");
+        assert.equal(detail.learnerAccess[2]?.effective, false);
     });
 
     it("preserves account filters, sorting and pagination in detail URLs", () => {
@@ -273,17 +367,96 @@ describe("admin view model", () => {
         const href = new URL(view.rows[0]!.detailHref, "https://example.test");
         assert.equal(href.searchParams.get("search"), "王 小明");
         assert.equal(href.searchParams.get("status"), "active");
+        assert.equal(href.searchParams.get("accountRole"), "learner");
         assert.equal(href.searchParams.get("role"), "system_admin");
+        assert.equal(href.searchParams.get("verification"), "not_applicable");
         assert.equal(href.searchParams.get("createdFrom"), "2026-10-01");
         assert.equal(href.searchParams.get("page"), "2");
         assert.equal(href.searchParams.get("perPage"), "25");
         assert.equal(href.searchParams.get("sort"), "email");
         assert.equal(href.searchParams.get("direction"), "asc");
         assert.equal(href.searchParams.get("account"), accountDetail.id);
+        assert.deepEqual(view.filters.dates, [
+            {
+                name: "createdFrom",
+                label: "註冊起日",
+                value: "2026-10-01",
+                max: "2026-10-15",
+            },
+            {
+                name: "createdTo",
+                label: "註冊迄日",
+                value: "2026-10-15",
+                min: "2026-10-01",
+            },
+        ]);
+        assert.equal("createdFrom" in (view.filters.hiddenFields ?? {}), false);
+        assert.equal("createdTo" in (view.filters.hiddenFields ?? {}), false);
+        const statusFilter = view.filters.selects?.find(
+            (filter) => filter.name === "status",
+        );
+        assert.equal(
+            statusFilter?.options.find((option) => option.value === "suspended")?.label,
+            "已停權",
+        );
+    });
+
+    it("treats date-only audit queries as filtered and uses shared localized labels", () => {
+        const query: AuditListQuery = {
+            page: 1,
+            pageSize: 25,
+            offset: 0,
+            limit: 25,
+            search: undefined,
+            actions: [],
+            targetTypes: [],
+            occurred: { from: "2026-10-01", to: "2026-10-15" },
+            orderBy: [{ field: "occurredAt", direction: "desc" }],
+        };
+        const view = buildAuditViewModel({
+            query,
+            page: { items: [auditItem], page: 1, pageSize: 25, total: 1 },
+        });
+
+        assert.equal(view.hasActiveFilters, true);
+        assert.deepEqual(view.filters.dates, [
+            {
+                name: "occurredFrom",
+                label: "發生起日",
+                value: "2026-10-01",
+                max: "2026-10-15",
+            },
+            {
+                name: "occurredTo",
+                label: "發生迄日",
+                value: "2026-10-15",
+                min: "2026-10-01",
+            },
+        ]);
+        assert.equal("occurredFrom" in (view.filters.hiddenFields ?? {}), false);
+        assert.equal("occurredTo" in (view.filters.hiddenFields ?? {}), false);
+        assert.equal(view.rows[0]?.actionLabel, "帳號已停權");
+        assert.equal(view.rows[0]?.targetTypeLabel, "帳號");
+    });
+
+    it("routes period metrics to reports and shares audit labels with recent activity", () => {
+        const view = buildDashboardViewModel({
+            accountTotal: 12,
+            questionTotal: 279,
+            recentAudit: [auditItem],
+        });
+
+        assert.equal(view.metrics[2]?.value.state, "report_only");
+        assert.match(view.metrics[2]?.value.reason ?? "", /查看報表/u);
+        assert.equal(view.metrics[3]?.value.state, "report_only");
+        assert.equal(view.activity[0]?.title, "帳號已停權");
+        assert.match(view.activity[0]?.description ?? "", /^帳號 · /u);
+        assert.equal(view.activity[0]?.occurredAtIso, auditItem.occurredAt);
+        assert.ok(view.quickLinks?.some((link) => link.href === "/admin/reports"));
     });
 
     it("maps every question evidence collection and strips unknown classification fields", () => {
-        const detail = mapQuestionDetail(questionDetail);
+        const detail = mapQuestionDetail(questionDetail, undefined, "reviewer-2");
         const revision = detail.displayRevision!;
         assert.equal(revision.parts[0]?.answers[0]?.answerKey, "A");
         assert.equal(revision.contentBlocks[0]?.textContent, "真實題幹");
@@ -301,8 +474,12 @@ describe("admin view model", () => {
         assert.equal("secret" in revision.classifications.units[0]!, false);
         assert.equal("sql" in revision.classifications.filterValues[0]!, false);
         assert.deepEqual(detail.accessPolicy, {
-            mode: "read-only",
-            reason: "版本編修與發布寫入服務尚未完成整合；目前不會直接覆寫題目。",
+            mode: "editable",
+            label: "建立修正版",
+            href: "#question-version-workflow",
+            reason: "編修會複製目前發布版本成新草稿，不會覆寫歷史作答引用的內容。",
+            canReviewDraft: false,
+            canPublishDraft: false,
         });
         const historyHref = new URL(
             detail.revisionHistory.items[0]!.detailHref,
@@ -310,6 +487,84 @@ describe("admin view model", () => {
         );
         assert.equal(historyHref.searchParams.get("question"), questionDetail.id);
         assert.equal(historyHref.searchParams.get("revision"), "revision-2");
+    });
+
+    it("keeps account, archived and non-current question revisions out of mutation UI", () => {
+        const account = mapQuestionDetail({
+            ...questionDetail,
+            origin: "account",
+            readOnly: true,
+            readOnlyReason: "帳號題目不可跨帳號改寫。",
+        }, undefined, "reviewer-2");
+        assert.deepEqual(account.accessPolicy, {
+            mode: "read-only",
+            reason: "帳號題目不可跨帳號改寫。",
+        });
+
+        const archived = mapQuestionDetail({
+            ...questionDetail,
+            status: "archived",
+        }, undefined, "reviewer-2");
+        assert.equal(archived.accessPolicy.mode, "read-only");
+
+        const historical = mapQuestionDetail({
+            ...questionDetail,
+            displayRevision: {
+                ...questionDetail.displayRevision!,
+                id: "revision-1",
+                number: 1,
+                status: "superseded",
+            },
+        }, undefined, "reviewer-2");
+        assert.equal(historical.accessPolicy.mode, "read-only");
+    });
+
+    it("requires a different administrator before exposing draft review actions", () => {
+        const draftQuestion = {
+            ...questionDetail,
+            selectedRevisionId: "revision-3",
+            displayRevision: {
+                ...questionDetail.displayRevision!,
+                id: "revision-3",
+                number: 3,
+                status: "draft" as const,
+                createdBy: {
+                    type: "user",
+                    userId: "draft-author",
+                    displayName: "草稿建立者",
+                },
+            },
+        };
+        const authorView = mapQuestionDetail(draftQuestion, undefined, "draft-author");
+        assert.equal(authorView.accessPolicy.mode, "editable");
+        if (authorView.accessPolicy.mode === "editable") {
+            assert.equal(authorView.accessPolicy.canReviewDraft, false);
+            assert.equal(authorView.accessPolicy.canPublishDraft, false);
+            assert.match(authorView.accessPolicy.reviewBlockedReason ?? "", /不可審核/u);
+            assert.match(authorView.accessPolicy.publishBlockedReason ?? "", /不可發布/u);
+        }
+
+        const reviewerView = mapQuestionDetail(draftQuestion, undefined, "reviewer-2");
+        assert.equal(reviewerView.accessPolicy.mode, "editable");
+        if (reviewerView.accessPolicy.mode === "editable") {
+            assert.equal(reviewerView.accessPolicy.canReviewDraft, true);
+            assert.equal(reviewerView.accessPolicy.canPublishDraft, true);
+        }
+
+        const currentAuthorView = mapQuestionDetail(
+            draftQuestion,
+            undefined,
+            questionDetail.currentRevisionCreatedByUserId,
+        );
+        assert.equal(currentAuthorView.accessPolicy.mode, "editable");
+        if (currentAuthorView.accessPolicy.mode === "editable") {
+            assert.equal(currentAuthorView.accessPolicy.canReviewDraft, true);
+            assert.equal(currentAuthorView.accessPolicy.canPublishDraft, false);
+            assert.match(
+                currentAuthorView.accessPolicy.publishBlockedReason ?? "",
+                /目前發布版本由你建立/u,
+            );
+        }
     });
 
     it("keeps question list filters in drawer and sorting links", () => {
@@ -360,6 +615,7 @@ describe("admin view model", () => {
         assert.equal(href.searchParams.get("sort"), "revisionNumber");
         assert.equal(href.searchParams.get("question"), questionDetail.id);
         assert.equal(view.hasActiveFilters, true);
+        assert.equal(view.reviewQueueHref, "/admin/questions/reviews");
         assert.ok(view.filters.selects?.some((filter) => filter.name === "difficultyId"));
         const revisionHref = new URL(
             view.detail!.revisionHistory.items[0]!.detailHref,
@@ -368,6 +624,59 @@ describe("admin view model", () => {
         assert.equal(revisionHref.searchParams.get("search"), "分數");
         assert.equal(revisionHref.searchParams.get("bankId"), questionQuery.bankId);
         assert.equal(revisionHref.searchParams.get("revision"), "revision-2");
+    });
+
+    it("maps the pending review queue to the selected draft without losing filters", () => {
+        const queueQuery: QuestionReviewQueueQuery = {
+            page: 2,
+            pageSize: 10,
+            offset: 10,
+            limit: 10,
+            search: "第四課",
+            states: ["changes_requested"],
+        };
+        const queuePage: AdminQuestionReviewQueuePage = {
+            page: 2,
+            pageSize: 10,
+            total: 12,
+            items: [{
+                questionId: questionDetail.id,
+                questionStatus: "published",
+                currentRevisionId: "revision-2",
+                currentRevisionNumber: 2,
+                draftRevisionId: "revision-3",
+                draftRevisionNumber: 3,
+                promptPreview: "第四課待審題目",
+                changeNote: "修正參考答案",
+                state: "changes_requested",
+                latestReviewReason: "答案仍需校正",
+                latestReviewAt: "2026-10-16T01:00:00.000Z",
+                createdBy: {
+                    type: "user",
+                    userId: "draft-author",
+                    displayName: "草稿建立者",
+                },
+                createdAt: "2026-10-16T00:00:00.000Z",
+            }],
+        };
+        const view = buildQuestionReviewQueueViewModel({
+            query: queueQuery,
+            page: queuePage,
+        });
+        assert.equal(view.rows[0]?.reviewStateLabel, "已要求修改");
+        const detailHref = new URL(
+            view.rows[0]!.detailHref,
+            "https://example.test",
+        );
+        assert.equal(detailHref.pathname, "/admin/questions");
+        assert.equal(detailHref.searchParams.get("question"), questionDetail.id);
+        assert.equal(detailHref.searchParams.get("revision"), "revision-3");
+        assert.equal(view.filters.action, "/admin/questions/reviews");
+        assert.equal(view.filters.search?.value, "第四課");
+        assert.equal(view.filters.selects?.[0]?.value, "changes_requested");
+        assert.equal(view.pagination.currentPage, 2);
+        assert.equal(view.pagination.totalItems, 12);
+        assert.equal(view.hasActiveFilters, true);
     });
 
     it("keeps a missing current revision null and marks a truly empty library", () => {

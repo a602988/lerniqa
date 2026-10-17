@@ -62,12 +62,9 @@ const SOURCE_DOCUMENT_STATUS_SET = new Set<string>(SOURCE_DOCUMENT_STATUSES);
 const CURRENT_REVISION_STATE_SET = new Set<string>(CURRENT_REVISION_STATES);
 const REVIEW_COVERAGE_STATE_SET = new Set<string>(REVIEW_COVERAGE_STATES);
 const SOURCE_COVERAGE_STATE_SET = new Set<string>(SOURCE_COVERAGE_STATES);
+const AUTOMATIC_ANSWER_COMPLETENESS_SET = new Set<string>(["complete", "incomplete"]);
 
 const POLICY_REQUIRED_REASON = "尚未啟用管理報表的統計隱私政策。";
-const SCORE_INTEGRATION_PENDING_REASON =
-    "score 模式等待正式 0011 session aggregates 與 answer-free receipt 契約整合；不讀取答案明細。";
-const ANSWER_COMPLETENESS_PENDING_REASON =
-    "自動答案完整性等待正式 0009 契約整合；目前不從舊欄位推測。";
 
 export type AdminReportDatasetState =
     | "available"
@@ -79,8 +76,7 @@ export type AdminReportMetric =
     | { state: "available"; value: number }
     | { state: "no_data"; value: null; reason: typeof REPORT_NO_DATA_LABEL }
     | { state: "suppressed"; value: null; reason: typeof REPORT_PRIVACY_SUPPRESSED_LABEL }
-    | { state: "policy_required"; value: null; reason: string }
-    | { state: "integration_pending"; value: null; reason: string };
+    | { state: "policy_required"; value: null; reason: string };
 
 export interface AdminReportQuery {
     startLocalDate: string;
@@ -157,9 +153,14 @@ export interface AdminReportSnapshot {
             results: AdminReportDistribution<"correct" | "wrong" | "pending">;
         };
         scoreActivity: {
-            state: "integration_pending";
-            value: null;
-            reason: string;
+            activeLearners: AdminReportMetric;
+            submittedItems: AdminReportMetric;
+            completedSessions: AdminReportMetric;
+            totalItems: AdminReportMetric;
+            answeredItems: AdminReportMetric;
+            correctItems: AdminReportMetric;
+            wrongItems: AdminReportMetric;
+            pendingItems: AdminReportMetric;
         };
     };
     questionQuality: {
@@ -178,9 +179,10 @@ export interface AdminReportSnapshot {
         sourceDocumentStatuses: AdminReportDistribution<(typeof SOURCE_DOCUMENT_STATUSES)[number]>;
         currentRevisionSourceCoverage: AdminReportDistribution<(typeof SOURCE_COVERAGE_STATES)[number]>;
         automaticAnswerCompleteness: {
-            state: "integration_pending";
-            value: null;
-            reason: string;
+            totalParts: AdminReportMetric;
+            completeParts: AdminReportMetric;
+            incompleteParts: AdminReportMetric;
+            rate: AdminReportMetric;
         };
     };
 }
@@ -223,6 +225,18 @@ interface PracticeReportRow extends QueryResultRow {
     wrong_learners: number | string;
     pending_attempts: number | string;
     pending_learners: number | string;
+    score_active_learners: number | string;
+    score_submitted_items: number | string;
+    completed_score_sessions: number | string;
+    completed_score_learners: number | string;
+    score_total_items: number | string;
+    score_answered_items: number | string;
+    score_correct_items: number | string;
+    score_correct_learners: number | string;
+    score_wrong_items: number | string;
+    score_wrong_learners: number | string;
+    score_pending_items: number | string;
+    score_pending_learners: number | string;
 }
 
 type QuestionQualityCategory =
@@ -234,7 +248,8 @@ type QuestionQualityCategory =
     | "import_batch_status"
     | "import_item_review_status"
     | "source_document_status"
-    | "current_revision_source_coverage";
+    | "current_revision_source_coverage"
+    | "automatic_answer_completeness";
 
 interface QuestionQualityRow extends QueryResultRow {
     category: QuestionQualityCategory;
@@ -404,6 +419,38 @@ const PRACTICE_REPORT_SQL = `
         WHERE session.check_mode <> 'score'
             AND attempt.submitted_at >= $1
             AND attempt.submitted_at < $2
+    ),
+    score_receipts_in_period AS (
+        SELECT
+            count(*) AS submitted_item_count,
+            count(DISTINCT receipt.learner_id) AS learner_count
+        FROM practice_score_receipts AS receipt
+        WHERE receipt.submitted_at >= $1
+            AND receipt.submitted_at < $2
+    ),
+    completed_score_sessions AS (
+        SELECT
+            count(*) AS session_count,
+            count(DISTINCT session.learner_id) AS learner_count,
+            count(DISTINCT session.learner_id) FILTER (
+                WHERE session.score_correct_count > 0
+            ) AS correct_learner_count,
+            count(DISTINCT session.learner_id) FILTER (
+                WHERE session.score_wrong_count > 0
+            ) AS wrong_learner_count,
+            count(DISTINCT session.learner_id) FILTER (
+                WHERE session.score_pending_count > 0
+            ) AS pending_learner_count,
+            coalesce(sum(session.score_total_count), 0) AS total_item_count,
+            coalesce(sum(session.score_answered_count), 0) AS answered_item_count,
+            coalesce(sum(session.score_correct_count), 0) AS correct_item_count,
+            coalesce(sum(session.score_wrong_count), 0) AS wrong_item_count,
+            coalesce(sum(session.score_pending_count), 0) AS pending_item_count
+        FROM practice_sessions AS session
+        WHERE session.check_mode = 'score'
+            AND session.status = 'completed'
+            AND session.completed_at >= $1
+            AND session.completed_at < $2
     )
     SELECT
         completed.session_count AS completed_in_period,
@@ -430,16 +477,42 @@ const PRACTICE_REPORT_SQL = `
         ) AS pending_attempts,
         count(DISTINCT attempt.learner_id) FILTER (
             WHERE attempt.overall_result = 'pending'
-        ) AS pending_learners
+        ) AS pending_learners,
+        score_receipts.learner_count AS score_active_learners,
+        score_receipts.submitted_item_count AS score_submitted_items,
+        score_sessions.session_count AS completed_score_sessions,
+        score_sessions.learner_count AS completed_score_learners,
+        score_sessions.total_item_count AS score_total_items,
+        score_sessions.answered_item_count AS score_answered_items,
+        score_sessions.correct_item_count AS score_correct_items,
+        score_sessions.correct_learner_count AS score_correct_learners,
+        score_sessions.wrong_item_count AS score_wrong_items,
+        score_sessions.wrong_learner_count AS score_wrong_learners,
+        score_sessions.pending_item_count AS score_pending_items,
+        score_sessions.pending_learner_count AS score_pending_learners
     FROM completed_in_period AS completed
     CROSS JOIN started_cohort AS cohort
+    CROSS JOIN score_receipts_in_period AS score_receipts
+    CROSS JOIN completed_score_sessions AS score_sessions
     LEFT JOIN non_score_attempts AS attempt ON true
     GROUP BY
         completed.session_count,
         completed.learner_count,
         cohort.session_count,
         cohort.completed_count,
-        cohort.learner_count
+        cohort.learner_count,
+        score_receipts.learner_count,
+        score_receipts.submitted_item_count,
+        score_sessions.session_count,
+        score_sessions.learner_count,
+        score_sessions.total_item_count,
+        score_sessions.answered_item_count,
+        score_sessions.correct_item_count,
+        score_sessions.correct_learner_count,
+        score_sessions.wrong_item_count,
+        score_sessions.wrong_learner_count,
+        score_sessions.pending_item_count,
+        score_sessions.pending_learner_count
 `;
 
 const QUESTION_QUALITY_SQL = `
@@ -562,6 +635,32 @@ const QUESTION_QUALITY_SQL = `
             count(*)
         FROM current_revision_source_quality AS source_quality
         GROUP BY source_quality.source_coverage
+
+        UNION ALL
+
+        SELECT
+            'automatic_answer_completeness'::text,
+            CASE
+                WHEN lerniqa_automatic_part_has_complete_answer(
+                    part.id,
+                    part.answer_mode
+                ) THEN 'complete'
+                ELSE 'incomplete'
+            END,
+            NULL::text,
+            count(*)
+        FROM question_revisions AS revision
+        JOIN question_parts AS part
+            ON part.question_revision_id = revision.id
+        WHERE revision.status IN ('published', 'superseded')
+            AND part.grading_policy = 'automatic'
+        GROUP BY CASE
+            WHEN lerniqa_automatic_part_has_complete_answer(
+                part.id,
+                part.answer_mode
+            ) THEN 'complete'
+            ELSE 'incomplete'
+        END
     )
     SELECT
         category,
@@ -599,12 +698,16 @@ function noDataMetric(): AdminReportMetric {
     return { state: "no_data", value: null, reason: REPORT_NO_DATA_LABEL };
 }
 
-function integrationPendingMetric(reason: string): AdminReportMetric {
-    return { state: "integration_pending", value: null, reason };
-}
-
 function unavailableWithoutPolicy(): AdminReportMetric {
     return { state: "policy_required", value: null, reason: POLICY_REQUIRED_REASON };
+}
+
+function suppressedMetric(): AdminReportMetric {
+    return {
+        state: "suppressed",
+        value: null,
+        reason: REPORT_PRIVACY_SUPPRESSED_LABEL,
+    };
 }
 
 function protectedMetric(
@@ -693,6 +796,24 @@ function mapQuestionQuality(rows: readonly QuestionQualityRow[]): AdminReportSna
             status: assertKnown<QuestionStatus>(row.secondary_key ?? "", QUESTION_STATUS_SET, "題目狀態統計"),
             count: availableMetric(asSafeCount(row.count_value, "題目來源狀態統計")),
         }));
+    let completeAutomaticParts = 0;
+    let incompleteAutomaticParts = 0;
+    for (const row of rows.filter((candidate) =>
+        candidate.category === "automatic_answer_completeness")) {
+        const key = assertKnown<"complete" | "incomplete">(
+            row.dimension_key,
+            AUTOMATIC_ANSWER_COMPLETENESS_SET,
+            "自動答案完整性統計",
+        );
+        const count = asSafeCount(row.count_value, "自動答案完整性統計");
+        if (key === "complete") completeAutomaticParts += count;
+        else incompleteAutomaticParts += count;
+    }
+    const totalAutomaticParts = completeAutomaticParts + incompleteAutomaticParts;
+    const completenessRate = calculateReportRatio(
+        completeAutomaticParts,
+        totalAutomaticParts,
+    );
 
     return {
         state: datasetState(rows),
@@ -746,15 +867,18 @@ function mapQuestionQuality(rows: readonly QuestionQualityRow[]): AdminReportSna
             "目前版本來源覆蓋統計",
         ),
         automaticAnswerCompleteness: {
-            state: "integration_pending",
-            value: null,
-            reason: ANSWER_COMPLETENESS_PENDING_REASON,
+            totalParts: availableMetric(totalAutomaticParts),
+            completeParts: availableMetric(completeAutomaticParts),
+            incompleteParts: availableMetric(incompleteAutomaticParts),
+            rate: completenessRate === null
+                ? noDataMetric()
+                : availableMetric(completenessRate),
         },
     };
 }
 
 /**
- * Builds one read-only administrative snapshot from the committed 0001-0007
+ * Builds one read-only administrative snapshot from the committed 0001-0011
  * schema. Callers should pass a transaction-scoped runner when a consistent
  * snapshot across all fixed-count aggregate queries is required.
  */
@@ -898,6 +1022,106 @@ export async function getAdminReportSnapshot(
             count: protectedMetric(attempts, learners, minimumDistinctLearners),
         };
     });
+    const nonScoreOutcomeNeedsComplementarySuppression = nonScoreResults.some(
+        (result) => result.count.state === "suppressed",
+    );
+    const protectNonScoreOutcomeTotal = (): AdminReportMetric => {
+        const metric = protectedMetric(
+            nonScoreAttempts,
+            activeLearners,
+            minimumDistinctLearners,
+        );
+        return nonScoreOutcomeNeedsComplementarySuppression && metric.state === "available"
+            ? suppressedMetric()
+            : metric;
+    };
+    const scoreActiveLearners = asSafeCount(
+        practiceRow.score_active_learners,
+        "score 活躍學習者統計",
+    );
+    const scoreSubmittedItems = asSafeCount(
+        practiceRow.score_submitted_items,
+        "score 送出收據統計",
+    );
+    const completedScoreSessions = asSafeCount(
+        practiceRow.completed_score_sessions,
+        "期間完成 score session 統計",
+    );
+    const completedScoreLearners = asSafeCount(
+        practiceRow.completed_score_learners,
+        "期間完成 score session 學習者統計",
+    );
+    const scoreTotalItems = asSafeCount(practiceRow.score_total_items, "score 總題數統計");
+    const scoreAnsweredItems = asSafeCount(
+        practiceRow.score_answered_items,
+        "score 已送出題數統計",
+    );
+    const scoreCorrectItems = asSafeCount(
+        practiceRow.score_correct_items,
+        "score 答對題數統計",
+    );
+    const scoreCorrectLearners = asSafeCount(
+        practiceRow.score_correct_learners,
+        "score 答對學習者統計",
+    );
+    const scoreWrongItems = asSafeCount(practiceRow.score_wrong_items, "score 答錯題數統計");
+    const scoreWrongLearners = asSafeCount(
+        practiceRow.score_wrong_learners,
+        "score 答錯學習者統計",
+    );
+    const scorePendingItems = asSafeCount(
+        practiceRow.score_pending_items,
+        "score 待判定題數統計",
+    );
+    const scorePendingLearners = asSafeCount(
+        practiceRow.score_pending_learners,
+        "score 待判定學習者統計",
+    );
+    if (
+        scoreActiveLearners > scoreSubmittedItems
+        || completedScoreLearners > completedScoreSessions
+        || scoreCorrectLearners > completedScoreLearners
+        || scoreWrongLearners > completedScoreLearners
+        || scorePendingLearners > completedScoreLearners
+        || scoreCorrectLearners > scoreCorrectItems
+        || scoreWrongLearners > scoreWrongItems
+        || scorePendingLearners > scorePendingItems
+        || scoreAnsweredItems !== scoreTotalItems
+        || scoreCorrectItems + scoreWrongItems > scoreAnsweredItems
+        || scoreCorrectItems + scoreWrongItems + scorePendingItems !== scoreTotalItems
+    ) {
+        throw new AdminApiError("INTERNAL_ERROR", "score 報表彙總不符合 0011 契約。", 500);
+    }
+    const scoreCorrectMetric = protectedMetric(
+        scoreCorrectItems,
+        scoreCorrectLearners,
+        minimumDistinctLearners,
+    );
+    const scoreWrongMetric = protectedMetric(
+        scoreWrongItems,
+        scoreWrongLearners,
+        minimumDistinctLearners,
+    );
+    const scorePendingMetric = protectedMetric(
+        scorePendingItems,
+        scorePendingLearners,
+        minimumDistinctLearners,
+    );
+    const scoreOutcomeNeedsComplementarySuppression = [
+        scoreCorrectMetric,
+        scoreWrongMetric,
+        scorePendingMetric,
+    ].some((metric) => metric.state === "suppressed");
+    const protectScoreOutcomeTotal = (value: number): AdminReportMetric => {
+        const metric = protectedMetric(
+            value,
+            completedScoreLearners,
+            minimumDistinctLearners,
+        );
+        return scoreOutcomeNeedsComplementarySuppression && metric.state === "available"
+            ? suppressedMetric()
+            : metric;
+    };
 
     const policy = minimumDistinctLearners === null
         ? {
@@ -981,20 +1205,33 @@ export async function getAdminReportSnapshot(
                     activeLearners,
                     minimumDistinctLearners,
                 ),
-                attempts: protectedMetric(
-                    nonScoreAttempts,
-                    activeLearners,
-                    minimumDistinctLearners,
-                ),
+                attempts: protectNonScoreOutcomeTotal(),
                 results: {
                     state: protectedDatasetState(nonScoreResults, minimumDistinctLearners),
                     rows: minimumDistinctLearners === null ? [] : nonScoreResults,
                 },
             },
             scoreActivity: {
-                state: "integration_pending",
-                value: null,
-                reason: SCORE_INTEGRATION_PENDING_REASON,
+                activeLearners: protectedMetric(
+                    scoreActiveLearners,
+                    scoreActiveLearners,
+                    minimumDistinctLearners,
+                ),
+                submittedItems: protectedMetric(
+                    scoreSubmittedItems,
+                    scoreActiveLearners,
+                    minimumDistinctLearners,
+                ),
+                completedSessions: protectedMetric(
+                    completedScoreSessions,
+                    completedScoreLearners,
+                    minimumDistinctLearners,
+                ),
+                totalItems: protectScoreOutcomeTotal(scoreTotalItems),
+                answeredItems: protectScoreOutcomeTotal(scoreAnsweredItems),
+                correctItems: scoreCorrectMetric,
+                wrongItems: scoreWrongMetric,
+                pendingItems: scorePendingMetric,
             },
         },
         questionQuality: mapQuestionQuality(questionResult.rows),
@@ -1006,5 +1243,8 @@ export const ADMIN_REPORT_DEFINITIONS = Object.freeze({
     missingValueLabel: REPORT_MISSING_VALUE_LABEL,
     regionCollection: "not_collected" as const,
     nonScoreAttemptSource: "answer_attempts" as const,
-    scoreSource: "integration_pending" as const,
+    scoreSubmissionSource: "practice_score_receipts" as const,
+    scoreResultSource: "practice_sessions" as const,
+    automaticAnswerCompletenessSource:
+        "lerniqa_automatic_part_has_complete_answer" as const,
 });

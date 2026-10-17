@@ -20,11 +20,13 @@ import {
     parseAccountListQuery,
     parseAuditListQuery,
     parseQuestionListQuery,
+    parseQuestionReviewQueueQuery,
 } from "../app/lib/admin/admin-input.ts";
 import { AdminApiError } from "../app/lib/admin/admin-types.ts";
 import {
     getQuestionDetail,
     listQuestionFilterOptions,
+    listQuestionReviewQueue,
     listQuestions,
 } from "../app/lib/admin/question-repository.ts";
 
@@ -137,21 +139,26 @@ test("account list uses parameterized filters, allowlisted sort and a visible fi
         id: USER_ID,
         display_name: "王家長",
         status: "active",
+        account_role: "parent",
         created_at: "2026-10-01T00:00:00Z",
         updated_at: "2026-10-02T00:00:00Z",
         email_normalized: "parent@example.test",
         verified_at: null,
+        email_verification_state: "unverified",
         role_names: ["parent", "system_admin"],
         active_learner_count: 1,
         active_session_count: 2,
         total_count: "1",
+        ambiguous_active_email_account_count: "0",
         password_hash: "must-not-leak",
         token_hash: "must-not-leak",
     }]);
     const query = parseAccountListQuery({
         search: "王家長",
         status: "active",
+        accountRole: "parent",
         role: "system_admin",
+        verification: "unverified",
         createdFrom: "2026-10-01",
         createdTo: "2026-10-31",
         sort: "displayName",
@@ -162,21 +169,30 @@ test("account list uses parameterized filters, allowlisted sort and a visible fi
 
     const page = await listAccounts(runner, query);
     assert.equal(page.total, 1);
-    assert.equal(page.items[0]?.emailVerified, false);
+    assert.equal(page.items[0]?.emailVerificationState, "unverified");
+    assert.equal(page.items[0]?.accountRole, "parent");
     assert.deepEqual(page.items[0]?.roles, ["parent", "system_admin"]);
     assert.doesNotMatch(JSON.stringify(page), /must-not-leak/u);
 
     const call = runner.calls[0];
     assert.ok(call);
     assert.match(call.text, /ORDER BY page_row\.sort_display_name ASC, page_row\.id ASC/iu);
+    assert.match(call.text, /app_user\.account_role = ANY\(\$3::varchar\[\]\)/iu);
+    assert.match(call.text, /primary_identity\.verified_at IS NULL/iu);
+    assert.match(call.text, /identity_integrity/iu);
+    assert.match(call.text, /active_email_identity_count > 1/iu);
+    assert.match(call.text, /FROM learner_access AS access/iu);
+    assert.doesNotMatch(call.text, /user_learner_access/iu);
     assert.match(call.text, /LEFT JOIN page AS page_row ON true/iu);
-    const finalSelect = call.text.slice(call.text.lastIndexOf("SELECT page_row"));
+    const finalSelect = call.text.slice(call.text.lastIndexOf("SELECT\n            page_row"));
     assert.match(finalSelect, /LEFT JOIN page AS page_row/iu);
     assert.doesNotMatch(finalSelect, /LEFT JOIN page ON true/iu);
     assert.deepEqual(call.values, [
         "王家長",
         ["active"],
+        ["parent"],
         ["system_admin"],
+        ["unverified"],
         "2026-10-01",
         "2026-10-31",
         10,
@@ -190,14 +206,17 @@ test("account list preserves total on an empty page", async () => {
         id: null,
         display_name: null,
         status: null,
+        account_role: null,
         created_at: null,
         updated_at: null,
         email_normalized: null,
         verified_at: null,
+        email_verification_state: null,
         role_names: null,
         active_learner_count: null,
         active_session_count: null,
         total_count: "7",
+        ambiguous_active_email_account_count: "0",
     }]);
     const page = await listAccounts(runner, parseAccountListQuery({ page: "9" }));
     assert.deepEqual(page.items, []);
@@ -210,15 +229,18 @@ test("account detail exposes safe identity evidence without credential fields", 
             id: USER_ID,
             display_name: "王家長",
             status: "active",
+            account_role: "parent",
             created_at: "2026-10-01T00:00:00Z",
             updated_at: "2026-10-02T00:00:00Z",
             closed_at: null,
             email_normalized: "parent@example.test",
             verified_at: "2026-10-01T01:00:00Z",
+            email_verification_state: "verified",
             role_names: ["parent"],
             active_learner_count: 1,
             active_session_count: 1,
             last_session_seen_at: "2026-10-02T02:00:00Z",
+            active_email_identity_count: 1,
         }];
         if (/FROM account_identities AS identity/iu.test(text)) return [{
             id: SESSION_ID,
@@ -257,8 +279,10 @@ test("account detail exposes safe identity evidence without credential fields", 
     });
 
     const detail = await getAccountDetail(runner, USER_ID);
-    assert.equal(detail.emailVerified, true);
+    assert.equal(detail.emailVerificationState, "verified");
+    assert.equal(detail.accountRole, "parent");
     assert.equal(detail.learnerAccess[0]?.gradeName, "七年級");
+    assert.equal(detail.learnerAccess[0]?.learnerStatus, "active");
     const serialized = JSON.stringify(detail);
     assert.doesNotMatch(serialized, /secret-password-hash/u);
     assert.doesNotMatch(serialized, /secret-provider-subject/u);
@@ -266,6 +290,58 @@ test("account detail exposes safe identity evidence without credential fields", 
         assert.doesNotMatch(call.text, /password_hash|provider_subject|token_hash/iu);
         assert.deepEqual(call.values, [USER_ID]);
     }
+});
+
+test("account repository fails closed for ambiguous active email identities", async () => {
+    const listRunner = new FakeRunner(() => [{
+        id: null,
+        display_name: null,
+        status: null,
+        account_role: null,
+        created_at: null,
+        updated_at: null,
+        email_normalized: null,
+        verified_at: null,
+        email_verification_state: null,
+        role_names: null,
+        active_learner_count: null,
+        active_session_count: null,
+        total_count: "0",
+        ambiguous_active_email_account_count: "1",
+    }]);
+    await assertAdminError(
+        () => listAccounts(listRunner, parseAccountListQuery({})),
+        "INTERNAL_ERROR",
+        500,
+    );
+    assert.doesNotMatch(
+        listRunner.calls[0]?.text ?? "",
+        /ORDER BY identity\.created_at, identity\.id\s+LIMIT 1/iu,
+    );
+
+    const detailRunner = new FakeRunner(() => [{
+        id: USER_ID,
+        display_name: "歧義帳號",
+        status: "active",
+        account_role: "parent",
+        created_at: "2026-10-01T00:00:00Z",
+        updated_at: "2026-10-02T00:00:00Z",
+        closed_at: null,
+        email_normalized: "first@example.test",
+        verified_at: null,
+        email_verification_state: "unverified",
+        role_names: ["parent"],
+        active_learner_count: 0,
+        active_session_count: 0,
+        last_session_seen_at: null,
+        active_email_identity_count: 2,
+    }]);
+    await assertAdminError(
+        () => getAccountDetail(detailRunner, USER_ID),
+        "INTERNAL_ERROR",
+        500,
+    );
+    assert.equal(detailRunner.calls.length, 1);
 });
 
 test("question list has deterministic sorting and marks account-owned questions read-only", async () => {
@@ -367,6 +443,83 @@ test("question list applies only parameterized catalog, bank, revision and revie
     ]);
 });
 
+test("pending question review queue uses the latest review, system scope and stable pagination", async () => {
+    const draftId = "88888888-8888-4888-8888-888888888888";
+    const runner = new FakeRunner(() => [{
+        question_id: QUESTION_ID,
+        question_status: "published",
+        current_revision_id: REVISION_ID,
+        current_revision_number: 2,
+        draft_revision_id: draftId,
+        draft_revision_number: 3,
+        prompt_preview: "第四課待審題目",
+        change_note: "修正參考答案",
+        latest_review_decision: "changes_requested",
+        latest_review_reason: "答案仍需校正",
+        latest_review_at: "2026-10-16T01:00:00Z",
+        created_by_type: "user",
+        created_by_user_id: USER_ID,
+        creator_display_name: "題庫編修員",
+        created_at: "2026-10-16T00:00:00Z",
+        total_count: "1",
+    }]);
+    const query = parseQuestionReviewQueueQuery({
+        search: "第四課",
+        reviewState: "changes_requested",
+        page: "2",
+        perPage: "10",
+    });
+    const page = await listQuestionReviewQueue(runner, query);
+    assert.equal(page.items[0]?.draftRevisionId, draftId);
+    assert.equal(page.items[0]?.state, "changes_requested");
+    assert.equal(page.items[0]?.latestReviewReason, "答案仍需校正");
+    assert.deepEqual({ page: page.page, pageSize: page.pageSize, total: page.total }, {
+        page: 2,
+        pageSize: 10,
+        total: 1,
+    });
+
+    const call = runner.calls[0];
+    assert.ok(call);
+    assert.match(call.text, /question\.origin = 'system'/u);
+    assert.match(call.text, /question\.status <> 'archived'/u);
+    assert.match(call.text, /draft\.status = 'draft'/u);
+    assert.match(
+        call.text,
+        /ORDER BY review\.created_at DESC, review\.id DESC[\s\S]*LIMIT 1/u,
+    );
+    assert.match(call.text, /ORDER BY created_at ASC, draft_revision_id ASC/u);
+    assert.doesNotMatch(call.text, /第四課/u);
+    assert.deepEqual(call.values, ["第四課", ["changes_requested"], 10, 10]);
+});
+
+test("pending question review queue preserves totals when the requested page is empty", async () => {
+    const runner = new FakeRunner(() => [{
+        question_id: null,
+        question_status: null,
+        current_revision_id: null,
+        current_revision_number: null,
+        draft_revision_id: null,
+        draft_revision_number: null,
+        prompt_preview: null,
+        change_note: null,
+        latest_review_decision: null,
+        latest_review_reason: null,
+        latest_review_at: null,
+        created_by_type: null,
+        created_by_user_id: null,
+        creator_display_name: null,
+        created_at: null,
+        total_count: "31",
+    }]);
+    const page = await listQuestionReviewQueue(
+        runner,
+        parseQuestionReviewQueueQuery({ page: "3", perPage: "10" }),
+    );
+    assert.deepEqual(page.items, []);
+    assert.equal(page.total, 31);
+});
+
 test("question filter catalog exposes labels and IDs without inventing parallel data", async () => {
     const runner = new FakeRunner(() => [
         { kind: "banks", id: SESSION_ID, label: "系統題庫" },
@@ -390,6 +543,8 @@ test("question detail assembles revision children while omitting storage and imp
             status: "published",
             created_method: "import",
             current_revision_id: REVISION_ID,
+            current_revision_number: 1,
+            current_revision_created_by_user_id: USER_ID,
             owner_user_id: null,
             owner_display_name: null,
             created_by_user_id: USER_ID,
@@ -522,6 +677,8 @@ test("question detail assembles revision children while omitting storage and imp
     assert.equal(detail.revisionHistory.total, 1);
     assert.equal(detail.revisionHistory.pageSize, 10);
     assert.equal(detail.readOnly, false);
+    assert.equal(detail.currentRevisionNumber, 1);
+    assert.equal(detail.currentRevisionCreatedByUserId, USER_ID);
     const serialized = JSON.stringify(detail);
     assert.doesNotMatch(serialized, /must-not-leak/u);
     assert.doesNotMatch(serialized, /storage_key|draft_payload|pasted_text/iu);
@@ -531,6 +688,7 @@ test("question detail assembles revision children while omitting storage and imp
     const displayCall = runner.calls.find((call) =>
         /admin_question_display_revision/iu.test(call.text));
     assert.deepEqual(displayCall?.values, [QUESTION_ID, REVISION_ID]);
+    assert.match(runner.calls[0]?.text ?? "", /LEFT JOIN question_revisions AS current_revision/iu);
     for (const call of runner.calls.filter((candidate) => /ANY\(\$1::uuid\[\]\)/u.test(candidate.text))) {
         assert.deepEqual(call.values, [[REVISION_ID]]);
     }

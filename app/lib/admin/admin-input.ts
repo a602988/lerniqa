@@ -1,13 +1,17 @@
 import {
     ACCOUNT_MANAGEABLE_STATUSES,
+    ACCOUNT_IDENTITY_ROLES,
+    ACCOUNT_VERIFICATION_STATES,
     GRANTED_ROLES,
     ACCOUNT_STATUSES,
     AdminApiError,
     type AccountListQuery,
+    type AccountIdentityRole,
     type AccountManageableStatus,
     type GrantedRole,
     type AccountSortField,
     type AccountStatus,
+    type AccountVerificationState,
     type AccountStatusTransitionInput,
     type AdminDateFilter,
     type AdminMutationEvidence,
@@ -16,6 +20,7 @@ import {
     type AuditListQuery,
     type AuditSortField,
     QUESTION_ORIGINS,
+    QUESTION_REVIEW_QUEUE_STATES,
     QUESTION_REVIEW_STATUSES,
     QUESTION_REVISION_STATUSES,
     QUESTION_STATUSES,
@@ -23,21 +28,37 @@ import {
     type QuestionDraftInput,
     type QuestionListQuery,
     type QuestionOrigin,
+    type QuestionReviewQueueQuery,
+    type QuestionReviewQueueState,
     type QuestionReviewStatus,
     type QuestionRevisionStatus,
     type QuestionRevisionMutationInput,
     type QuestionSortField,
     type QuestionStatus,
     SUBSCRIPTION_BILLING_INTERVALS,
+    SUBSCRIPTION_FEATURE_STATUSES,
+    SUBSCRIPTION_FEATURE_VALUE_TYPES,
     SUBSCRIPTION_PLAN_STATUSES,
     SUBSCRIPTION_PRICE_STATUSES,
     type SortDirection,
     type SubscriptionBillingInterval,
     type SubscriptionFeatureLimitInput,
+    type SubscriptionFeatureDefinitionInput,
+    type SubscriptionFeatureDefinitionStatusInput,
+    type SubscriptionFeatureDefinitionUpdateInput,
+    type SubscriptionFeatureLimitWriteInput,
+    type SubscriptionFeatureStatus,
+    type SubscriptionFeatureValueType,
+    type SubscriptionPlanListQuery,
+    type SubscriptionPlanSortField,
     type SubscriptionPlanInput,
+    type SubscriptionPlanStatusInput,
     type SubscriptionPlanStatus,
+    type SubscriptionPlanUpdateInput,
     type SubscriptionPriceInput,
+    type SubscriptionPriceStatusInput,
     type SubscriptionPriceStatus,
+    type SubscriptionPriceUpdateInput,
 } from "./admin-types.ts";
 
 export const ADMIN_DEFAULT_PAGE_SIZE = 25;
@@ -257,11 +278,21 @@ export function parseAccountListQuery(query: AdminQueryInput): AccountListQuery 
         ...parsePagination(query),
         search: parseSearch(query),
         statuses: parseEnumList<AccountStatus>(queryValue(query, "status"), ACCOUNT_STATUSES, "帳號狀態"),
+        accountRoles: parseEnumList<AccountIdentityRole>(
+            queryValue(query, "accountRole"),
+            ACCOUNT_IDENTITY_ROLES,
+            "帳號身份",
+        ),
         roles: parseEnumList<GrantedRole>(queryValue(query, "role"), GRANTED_ROLES, "帳號角色"),
+        verificationStates: parseEnumList<AccountVerificationState>(
+            queryValue(query, "verification"),
+            ACCOUNT_VERIFICATION_STATES,
+            "信箱驗證狀態",
+        ),
         created: parseDateFilter(query, "createdFrom", "createdTo"),
         orderBy: parseOrderBy<AccountSortField>(
             query,
-            ["createdAt", "displayName", "email", "status", "updatedAt", "id"],
+            ["createdAt", "displayName", "email", "status", "accountRole", "updatedAt", "id"],
             "createdAt",
         ),
     };
@@ -296,6 +327,20 @@ export function parseQuestionListQuery(query: AdminQueryInput): QuestionListQuer
             query,
             ["createdAt", "origin", "revisionNumber", "status", "id"],
             "createdAt",
+        ),
+    };
+}
+
+export function parseQuestionReviewQueueQuery(
+    query: AdminQueryInput,
+): QuestionReviewQueueQuery {
+    return {
+        ...parsePagination(query),
+        search: parseSearch(query),
+        states: parseEnumList<QuestionReviewQueueState>(
+            queryValue(query, "reviewState"),
+            QUESTION_REVIEW_QUEUE_STATES,
+            "待審狀態",
         ),
     };
 }
@@ -363,6 +408,25 @@ export function parseAuditListQuery(query: AdminQueryInput): AuditListQuery {
             query,
             ["occurredAt", "action", "targetType", "id"],
             "occurredAt",
+        ),
+    };
+}
+
+export function parseSubscriptionPlanListQuery(
+    query: AdminQueryInput,
+): SubscriptionPlanListQuery {
+    return {
+        ...parsePagination(query),
+        search: parseSearch(query),
+        statuses: parseEnumList<SubscriptionPlanStatus>(
+            queryValue(query, "status"),
+            SUBSCRIPTION_PLAN_STATUSES,
+            "方案狀態",
+        ),
+        orderBy: parseOrderBy<SubscriptionPlanSortField>(
+            query,
+            ["code", "name", "status", "updatedAt", "id"],
+            "updatedAt",
         ),
     };
 }
@@ -525,21 +589,7 @@ function parseNullableDate(value: unknown, label: string): string | null {
     return parseDateOnly(value, label);
 }
 
-export function parseSubscriptionPriceInput(
-    value: unknown,
-    evidence: Readonly<AdminMutationEvidence>,
-): SubscriptionPriceInput {
-    if (!isRecord(value)) {
-        throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格資料格式不正確。", 400);
-    }
-    assertExactKeys(
-        value,
-        [
-            "planId", "currency", "amountMinor", "billingInterval", "billingIntervalCount",
-            "status", "effectiveFrom", "effectiveUntil",
-        ],
-        "INVALID_SUBSCRIPTION_PRICE",
-    );
+function parseSubscriptionPriceFields(value: Readonly<Record<string, unknown>>) {
     if (
         typeof value.currency !== "string"
         || value.currency !== value.currency.toUpperCase()
@@ -557,7 +607,6 @@ export function parseSubscriptionPriceInput(
         throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格生效日不可晚於結束日。", 400);
     }
     return {
-        planId: parseUuid(value.planId, "方案識別碼"),
         currency: value.currency,
         amountMinor: parseBoundedInteger(
             value.amountMinor,
@@ -579,14 +628,35 @@ export function parseSubscriptionPriceInput(
             365,
             "INVALID_SUBSCRIPTION_PRICE",
         ),
+        effectiveFrom,
+        effectiveUntil,
+    };
+}
+
+export function parseSubscriptionPriceInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPriceInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        [
+            "planId", "currency", "amountMinor", "billingInterval", "billingIntervalCount",
+            "status", "effectiveFrom", "effectiveUntil",
+        ],
+        "INVALID_SUBSCRIPTION_PRICE",
+    );
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        ...parseSubscriptionPriceFields(value),
         status: parseEnum<SubscriptionPriceStatus>(
             value.status,
             SUBSCRIPTION_PRICE_STATUSES,
             "價格狀態",
             "INVALID_SUBSCRIPTION_PRICE",
         ),
-        effectiveFrom,
-        effectiveUntil,
         ...parseRequestEvidence(evidence),
     };
 }
@@ -622,12 +692,314 @@ export function parseSubscriptionFeatureLimitInput(
     if (value.included && value.unlimited && limit !== null) {
         throw new AdminApiError("INVALID_FEATURE_LIMIT", "無上限功能不可同時設定數量上限。", 400);
     }
-    if (value.included && !value.unlimited && limit === null) {
-        throw new AdminApiError("INVALID_FEATURE_LIMIT", "有限功能必須提供數量上限。", 400);
-    }
+    // `included=true, unlimited=false, limit=null` is the valid boolean-on
+    // state. Integer definitions are checked after the service locks the
+    // referenced definition and can trust its value_type.
     return {
         planId: parseUuid(value.planId, "方案識別碼"),
         featureKey: parseMachineKey(value.featureKey, "功能代碼", 80, "INVALID_FEATURE_LIMIT"),
+        included: value.included,
+        unlimited: value.unlimited,
+        limit,
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+function parseExpectedLockVersion(
+    value: unknown,
+    errorCode: ConstructorParameters<typeof AdminApiError>[0],
+): number {
+    return parseBoundedInteger(
+        value,
+        "預期資料版本",
+        1,
+        2_147_483_647,
+        errorCode,
+    );
+}
+
+export function parseSubscriptionPlanUpdateInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPlanUpdateInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_SUBSCRIPTION_PLAN", "方案資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        ["planId", "expectedLockVersion", "name", "description"],
+        "INVALID_SUBSCRIPTION_PLAN",
+    );
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_SUBSCRIPTION_PLAN",
+        ),
+        name: parseRequiredText(value.name, "方案名稱", 1, 80, "INVALID_SUBSCRIPTION_PLAN"),
+        description: parseOptionalText(
+            value.description,
+            "方案說明",
+            500,
+            "INVALID_SUBSCRIPTION_PLAN",
+        ),
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionPlanStatusInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPlanStatusInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_SUBSCRIPTION_PLAN", "方案狀態資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        ["planId", "expectedLockVersion", "targetStatus"],
+        "INVALID_SUBSCRIPTION_PLAN",
+    );
+    const targetStatus = parseEnum<SubscriptionPlanStatus>(
+        value.targetStatus,
+        SUBSCRIPTION_PLAN_STATUSES,
+        "方案目標狀態",
+        "INVALID_SUBSCRIPTION_PLAN",
+    );
+    if (targetStatus === "draft") {
+        throw new AdminApiError(
+            "INVALID_SUBSCRIPTION_PLAN",
+            "方案狀態不可退回草稿。",
+            400,
+        );
+    }
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_SUBSCRIPTION_PLAN",
+        ),
+        targetStatus,
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionPriceStatusInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPriceStatusInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格狀態資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        ["planId", "priceId", "expectedLockVersion", "targetStatus"],
+        "INVALID_SUBSCRIPTION_PRICE",
+    );
+    const targetStatus = parseEnum<SubscriptionPriceStatus>(
+        value.targetStatus,
+        SUBSCRIPTION_PRICE_STATUSES,
+        "價格目標狀態",
+        "INVALID_SUBSCRIPTION_PRICE",
+    );
+    if (targetStatus === "draft") {
+        throw new AdminApiError(
+            "INVALID_SUBSCRIPTION_PRICE",
+            "價格狀態不可退回草稿。",
+            400,
+        );
+    }
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        priceId: parseUuid(value.priceId, "價格識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_SUBSCRIPTION_PRICE",
+        ),
+        targetStatus,
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionPriceUpdateInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionPriceUpdateInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_SUBSCRIPTION_PRICE", "價格資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        [
+            "planId", "priceId", "expectedLockVersion", "currency", "amountMinor",
+            "billingInterval", "billingIntervalCount", "effectiveFrom", "effectiveUntil",
+        ],
+        "INVALID_SUBSCRIPTION_PRICE",
+    );
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        priceId: parseUuid(value.priceId, "價格識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_SUBSCRIPTION_PRICE",
+        ),
+        ...parseSubscriptionPriceFields(value),
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+function parseSubscriptionFeatureDefinitionFields(value: Readonly<Record<string, unknown>>) {
+    const valueType = parseEnum<SubscriptionFeatureValueType>(
+        value.valueType,
+        SUBSCRIPTION_FEATURE_VALUE_TYPES,
+        "功能值類型",
+        "INVALID_FEATURE_LIMIT",
+    );
+    const rawUnit = parseOptionalText(value.unit, "功能單位", 40, "INVALID_FEATURE_LIMIT");
+    const unit = rawUnit === null
+        ? null
+        : parseMachineKey(rawUnit, "功能單位", 40, "INVALID_FEATURE_LIMIT");
+    if (valueType === "boolean" && unit !== null) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "布林功能不可設定計量單位。", 400);
+    }
+    if (valueType === "integer" && unit === null) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "整數功能必須設定計量單位。", 400);
+    }
+    return {
+        displayName: parseRequiredText(
+            value.displayName,
+            "功能名稱",
+            1,
+            120,
+            "INVALID_FEATURE_LIMIT",
+        ),
+        description: parseOptionalText(value.description, "功能說明", 500, "INVALID_FEATURE_LIMIT"),
+        valueType,
+        unit,
+    };
+}
+
+export function parseSubscriptionFeatureDefinitionInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionFeatureDefinitionInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能定義資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        ["featureKey", "displayName", "description", "valueType", "unit"],
+        "INVALID_FEATURE_LIMIT",
+    );
+    return {
+        featureKey: parseMachineKey(value.featureKey, "功能代碼", 80, "INVALID_FEATURE_LIMIT"),
+        ...parseSubscriptionFeatureDefinitionFields(value),
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionFeatureDefinitionStatusInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionFeatureDefinitionStatusInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能狀態資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        ["featureDefinitionId", "expectedLockVersion", "targetStatus"],
+        "INVALID_FEATURE_LIMIT",
+    );
+    const targetStatus = parseEnum<SubscriptionFeatureStatus>(
+        value.targetStatus,
+        SUBSCRIPTION_FEATURE_STATUSES,
+        "功能目標狀態",
+        "INVALID_FEATURE_LIMIT",
+    );
+    if (targetStatus === "draft") {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能狀態不可退回草稿。", 400);
+    }
+    return {
+        featureDefinitionId: parseUuid(value.featureDefinitionId, "功能定義識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_FEATURE_LIMIT",
+        ),
+        targetStatus,
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionFeatureDefinitionUpdateInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionFeatureDefinitionUpdateInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能定義資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        [
+            "featureDefinitionId", "expectedLockVersion", "displayName",
+            "description", "valueType", "unit",
+        ],
+        "INVALID_FEATURE_LIMIT",
+    );
+    return {
+        featureDefinitionId: parseUuid(value.featureDefinitionId, "功能定義識別碼"),
+        expectedLockVersion: parseExpectedLockVersion(
+            value.expectedLockVersion,
+            "INVALID_FEATURE_LIMIT",
+        ),
+        ...parseSubscriptionFeatureDefinitionFields(value),
+        ...parseRequestEvidence(evidence),
+    };
+}
+
+export function parseSubscriptionFeatureLimitWriteInput(
+    value: unknown,
+    evidence: Readonly<AdminMutationEvidence>,
+): SubscriptionFeatureLimitWriteInput {
+    if (!isRecord(value)) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能限制資料格式不正確。", 400);
+    }
+    assertExactKeys(
+        value,
+        [
+            "planId",
+            "featureDefinitionId",
+            "expectedLockVersion",
+            "included",
+            "unlimited",
+            "limit",
+        ],
+        "INVALID_FEATURE_LIMIT",
+    );
+    if (typeof value.included !== "boolean" || typeof value.unlimited !== "boolean") {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "功能啟用與無上限旗標必須是布林值。", 400);
+    }
+    let limit: number | null = null;
+    if (value.limit !== undefined && value.limit !== null) {
+        limit = parseBoundedInteger(
+            value.limit,
+            "功能上限",
+            0,
+            999_999_999,
+            "INVALID_FEATURE_LIMIT",
+        );
+    }
+    if (!value.included && (value.unlimited || limit !== null)) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "未包含的功能不可設定用量。", 400);
+    }
+    if (value.included && value.unlimited && limit !== null) {
+        throw new AdminApiError("INVALID_FEATURE_LIMIT", "無上限功能不可同時設定數量上限。", 400);
+    }
+    const expectedLockVersion = value.expectedLockVersion === null
+        ? null
+        : parseExpectedLockVersion(value.expectedLockVersion, "INVALID_FEATURE_LIMIT");
+    return {
+        planId: parseUuid(value.planId, "方案識別碼"),
+        featureDefinitionId: parseUuid(value.featureDefinitionId, "功能定義識別碼"),
+        expectedLockVersion,
         included: value.included,
         unlimited: value.unlimited,
         limit,

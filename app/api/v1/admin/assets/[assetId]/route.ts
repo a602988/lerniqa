@@ -3,13 +3,17 @@ import {
     findAdminQuestionAsset,
     readAdminQuestionAssetFile,
 } from "@/app/lib/admin/admin-asset-repository";
-import { requireAdminReadContext } from "@/app/lib/admin/admin-server";
+import {
+    requireAdminReadContext,
+    withAdminReadOnlySnapshot,
+} from "@/app/lib/admin/admin-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const getAdminAsset = createAdminAssetGetHandler({
-    requireReadContext: requireAdminReadContext,
+    withSnapshot: withAdminReadOnlySnapshot,
+    authorize: requireAdminReadContext,
     findAsset: findAdminQuestionAsset,
     readAsset: readAdminQuestionAssetFile,
 });

@@ -8,6 +8,21 @@ const nextConfig: NextConfig = {
     async redirects() {
         return [{ source: "/local-practice", destination: "/practice", permanent: false }];
     },
+    async headers() {
+        return [
+            {
+                source: "/admin/:path*",
+                headers: [
+                    {
+                        key: "Content-Security-Policy",
+                        value: "frame-ancestors 'none'",
+                    },
+                    { key: "X-Frame-Options", value: "DENY" },
+                    { key: "Referrer-Policy", value: "no-referrer" },
+                ],
+            },
+        ];
+    },
     async rewrites() {
         return [
             {

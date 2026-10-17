@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
 
 import { listAccounts } from "@/app/lib/admin/account-repository";
+import { loadAdminAccountListRequest } from "@/app/lib/admin/admin-account-handler";
 import { adminDataResponse, handleAdminHttpError } from "@/app/lib/admin/admin-http";
-import { parseAccountListQuery } from "@/app/lib/admin/admin-input";
-import { requireAdminReadContext } from "@/app/lib/admin/admin-server";
+import {
+    requireAdminReadContext,
+    withAdminReadOnlySnapshot,
+} from "@/app/lib/admin/admin-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<NextResponse> {
     try {
-        const { runner } = await requireAdminReadContext(request);
-        const query = parseAccountListQuery(new URL(request.url).searchParams);
-        const page = await listAccounts(runner, query);
+        const { page } = await loadAdminAccountListRequest(request, {
+            withSnapshot: withAdminReadOnlySnapshot,
+            authorize: requireAdminReadContext,
+            list: listAccounts,
+        });
 
         return adminDataResponse(
             { accounts: page.items },

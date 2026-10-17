@@ -13,6 +13,7 @@ import {
     parseQuestionDraftInput,
     parseQuestionDetailQuery,
     parseQuestionListQuery,
+    parseQuestionReviewQueueQuery,
     parseQuestionRevisionMutationInput,
     parseSubscriptionFeatureLimitInput,
     parseSubscriptionPlanInput,
@@ -54,7 +55,9 @@ test("parses account list pagination, filters and deterministic sorting", () => 
         perPage: "40",
         search: "  Ａlice   Parent ",
         status: "active,suspended,active",
+        accountRole: "parent,learner,parent",
         role: "parent,system_admin",
+        verification: "verified,unverified,verified",
         createdFrom: "2026-01-01",
         createdTo: "2026-01-31",
         sort: "displayName",
@@ -68,7 +71,9 @@ test("parses account list pagination, filters and deterministic sorting", () => 
         limit: 40,
         search: "Alice Parent",
         statuses: ["active", "suspended"],
+        accountRoles: ["parent", "learner"],
         roles: ["parent", "system_admin"],
+        verificationStates: ["verified", "unverified"],
         created: { from: "2026-01-01", to: "2026-01-31" },
         orderBy: [
             { field: "displayName", direction: "asc" },
@@ -107,7 +112,9 @@ test("rejects pagination overflow, ambiguous values and non-allowlisted sorts", 
         { sort: "created_at desc; drop table users" },
         { direction: "sideways" },
         { status: "active,unknown" },
+        { accountRole: "system_admin" },
         { role: "owner" },
+        { verification: "manually_verified" },
     ]) {
         assertAdminError(() => parseAccountListQuery(query), "INVALID_QUERY", 400);
     }
@@ -192,6 +199,33 @@ test("parses bounded question revision history and selected revision", () => {
     assertAdminError(
         () => parseQuestionDetailQuery(new URLSearchParams("revisionPage=1&revisionPage=2")),
         "INVALID_QUERY",
+    );
+});
+
+test("parses the pending question review queue with allowlisted state and pagination", () => {
+    const query = parseQuestionReviewQueueQuery({
+        search: "  第四課  草稿 ",
+        reviewState: "unreviewed,changes_requested,unreviewed",
+        page: "2",
+        perPage: "10",
+    });
+    assert.equal(query.search, "第四課 草稿");
+    assert.deepEqual(query.states, ["unreviewed", "changes_requested"]);
+    assert.deepEqual(
+        { page: query.page, pageSize: query.pageSize, offset: query.offset, limit: query.limit },
+        { page: 2, pageSize: 10, offset: 10, limit: 10 },
+    );
+    assertAdminError(
+        () => parseQuestionReviewQueueQuery({ reviewState: "approved" }),
+        "INVALID_QUERY",
+        400,
+    );
+    assertAdminError(
+        () => parseQuestionReviewQueueQuery(
+            new URLSearchParams("reviewState=unreviewed&reviewState=changes_requested"),
+        ),
+        "INVALID_QUERY",
+        400,
     );
 });
 
@@ -529,12 +563,21 @@ test("requires coherent included, finite and unlimited feature limits", () => {
         }, MUTATION_EVIDENCE).limit,
         null,
     );
+    assert.deepEqual(
+        parseSubscriptionFeatureLimitInput({
+            planId: PLAN_ID,
+            featureKey: "priority_review",
+            included: true,
+            unlimited: false,
+            limit: null,
+        }, MUTATION_EVIDENCE).limit,
+        null,
+    );
 
     for (const invalid of [
         { included: false, unlimited: true, limit: null },
         { included: false, unlimited: false, limit: 0 },
         { included: true, unlimited: true, limit: 1 },
-        { included: true, unlimited: false, limit: null },
         { included: true, unlimited: false, limit: -1 },
     ]) {
         assertAdminError(

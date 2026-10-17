@@ -62,7 +62,9 @@ export function DashboardView({
                                                         <p>{item.description}</p>
                                                     ) : null}
                                                 </div>
-                                                <time>{item.occurredAt}</time>
+                                                <time dateTime={item.occurredAtIso}>
+                                                    {item.occurredAt}
+                                                </time>
                                             </li>
                                         ))}
                                     </ol>

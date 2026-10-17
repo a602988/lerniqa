@@ -62,6 +62,45 @@ const COMMON_STATUS_FIELDS = [
     "reason",
 ] as const;
 
+const SUBSCRIPTION_PLAN_FIELDS = [
+    "code",
+    "name",
+    "description",
+    "status",
+    "lockVersion",
+] as const;
+
+const SUBSCRIPTION_PRICE_FIELDS = [
+    "planId",
+    "currency",
+    "amountMinor",
+    "billingInterval",
+    "billingIntervalCount",
+    "effectiveFrom",
+    "effectiveUntil",
+    "status",
+    "lockVersion",
+] as const;
+
+const SUBSCRIPTION_FEATURE_DEFINITION_FIELDS = [
+    "featureKey",
+    "displayName",
+    "description",
+    "valueType",
+    "unit",
+    "status",
+    "lockVersion",
+] as const;
+
+const SUBSCRIPTION_FEATURE_LIMIT_FIELDS = [
+    "planId",
+    "featureDefinitionId",
+    "included",
+    "unlimited",
+    "limit",
+    "lockVersion",
+] as const;
+
 const AUDIT_FIELD_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
     account_status_changed: [
         ...COMMON_STATUS_FIELDS,
@@ -97,6 +136,20 @@ const AUDIT_FIELD_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
         "minimumDistinctLearners",
         ...COMMON_STATUS_FIELDS,
     ],
+    subscription_plan_created: SUBSCRIPTION_PLAN_FIELDS,
+    subscription_plan_updated: SUBSCRIPTION_PLAN_FIELDS,
+    subscription_plan_activated: SUBSCRIPTION_PLAN_FIELDS,
+    subscription_plan_retired: SUBSCRIPTION_PLAN_FIELDS,
+    subscription_price_created: SUBSCRIPTION_PRICE_FIELDS,
+    subscription_price_updated: SUBSCRIPTION_PRICE_FIELDS,
+    subscription_price_activated: SUBSCRIPTION_PRICE_FIELDS,
+    subscription_price_retired: SUBSCRIPTION_PRICE_FIELDS,
+    subscription_feature_definition_created: SUBSCRIPTION_FEATURE_DEFINITION_FIELDS,
+    subscription_feature_definition_updated: SUBSCRIPTION_FEATURE_DEFINITION_FIELDS,
+    subscription_feature_definition_activated: SUBSCRIPTION_FEATURE_DEFINITION_FIELDS,
+    subscription_feature_definition_retired: SUBSCRIPTION_FEATURE_DEFINITION_FIELDS,
+    subscription_feature_limit_set: SUBSCRIPTION_FEATURE_LIMIT_FIELDS,
+    subscription_feature_limit_updated: SUBSCRIPTION_FEATURE_LIMIT_FIELDS,
 };
 
 function asIso(value: Date | string): string {

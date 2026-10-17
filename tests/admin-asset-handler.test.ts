@@ -32,8 +32,13 @@ function request(): Request {
 test("asset handler authorizes before parsing the route ID or querying assets", async () => {
     const events: string[] = [];
     const handler = createAdminAssetGetHandler({
-        async requireReadContext() {
+        async withSnapshot(operation) {
+            events.push("snapshot");
+            return operation(runner);
+        },
+        async authorize(_request, receivedRunner) {
             events.push("authorize");
+            assert.equal(receivedRunner, runner);
             throw new AdminApiError("FORBIDDEN", "沒有後台權限。", 403);
         },
         async findAsset() {
@@ -50,16 +55,20 @@ test("asset handler authorizes before parsing the route ID or querying assets", 
         params: Promise.resolve({ assetId: "not-a-uuid" }),
     });
     assert.equal(response.status, 403);
-    assert.deepEqual(events, ["authorize"]);
+    assert.deepEqual(events, ["snapshot", "authorize"]);
     assert.equal(response.headers.get("content-security-policy"), "default-src 'none'; sandbox");
 });
 
 test("asset handler validates UUID only after authorization", async () => {
     const events: string[] = [];
     const handler = createAdminAssetGetHandler({
-        async requireReadContext() {
+        async withSnapshot(operation) {
+            events.push("snapshot");
+            return operation(runner);
+        },
+        async authorize(_request, receivedRunner) {
             events.push("authorize");
-            return { runner };
+            assert.equal(receivedRunner, runner);
         },
         async findAsset() {
             events.push("query");
@@ -75,20 +84,31 @@ test("asset handler validates UUID only after authorization", async () => {
         params: Promise.resolve({ assetId: "not-a-uuid" }),
     });
     assert.equal(response.status, 400);
-    assert.deepEqual(events, ["authorize"]);
+    assert.deepEqual(events, ["snapshot", "authorize"]);
     assert.equal((await response.json()).error.code, "INVALID_UUID");
 });
 
 test("asset handler serves bytes with hardened headers and an opaque filename", async () => {
+    const events: string[] = [];
     const handler = createAdminAssetGetHandler({
-        async requireReadContext() {
-            return { runner };
+        async withSnapshot(operation) {
+            events.push("snapshot:start");
+            const value = await operation(runner);
+            events.push("snapshot:commit");
+            return value;
+        },
+        async authorize(_request, receivedRunner) {
+            events.push("authorize");
+            assert.equal(receivedRunner, runner);
         },
         async findAsset(_runner, id) {
+            events.push("query");
+            assert.equal(_runner, runner);
             assert.equal(id, ASSET_ID);
             return asset;
         },
         async readAsset(value) {
+            events.push("read");
             assert.equal(value.storageKey, STORAGE_KEY);
             return file;
         },
@@ -111,13 +131,23 @@ test("asset handler serves bytes with hardened headers and an opaque filename", 
     const serializedHeaders = JSON.stringify([...response.headers.entries()]);
     assert.doesNotMatch(serializedHeaders, /storage_key|local-data|do-not-expose|questions\//iu);
     assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [...file.bytes]);
+    assert.deepEqual(events, [
+        "snapshot:start",
+        "authorize",
+        "query",
+        "snapshot:commit",
+        "read",
+    ]);
 });
 
 test("unknown records and unavailable files share one non-disclosing 404", async () => {
     for (const mode of ["missing-row", "missing-file"] as const) {
         const handler = createAdminAssetGetHandler({
-            async requireReadContext() {
-                return { runner };
+            async withSnapshot(operation) {
+                return operation(runner);
+            },
+            async authorize(_request, receivedRunner) {
+                assert.equal(receivedRunner, runner);
             },
             async findAsset() {
                 return mode === "missing-row" ? null : asset;

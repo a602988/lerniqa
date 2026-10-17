@@ -56,6 +56,8 @@ export function formatMetricValue(value: ViewMetricValueDto): string | number {
             return "尚未設定統計隱私政策";
         case "integration_pending":
             return "尚未串接";
+        case "report_only":
+            return "請至報表查看";
         case "no_data":
         default:
             return "無資料";
@@ -84,21 +86,40 @@ export function ViewFilters({ filters }: { filters: ViewFilterDto }) {
                     </FormField>
                 ) : undefined
             }
-            filters={filters.selects?.map((select) => (
-                <FormField
-                    className={styles.compactField}
-                    key={select.name}
-                    label={select.label}
-                    htmlFor={`filter-${select.name}`}
-                >
-                    <NativeSelect
-                        id={`filter-${select.name}`}
-                        name={select.name}
-                        defaultValue={select.value}
-                        options={[...select.options]}
-                    />
-                </FormField>
-            ))}
+            filters={[
+                ...(filters.selects ?? []).map((select) => (
+                    <FormField
+                        className={styles.compactField}
+                        key={select.name}
+                        label={select.label}
+                        htmlFor={`filter-${select.name}`}
+                    >
+                        <NativeSelect
+                            id={`filter-${select.name}`}
+                            name={select.name}
+                            defaultValue={select.value}
+                            options={[...select.options]}
+                        />
+                    </FormField>
+                )),
+                ...(filters.dates ?? []).map((date) => (
+                    <FormField
+                        className={styles.compactField}
+                        key={date.name}
+                        label={date.label}
+                        htmlFor={`filter-${date.name}`}
+                    >
+                        <Input
+                            id={`filter-${date.name}`}
+                            type="date"
+                            name={date.name}
+                            defaultValue={date.value}
+                            min={date.min}
+                            max={date.max}
+                        />
+                    </FormField>
+                )),
+            ]}
             actions={
                 <>
                     <Button type="submit" appearance="solid" tone="primary">

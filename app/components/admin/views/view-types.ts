@@ -14,7 +14,8 @@ type ViewUnavailableMetricState =
     | "not_collected"
     | "suppressed"
     | "policy_required"
-    | "integration_pending";
+    | "integration_pending"
+    | "report_only";
 
 export type ViewMetricValueDto =
     | { state: "available"; value: string | number }
@@ -47,6 +48,14 @@ export interface ViewFilterSelectDto {
     options: readonly ViewFilterOptionDto[];
 }
 
+export interface ViewFilterDateDto {
+    name: string;
+    label: string;
+    value: string;
+    min?: string;
+    max?: string;
+}
+
 export interface ViewFilterDto {
     action: string;
     search?: {
@@ -56,6 +65,7 @@ export interface ViewFilterDto {
         value: string;
     };
     selects?: readonly ViewFilterSelectDto[];
+    dates?: readonly ViewFilterDateDto[];
     hiddenFields?: Readonly<Record<string, string>>;
     resetHref?: string;
     submitLabel?: string;
@@ -94,6 +104,7 @@ export interface DashboardActivityDto {
     title: string;
     description?: string | null;
     occurredAt: string;
+    occurredAtIso: string;
     href?: string;
 }
 
@@ -109,6 +120,7 @@ export interface AccountRowDto {
     id: string;
     displayName: string;
     primaryEmail: string | null;
+    emailVerificationState: "verified" | "unverified" | "not_applicable";
     status: string;
     accountRole: string | null;
     activeRoles: readonly string[];
@@ -121,8 +133,10 @@ export interface AccountIdentityDto {
     id: string;
     providerLabel: string;
     identifier: string;
+    lifecycleState: "active" | "revoked";
     verificationState: "verified" | "unverified" | "not_applicable";
     verifiedAt: string | null;
+    revokedAt: string | null;
 }
 
 export interface AccountRoleGrantDto {
@@ -138,6 +152,10 @@ export interface AccountLearnerAccessDto {
     gradeLabel: string | null;
     semesterLabel: string | null;
     accessRole: string;
+    learnerStatus: "active" | "archived";
+    accessState: "accepted" | "pending" | "revoked";
+    effective: boolean;
+    acceptedAt: string | null;
     permissions: {
         canViewResults: boolean;
         canCreatePlans: boolean;
@@ -164,6 +182,7 @@ export interface AccountDetailDto {
     id: string;
     displayName: string;
     primaryEmail: string | null;
+    emailVerificationState: "verified" | "unverified" | "not_applicable";
     status: string;
     accountRole: string | null;
     createdAt: string;
@@ -329,6 +348,7 @@ interface QuestionDetailBaseDto {
     status: string;
     createdMethod: string;
     currentRevisionId: string | null;
+    currentRevisionNumber: number | null;
     owner: { id: string; displayName: string } | null;
     createdBy: { id: string; displayName: string } | null;
     createdAt: string;
@@ -365,7 +385,16 @@ export type QuestionDetailDto =
           origin: "system";
           accessPolicy:
               | { mode: "read-only"; reason: string }
-              | { mode: "editable"; label: string; href: string; reason?: string };
+              | {
+                    mode: "editable";
+                    label: string;
+                    href: string;
+                    reason?: string;
+                    canReviewDraft: boolean;
+                    reviewBlockedReason?: string;
+                    canPublishDraft: boolean;
+                    publishBlockedReason?: string;
+                };
       });
 
 export interface QuestionsViewProps {
@@ -378,6 +407,31 @@ export interface QuestionsViewProps {
     detailCloseHref: string;
     hasActiveFilters: boolean;
     reviewQueueHref?: string;
+}
+
+export interface QuestionReviewQueueRowDto {
+    questionId: string;
+    draftRevisionId: string;
+    draftRevisionNumber: number;
+    currentRevisionNumber: number;
+    prompt: string;
+    changeNote: string | null;
+    reviewState: "unreviewed" | "changes_requested";
+    reviewStateLabel: string;
+    latestReviewReason: string | null;
+    latestReviewAt: string | null;
+    createdBy: string;
+    createdAt: string;
+    detailHref: string;
+}
+
+export interface QuestionReviewQueueViewProps {
+    state: ViewLoadState;
+    filters: ViewFilterDto;
+    rows: readonly QuestionReviewQueueRowDto[];
+    pagination: ViewPaginationDto;
+    hasActiveFilters: boolean;
+    backHref: string;
 }
 
 export interface SubscriptionPlanRowDto {
@@ -393,6 +447,58 @@ export interface SubscriptionPlanRowDto {
     detailHref?: string;
 }
 
+export interface SubscriptionPriceDto {
+    id: string;
+    currency: string;
+    amountMinor: number;
+    billingInterval: string;
+    billingIntervalCount: number;
+    status: string;
+    effectiveFrom: string | null;
+    effectiveUntil: string | null;
+    lockVersion: number;
+    updatedAt: string;
+}
+
+export interface SubscriptionFeatureLimitDto {
+    id: string;
+    featureDefinitionId: string;
+    featureKey: string;
+    displayName: string;
+    valueType: "boolean" | "integer";
+    unit: string | null;
+    featureStatus: string;
+    included: boolean;
+    unlimited: boolean;
+    limit: number | null;
+    lockVersion: number;
+    updatedAt: string;
+}
+
+export interface SubscriptionFeatureDefinitionDto {
+    id: string;
+    featureKey: string;
+    displayName: string;
+    description: string | null;
+    valueType: "boolean" | "integer";
+    unit: string | null;
+    status: string;
+    lockVersion: number;
+}
+
+export interface SubscriptionPlanDetailDto {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    status: string;
+    lockVersion: number;
+    createdAt: string;
+    updatedAt: string;
+    prices: readonly SubscriptionPriceDto[];
+    featureLimits: readonly SubscriptionFeatureLimitDto[];
+}
+
 export interface SubscriptionPlansViewProps {
     state: ViewLoadState;
     catalogState: "schema_pending" | "ready";
@@ -401,6 +507,9 @@ export interface SubscriptionPlansViewProps {
     rows: readonly SubscriptionPlanRowDto[];
     pagination?: ViewPaginationDto;
     catalogPolicy: ViewActionPolicyDto;
+    detail?: SubscriptionPlanDetailDto | null;
+    detailCloseHref?: string;
+    featureDefinitions?: readonly SubscriptionFeatureDefinitionDto[];
 }
 
 export type ReportSeriesRowDto = {
@@ -470,4 +579,5 @@ export interface AuditViewProps {
     sorts: readonly ViewSortLinkDto[];
     rows: readonly AuditRowDto[];
     pagination: ViewPaginationDto;
+    hasActiveFilters: boolean;
 }

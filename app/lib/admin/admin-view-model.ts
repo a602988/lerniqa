@@ -8,12 +8,15 @@ import type {
     DashboardViewProps,
     QuestionClassificationDto,
     QuestionDetailDto,
+    QuestionReviewQueueViewProps,
     QuestionRevisionDto,
     QuestionRevisionSummaryDto,
     QuestionRowDto,
     QuestionsViewProps,
     ReportsViewProps,
     ReportSeriesDto,
+    SubscriptionFeatureDefinitionDto,
+    SubscriptionPlanDetailDto,
     SubscriptionPlansViewProps,
     ViewFilterOptionDto,
     ViewMetricDto,
@@ -33,6 +36,7 @@ import type {
     AdminQuestionDetail,
     AdminQuestionFilterOptions,
     AdminQuestionPage,
+    AdminQuestionReviewQueuePage,
     AdminQuestionRevision,
     AdminQuestionRevisionSummary,
 } from "./question-repository.ts";
@@ -44,11 +48,18 @@ import type {
     AdminReportSnapshot,
 } from "./report-repository.ts";
 import type {
+    AdminSubscriptionFeatureDefinition,
+    AdminSubscriptionPlan,
+    AdminSubscriptionPlanPage,
+} from "./subscription-repository.ts";
+import type {
     AccountListQuery,
     AdminSort,
     AuditListQuery,
     QuestionDetailQuery,
     QuestionListQuery,
+    QuestionReviewQueueQuery,
+    SubscriptionPlanListQuery,
 } from "./admin-types.ts";
 import { AdminApiError } from "./admin-types.ts";
 
@@ -67,9 +78,57 @@ type SortDefinition<Field extends string> = {
 const ACCOUNT_STATUS_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "", label: "全部狀態" },
     { value: "active", label: "啟用" },
-    { value: "suspended", label: "停用" },
+    { value: "suspended", label: "已停權" },
     { value: "closed", label: "已關閉" },
 ];
+
+const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
+    account_status_changed: "變更帳號狀態",
+    account_suspended: "帳號已停權",
+    account_reactivated: "帳號已恢復",
+    admin_role_granted: "授予管理員角色",
+    admin_role_revoked: "撤銷管理員角色",
+    system_question_revision_draft_created: "建立題目修正版草稿",
+    system_question_revision_status_changed: "變更題目版本狀態",
+    system_question_revision_reviewed: "審核題目版本",
+    data_erasure_completed: "完成資料刪除",
+    analytics_privacy_policy_changed: "變更統計隱私政策",
+    subscription_plan_created: "建立訂閱方案",
+    subscription_plan_updated: "更新訂閱方案",
+    subscription_plan_activated: "啟用訂閱方案",
+    subscription_plan_retired: "停用訂閱方案",
+    subscription_price_created: "建立方案價格",
+    subscription_price_updated: "更新方案價格",
+    subscription_price_activated: "啟用方案價格",
+    subscription_price_retired: "停用方案價格",
+    subscription_feature_definition_created: "建立方案功能",
+    subscription_feature_definition_updated: "更新方案功能",
+    subscription_feature_definition_activated: "啟用方案功能",
+    subscription_feature_definition_retired: "停用方案功能",
+    subscription_feature_limit_set: "設定方案功能限制",
+    subscription_feature_limit_updated: "更新方案功能限制",
+};
+
+const AUDIT_TARGET_TYPE_LABELS: Readonly<Record<string, string>> = {
+    user: "帳號",
+    user_role: "帳號角色",
+    question: "題目",
+    question_revision: "題目版本",
+    data_subject: "資料主體",
+    analytics_privacy_policy: "統計隱私政策",
+    subscription_plan: "訂閱方案",
+    subscription_plan_price: "方案價格",
+    subscription_feature_definition: "方案功能",
+    subscription_plan_feature_limit: "方案功能限制",
+};
+
+function auditActionLabel(action: string): string {
+    return AUDIT_ACTION_LABELS[action] ?? action;
+}
+
+function auditTargetTypeLabel(targetType: string): string {
+    return AUDIT_TARGET_TYPE_LABELS[targetType] ?? targetType;
+}
 
 const ACCOUNT_ROLE_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "", label: "全部有效角色" },
@@ -78,6 +137,27 @@ const ACCOUNT_ROLE_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "tutor", label: "導師" },
     { value: "system_admin", label: "系統管理員" },
 ];
+
+const ACCOUNT_IDENTITY_ROLE_OPTIONS: readonly ViewFilterOptionDto[] = [
+    { value: "", label: "全部帳號身份" },
+    { value: "parent", label: "家長" },
+    { value: "learner", label: "學習者" },
+    { value: "tutor", label: "導師" },
+];
+
+const ACCOUNT_VERIFICATION_OPTIONS: readonly ViewFilterOptionDto[] = [
+    { value: "", label: "全部驗證狀態" },
+    { value: "verified", label: "信箱已驗證" },
+    { value: "unverified", label: "信箱未驗證" },
+    { value: "not_applicable", label: "無有效信箱身份" },
+];
+
+const ACCOUNT_IDENTITY_PROVIDER_LABELS: Readonly<Record<string, string>> = {
+    email: "電子郵件",
+    google: "Google",
+    line: "LINE",
+    facebook: "Facebook",
+};
 
 const QUESTION_STATUS_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "", label: "全部狀態" },
@@ -107,6 +187,12 @@ const QUESTION_REVIEW_STATUS_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "changes_requested", label: "要求修改" },
 ];
 
+const QUESTION_REVIEW_QUEUE_STATE_OPTIONS: readonly ViewFilterOptionDto[] = [
+    { value: "", label: "全部待審狀態" },
+    { value: "unreviewed", label: "尚未審核" },
+    { value: "changes_requested", label: "已要求修改" },
+];
+
 const REPORT_RANGE_OPTIONS: readonly ViewFilterOptionDto[] = [
     { value: "7d", label: "最近 7 日" },
     { value: "30d", label: "最近 30 日" },
@@ -134,7 +220,7 @@ function singleQueryValue(
 }
 export function readAdminDetailId(
     searchParams: AdminPageSearchParams,
-    key: "account" | "question",
+    key: "account" | "question" | "plan",
 ): string | undefined {
     return singleQueryValue(searchParams, key);
 }
@@ -162,7 +248,13 @@ function accountQueryParams(query: AccountListQuery): URLSearchParams {
     const params = new URLSearchParams();
     if (query.search) params.set("search", query.search);
     if (query.statuses.length > 0) params.set("status", query.statuses.join(","));
+    if (query.accountRoles.length > 0) {
+        params.set("accountRole", query.accountRoles.join(","));
+    }
     if (query.roles.length > 0) params.set("role", query.roles.join(","));
+    if (query.verificationStates.length > 0) {
+        params.set("verification", query.verificationStates.join(","));
+    }
     if (query.created.from) params.set("createdFrom", query.created.from);
     if (query.created.to) params.set("createdTo", query.created.to);
     params.set("page", String(query.page));
@@ -208,6 +300,19 @@ function questionQueryParams(query: QuestionListQuery): URLSearchParams {
         params.set("sort", primarySort.field);
         params.set("direction", primarySort.direction);
     }
+    return params;
+}
+
+function questionReviewQueueQueryParams(
+    query: QuestionReviewQueueQuery,
+): URLSearchParams {
+    const params = new URLSearchParams();
+    if (query.search) params.set("search", query.search);
+    if (query.states.length > 0) {
+        params.set("reviewState", query.states.join(","));
+    }
+    params.set("page", String(query.page));
+    params.set("perPage", String(query.pageSize));
     return params;
 }
 
@@ -297,10 +402,9 @@ function mapAccountRow(
         id: account.id,
         displayName: account.displayName,
         primaryEmail: account.email,
+        emailVerificationState: account.emailVerificationState,
         status: account.status,
-        // `users.account_role` arrives with the committed 0010 contract. Never
-        // infer this ordinary account classification from privileged grants.
-        accountRole: null,
+        accountRole: account.accountRole,
         activeRoles: account.roles,
         learnerCount: account.activeLearnerCount,
         createdAt: formatAdminDateTime(account.createdAt),
@@ -322,22 +426,27 @@ export function mapAccountDetail(account: AdminAccountDetail): AccountDetailDto 
         id: account.id,
         displayName: account.displayName,
         primaryEmail: account.email,
+        emailVerificationState: account.emailVerificationState,
         status: account.status,
-        accountRole: null,
+        accountRole: account.accountRole,
         createdAt: formatAdminDateTime(account.createdAt),
         updatedAt: formatAdminDateTime(account.updatedAt),
         identities: account.identities.map((identity) => {
             const verificationState = identityVerificationState(identity);
+            const revokedAt = identity.revokedAt
+                ? formatAdminDateTime(identity.revokedAt)
+                : null;
             return {
                 id: identity.id,
-                providerLabel: identity.provider === "email"
-                    ? "電子郵件"
-                    : identity.provider,
+                providerLabel: ACCOUNT_IDENTITY_PROVIDER_LABELS[identity.provider]
+                    ?? identity.provider,
                 identifier: identity.email ?? "未填",
+                lifecycleState: revokedAt ? "revoked" : "active",
                 verificationState,
                 verifiedAt: verificationState === "verified" && identity.verifiedAt
                     ? formatAdminDateTime(identity.verifiedAt)
                     : null,
+                revokedAt,
             };
         }),
         roles: account.roleGrants.map((grant) => ({
@@ -348,22 +457,37 @@ export function mapAccountDetail(account: AdminAccountDetail): AccountDetailDto 
                 ? formatAdminDateTime(grant.revokedAt)
                 : null,
         })),
-        learnerAccess: account.learnerAccess.map((access) => ({
-            id: access.id,
-            learnerName: access.learnerDisplayName,
-            gradeLabel: access.gradeName ?? access.gradeCode,
-            semesterLabel: access.semesterName ?? access.semesterCode,
-            accessRole: access.accessRole,
-            permissions: {
-                canViewResults: access.canViewResults,
-                canCreatePlans: access.canCreatePlans,
-                canReviewAnswers: access.canReviewAnswers,
-                canManageSettings: access.canManageSettings,
-            },
-            revokedAt: access.revokedAt
+        learnerAccess: account.learnerAccess.map((access) => {
+            const acceptedAt = access.acceptedAt
+                ? formatAdminDateTime(access.acceptedAt)
+                : null;
+            const revokedAt = access.revokedAt
                 ? formatAdminDateTime(access.revokedAt)
-                : null,
-        })),
+                : null;
+            const accessState = revokedAt
+                ? "revoked" as const
+                : acceptedAt
+                  ? "accepted" as const
+                  : "pending" as const;
+            return {
+                id: access.id,
+                learnerName: access.learnerDisplayName,
+                gradeLabel: access.gradeName ?? access.gradeCode,
+                semesterLabel: access.semesterName ?? access.semesterCode,
+                accessRole: access.accessRole,
+                learnerStatus: access.learnerStatus,
+                accessState,
+                effective: accessState === "accepted" && access.learnerStatus === "active",
+                acceptedAt,
+                permissions: {
+                    canViewResults: access.canViewResults,
+                    canCreatePlans: access.canCreatePlans,
+                    canReviewAnswers: access.canReviewAnswers,
+                    canManageSettings: access.canManageSettings,
+                },
+                revokedAt,
+            };
+        }),
         statusPolicy: {
             mode: "locked",
             label: "需要當次確認",
@@ -416,15 +540,45 @@ export function buildAccountsViewModel({
                     ),
                 },
                 {
+                    name: "accountRole",
+                    label: "帳號身份",
+                    value: query.accountRoles.join(","),
+                    options: withCurrentMultiValue(
+                        ACCOUNT_IDENTITY_ROLE_OPTIONS,
+                        query.accountRoles,
+                    ),
+                },
+                {
                     name: "role",
                     label: "有效角色",
                     value: query.roles.join(","),
                     options: withCurrentMultiValue(ACCOUNT_ROLE_OPTIONS, query.roles),
                 },
+                {
+                    name: "verification",
+                    label: "信箱驗證",
+                    value: query.verificationStates.join(","),
+                    options: withCurrentMultiValue(
+                        ACCOUNT_VERIFICATION_OPTIONS,
+                        query.verificationStates,
+                    ),
+                },
+            ],
+            dates: [
+                {
+                    name: "createdFrom",
+                    label: "註冊起日",
+                    value: query.created.from ?? "",
+                    max: query.created.to,
+                },
+                {
+                    name: "createdTo",
+                    label: "註冊迄日",
+                    value: query.created.to ?? "",
+                    min: query.created.from,
+                },
             ],
             hiddenFields: {
-                ...(query.created.from ? { createdFrom: query.created.from } : {}),
-                ...(query.created.to ? { createdTo: query.created.to } : {}),
                 perPage: String(query.pageSize),
                 sort: primarySort?.field ?? "createdAt",
                 direction: primarySort?.direction ?? "desc",
@@ -439,6 +593,7 @@ export function buildAccountsViewModel({
                 { key: "displayName", label: "帳號" },
                 { key: "email", label: "主要信箱" },
                 { key: "status", label: "狀態" },
+                { key: "accountRole", label: "帳號身份" },
                 { key: "createdAt", label: "註冊時間" },
             ],
         ),
@@ -466,8 +621,8 @@ function mapAuditRow(item: AdminAuditListItem): AuditRowDto {
         id: item.id,
         occurredAt: formatAdminDateTime(item.occurredAt),
         actorLabel: auditActorLabel(item),
-        actionLabel: item.action,
-        targetTypeLabel: item.targetType,
+        actionLabel: auditActionLabel(item.action),
+        targetTypeLabel: auditTargetTypeLabel(item.targetType),
         targetLabel: item.targetId,
         requestId: item.requestId,
     };
@@ -496,13 +651,25 @@ export function buildAuditViewModel({
                 placeholder: "操作、目標、Request ID 或操作者",
                 value: query.search ?? "",
             },
+            dates: [
+                {
+                    name: "occurredFrom",
+                    label: "發生起日",
+                    value: query.occurred.from ?? "",
+                    max: query.occurred.to,
+                },
+                {
+                    name: "occurredTo",
+                    label: "發生迄日",
+                    value: query.occurred.to ?? "",
+                    min: query.occurred.from,
+                },
+            ],
             hiddenFields: {
                 ...(query.actions.length > 0 ? { action: query.actions.join(",") } : {}),
                 ...(query.targetTypes.length > 0
                     ? { targetType: query.targetTypes.join(",") }
                     : {}),
-                ...(query.occurred.from ? { occurredFrom: query.occurred.from } : {}),
-                ...(query.occurred.to ? { occurredTo: query.occurred.to } : {}),
                 perPage: String(query.pageSize),
                 sort: primarySort?.field ?? "occurredAt",
                 direction: primarySort?.direction ?? "desc",
@@ -526,6 +693,13 @@ export function buildAuditViewModel({
             totalItems: errorMessage ? 0 : page.total,
             pageSizeOptions: [10, 25, 50, 100],
         },
+        hasActiveFilters: Boolean(
+            query.search
+            || query.actions.length > 0
+            || query.targetTypes.length > 0
+            || query.occurred.from
+            || query.occurred.to
+        ),
     };
 }
 
@@ -675,6 +849,7 @@ function mapQuestionRevision(
 export function mapQuestionDetail(
     question: AdminQuestionDetail,
     listParams: URLSearchParams = new URLSearchParams(),
+    actorUserId: string | null = null,
 ): QuestionDetailDto {
     const historyHref = (revisionId: string, revisionPage: number): string => {
         const params = new URLSearchParams(listParams);
@@ -703,6 +878,7 @@ export function mapQuestionDetail(
         status: question.status,
         createdMethod: question.createdMethod,
         currentRevisionId: question.currentRevisionId,
+        currentRevisionNumber: question.currentRevisionNumber,
         owner: question.owner,
         createdBy: question.createdBy,
         createdAt: formatAdminDateTime(question.createdAt),
@@ -743,12 +919,82 @@ export function mapQuestionDetail(
         };
     }
 
+    if (question.status === "archived") {
+        return {
+            ...common,
+            origin: "system",
+            accessPolicy: {
+                mode: "read-only",
+                reason: "已封存題目保留歷史版本，不可建立、審核或發布新版本。",
+            },
+        };
+    }
+
+    const revision = question.displayRevision;
+    if (
+        revision === null
+        || question.currentRevisionId === null
+        || question.currentRevisionNumber === null
+    ) {
+        return {
+            ...common,
+            origin: "system",
+            accessPolicy: {
+                mode: "read-only",
+                reason: "題目缺少可作為版本基準的目前發布版本。",
+            },
+        };
+    }
+
+    const isCurrentPublished = revision.status === "published"
+        && revision.id === question.currentRevisionId;
+    const isDraft = revision.status === "draft";
+    if (!isCurrentPublished && !isDraft) {
+        return {
+            ...common,
+            origin: "system",
+            accessPolicy: {
+                mode: "read-only",
+                reason: "歷史、已取代或已退回版本僅供查閱；請回到目前發布版本建立新草稿。",
+            },
+        };
+    }
+
+    const isDraftAuthor = actorUserId === null
+        || revision.createdBy.userId === actorUserId;
+    const isCurrentRevisionAuthor = actorUserId === null
+        || question.currentRevisionCreatedByUserId === actorUserId;
+    const canReviewDraft = isDraft && !isDraftAuthor;
+    const canPublishDraft = canReviewDraft && !isCurrentRevisionAuthor;
+
     return {
         ...common,
         origin: "system",
         accessPolicy: {
-            mode: "read-only",
-            reason: "版本編修與發布寫入服務尚未完成整合；目前不會直接覆寫題目。",
+            mode: "editable",
+            label: isDraft ? "前往草稿審核" : "建立修正版",
+            href: "#question-version-workflow",
+            reason: isDraft
+                ? "審核或發布會保留目前發布版本，並以交易建立完整稽核紀錄。"
+                : "編修會複製目前發布版本成新草稿，不會覆寫歷史作答引用的內容。",
+            canReviewDraft,
+            ...(!canReviewDraft && isDraft
+                ? {
+                    reviewBlockedReason: actorUserId === null
+                        ? "無法確認目前管理員身分，請重新載入後再試。"
+                        : "草稿建立者不可審核自己的版本，請由另一位管理員處理。",
+                }
+                : {}),
+            canPublishDraft,
+            ...(!canPublishDraft && isDraft
+                ? {
+                    publishBlockedReason: actorUserId === null
+                        ? "無法確認目前管理員身分，請重新載入後再試。"
+                        : isDraftAuthor
+                            ? "草稿建立者不可發布自己的版本，請由另一位管理員處理。"
+                            : "目前發布版本由你建立；必須由未建立草稿或目前版本的另一位管理員發布。",
+                }
+                : {}),
         },
     };
 }
@@ -805,12 +1051,14 @@ export function buildQuestionsViewModel({
     page,
     detail,
     filterOptions = EMPTY_QUESTION_FILTER_OPTIONS,
+    actorUserId = null,
     errorMessage,
 }: {
     query: QuestionListQuery;
     page: AdminQuestionPage;
     detail: AdminQuestionDetail | null;
     filterOptions?: AdminQuestionFilterOptions;
+    actorUserId?: string | null;
     errorMessage?: string;
 }): QuestionsViewProps {
     const base = questionQueryParams(query);
@@ -974,18 +1222,99 @@ export function buildQuestionsViewModel({
             totalItems: errorMessage ? 0 : page.total,
             pageSizeOptions: [10, 25, 50, 100],
         },
-        detail: !errorMessage && detail ? mapQuestionDetail(detail, base) : null,
+        detail: !errorMessage && detail
+            ? mapQuestionDetail(detail, base, actorUserId)
+            : null,
         detailCloseHref: toHref("/admin/questions", closeParams),
         hasActiveFilters: hasQuestionFilters(query),
+        reviewQueueHref: "/admin/questions/reviews",
+    };
+}
+
+export function buildQuestionReviewQueueViewModel({
+    query,
+    page,
+    errorMessage,
+}: {
+    query: QuestionReviewQueueQuery;
+    page: AdminQuestionReviewQueuePage;
+    errorMessage?: string;
+}): QuestionReviewQueueViewProps {
+    const base = questionReviewQueueQueryParams(query);
+    return {
+        state: errorMessage
+            ? {
+                kind: "error",
+                message: errorMessage,
+                retryHref: toHref("/admin/questions/reviews", base),
+            }
+            : { kind: "ready" },
+        filters: {
+            action: "/admin/questions/reviews",
+            search: {
+                name: "search",
+                label: "搜尋待審題目",
+                placeholder: "題目內容、修改原因、題目或草稿 ID",
+                value: query.search ?? "",
+            },
+            selects: [{
+                name: "reviewState",
+                label: "待審狀態",
+                value: query.states.join(","),
+                options: withCurrentMultiValue(
+                    QUESTION_REVIEW_QUEUE_STATE_OPTIONS,
+                    query.states,
+                ),
+            }],
+            hiddenFields: { perPage: String(query.pageSize) },
+            resetHref: "/admin/questions/reviews",
+        },
+        rows: errorMessage
+            ? []
+            : page.items.map((item) => {
+                const params = new URLSearchParams();
+                params.set("question", item.questionId);
+                params.set("revision", item.draftRevisionId);
+                const createdBy = item.createdBy.displayName?.trim()
+                    || (item.createdBy.type === "system_job" ? "系統工作" : "未填");
+                return {
+                    questionId: item.questionId,
+                    draftRevisionId: item.draftRevisionId,
+                    draftRevisionNumber: item.draftRevisionNumber,
+                    currentRevisionNumber: item.currentRevisionNumber,
+                    prompt: item.promptPreview ?? "未填題幹",
+                    changeNote: item.changeNote,
+                    reviewState: item.state,
+                    reviewStateLabel: item.state === "unreviewed"
+                        ? "尚未審核"
+                        : "已要求修改",
+                    latestReviewReason: item.latestReviewReason,
+                    latestReviewAt: item.latestReviewAt
+                        ? formatAdminDateTime(item.latestReviewAt)
+                        : null,
+                    createdBy,
+                    createdAt: formatAdminDateTime(item.createdAt),
+                    detailHref: toHref("/admin/questions", params),
+                };
+            }),
+        pagination: {
+            currentPage: page.page,
+            pageSize: page.pageSize,
+            totalItems: errorMessage ? 0 : page.total,
+            pageSizeOptions: [10, 25, 50, 100],
+        },
+        hasActiveFilters: Boolean(query.search || query.states.length > 0),
+        backHref: "/admin/questions",
     };
 }
 
 function auditActivity(item: AdminAuditListItem): DashboardActivityDto {
     return {
         id: item.id,
-        title: item.action,
-        description: `${item.targetType}${item.targetId ? ` · ${item.targetId}` : ""}`,
+        title: auditActionLabel(item.action),
+        description: `${auditTargetTypeLabel(item.targetType)}${item.targetId ? ` · ${item.targetId}` : ""}`,
         occurredAt: formatAdminDateTime(item.occurredAt),
+        occurredAtIso: item.occurredAt,
         href: "/admin/audit",
     };
 }
@@ -1024,9 +1353,9 @@ export function buildDashboardViewModel({
             key: "active-learners",
             label: "期間活躍學習者",
             value: {
-                state: "integration_pending",
+                state: "report_only",
                 value: null,
-                reason: "等待 0011 成績彙總契約整合後計算。",
+                reason: "總覽不預設統計期間；請前往「查看報表」選擇期間。",
             },
             icon: "activity",
         },
@@ -1034,9 +1363,9 @@ export function buildDashboardViewModel({
             key: "completion",
             label: "期間練習完成",
             value: {
-                state: "integration_pending",
+                state: "report_only",
                 value: null,
-                reason: "等待正式報表 repository 串接。",
+                reason: "總覽不預設統計期間；請前往「查看報表」選擇期間。",
             },
             icon: "completion",
         },
@@ -1062,16 +1391,205 @@ export function buildDashboardViewModel({
     };
 }
 
-export function buildSubscriptionPlansViewModel(): SubscriptionPlansViewProps {
+const SUBSCRIPTION_PLAN_STATUS_OPTIONS: readonly ViewFilterOptionDto[] = [
+    { value: "", label: "全部狀態" },
+    { value: "draft", label: "草稿" },
+    { value: "active", label: "啟用" },
+    { value: "retired", label: "已停用" },
+];
+
+function subscriptionPlanQueryParams(query: SubscriptionPlanListQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    if (query.search) params.set("search", query.search);
+    if (query.statuses.length > 0) params.set("status", query.statuses.join(","));
+    params.set("page", String(query.page));
+    params.set("perPage", String(query.pageSize));
+    const primarySort = query.orderBy[0];
+    if (primarySort) {
+        params.set("sort", primarySort.field);
+        params.set("direction", primarySort.direction);
+    }
+    return params;
+}
+
+const BILLING_INTERVAL_LABELS: Record<string, string> = {
+    day: "日",
+    week: "週",
+    month: "月",
+    year: "年",
+};
+
+function subscriptionPriceSummary(plan: AdminSubscriptionPlan): string | null {
+    const current = plan.prices.filter((price) => price.status !== "retired");
+    if (current.length === 0) return null;
+    return current.slice(0, 2).map((price) =>
+        `${price.currency} ${price.amountMinor}（minor unit）`,
+    ).join("、") + (current.length > 2 ? ` 等 ${current.length} 筆` : "");
+}
+
+function subscriptionBillingSummary(plan: AdminSubscriptionPlan): string | null {
+    const current = plan.prices.filter((price) => price.status !== "retired");
+    if (current.length === 0) return null;
+    const unique = [...new Set(current.map((price) =>
+        `每 ${price.billingIntervalCount} ${BILLING_INTERVAL_LABELS[price.billingInterval] ?? price.billingInterval}`,
+    ))];
+    return unique.join("、");
+}
+
+function subscriptionFeatureSummary(plan: AdminSubscriptionPlan): string | null {
+    if (plan.featureLimits.length === 0) return null;
+    const included = plan.featureLimits.filter((limit) => limit.included).length;
+    return `${included} 項包含／${plan.featureLimits.length} 項已設定`;
+}
+
+function mapSubscriptionPlanDetail(plan: AdminSubscriptionPlan): SubscriptionPlanDetailDto {
     return {
-        state: { kind: "ready" },
-        catalogState: "schema_pending",
-        rows: [],
-        catalogPolicy: {
-            mode: "locked",
-            label: "等待資料契約整合",
-            reason: "0012 方案目錄 migration 與正式服務尚未整合；不建立示意價格或啟用付款。",
+        id: plan.id,
+        code: plan.code,
+        name: plan.name,
+        description: plan.description,
+        status: plan.status,
+        lockVersion: plan.lockVersion,
+        createdAt: formatAdminDateTime(plan.createdAt),
+        updatedAt: formatAdminDateTime(plan.updatedAt),
+        prices: plan.prices.map((price) => ({
+            id: price.id,
+            currency: price.currency,
+            amountMinor: price.amountMinor,
+            billingInterval: price.billingInterval,
+            billingIntervalCount: price.billingIntervalCount,
+            status: price.status,
+            effectiveFrom: price.effectiveFrom,
+            effectiveUntil: price.effectiveUntil,
+            lockVersion: price.lockVersion,
+            updatedAt: formatAdminDateTime(price.updatedAt),
+        })),
+        featureLimits: plan.featureLimits.map((limit) => ({
+            id: limit.id,
+            featureDefinitionId: limit.featureDefinitionId,
+            featureKey: limit.featureKey,
+            displayName: limit.displayName,
+            valueType: limit.valueType,
+            unit: limit.unit,
+            featureStatus: limit.featureStatus,
+            included: limit.included,
+            unlimited: limit.unlimited,
+            limit: limit.limit,
+            lockVersion: limit.lockVersion,
+            updatedAt: formatAdminDateTime(limit.updatedAt),
+        })),
+    };
+}
+
+function mapSubscriptionFeatureDefinition(
+    definition: AdminSubscriptionFeatureDefinition,
+): SubscriptionFeatureDefinitionDto {
+    return {
+        id: definition.id,
+        featureKey: definition.featureKey,
+        displayName: definition.displayName,
+        description: definition.description,
+        valueType: definition.valueType,
+        unit: definition.unit,
+        status: definition.status,
+        lockVersion: definition.lockVersion,
+    };
+}
+
+export function buildSubscriptionPlansViewModel({
+    query,
+    page,
+    detail,
+    featureDefinitions,
+    errorMessage,
+}: {
+    query: SubscriptionPlanListQuery;
+    page: AdminSubscriptionPlanPage;
+    detail: AdminSubscriptionPlan | null;
+    featureDefinitions: readonly AdminSubscriptionFeatureDefinition[];
+    errorMessage?: string;
+}): SubscriptionPlansViewProps {
+    const base = subscriptionPlanQueryParams(query);
+    const closeParams = new URLSearchParams(base);
+    closeParams.delete("plan");
+    const primarySort = query.orderBy[0];
+    return {
+        state: errorMessage
+            ? {
+                  kind: "error",
+                  message: errorMessage,
+                  retryHref: toHref("/admin/subscription-plans", base),
+              }
+            : { kind: "ready" },
+        catalogState: "ready",
+        filters: {
+            action: "/admin/subscription-plans",
+            search: {
+                name: "search",
+                label: "搜尋方案",
+                placeholder: "方案代碼或名稱",
+                value: query.search ?? "",
+            },
+            selects: [{
+                name: "status",
+                label: "狀態",
+                value: query.statuses.join(","),
+                options: withCurrentMultiValue(
+                    SUBSCRIPTION_PLAN_STATUS_OPTIONS,
+                    query.statuses,
+                ),
+            }],
+            hiddenFields: {
+                perPage: String(query.pageSize),
+                sort: primarySort?.field ?? "updatedAt",
+                direction: primarySort?.direction ?? "desc",
+            },
+            resetHref: "/admin/subscription-plans",
         },
+        sorts: sortLinks(
+            "/admin/subscription-plans",
+            base,
+            query.orderBy,
+            [
+                { key: "code", label: "代碼" },
+                { key: "name", label: "方案" },
+                { key: "status", label: "狀態" },
+                { key: "updatedAt", label: "更新時間" },
+            ],
+        ),
+        rows: errorMessage ? [] : page.items.map((plan) => {
+            const detailParams = new URLSearchParams(base);
+            detailParams.set("plan", plan.id);
+            return {
+                id: plan.id,
+                code: plan.code,
+                name: plan.name,
+                description: plan.description,
+                status: plan.status,
+                priceSummary: subscriptionPriceSummary(plan),
+                billingSummary: subscriptionBillingSummary(plan),
+                featureSummary: subscriptionFeatureSummary(plan),
+                updatedAt: formatAdminDateTime(plan.updatedAt),
+                detailHref: toHref("/admin/subscription-plans", detailParams),
+            };
+        }),
+        pagination: {
+            currentPage: page.page,
+            pageSize: page.pageSize,
+            totalItems: errorMessage ? 0 : page.total,
+            pageSizeOptions: [10, 25, 50, 100],
+        },
+        catalogPolicy: {
+            mode: "available",
+            label: "管理方案目錄",
+            reason: "只管理 catalog。啟用方案不會啟用付款、訂閱或扣款。",
+            href: "#catalog-actions",
+        },
+        detail: !errorMessage && detail ? mapSubscriptionPlanDetail(detail) : null,
+        detailCloseHref: toHref("/admin/subscription-plans", closeParams),
+        featureDefinitions: errorMessage
+            ? []
+            : featureDefinitions.map(mapSubscriptionFeatureDefinition),
     };
 }
 
@@ -1247,7 +1765,7 @@ function countSeries(
 
 const ACCOUNT_STATUS_LABELS: Readonly<Record<string, string>> = {
     active: "啟用",
-    suspended: "停用",
+    suspended: "已停權",
     closed: "已關閉",
 };
 
@@ -1341,10 +1859,29 @@ function questionQualityMetrics(
         ...distributionMetrics("source-document", "來源文件", quality.sourceDocumentStatuses, QUESTION_LABELS),
         ...distributionMetrics("source-coverage", "目前版本來源", quality.currentRevisionSourceCoverage, QUESTION_LABELS),
         reportMetric(
-            "automatic-answer-completeness",
-            "自動答案完整性",
-            quality.automaticAnswerCompleteness,
+            "automatic-answer-total",
+            "自動判分小題",
+            quality.automaticAnswerCompleteness.totalParts,
             "quality",
+        ),
+        reportMetric(
+            "automatic-answer-complete",
+            "答案完整小題",
+            quality.automaticAnswerCompleteness.completeParts,
+            "quality",
+        ),
+        reportMetric(
+            "automatic-answer-incomplete",
+            "答案不完整小題",
+            quality.automaticAnswerCompleteness.incompleteParts,
+            "quality",
+        ),
+        reportMetric(
+            "automatic-answer-completeness-rate",
+            "自動答案完整率",
+            quality.automaticAnswerCompleteness.rate,
+            "quality",
+            (value) => percentageFormatter.format(value),
         ),
     );
     return metrics;
@@ -1427,8 +1964,8 @@ export function buildReportsViewModel({
             },
             activity: {
                 key: "activity",
-                title: "非 score 學習活動",
-                description: "期間內已提交的非 score 作答。",
+                title: "學習活動",
+                description: "非 score 作答與 score 的匿名彙總分開計算。",
                 metrics: [],
             },
             completion: {
@@ -1516,8 +2053,8 @@ export function buildReportsViewModel({
         },
         activity: {
             key: "activity",
-            title: "非 score 學習活動",
-            description: "活躍學習者依期間內已提交作答的不同 learner_id 計算；共享學習者不重複。",
+            title: "學習活動",
+            description: "非 score 依不可覆寫作答；score 送出量依 answer-free receipt，結果只依期間完成 session 的 0011 彙總欄位。",
             metrics: [
                 reportMetric(
                     "active-learners",
@@ -1539,9 +2076,51 @@ export function buildReportsViewModel({
                         "activity",
                     )),
                 reportMetric(
-                    "score-activity",
-                    "Score 模式活動",
-                    report.practice.scoreActivity,
+                    "score-active-learners",
+                    "Score 活躍學習者",
+                    report.practice.scoreActivity.activeLearners,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-submitted-items",
+                    "Score 期間送出題數",
+                    report.practice.scoreActivity.submittedItems,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-completed-sessions",
+                    "Score 期間完成練習",
+                    report.practice.scoreActivity.completedSessions,
+                    "completion",
+                ),
+                reportMetric(
+                    "score-total-items",
+                    "Score 完成練習總題數",
+                    report.practice.scoreActivity.totalItems,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-answered-items",
+                    "Score 完成練習已送出",
+                    report.practice.scoreActivity.answeredItems,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-correct-items",
+                    "Score 完成練習答對",
+                    report.practice.scoreActivity.correctItems,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-wrong-items",
+                    "Score 完成練習答錯",
+                    report.practice.scoreActivity.wrongItems,
+                    "activity",
+                ),
+                reportMetric(
+                    "score-pending-items",
+                    "Score 完成練習待判定",
+                    report.practice.scoreActivity.pendingItems,
                     "activity",
                 ),
             ],
@@ -1581,7 +2160,7 @@ export function buildReportsViewModel({
         questionQuality: {
             key: "question-quality",
             title: "題庫品質",
-            description: "題目、版本、審核、匯入與來源皆使用真實資料；0009 自動答案完整性未整合前不推測。",
+            description: "題目、版本、審核、匯入與來源皆使用真實資料；自動答案完整性依 0009 正式檢查函式計算。",
             metrics: questionQualityMetrics(report.questionQuality),
         },
     };
