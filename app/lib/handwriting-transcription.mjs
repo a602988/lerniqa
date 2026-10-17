@@ -4,7 +4,6 @@ import {
     HANDWRITING_SCHEMA_VERSION,
     handwritingAiConfiguration,
     inspectHandwritingModel,
-    prepareHandwritingImage,
     prepareHandwritingOcrImage,
     transcribeHandwriting,
     validateTranscription,
@@ -113,12 +112,20 @@ function pruneCache(now) {
 }
 
 /**
- * 先執行本地視覺模型，只有結果不清楚時才以 OCR 共識補位。
+ * 先執行快速 OCR；只有兩個引擎無法達成共識時才啟動本地視覺模型。
  *
  * @param {Buffer} imageBytes 已驗證 PNG。
  * @returns {Promise<Readonly<object>>} 最終辨識結果。
  */
 async function runTranscription(imageBytes) {
+    const ocrImage = prepareHandwritingOcrImage(imageBytes);
+    const candidates = await Promise.all([
+        recognizeWithPaddle(ocrImage),
+        recognizeWithAppleVision(ocrImage),
+    ]);
+    const consensus = resolveOcrConsensus(candidates);
+    if (consensus) return consensus;
+
     let modelResult;
     try {
         handwritingModelPromise ??= inspectHandwritingModel({
@@ -131,12 +138,6 @@ async function runTranscription(imageBytes) {
         handwritingModelPromise = undefined;
         throw error;
     }
-    if (modelResult.legibility === "clear" && normalizedText(modelResult.transcription)) return modelResult;
-
-    const candidates = await Promise.all([
-        recognizeWithPaddle(prepareHandwritingOcrImage(imageBytes)),
-        recognizeWithAppleVision(prepareHandwritingImage(imageBytes)),
-    ]);
     return resolveWithModel(candidates, modelResult);
 }
 

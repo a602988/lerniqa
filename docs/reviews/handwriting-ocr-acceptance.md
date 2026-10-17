@@ -2,15 +2,16 @@
 
 ## 範圍
 
-本次驗收涵蓋 `/practice` 手寫題的送出前辨識流程。圖片先由 PP-OCRv5 與 Apple Vision 在本機辨識；兩者文字相同時直接採用，沒有一致結果時才呼叫固定 digest 的 `qwen3.8:27b`。可靠來源仍有衝突時不填入文字，保留給人工判別。辨識器不接收題幹、參考答案、解析或評分規則。
+本次驗收涵蓋 `/practice` 手寫題的送出前辨識流程。學習者進入手寫題後，網站會在背景載入 PP-OCRv5。圖片先由常駐的 PP-OCRv5 與 Apple Vision 在本機辨識；兩者文字相同時直接採用，沒有一致結果時才呼叫固定 digest 的 `qwen3.8:27b`。快速辨識器與模型結果衝突時以模型為準；模型也無法確認時才保留給人工判別。辨識器不接收題幹、參考答案、解析或評分規則。
 
 ## 結果
 
 - `npm run handwriting:setup` 成功建立 Python 3.12 隔離環境，PaddlePaddle 自我檢查通過，`PP-OCRv5_server_rec` 已預載。
-- `npm run handwriting:smoke:hybrid` 通過。四張可讀合成筆跡有三張逐字相符；外形相近的 `4` 因 PP-OCRv5、Apple Vision 與視覺模型結果衝突而保持待人工判別。空白與模糊圖均未產生辨識文字。
-- 兩個 OCR 一致的合成樣本約在 1.4 至 1.5 秒完成。相同 PNG 再次辨識直接使用十分鐘記憶體快取，本機量測為 0 毫秒。需要 27B 模型複核的衝突樣本約 15 秒完成並回到人工判別。
+- `npm run handwriting:smoke:hybrid` 通過。四張可讀合成筆跡有三張逐字相符；空白與模糊圖均未產生辨識文字。
+- PP-OCRv5 第一次載入約需 6.5 秒，進入手寫題時會在背景完成。暖機後，兩個 OCR 一致的合成樣本約在 289 毫秒完成，不會呼叫 27B 模型。需要模型複核的題目仍約需 15 秒；這類題目無法只靠調整呼叫流程縮短到即時回應。
+- 常駐 PP-OCRv5 在五分鐘沒有工作後自動關閉，避免網站閒置時持續占用約 0.8 GB 記憶體。下一次進入手寫題時會重新暖機。
 - `npm run test:handwriting-ai` 通過 17 項，`npm run test:handwriting` 通過 13 項。共識、衝突、手寫保存、權限、冪等重送與重新書寫清除辨識結果都有測試。
-- `npm run test:local-practice` 通過隔離 PostgreSQL、Next.js、資料庫重啟與作答持久性驗證，沒有接觸持久資料庫。
+- `npm run test:local-practice` 本輪在隔離資料庫執行 `initdb` 時受到 macOS 共享記憶體上限阻擋，尚未進入資料庫測試，也沒有接觸持久資料庫。本次修改沒有變更資料庫 schema 或作答儲存流程。
 - `npm run lint`、`npm test`、`npm run build` 與 `git diff --check` 通過。build 只有 Keel 文件預覽元件既有的選用套件缺少警告。
 - `pip check` 沒有發現 Python 依賴衝突。`npm audit --omit=dev` 回報 Next.js 內含的 PostCSS 公告；本功能沒有接收或處理使用者提供的 CSS，因此沒有新增可利用路徑。修正版本需要升級至 Next.js 16，應另行安排框架升級與回歸驗證。
 - `https://linmacbook-pro.tailc132cc.ts.net:8443/practice` 回傳 HTTP 200。

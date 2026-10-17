@@ -753,6 +753,18 @@ export function getPersistedQuestionReferenceAnswers(questionId: string, revisio
 }
 
 /**
+ * 在進入手寫題時預先載入本機辨識器。
+ * @param signal 取消已離開題目後的暖機請求。
+ * @returns 辨識器是否完成暖機。
+ */
+export function warmPersistedHandwriting(signal?: AbortSignal) {
+    return practiceApi<{ ready: true }>("/api/v1/local-practice/handwriting/warmup", {
+        method: "POST",
+        signal,
+    });
+}
+
+/**
  * 辨識尚未送出的手寫內容，不建立正式作答紀錄。
  * @param handwriting 目前手寫板的 PNG 內容。
  * @param options 取消請求或強制重新辨識的選項。

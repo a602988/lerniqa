@@ -217,7 +217,7 @@ test("independent OCR engines must agree before bypassing the local vision model
     ]), null);
 });
 
-test("the local vision model remains primary and OCR consensus fills only unclear results", () => {
+test("the local vision model wins OCR conflicts and OCR consensus fills unclear model results", () => {
     const modelResult = validateTranscription({
         schemaVersion: HANDWRITING_SCHEMA_VERSION,
         transcription: "4",

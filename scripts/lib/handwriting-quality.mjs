@@ -11,6 +11,7 @@ import {
     unloadHandwritingModel,
 } from "../../app/lib/handwriting-analysis.mjs";
 import { transcribeLocalHandwriting } from "../../app/lib/handwriting-transcription.mjs";
+import { shutdownHandwritingOcr } from "../../app/lib/handwriting-ocr.mjs";
 
 export const QUALITY_MANIFEST_VERSION = "lerniqa.handwriting-quality-fixtures/v2";
 export const QUALITY_FIXTURE_ROOT = path.join("tests", "fixtures", "handwriting-ai-synthetic");
@@ -243,24 +244,29 @@ export async function runHybridQualitySuite(manifest, paths, {
     transcribe = transcribeLocalHandwriting,
 } = {}) {
     const records = [];
-    for (const fixture of manifest.fixtures) {
-        try {
-            const bytes = await readFixtureImage(paths, fixture);
-            const output = await transcribe(bytes);
-            records.push(Object.freeze({
-                id: fixture.id,
-                status: "completed",
-                transcription: output.transcription,
-            }));
+    try {
+        for (const fixture of manifest.fixtures) {
+            try {
+                const bytes = await readFixtureImage(paths, fixture);
+                const output = await transcribe(bytes);
+                records.push(Object.freeze({
+                    id: fixture.id,
+                    status: "completed",
+                    transcription: output.transcription,
+                }));
+            }
+            catch (error) {
+                records.push(Object.freeze({
+                    id: fixture.id,
+                    status: "fault",
+                    transcription: null,
+                    error_code: compactErrorCode(error),
+                }));
+            }
         }
-        catch (error) {
-            records.push(Object.freeze({
-                id: fixture.id,
-                status: "fault",
-                transcription: null,
-                error_code: compactErrorCode(error),
-            }));
-        }
+    }
+    finally {
+        await shutdownHandwritingOcr();
     }
     return evaluateQualityRecords(manifest, records);
 }

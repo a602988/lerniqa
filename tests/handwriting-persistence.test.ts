@@ -256,9 +256,10 @@ test("required handwriting questions keep a read-only answer field before and af
     assert.match(adapter, /recognizedAnswers: Object\.fromEntries/u);
 });
 
-test("handwriting preview analysis is automatic, cancellable, non-persistent, and cleared by new ink", async () => {
-    const [route, client, page, pad] = await Promise.all([
+test("handwriting preview analysis is warmed, automatic, cancellable, non-persistent, and cleared by new ink", async () => {
+    const [route, warmup, client, page, pad] = await Promise.all([
         readFile(new URL("../app/api/v1/local-practice/handwriting/transcription/route.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/api/v1/local-practice/handwriting/warmup/route.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/lib/practice-client.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
         readFile(new URL("../app/components/handwriting-pad.tsx", import.meta.url), "utf8"),
@@ -268,6 +269,9 @@ test("handwriting preview analysis is automatic, cancellable, non-persistent, an
     assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{ force: body\.force === true \}\)/u);
     assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
     assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
+    assert.match(warmup, /requireLocalPracticeAccount\(request\)[\s\S]*warmHandwritingOcr\(\)/u);
+    assert.match(client, /warmPersistedHandwriting\(signal\?: AbortSignal\)[\s\S]*\/api\/v1\/local-practice\/handwriting\/warmup/u);
+    assert.match(page, /if \(!canAnalyzeHandwriting\) return;[\s\S]*warmPersistedHandwriting\(controller\.signal\)[\s\S]*controller\.abort\(\)/u);
     assert.match(client, /\/api\/v1\/local-practice\/handwriting\/transcription/u);
     assert.match(pad, /LoaderCircle className="animate-spin"/u);
     assert.match(pad, /hasAnalysisResult \? "重新分析" : "立即分析"/u);

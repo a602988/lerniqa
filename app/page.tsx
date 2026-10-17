@@ -76,6 +76,7 @@ import {
     updatePracticeLearner,
     updatePracticeLearnerSubjectSetting,
     updatePersistedPracticeSessionStatus,
+    warmPersistedHandwriting,
     writePracticePreferences,
     writePracticeSessionHint,
 } from "./lib/practice-client";
@@ -1357,6 +1358,14 @@ function QuestionFlow(props: QuestionFlowProps) {
         handwritingAbortRef.current?.abort();
         setHandwritingAnalysis({ status: "idle", message: "" });
     }, [question.id, serverQuestion?.revisionId]);
+
+    useEffect(() => {
+        if (!canAnalyzeHandwriting) return;
+
+        const controller = new AbortController();
+        void warmPersistedHandwriting(controller.signal).catch(() => undefined);
+        return () => controller.abort();
+    }, [canAnalyzeHandwriting]);
 
     useEffect(() => {
         if (!handwriting || !canAnalyzeHandwriting || feedback || props.busy || props.answerLocked || checkMode === "score") return;

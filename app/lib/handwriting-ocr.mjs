@@ -5,6 +5,8 @@ import path from "node:path";
 
 const PROCESS_TIMEOUT_MS = 60_000;
 const MAX_PROCESS_OUTPUT_BYTES = 64 * 1024;
+const PADDLE_IDLE_TIMEOUT_MS = 5 * 60 * 1_000;
+const PADDLE_MAXIMUM_PENDING = 8;
 const REPOSITORY_ROOT = process.cwd();
 const PADDLE_PYTHON = path.join(REPOSITORY_ROOT, "local-data", "handwriting-python", "bin", "python");
 const PADDLE_WORKER = path.join(REPOSITORY_ROOT, "scripts", "handwriting-paddle-worker.py");
@@ -12,6 +14,143 @@ const VISION_SOURCE = path.join(REPOSITORY_ROOT, "scripts", "handwriting-vision.
 const VISION_BINARY = path.join(REPOSITORY_ROOT, "local-data", "handwriting-runtime", "apple-vision-ocr");
 
 let visionBuildPromise;
+const PADDLE_STATE_KEY = Symbol.for("lerniqa.handwriting.paddle-worker");
+const paddleState = globalThis[PADDLE_STATE_KEY] ?? {
+    child: null,
+    idleTimer: null,
+    pending: new Map(),
+    startPromise: null,
+    stderrLength: 0,
+    stdoutBuffer: "",
+};
+globalThis[PADDLE_STATE_KEY] = paddleState;
+
+/**
+ * 清除常駐 Paddle worker，讓下一次請求可重新建立乾淨程序。
+ *
+ * @param {import("node:child_process").ChildProcessWithoutNullStreams} child 發生狀態變更的 worker。
+ * @param {Error} error 交給等待中請求的錯誤。
+ * @returns {void} 無回傳值。
+ */
+function resetPaddleWorker(child, error) {
+    if (paddleState.child !== child) return;
+    if (paddleState.idleTimer) clearTimeout(paddleState.idleTimer);
+    paddleState.idleTimer = null;
+    paddleState.child = null;
+    paddleState.startPromise = null;
+    paddleState.stderrLength = 0;
+    paddleState.stdoutBuffer = "";
+    for (const pending of paddleState.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+    }
+    paddleState.pending.clear();
+}
+
+/**
+ * 沒有等待中工作時延後關閉模型，兼顧連續辨識速度與閒置記憶體。
+ *
+ * @returns {void} 無回傳值。
+ */
+function schedulePaddleIdleShutdown() {
+    if (paddleState.idleTimer) clearTimeout(paddleState.idleTimer);
+    paddleState.idleTimer = setTimeout(() => {
+        const child = paddleState.child;
+        if (!child || paddleState.pending.size > 0) return;
+        resetPaddleWorker(child, new Error("HANDWRITING_OCR_IDLE_SHUTDOWN"));
+        child.kill("SIGTERM");
+    }, PADDLE_IDLE_TIMEOUT_MS);
+    paddleState.idleTimer.unref();
+}
+
+/**
+ * 處理常駐 Paddle worker 的逐行 JSON 回應。
+ *
+ * @param {import("node:child_process").ChildProcessWithoutNullStreams} child 回傳資料的 worker。
+ * @param {Buffer} chunk worker 標準輸出片段。
+ * @returns {boolean} 是否收到完成暖機訊號。
+ */
+function handlePaddleOutput(child, chunk) {
+    if (paddleState.child !== child) return false;
+    let sawReady = false;
+    paddleState.stdoutBuffer += chunk.toString("utf8");
+    if (Buffer.byteLength(paddleState.stdoutBuffer, "utf8") > MAX_PROCESS_OUTPUT_BYTES) {
+        paddleState.child?.kill("SIGKILL");
+        return false;
+    }
+    const lines = paddleState.stdoutBuffer.split(/\r?\n/u);
+    paddleState.stdoutBuffer = lines.pop() ?? "";
+    for (const line of lines) {
+        let response;
+        try {
+            response = JSON.parse(line);
+        }
+        catch {
+            continue;
+        }
+        if (response?.type === "ready") {
+            sawReady = true;
+            continue;
+        }
+        const pending = paddleState.pending.get(response?.id);
+        if (!pending) continue;
+        clearTimeout(pending.timer);
+        paddleState.pending.delete(response.id);
+        paddleState.stderrLength = 0;
+        pending.resolve(response);
+        if (paddleState.pending.size === 0) schedulePaddleIdleShutdown();
+    }
+    return sawReady;
+}
+
+/**
+ * 啟動一次並重用 PP-OCRv5 程序，避免每題重新載入模型。
+ *
+ * @returns {Promise<import("node:child_process").ChildProcessWithoutNullStreams>} 已完成暖機的 worker。
+ */
+async function paddleWorker() {
+    if (paddleState.child && !paddleState.child.killed) return paddleState.child;
+    if (paddleState.startPromise) return paddleState.startPromise;
+
+    paddleState.startPromise = (async () => {
+        await Promise.all([access(PADDLE_PYTHON), access(PADDLE_WORKER)]);
+        const environment = { ...process.env, PADDLE_PDX_MODEL_SOURCE: "BOS" };
+        return new Promise((resolve, reject) => {
+            const child = spawn(PADDLE_PYTHON, [PADDLE_WORKER], {
+                cwd: REPOSITORY_ROOT,
+                env: environment,
+                shell: false,
+                stdio: ["pipe", "pipe", "pipe"],
+            });
+            let ready = false;
+            const startupTimer = setTimeout(() => child.kill("SIGKILL"), PROCESS_TIMEOUT_MS);
+            const fail = (error) => {
+                clearTimeout(startupTimer);
+                if (!ready) reject(error);
+                resetPaddleWorker(child, error);
+            };
+            child.once("error", fail);
+            child.once("close", (code) => fail(new Error(`HANDWRITING_OCR_EXIT_${code ?? "UNKNOWN"}`)));
+            child.stderr.on("data", (chunk) => {
+                if (paddleState.child !== child) return;
+                paddleState.stderrLength += chunk.length;
+                if (paddleState.stderrLength > MAX_PROCESS_OUTPUT_BYTES) child.kill("SIGKILL");
+            });
+            child.stdout.on("data", (chunk) => {
+                const sawReady = handlePaddleOutput(child, chunk);
+                if (ready || !sawReady) return;
+                ready = true;
+                clearTimeout(startupTimer);
+                resolve(child);
+            });
+            paddleState.child = child;
+        });
+    })().catch((error) => {
+        paddleState.startPromise = null;
+        throw error;
+    });
+    return paddleState.startPromise;
+}
 
 /**
  * 執行固定的本機辨識程序，並限制執行時間與輸出大小。
@@ -79,21 +218,30 @@ function runProcess(command, commandArguments, input, environment = process.env)
  */
 export async function recognizeWithPaddle(imageBytes) {
     try {
-        await Promise.all([access(PADDLE_PYTHON), access(PADDLE_WORKER)]);
+        const child = await paddleWorker();
+        if (paddleState.pending.size >= PADDLE_MAXIMUM_PENDING) return null;
         const id = randomUUID();
-        const input = Buffer.from(`${JSON.stringify({ id, image: imageBytes.toString("base64") })}\n`, "utf8");
-        const environment = { ...process.env, PADDLE_PDX_MODEL_SOURCE: "BOS" };
-        const { stdout } = await runProcess(PADDLE_PYTHON, [PADDLE_WORKER], input, environment);
-        const response = stdout.split(/\r?\n/u)
-            .flatMap((line) => {
-                try {
-                    return [JSON.parse(line)];
-                }
-                catch {
-                    return [];
-                }
-            })
-            .find((entry) => entry?.id === id);
+        if (paddleState.idleTimer) clearTimeout(paddleState.idleTimer);
+        paddleState.idleTimer = null;
+        const response = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                paddleState.pending.delete(id);
+                const error = new Error("HANDWRITING_OCR_TIMEOUT");
+                resetPaddleWorker(child, error);
+                child.kill("SIGKILL");
+                reject(error);
+            }, PROCESS_TIMEOUT_MS);
+            paddleState.pending.set(id, { reject, resolve, timer });
+            const input = `${JSON.stringify({ id, image: imageBytes.toString("base64") })}\n`;
+            child.stdin.write(input, "utf8", (error) => {
+                if (!error) return;
+                clearTimeout(timer);
+                paddleState.pending.delete(id);
+                resetPaddleWorker(child, error);
+                child.kill("SIGKILL");
+                reject(error);
+            });
+        });
         if (!response || response.error) return null;
         const text = typeof response.text === "string" ? response.text.normalize("NFKC").trim() : null;
         const confidence = Number(response.confidence);
@@ -103,6 +251,24 @@ export async function recognizeWithPaddle(imageBytes) {
     catch {
         return null;
     }
+}
+
+/**
+ * 關閉常駐 Paddle worker，供一次性驗收程序確實釋放本機資源。
+ *
+ * @returns {Promise<void>} worker 結束後完成。
+ */
+export async function shutdownHandwritingOcr() {
+    const child = paddleState.child;
+    if (!child) return;
+    await new Promise((resolve) => {
+        if (child.exitCode !== null || child.signalCode !== null) {
+            resolve();
+            return;
+        }
+        child.once("close", resolve);
+        child.kill("SIGTERM");
+    });
 }
 
 /**
@@ -130,6 +296,15 @@ async function prepareVisionBinary() {
         }
     })();
     return visionBuildPromise;
+}
+
+/**
+ * 在使用者開始書寫前載入本機 OCR，避免第一次辨識承擔模型暖機時間。
+ *
+ * @returns {Promise<void>} 可用的辨識器完成暖機後結束。
+ */
+export async function warmHandwritingOcr() {
+    await Promise.all([paddleWorker(), prepareVisionBinary()]);
 }
 
 /**
