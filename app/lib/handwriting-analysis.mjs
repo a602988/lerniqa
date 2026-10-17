@@ -214,12 +214,116 @@ function pngChunk(type, data) {
 }
 
 /**
- * 把瀏覽器透明畫布合成到白底，避免 vision runtime 使用深色透明預覽而看不見深色筆跡。
+ * 以最近鄰縮放 RGBA 像素，避免額外影像套件成為正式執行依賴。
+ *
+ * @param {Buffer} source 來源 RGBA 像素。
+ * @param {number} sourceWidth 來源寬度。
+ * @param {number} sourceHeight 來源高度。
+ * @param {number} targetWidth 目標寬度。
+ * @param {number} targetHeight 目標高度。
+ * @returns {Buffer} 縮放後的 RGBA 像素。
+ */
+function resizeRgba(source, sourceWidth, sourceHeight, targetWidth, targetHeight) {
+    if (sourceWidth === targetWidth && sourceHeight === targetHeight) return source;
+    const target = Buffer.alloc(targetWidth * targetHeight * 4, 255);
+    for (let y = 0; y < targetHeight; y += 1) {
+        const sourceY = Math.min(sourceHeight - 1, Math.floor((y + 0.5) * sourceHeight / targetHeight));
+        for (let x = 0; x < targetWidth; x += 1) {
+            const sourceX = Math.min(sourceWidth - 1, Math.floor((x + 0.5) * sourceWidth / targetWidth));
+            const sourceOffset = (sourceY * sourceWidth + sourceX) * 4;
+            const targetOffset = (y * targetWidth + x) * 4;
+            source.copy(target, targetOffset, sourceOffset, sourceOffset + 4);
+        }
+    }
+    return target;
+}
+
+/**
+ * 依筆跡範圍裁切並保留留白，讓單行 OCR 不受整張畫布空白干擾。
+ *
+ * @param {Buffer} rgba 白底 RGBA 像素。
+ * @param {number} width 原始寬度。
+ * @param {number} height 原始高度。
+ * @returns {{rgba: Buffer, width: number, height: number}} 正規化像素與尺寸。
+ */
+function normalizeHandwritingPixels(rgba, width, height) {
+    let minimumX = width;
+    let minimumY = height;
+    let maximumX = -1;
+    let maximumY = -1;
+    let inkPixels = 0;
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const pixel = (y * width + x) * 4;
+            if (Math.min(rgba[pixel], rgba[pixel + 1], rgba[pixel + 2]) >= 245) continue;
+            inkPixels += 1;
+            minimumX = Math.min(minimumX, x);
+            minimumY = Math.min(minimumY, y);
+            maximumX = Math.max(maximumX, x);
+            maximumY = Math.max(maximumY, y);
+        }
+    }
+    if (inkPixels < 4) {
+        return { rgba: Buffer.alloc(256 * 128 * 4, 255), width: 256, height: 128 };
+    }
+    const contentWidth = maximumX - minimumX + 1;
+    const contentHeight = maximumY - minimumY + 1;
+    const padding = Math.max(24, Math.round(Math.max(contentWidth, contentHeight) * 0.12));
+    const cropWidth = contentWidth + padding * 2;
+    const cropHeight = contentHeight + padding * 2;
+    const cropped = Buffer.alloc(cropWidth * cropHeight * 4, 255);
+    for (let y = minimumY; y <= maximumY; y += 1) {
+        const sourceOffset = (y * width + minimumX) * 4;
+        const targetOffset = ((y - minimumY + padding) * cropWidth + padding) * 4;
+        rgba.copy(cropped, targetOffset, sourceOffset, sourceOffset + contentWidth * 4);
+    }
+    const maximumScale = Math.min(1_400 / cropWidth, 800 / cropHeight);
+    const preferredScale = Math.max(1, 512 / cropHeight);
+    const scale = Math.min(maximumScale, preferredScale);
+    const targetWidth = Math.max(1, Math.round(cropWidth * scale));
+    const targetHeight = Math.max(1, Math.round(cropHeight * scale));
+    return {
+        rgba: resizeRgba(cropped, cropWidth, cropHeight, targetWidth, targetHeight),
+        width: targetWidth,
+        height: targetHeight,
+    };
+}
+
+/**
+ * 將 RGBA 像素編碼成不含額外 metadata 的 PNG。
+ *
+ * @param {Buffer} rgba RGBA 像素。
+ * @param {number} width 圖片寬度。
+ * @param {number} height 圖片高度。
+ * @returns {Buffer} PNG 內容。
+ */
+function encodeRgbaPng(rgba, width, height) {
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(width, 0);
+    header.writeUInt32BE(height, 4);
+    header[8] = 8;
+    header[9] = 6;
+    const stride = width * 4;
+    const scanlines = Buffer.alloc(height * (stride + 1));
+    for (let row = 0; row < height; row += 1) {
+        rgba.copy(scanlines, row * (stride + 1) + 1, row * stride, (row + 1) * stride);
+    }
+    return Buffer.concat([
+        PNG_SIGNATURE,
+        pngChunk("IHDR", header),
+        pngChunk("IDAT", deflateSync(scanlines, { level: 9 })),
+        pngChunk("IEND", Buffer.alloc(0)),
+    ]);
+}
+
+/**
+ * 把透明畫布合成白底，並可選擇裁切筆跡供單行 OCR 使用。
  *
  * @param {Buffer} bytes 已通過上傳驗證及 checksum 核對的 RGBA PNG。
- * @returns {Buffer} 只供模型讀取的白底 RGBA PNG；原始私有資產不變。
+ * @param {{crop?: boolean}} options 是否裁切並縮放筆跡。
+ * @returns {Buffer} 只供辨識器讀取的正規化白底 RGBA PNG；原始私有資產不變。
  */
-export function prepareHandwritingImage(bytes) {
+export function prepareHandwritingImage(bytes, { crop = false } = {}) {
     if (!Buffer.isBuffer(bytes) || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
         fail("INVALID_HANDWRITING_PNG", "手寫資產不是 PNG。 ");
     }
@@ -300,16 +404,19 @@ export function prepareHandwritingImage(bytes) {
         rgba[pixel + 2] = Math.round(rgba[pixel + 2] * alpha + 255 * (1 - alpha));
         rgba[pixel + 3] = 255;
     }
-    const scanlines = Buffer.alloc(expectedLength);
-    for (let row = 0; row < height; row += 1) {
-        rgba.copy(scanlines, row * (stride + 1) + 1, row * stride, (row + 1) * stride);
-    }
-    return Buffer.concat([
-        PNG_SIGNATURE,
-        pngChunk("IHDR", header),
-        pngChunk("IDAT", deflateSync(scanlines, { level: 9 })),
-        pngChunk("IEND", Buffer.alloc(0)),
-    ]);
+    if (!crop) return encodeRgbaPng(rgba, width, height);
+    const normalized = normalizeHandwritingPixels(rgba, width, height);
+    return encodeRgbaPng(normalized.rgba, normalized.width, normalized.height);
+}
+
+/**
+ * 產生適合單行 OCR 的裁切與縮放版本，原始手寫資產保持不變。
+ *
+ * @param {Buffer} bytes 已驗證的 RGBA PNG。
+ * @returns {Buffer} 裁切後的白底 RGBA PNG。
+ */
+export function prepareHandwritingOcrImage(bytes) {
+    return prepareHandwritingImage(bytes, { crop: true });
 }
 
 export function transcriptionJsonSchema() {

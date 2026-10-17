@@ -4,6 +4,7 @@ node_modules
 !.env.example
 *.tsbuildinfo
 .DS_Store
+__pycache__/
 .vercel
 runtime-data/
 local-data/

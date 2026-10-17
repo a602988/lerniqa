@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
     loadQualityManifest,
     resolveSyntheticFixturePaths,
+    runHybridQualitySuite,
     runQualitySuite,
 } from "./lib/handwriting-quality.mjs";
 import { compactErrorCode } from "../app/lib/handwriting-analysis.mjs";
@@ -16,15 +17,15 @@ export function usage() {
     return [
         "Usage:",
         "  node scripts/smoke-handwriting-analysis.mjs --manifest <json> --png-dir <dir> [--dry-run]",
-        "  node scripts/smoke-handwriting-analysis.mjs --manifest <json> --png-dir <dir> --execute",
+        "  node scripts/smoke-handwriting-analysis.mjs --manifest <json> --png-dir <dir> --execute [--hybrid]",
         "",
         "Paths must remain under tests/fixtures/handwriting-ai-synthetic/.",
-        "Safe default validates only the manifest and PNG directory; --execute is required to call Ollama.",
+        "Safe default validates only the manifest and PNG directory; --execute is required to call local models.",
     ].join("\n");
 }
 
 export function parseArguments(argv) {
-    const parsed = { manifest: null, pngDirectory: null, execute: false, help: false };
+    const parsed = { manifest: null, pngDirectory: null, execute: false, hybrid: false, help: false };
     let executionSeen = false;
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
@@ -41,6 +42,7 @@ export function parseArguments(argv) {
             parsed.execute = argument === "--execute";
             executionSeen = true;
         }
+        else if (argument === "--hybrid") parsed.hybrid = true;
         else throw Object.assign(new Error(`不支援的參數：${argument}`), { code: "INVALID_ARGUMENT" });
     }
     if (!parsed.help && (!parsed.manifest || !parsed.pngDirectory)) {
@@ -59,7 +61,9 @@ export async function main(argv = process.argv.slice(2)) {
         const paths = await resolveSyntheticFixturePaths(REPOSITORY_ROOT, options.manifest, options.pngDirectory);
         const manifest = await loadQualityManifest(paths);
         const summary = options.execute
-            ? await runQualitySuite(manifest, paths)
+            ? options.hybrid
+                ? await runHybridQualitySuite(manifest, paths)
+                : await runQualitySuite(manifest, paths)
             : Object.freeze({ ok: true, dry_run: true, fixtures: manifest.fixtures.length, model_called: false });
         process.stdout.write(`${JSON.stringify(summary)}\n`);
         if (options.execute && !summary.passed) process.exitCode = 1;

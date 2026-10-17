@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-帳號郵件的驗證信、密碼重設與角色 PIN 設定／重設樣板，以及 Synology MailPlus adapter、Nodemailer transport 已完成不連網測試。密碼／PIN 復原的 API 與介面程式也已完成針對性測試，`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實；Lerniqa 自己的憑證、outbox、實際 handshake 與真實寄送仍未設定，也不得讀取或複製 ERP secret。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration；outbox／等時回應是獨立的上線阻擋，不屬於 `0012`。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與角色切換。OCR 與 AI 拆題仍未串接。本地 AI 手寫分析已串接固定 Ollama 模型與 sidecar worker；真實筆跡品質及人工審核介面仍待驗收。
+帳號郵件的驗證信、密碼重設與角色 PIN 設定／重設樣板，以及 Synology MailPlus adapter、Nodemailer transport 已完成不連網測試。密碼／PIN 復原的 API 與介面程式也已完成針對性測試，`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實；Lerniqa 自己的憑證、outbox、實際 handshake 與真實寄送仍未設定，也不得讀取或複製 ERP secret。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration；outbox／等時回應是獨立的上線阻擋，不屬於 `0012`。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與角色切換。教材 OCR 與 AI 拆題仍未串接。手寫分析已串接 PP-OCRv5、Apple Vision、固定 Ollama 模型及 sidecar worker；真實筆跡品質及人工審核介面仍待驗收。
 
 Lerniqa 是持續開發中的多科目正式產品。使用者從既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」，使用正式匯入的 279 題。題庫、學習者的練習必要資料、session、作答、歷程與錯題由本機 PostgreSQL 提供。auth 公開 DTO 已具備年級、學期、練習偏好、已啟用科目與書籍版本；`/practice` 已採用這份 DTO，且不保存瀏覽器學習者快照。瀏覽器只保存篩選與顯示等非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。`/local-practice` 保留為內部診斷與相容入口，不是另一套產品流程，也不代表 production 切換已完成。本文件沿用既有檔名以保留舊連結，內容是正式產品的本機操作說明，不是另一個 pilot 產品。
 
@@ -104,7 +104,9 @@ npm run db:import:hanlin -- \
 
 `instant`／`complete` 的手寫上傳只接受通過簽章、chunk、CRC、尺寸、解壓上限與可見墨跡檢查的 PNG，儲存為 private asset，並以學習者、session item、冪等鍵與內容雜湊建立穩定身份。文字小題沒有其他答案時，手寫只連到實際由手寫作答的小題，結果保持 `pending`／`manual`；同題已有完整文字或選項答案時，同一張圖只連到第一個小題作為計算過程附件，不改變自動判分。這些程式已通過針對性測試，但尚未在 `0012` 整合後完成整體資料庫 E2E。
 
-手寫 AI 已整合 `0012` job／run sidecar、作答交易生產者、受控 worker 與固定 Ollama 模型。只有 payload 為空且結果為 pending／manual 的手寫文字小題能進入 AI 佇列；計算過程附件不排入。worker 只把手寫圖片與固定逐字辨識指令送給模型，不傳題幹、參考答案、解析或評分規則，不解題也不判斷正誤。六張合成品質圖已完成真實 inference；真實學習者筆跡樣本仍待核准後驗收。
+送出前的手寫辨識先把透明畫布合成白底，另產生只供 PP-OCRv5 使用的筆跡裁切圖。PP-OCRv5 與 Apple Vision 文字一致時直接回填；沒有一致結果時才呼叫固定 Ollama 模型，可靠來源仍有衝突時保持 `pending`，交由人工判別。這三個辨識器都只接收手寫圖片，不接收題幹、參考答案、解析或評分規則。相同 PNG 的結果在網站程序記憶體快取十分鐘，正式送出可以重用剛完成的「AI 分析」。
+
+`0012` job／run sidecar、作答交易生產者及受控 worker 保留既有契約。只有 payload 為空且結果為 pending／manual 的手寫文字小題能進入 AI 佇列；計算過程附件不排入。六張合成品質圖的完整流程有三張可讀筆跡逐字相符，一張辨識器衝突的筆跡保持待人工判別；空白與模糊圖沒有產生文字，品質門檻通過。真實學習者筆跡樣本仍待核准後驗收。
 
 關聯題目練習只適用於允許揭露逐題錯誤的 `instant` 與已完成 `complete`。伺服器先取得完整的同細題型候選集；只有數量為 0 才查詢原題目前 revision 的已確認相近題群組。沒有同題型候選或已確認群組時就回傳無推薦，不放寬成同單元或同科目猜測。現有程式已通過針對性測試，但 `0012` 來源值域與 DB E2E 尚未完成。
 

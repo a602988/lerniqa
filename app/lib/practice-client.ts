@@ -758,7 +758,7 @@ export function getPersistedQuestionReferenceAnswers(questionId: string, revisio
  * @returns 可辨識文字與清晰狀態。
  */
 export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput) {
-    return practiceApi<{ transcription: string | null; legibility: "clear" | "unreadable" }>(
+    return practiceApi<{ transcription: string | null; legibility: "clear" | "uncertain" | "unreadable" }>(
         "/api/v1/local-practice/handwriting/transcription",
         {
             method: "POST",

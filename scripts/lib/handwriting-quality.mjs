@@ -10,6 +10,7 @@ import {
     transcribeHandwriting,
     unloadHandwritingModel,
 } from "../../app/lib/handwriting-analysis.mjs";
+import { transcribeLocalHandwriting } from "../../app/lib/handwriting-transcription.mjs";
 
 export const QUALITY_MANIFEST_VERSION = "lerniqa.handwriting-quality-fixtures/v2";
 export const QUALITY_FIXTURE_ROOT = path.join("tests", "fixtures", "handwriting-ai-synthetic");
@@ -226,6 +227,40 @@ export async function runQualitySuite(manifest, paths, {
     }
     finally {
         await unloadModel({ fetchImpl });
+    }
+    return evaluateQualityRecords(manifest, records);
+}
+
+/**
+ * 以正式互動流程驗證 OCR 共識、視覺模型複核與人工降級結果。
+ *
+ * @param {object} manifest 已驗證的品質樣本清單。
+ * @param {{pngDirectory: string}} paths 已限制於合成 fixture 的路徑。
+ * @param {{transcribe?: Function}} dependencies 可替換的辨識函式。
+ * @returns {Promise<object>} 品質門檻摘要。
+ */
+export async function runHybridQualitySuite(manifest, paths, {
+    transcribe = transcribeLocalHandwriting,
+} = {}) {
+    const records = [];
+    for (const fixture of manifest.fixtures) {
+        try {
+            const bytes = await readFixtureImage(paths, fixture);
+            const output = await transcribe(bytes);
+            records.push(Object.freeze({
+                id: fixture.id,
+                status: "completed",
+                transcription: output.transcription,
+            }));
+        }
+        catch (error) {
+            records.push(Object.freeze({
+                id: fixture.id,
+                status: "fault",
+                transcription: null,
+                error_code: compactErrorCode(error),
+            }));
+        }
     }
     return evaluateQualityRecords(manifest, records);
 }

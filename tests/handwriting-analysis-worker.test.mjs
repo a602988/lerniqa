@@ -23,6 +23,10 @@ import {
     QUALITY_MANIFEST_VERSION,
     validateQualityManifest,
 } from "../scripts/lib/handwriting-quality.mjs";
+import {
+    resolveOcrConsensus,
+    resolveWithModel,
+} from "../app/lib/handwriting-transcription.mjs";
 import { parseArguments as parseWorkerArguments, processClaim } from "../scripts/process-handwriting-analysis.mjs";
 import { parseArguments as parseSmokeArguments } from "../scripts/smoke-handwriting-analysis.mjs";
 
@@ -139,6 +143,7 @@ test("smoke CLI requires explicit synthetic manifest paths and defaults to no mo
             manifest: "tests/fixtures/handwriting-ai-synthetic/manifest.json",
             pngDirectory: "tests/fixtures/handwriting-ai-synthetic/png",
             execute: false,
+            hybrid: false,
             help: false,
         },
     );
@@ -193,6 +198,44 @@ test("strict transcription validation rejects extra keys and inconsistent unread
     assert.throws(() => validateTranscription({ ...valid, score: 1 }), /欄位/u);
     assert.throws(() => validateTranscription({ ...valid, legibility: "unreadable" }), /不一致/u);
     assert.throws(() => validateTranscription({ ...valid, uncertaintyReasons: ["made_up_reason"] }), /uncertaintyReasons/u);
+});
+
+test("independent OCR engines must agree before bypassing the local vision model", () => {
+    const consensus = resolveOcrConsensus([
+        { engine: "paddleocr", text: "如", confidence: 0.98 },
+        { engine: "apple-vision", text: "如", confidence: 0.52 },
+    ]);
+    assert.equal(consensus.transcription, "如");
+    assert.equal(consensus.legibility, "clear");
+    assert.equal(resolveOcrConsensus([
+        { engine: "paddleocr", text: "A", confidence: 0.99 },
+        { engine: "apple-vision", text: "4", confidence: 0.5 },
+    ]), null);
+    assert.equal(resolveOcrConsensus([
+        { engine: "paddleocr", text: "A", confidence: 0.99 },
+        null,
+    ]), null);
+});
+
+test("the local vision model confirms matching OCR and rejects reliable conflicts", () => {
+    const modelResult = validateTranscription({
+        schemaVersion: HANDWRITING_SCHEMA_VERSION,
+        transcription: "4",
+        legibility: "clear",
+        transcriptionConfidence: 0.96,
+        uncertaintyReasons: [],
+    });
+    const confirmed = resolveWithModel([
+        { engine: "paddleocr", text: "4", confidence: 0.91 },
+        null,
+    ], modelResult);
+    assert.equal(confirmed.transcription, "4");
+    const conflict = resolveWithModel([
+        { engine: "paddleocr", text: "A", confidence: 0.99 },
+        null,
+    ], modelResult);
+    assert.equal(conflict.transcription, null);
+    assert.equal(conflict.legibility, "uncertain");
 });
 
 test("model attestation checks version, tags, exact digest, show and explicit vision capability", async () => {

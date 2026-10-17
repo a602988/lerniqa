@@ -9,7 +9,7 @@
 - 練習企劃、依章節／依考試範圍、三種練習方式，以及預設收合的進階篩選；進階設定可調整難易度占比、來源、題型、知識點、建立者與本輪題數
 - 專注練習版面、每題大型手寫板、畫筆／橡皮擦，以及暫時關閉／結束練習流程。`instant`／`complete` 的 private PNG 儲存、受權讀取與冪等重送程式已通過針對性測試：文字題沒有其他答案時，手寫小題保持 `pending`／`manual`；已有完整答案時，手寫圖只作為第一個小題的計算過程附件，不改變判分。`score` 不接受手寫或任何逐題作答附件。完整資料庫 E2E 仍待 `0012` 整合後驗證
 - 每個主要頁面有固定網址，重新整理後維持原頁面
-- 本地 AI 手寫辨識沿用 ERP 的 `OLLAMA_BASE_URL`、`OLLAMA_MODEL` 與 `OLLAMA_KEEP_ALIVE` 設定，固定核對 `qwen3.8:27b` 的 digest 與 vision capability。手寫補足的文字答案會在同一個作答交易建立 `0012` sidecar job；worker 只讀取 private PNG 並逐字辨識手寫內容，不會把題幹、參考答案、解析或評分規則送給模型，也不會解題或判斷正誤。六張合成品質圖已完成真實 Ollama inference：四張可讀筆跡有三張逐字相符，一張外形相近的「4」辨識為「A」；空白及模糊圖均保持無法辨識。真實學習者筆跡樣本與人工檢視介面仍待驗收
+- 送出前的本地手寫辨識先以 PP-OCRv5 和 Apple Vision 交叉辨識。兩者文字相同時直接回填；沒有一致結果時，才使用固定 digest 的 `qwen3.8:27b` 複核；可靠來源仍有衝突時維持待人工判別。同一張 PNG 的辨識結果會在網站程序記憶體保存十分鐘，避免按「AI 分析」後正式送出又重跑。這些辨識器只讀取手寫圖片，不接收題幹、參考答案、解析或評分規則。六張合成品質圖的完整流程已通過門檻：四張可讀筆跡有三張直接相符，外形相近的「4」因辨識器衝突而保持待人工判別；空白及模糊圖均未產生文字。真實學習者筆跡樣本與人工檢視介面仍待驗收
 - 錯題複習、成果統計與檢視設定介面。錯題的「同細題型」推薦 API 與作答串接已通過針對性測試：先完整尋找同一標準細題型的候選，只有候選數為 0 才查詢經人工確認的相近題群組；沒有同題型候選也沒有已確認群組時可回傳無推薦。`score` 不允許建立逐題推薦練習。此路徑仍待 `0012` 的來源值域整合與資料庫 E2E；人工審核與新的正式相近題關聯尚未交付
 - 圖片／PDF／貼上文字匯入與多題校正仍是待建功能。主導覽已移除舊的 mock 匯入入口，直接開啟 `/bank` 會轉到 `/questions`；OCR／AI 拆題與受權限的 PostgreSQL 匯入 API／介面尚未串接，測試替代結果不能視為已辨識或已保存的教材
 - `/account` 已接上本機 PostgreSQL，支援電子郵件密碼註冊、登入、登出、目前帳號查詢與忘記密碼流程；密碼、session token 與一次性重設 token 都只保存雜湊。社群登入與帳號綁定仍未開放
@@ -42,14 +42,16 @@ npm run dev
 
 開啟 http://localhost:3500。
 
-本機 Ollama 使用與 ERP 相同的環境變數。先用合成筆跡做真實模型驗證，再由受控程序處理已排入 PostgreSQL 的工作：
+本機 Ollama 使用與 ERP 相同的環境變數。macOS 需先安裝 PP-OCRv5 的 Python 3.12 隔離環境並預載模型，再驗證完整辨識流程。背景 worker 仍以固定 Ollama 模型處理已排入 PostgreSQL 的 sidecar 工作：
 
 ```bash
+npm run handwriting:setup
+npm run handwriting:smoke:hybrid
 npm run handwriting:smoke -- --execute
 npm run handwriting:worker -- --continuous --execute
 ```
 
-兩個命令若沒有 `--execute` 都只會檢查契約，不會執行模型推論或領取工作。worker 不會下載或替換模型，也不會直接改寫作答結果。
+`handwriting:setup` 只把 Python 套件放在不進版控的 `local-data/handwriting-python`，模型預載後，網站執行期不會下載模型。smoke 或 worker 命令若沒有 `--execute`，只會檢查契約，不會執行模型推論或領取工作。worker 不會直接改寫作答結果。
 
 資料庫 migration 的本機隔離驗證：
 
