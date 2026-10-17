@@ -24,6 +24,8 @@ import {
     validateQualityManifest,
 } from "../scripts/lib/handwriting-quality.mjs";
 import {
+    mergePaddleCandidates,
+    resolveOcrFastResult,
     resolveOcrConsensus,
     resolveWithModel,
 } from "../app/lib/handwriting-transcription.mjs";
@@ -214,6 +216,34 @@ test("independent OCR engines must agree before bypassing the local vision model
     assert.equal(resolveOcrConsensus([
         { engine: "paddleocr", text: "A", confidence: 0.99 },
         null,
+    ]), null);
+});
+
+test("high-confidence CJK handwriting uses Paddle directly while Latin glyphs still require consensus", () => {
+    const chinese = resolveOcrFastResult([
+        { engine: "paddleocr", text: "雖", confidence: 0.99 },
+        { engine: "apple-vision", text: null, confidence: 0 },
+    ]);
+    assert.equal(chinese.transcription, "雖");
+    assert.equal(chinese.legibility, "clear");
+    assert.equal(resolveOcrFastResult([
+        { engine: "paddleocr", text: "雖", confidence: 0.84 },
+        null,
+    ]), null);
+    assert.equal(resolveOcrFastResult([
+        { engine: "paddleocr", text: "A", confidence: 0.99 },
+        { engine: "apple-vision", text: "4", confidence: 0.5 },
+    ]), null);
+});
+
+test("Paddle multi-scale candidates use their strongest agreement and reject conflicts", () => {
+    assert.deepEqual(mergePaddleCandidates([
+        { engine: "paddleocr", text: "雖", confidence: 0.76 },
+        { engine: "paddleocr", text: "雖", confidence: 0.94 },
+    ]), { engine: "paddleocr", text: "雖", confidence: 0.94 });
+    assert.equal(mergePaddleCandidates([
+        { engine: "paddleocr", text: "雖", confidence: 0.94 },
+        { engine: "paddleocr", text: "誰", confidence: 0.95 },
     ]), null);
 });
 

@@ -104,7 +104,7 @@ function handlePaddleOutput(child, chunk) {
 }
 
 /**
- * 啟動一次並重用 PP-OCRv5 程序，避免每題重新載入模型。
+ * 啟動一次並重用 PP-OCRv6 程序，避免每題重新載入模型。
  *
  * @returns {Promise<import("node:child_process").ChildProcessWithoutNullStreams>} 已完成暖機的 worker。
  */
@@ -211,7 +211,7 @@ function runProcess(command, commandArguments, input, environment = process.env)
 }
 
 /**
- * 以 PP-OCRv5 辨識已正規化的手寫圖片。
+ * 以 PP-OCRv6 辨識已正規化的手寫圖片。
  *
  * @param {Buffer} imageBytes 正規化 PNG。
  * @returns {Promise<Readonly<{engine: string, text: string | null, confidence: number}> | null>} 辨識候選；未安裝時回傳 null。

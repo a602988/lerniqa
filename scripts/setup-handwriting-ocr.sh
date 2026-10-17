@@ -24,7 +24,7 @@ with contextlib.redirect_stdout(sys.stderr):
     from paddleocr import TextRecognition
 
     paddle.utils.run_check()
-    TextRecognition(model_name="PP-OCRv5_server_rec")
+    TextRecognition(model_name="PP-OCRv6_medium_rec")
 
-print("本機 PP-OCRv5 已安裝並預載模型。")
+print("本機 PP-OCRv6 已安裝並預載模型。")
 PY

@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 
 import {
+    HANDWRITING_MODEL_ATTEMPTS,
+    HANDWRITING_MODEL_TIMEOUT_MS,
     HANDWRITING_SCHEMA_VERSION,
     handwritingAiConfiguration,
     inspectHandwritingModel,
-    prepareHandwritingOcrImage,
+    prepareHandwritingOcrImages,
     transcribeHandwriting,
     validateTranscription,
 } from "./handwriting-analysis.mjs";
@@ -16,8 +18,10 @@ import {
 const CACHE_LIFETIME_MS = 10 * 60 * 1_000;
 const CACHE_MAXIMUM_ENTRIES = 128;
 const INTERACTIVE_BUDGET_MS = 4_500;
+const PADDLE_CJK_MINIMUM_CONFIDENCE = 0.85;
 const PADDLE_MINIMUM_CONFIDENCE = 0.6;
 const VISION_MINIMUM_CONFIDENCE = 0.25;
+const CJK_TEXT_PATTERN = /^\p{Script=Han}+$/u;
 
 let handwritingModelPromise;
 const CACHE_KEY = Symbol.for("lerniqa.handwriting.transcription-cache");
@@ -69,6 +73,26 @@ function reliableCandidate(candidate) {
 }
 
 /**
+ * 合併同一模型的兩種留白比例；文字衝突時不讓其中一個版本直接決定答案。
+ *
+ * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates Paddle 多尺度候選。
+ * @returns {Readonly<{engine: string, text: string | null, confidence: number}> | null} 合併後候選。
+ */
+export function mergePaddleCandidates(candidates) {
+    const visible = candidates.filter((candidate) => (
+        candidate?.engine === "paddleocr" && normalizedText(candidate.text)
+    ));
+    if (!visible.length) return candidates.find((candidate) => candidate?.engine === "paddleocr") ?? null;
+    const transcription = normalizedText(visible[0].text);
+    if (!transcription || visible.some((candidate) => normalizedText(candidate.text) !== transcription)) return null;
+    return Object.freeze({
+        engine: "paddleocr",
+        text: transcription,
+        confidence: Math.max(...visible.map((candidate) => candidate.confidence)),
+    });
+}
+
+/**
  * 讓互動式辨識在指定時間內回應；底層辨識器仍自行回收程序與請求。
  *
  * @param {Promise<unknown>} promise 目前執行中的辨識工作。
@@ -106,6 +130,22 @@ export function resolveOcrConsensus(candidates) {
 }
 
 /**
+ * 繁中手寫由專門模型直接判讀；英數仍要求兩個引擎一致，避免相似字形誤判。
+ *
+ * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates OCR 候選。
+ * @returns {Readonly<{schemaVersion: string, transcription: string | null, legibility: string, transcriptionConfidence: number, uncertaintyReasons: readonly string[]}> | null} 可直接採用的結果。
+ */
+export function resolveOcrFastResult(candidates) {
+    const consensus = resolveOcrConsensus(candidates);
+    if (consensus) return consensus;
+    const paddle = candidates.find((candidate) => candidate?.engine === "paddleocr");
+    const transcription = normalizedText(paddle?.text);
+    if (!transcription || !CJK_TEXT_PATTERN.test(transcription)
+        || paddle.confidence < PADDLE_CJK_MINIMUM_CONFIDENCE) return null;
+    return result(transcription, "clear", paddle.confidence);
+}
+
+/**
  * 優先採用本地視覺模型；模型不清楚時才允許兩個 OCR 的一致結果補位。
  *
  * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates OCR 候選。
@@ -115,7 +155,7 @@ export function resolveOcrConsensus(candidates) {
 export function resolveWithModel(candidates, modelResult) {
     const modelText = normalizedText(modelResult.transcription);
     if (modelResult.legibility === "clear" && modelText) return modelResult;
-    return resolveOcrConsensus(candidates) ?? modelResult;
+    return resolveOcrFastResult(candidates) ?? modelResult;
 }
 
 /**
@@ -139,17 +179,24 @@ function pruneCache(now) {
  * @param {Buffer} imageBytes 已驗證 PNG。
  * @returns {Promise<Readonly<object>>} 最終辨識結果。
  */
-async function runTranscription(imageBytes) {
+async function runTranscription(imageBytes, {
+    attempts = 1,
+    budgetMs = INTERACTIVE_BUDGET_MS,
+    fetchImpl = fetch,
+    model: suppliedModel,
+} = {}) {
     const startedAt = Date.now();
-    const remainingBudget = () => Math.max(0, INTERACTIVE_BUDGET_MS - (Date.now() - startedAt));
-    const ocrImage = prepareHandwritingOcrImage(imageBytes);
-    const candidates = await withinBudget(Promise.all([
-        recognizeWithPaddle(ocrImage),
-        recognizeWithAppleVision(ocrImage),
+    const remainingBudget = () => Math.max(0, budgetMs - (Date.now() - startedAt));
+    const [standardImage, spaciousImage] = prepareHandwritingOcrImages(imageBytes);
+    const ocrResults = await withinBudget(Promise.all([
+        recognizeWithPaddle(standardImage),
+        recognizeWithPaddle(spaciousImage),
+        recognizeWithAppleVision(standardImage),
     ]), remainingBudget());
-    if (!candidates) return result(null, "unreadable", 0, ["other"]);
-    const consensus = resolveOcrConsensus(candidates);
-    if (consensus) return consensus;
+    if (!ocrResults) return result(null, "unreadable", 0, ["other"]);
+    const candidates = [mergePaddleCandidates(ocrResults.slice(0, 2)), ocrResults[2]];
+    const fastResult = resolveOcrFastResult(candidates);
+    if (fastResult) return fastResult;
     const hasVisibleText = candidates.some((candidate) => normalizedText(candidate?.text));
     if (!candidates.some(reliableCandidate)) {
         return result(null, "unreadable", 0, [hasVisibleText ? "ambiguous_glyphs" : "empty"]);
@@ -159,21 +206,36 @@ async function runTranscription(imageBytes) {
     try {
         let timeoutMs = remainingBudget();
         if (timeoutMs < 1) return result(null, "uncertain", 0, ["other"]);
-        handwritingModelPromise ??= inspectHandwritingModel({
-            configuration: handwritingAiConfiguration(),
-            timeoutMs,
-        });
-        const model = await withinBudget(handwritingModelPromise, timeoutMs);
+        if (!suppliedModel) {
+            handwritingModelPromise ??= inspectHandwritingModel({
+                configuration: handwritingAiConfiguration(),
+                fetchImpl,
+                timeoutMs,
+            });
+        }
+        const modelPromise = suppliedModel ? Promise.resolve(suppliedModel) : handwritingModelPromise;
+        const model = await withinBudget(modelPromise, timeoutMs);
         if (!model) return result(null, "uncertain", 0, ["other"]);
         timeoutMs = remainingBudget();
         if (timeoutMs < 1) return result(null, "uncertain", 0, ["other"]);
-        modelResult = await transcribeHandwriting(imageBytes, model, { attempts: 1, timeoutMs });
+        modelResult = await transcribeHandwriting(imageBytes, model, { attempts, fetchImpl, timeoutMs });
     }
     catch (error) {
         handwritingModelPromise = undefined;
         return result(null, "uncertain", 0, ["other"]);
     }
     return resolveWithModel(candidates, modelResult);
+}
+
+/**
+ * 執行 OCR 與本機視覺模型共用流程，供互動預覽與背景工作使用不同時間預算。
+ *
+ * @param {Buffer} imageBytes 已驗證的 PNG 內容。
+ * @param {{attempts?: number, budgetMs?: number, fetchImpl?: typeof fetch, model?: object}} options 辨識執行條件。
+ * @returns {Promise<Readonly<object>>} 最終辨識結果。
+ */
+export async function transcribeHybridHandwriting(imageBytes, options = {}) {
+    return runTranscription(imageBytes, options);
 }
 
 /**
@@ -190,7 +252,7 @@ export async function transcribeLocalHandwriting(imageBytes, { force = false } =
     if (!force && cached && cached.expiresAt > now) return cached.promise;
     if (force) transcriptionCache.delete(checksum);
     pruneCache(now);
-    const promise = runTranscription(imageBytes).catch((error) => {
+    const promise = transcribeHybridHandwriting(imageBytes).catch((error) => {
         transcriptionCache.delete(checksum);
         throw error;
     });

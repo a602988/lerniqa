@@ -244,9 +244,10 @@ function resizeRgba(source, sourceWidth, sourceHeight, targetWidth, targetHeight
  * @param {Buffer} rgba 白底 RGBA 像素。
  * @param {number} width 原始寬度。
  * @param {number} height 原始高度。
+ * @param {number} paddingRatio 筆跡四周相對於內容尺寸的留白比例。
  * @returns {{rgba: Buffer, width: number, height: number}} 正規化像素與尺寸。
  */
-function normalizeHandwritingPixels(rgba, width, height) {
+function normalizeHandwritingPixels(rgba, width, height, paddingRatio) {
     let minimumX = width;
     let minimumY = height;
     let maximumX = -1;
@@ -268,7 +269,7 @@ function normalizeHandwritingPixels(rgba, width, height) {
     }
     const contentWidth = maximumX - minimumX + 1;
     const contentHeight = maximumY - minimumY + 1;
-    const padding = Math.max(24, Math.round(Math.max(contentWidth, contentHeight) * 0.12));
+    const padding = Math.max(24, Math.round(Math.max(contentWidth, contentHeight) * paddingRatio));
     const cropWidth = contentWidth + padding * 2;
     const cropHeight = contentHeight + padding * 2;
     const cropped = Buffer.alloc(cropWidth * cropHeight * 4, 255);
@@ -320,10 +321,10 @@ function encodeRgbaPng(rgba, width, height) {
  * 把透明畫布合成白底，並可選擇裁切筆跡供單行 OCR 使用。
  *
  * @param {Buffer} bytes 已通過上傳驗證及 checksum 核對的 RGBA PNG。
- * @param {{crop?: boolean}} options 是否裁切並縮放筆跡。
+ * @param {{crop?: boolean, paddingRatio?: number}} options 是否裁切筆跡及其留白比例。
  * @returns {Buffer} 只供辨識器讀取的正規化白底 RGBA PNG；原始私有資產不變。
  */
-export function prepareHandwritingImage(bytes, { crop = false } = {}) {
+export function prepareHandwritingImage(bytes, { crop = false, paddingRatio = 0.12 } = {}) {
     if (!Buffer.isBuffer(bytes) || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
         fail("INVALID_HANDWRITING_PNG", "手寫資產不是 PNG。 ");
     }
@@ -405,7 +406,7 @@ export function prepareHandwritingImage(bytes, { crop = false } = {}) {
         rgba[pixel + 3] = 255;
     }
     if (!crop) return encodeRgbaPng(rgba, width, height);
-    const normalized = normalizeHandwritingPixels(rgba, width, height);
+    const normalized = normalizeHandwritingPixels(rgba, width, height, paddingRatio);
     return encodeRgbaPng(normalized.rgba, normalized.width, normalized.height);
 }
 
@@ -417,6 +418,19 @@ export function prepareHandwritingImage(bytes, { crop = false } = {}) {
  */
 export function prepareHandwritingOcrImage(bytes) {
     return prepareHandwritingImage(bytes, { crop: true });
+}
+
+/**
+ * 產生緊密與寬鬆留白版本，降低複雜中文字因縮放比例造成的辨識落差。
+ *
+ * @param {Buffer} bytes 已驗證的 RGBA PNG。
+ * @returns {Buffer[]} 兩種只供 OCR 使用的正規化圖片。
+ */
+export function prepareHandwritingOcrImages(bytes) {
+    return [
+        prepareHandwritingImage(bytes, { crop: true, paddingRatio: 0.12 }),
+        prepareHandwritingImage(bytes, { crop: true, paddingRatio: 0.5 }),
+    ];
 }
 
 export function transcriptionJsonSchema() {

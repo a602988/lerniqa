@@ -7,13 +7,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
     assertEligibleClaim,
     compactErrorCode,
+    HANDWRITING_MODEL_ATTEMPTS,
+    HANDWRITING_MODEL_TIMEOUT_MS,
     handwritingAiConfiguration,
     HandwritingAnalysisError,
     inspectHandwritingModel,
     readHandwritingAsset,
-    transcribeHandwriting,
     unloadHandwritingModel,
 } from "../app/lib/handwriting-analysis.mjs";
+import { shutdownHandwritingOcr } from "../app/lib/handwriting-ocr.mjs";
+import { transcribeHybridHandwriting } from "../app/lib/handwriting-transcription.mjs";
 import {
     acquireHandwritingWorkerLock,
     assertConnectedHandwritingDatabase,
@@ -91,14 +94,19 @@ export async function processClaim(client, candidate, model, workerId, {
     repositoryRoot = REPOSITORY_ROOT,
     fetchImpl = fetch,
     readAsset = readHandwritingAsset,
-    transcribe = transcribeHandwriting,
+    transcribe = transcribeHybridHandwriting,
     complete = completeHandwritingJob,
     failJob = failHandwritingJob,
 } = {}) {
     try {
         assertEligibleClaim(candidate);
         const bytes = await readAsset(candidate, repositoryRoot);
-        const transcription = await transcribe(bytes, model, { fetchImpl });
+        const transcription = await transcribe(bytes, {
+            attempts: HANDWRITING_MODEL_ATTEMPTS,
+            budgetMs: HANDWRITING_MODEL_TIMEOUT_MS,
+            fetchImpl,
+            model,
+        });
         await complete(client, { workerId, candidate, transcription });
         return Object.freeze({
             ok: true,
@@ -126,6 +134,7 @@ export async function runWorker(options, {
     claimJob = claimEligibleHandwritingJob,
     previewJob = previewEligibleHandwritingJob,
     unloadModel = unloadHandwritingModel,
+    shutdownOcr = shutdownHandwritingOcr,
     processOne = processClaim,
 } = {}) {
     const configuration = handwritingDatabaseConfiguration(repositoryRoot, environment);
@@ -170,6 +179,7 @@ export async function runWorker(options, {
     }
     finally {
         if (modelWasUsed) await unloadModel({ configuration: aiConfiguration, fetchImpl }).catch(() => undefined);
+        await shutdownOcr().catch(() => undefined);
         if (locked) await releaseHandwritingWorkerLock(client).catch(() => undefined);
         await client.end().catch(() => undefined);
     }

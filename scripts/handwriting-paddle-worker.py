@@ -14,11 +14,11 @@ with contextlib.redirect_stdout(sys.stderr):
     import numpy
     from paddleocr import TextRecognition
 
-    model_directory = Path.home() / ".paddlex" / "official_models" / "PP-OCRv5_server_rec"
+    model_directory = Path.home() / ".paddlex" / "official_models" / "PP-OCRv6_medium_rec"
     if not model_directory.is_dir():
         raise RuntimeError("PADDLE_MODEL_NOT_PROVISIONED")
     model = TextRecognition(
-        model_name="PP-OCRv5_server_rec",
+        model_name="PP-OCRv6_medium_rec",
         model_dir=str(model_directory),
     )
 
