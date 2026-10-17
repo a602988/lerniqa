@@ -773,13 +773,18 @@ export function warmPersistedHandwriting(signal?: AbortSignal) {
 export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput, options: {
     signal?: AbortSignal;
     force?: boolean;
+    ink?: import("./handwriting-ink").HandwritingInk;
 } = {}) {
     return practiceApi<{ transcription: string | null; legibility: "clear" | "uncertain" | "unreadable" }>(
         "/api/v1/local-practice/handwriting/transcription",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ handwriting, force: options.force === true }),
+            body: JSON.stringify({
+                handwriting,
+                force: options.force === true,
+                ...(options.ink ? { ink: options.ink } : {}),
+            }),
             signal: options.signal,
         },
     );

@@ -12,8 +12,11 @@ const PADDLE_PYTHON = path.join(REPOSITORY_ROOT, "local-data", "handwriting-pyth
 const PADDLE_WORKER = path.join(REPOSITORY_ROOT, "scripts", "handwriting-paddle-worker.py");
 const VISION_SOURCE = path.join(REPOSITORY_ROOT, "scripts", "handwriting-vision.swift");
 const VISION_BINARY = path.join(REPOSITORY_ROOT, "local-data", "handwriting-runtime", "apple-vision-ocr");
+const PENCILKIT_SOURCE = path.join(REPOSITORY_ROOT, "scripts", "handwriting-pencilkit.swift");
+const PENCILKIT_BINARY = path.join(REPOSITORY_ROOT, "local-data", "handwriting-runtime", "apple-pencilkit-handwriting");
 
 let visionBuildPromise;
+let pencilKitBuildPromise;
 const PADDLE_STATE_KEY = Symbol.for("lerniqa.handwriting.paddle-worker");
 const paddleState = globalThis[PADDLE_STATE_KEY] ?? {
     child: null,
@@ -299,12 +302,67 @@ async function prepareVisionBinary() {
 }
 
 /**
+ * 編譯使用筆順與時間資訊的 PencilKit 辨識程序。
+ *
+ * @returns {Promise<string | null>} 可執行檔路徑；目前平台不支援時回傳 null。
+ */
+async function preparePencilKitBinary() {
+    if (process.platform !== "darwin") return null;
+    pencilKitBuildPromise ??= (async () => {
+        try {
+            const [sourceMetadata, binaryMetadata] = await Promise.all([
+                stat(PENCILKIT_SOURCE),
+                stat(PENCILKIT_BINARY).catch(() => null),
+            ]);
+            if (!binaryMetadata || binaryMetadata.mtimeMs < sourceMetadata.mtimeMs) {
+                await mkdir(path.dirname(PENCILKIT_BINARY), { recursive: true });
+                await runProcess("/usr/bin/xcrun", [
+                    "swiftc", "-parse-as-library", "-O", PENCILKIT_SOURCE, "-o", PENCILKIT_BINARY,
+                ], Buffer.alloc(0));
+            }
+            await access(PENCILKIT_BINARY);
+            return PENCILKIT_BINARY;
+        }
+        catch {
+            return null;
+        }
+    })();
+    return pencilKitBuildPromise;
+}
+
+/**
  * 在使用者開始書寫前載入本機 OCR，避免第一次辨識承擔模型暖機時間。
  *
  * @returns {Promise<void>} 可用的辨識器完成暖機後結束。
  */
 export async function warmHandwritingOcr() {
-    await Promise.all([paddleWorker(), prepareVisionBinary()]);
+    await Promise.all([paddleWorker(), prepareVisionBinary(), preparePencilKitBinary()]);
+}
+
+/**
+ * 以 PencilKit 的正體中文數位筆跡模型辨識座標、時間與筆順。
+ *
+ * @param {object | undefined} ink 已驗證的數位筆跡。
+ * @returns {Promise<Readonly<{engine: string, text: string | null, confidence: number}> | null>} 辨識候選；平台不支援時回傳 null。
+ */
+export async function recognizeWithApplePencilKit(ink) {
+    if (!ink) return null;
+    try {
+        const binary = await preparePencilKitBinary();
+        if (!binary) return null;
+        const { stdout } = await runProcess(binary, [], Buffer.from(JSON.stringify(ink), "utf8"));
+        const response = JSON.parse(stdout);
+        if (response?.supported !== true) return null;
+        const text = typeof response.text === "string" ? response.text.normalize("NFKC").trim() : null;
+        return Object.freeze({
+            engine: "apple-pencilkit",
+            text: text || null,
+            confidence: text ? 0.9 : 0,
+        });
+    }
+    catch {
+        return null;
+    }
 }
 
 /**

@@ -11,6 +11,7 @@ import {
     validateTranscription,
 } from "./handwriting-analysis.mjs";
 import {
+    recognizeWithApplePencilKit,
     recognizeWithAppleVision,
     recognizeWithPaddle,
 } from "./handwriting-ocr.mjs";
@@ -183,18 +184,23 @@ async function runTranscription(imageBytes, {
     attempts = 1,
     budgetMs = INTERACTIVE_BUDGET_MS,
     fetchImpl = fetch,
+    ink,
     model: suppliedModel,
 } = {}) {
     const startedAt = Date.now();
     const remainingBudget = () => Math.max(0, budgetMs - (Date.now() - startedAt));
     const [standardImage, spaciousImage] = prepareHandwritingOcrImages(imageBytes);
     const ocrResults = await withinBudget(Promise.all([
+        recognizeWithApplePencilKit(ink),
         recognizeWithPaddle(standardImage),
         recognizeWithPaddle(spaciousImage),
         recognizeWithAppleVision(standardImage),
     ]), remainingBudget());
     if (!ocrResults) return result(null, "unreadable", 0, ["other"]);
-    const candidates = [mergePaddleCandidates(ocrResults.slice(0, 2)), ocrResults[2]];
+    const pencilKit = ocrResults[0];
+    const pencilKitText = normalizedText(pencilKit?.text);
+    if (pencilKitText) return result(pencilKitText, "clear", pencilKit.confidence);
+    const candidates = [mergePaddleCandidates(ocrResults.slice(1, 3)), ocrResults[3]];
     const fastResult = resolveOcrFastResult(candidates);
     if (fastResult) return fastResult;
     const hasVisibleText = candidates.some((candidate) => normalizedText(candidate?.text));
@@ -242,17 +248,20 @@ export async function transcribeHybridHandwriting(imageBytes, options = {}) {
  * 使用本機 OCR 共識與視覺模型辨識手寫內容，並依圖片 checksum 避免重複運算。
  *
  * @param {Buffer} imageBytes 已驗證的 PNG 內容。
- * @param {{force?: boolean}} options 是否略過相同圖片的短期快取。
+ * @param {{force?: boolean, ink?: object}} options 是否略過相同圖片的短期快取，以及瀏覽器保留的數位筆跡。
  * @returns {Promise<Readonly<{schemaVersion: string, transcription: string | null, legibility: string, transcriptionConfidence: number, uncertaintyReasons: readonly string[]}>>} 辨識結果。
  */
-export async function transcribeLocalHandwriting(imageBytes, { force = false } = {}) {
-    const checksum = createHash("sha256").update(imageBytes).digest("hex");
+export async function transcribeLocalHandwriting(imageBytes, { force = false, ink } = {}) {
+    const checksum = createHash("sha256")
+        .update(imageBytes)
+        .update(ink ? JSON.stringify(ink) : "")
+        .digest("hex");
     const now = Date.now();
     const cached = transcriptionCache.get(checksum);
     if (!force && cached && cached.expiresAt > now) return cached.promise;
     if (force) transcriptionCache.delete(checksum);
     pruneCache(now);
-    const promise = transcribeHybridHandwriting(imageBytes).catch((error) => {
+    const promise = transcribeHybridHandwriting(imageBytes, { ink }).catch((error) => {
         transcriptionCache.delete(checksum);
         throw error;
     });

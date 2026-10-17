@@ -37,6 +37,9 @@ const handwritingObjectStore = await import(await loadModule(
 const handwritingPng = await import(await loadModule(
     new URL("../app/lib/handwriting-png.ts", import.meta.url),
 ));
+const handwritingInk = await import(await loadModule(
+    new URL("../app/lib/handwriting-ink.ts", import.meta.url),
+));
 const {
     MINIMUM_HANDWRITING_PIXELS,
     hasVisibleHandwritingPixels,
@@ -47,6 +50,27 @@ const {
     storeHandwritingObject,
 } = handwritingObjectStore;
 const { validateHandwritingPngDataUrl } = handwritingPng;
+const { validateHandwritingInk } = handwritingInk;
+
+test("digital ink validation preserves bounded stroke order and rejects unsafe coordinates", () => {
+    const valid = validateHandwritingInk({
+        width: 1200,
+        height: 760,
+        strokes: [{ points: [
+            { x: 100, y: 120, t: 0, force: 0.5 },
+            { x: 180, y: 160, t: 24, force: 0.7 },
+        ] }],
+    });
+    assert.deepEqual(valid?.strokes[0]?.points.map((point: { x: number; t: number }) => [point.x, point.t]), [
+        [100, 0],
+        [180, 24],
+    ]);
+    assert.equal(validateHandwritingInk({
+        width: 1200,
+        height: 760,
+        strokes: [{ points: [{ x: 1201, y: 120, t: 0 }] }],
+    }), null);
+});
 
 function crc32(bytes: Uint8Array): number {
     let crc = 0xffffffff;
@@ -268,7 +292,8 @@ test("handwriting preview analysis is warmed, automatic, cancellable, non-persis
     ]);
     assert.match(route, /requireLocalPracticeAccount\(request\)/u);
     assert.match(route, /validateHandwritingPngDataUrl\(body\.handwriting\.dataUrl\)/u);
-    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{ force: body\.force === true \}\)/u);
+    assert.match(route, /validateHandwritingInk\(body\.ink\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes,[\s\S]*force: body\.force === true,[\s\S]*ink/u);
     assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
     assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
     assert.match(warmup, /requireLocalPracticeAccount\(request\)[\s\S]*warmHandwritingOcr\(\)/u);
@@ -278,15 +303,17 @@ test("handwriting preview analysis is warmed, automatic, cancellable, non-persis
     assert.match(pad, /LoaderCircle className="animate-spin"/u);
     assert.match(pad, /hasAnalysisResult \? "重新分析" : "立即分析"/u);
     assert.match(page, /recognizedAnswers: \{ \[handwritingPart\.id\]: result\.transcription \}/u);
-    assert.match(page, /window\.setTimeout\(\(\) => void analyzeHandwriting\(source\), 1500\)/u);
+    assert.match(page, /updateRecognizedAnswer\(result\.transcription\)[\s\S]*recognizedAnswers/u);
+    assert.match(page, /window\.setTimeout\(\(\) => void analyzeHandwriting\(source, false, handwritingInk\), 1500\)/u);
     assert.match(page, /function resetHandwritingAnalysis[\s\S]*handwritingAbortRef\.current\?\.abort\(\)[\s\S]*window\.clearTimeout\(handwritingTimerRef\.current\)[\s\S]*setHandwritingAnalysis\(\{ status: "idle", message: "" \}\)/u);
     assert.match(page, /async function analyzeHandwriting[\s\S]*window\.clearTimeout\(handwritingTimerRef\.current\)[\s\S]*transcribePersistedHandwriting/u);
     assert.match(page, /function changeHandwriting[\s\S]*resetHandwritingAnalysis\(\)[\s\S]*props\.onHandwriting\(value\)/u);
     assert.match(page, /onStrokeStart=\{canAnalyzeHandwriting \? resetHandwritingAnalysis : undefined\}/u);
     assert.match(pad, /function startDrawing[\s\S]*onStrokeStart\?\.\(\)[\s\S]*setPointerCapture/u);
     assert.match(page, /analysisId !== handwritingAnalysisIdRef\.current \|\| source !== handwritingRef\.current/u);
-    assert.match(client, /transcribePersistedHandwriting\(handwriting: LocalPracticeHandwritingInput, options:[\s\S]*force\?: boolean[\s\S]*force: options\.force === true[\s\S]*signal: options\.signal/u);
-    assert.match(page, /onAnalyze=\{canAnalyzeHandwriting \? \(\) => void analyzeHandwriting\(handwriting, true\) : undefined\}/u);
+    assert.match(client, /transcribePersistedHandwriting\(handwriting: LocalPracticeHandwritingInput, options:[\s\S]*ink\?:[\s\S]*force: options\.force === true[\s\S]*ink: options\.ink[\s\S]*signal: options\.signal/u);
+    assert.match(page, /onAnalyze=\{canAnalyzeHandwriting \? \(\) => void analyzeHandwriting\(handwriting, true, handwritingInk\) : undefined\}/u);
+    assert.match(pad, /getCoalescedEvents[\s\S]*timeStamp[\s\S]*pressure/u);
 });
 
 test("handwriting-only completion is limited to text parts and remains pending manual review", async () => {

@@ -2,6 +2,7 @@ import {
     MAX_HANDWRITING_BYTES,
     validateHandwritingPngDataUrl,
 } from "@/app/lib/handwriting-png";
+import { validateHandwritingInk } from "@/app/lib/handwriting-ink";
 import { transcribeLocalHandwriting } from "@/app/lib/handwriting-transcription.mjs";
 import {
     errorResponse,
@@ -42,8 +43,18 @@ export async function POST(request: Request) {
         if (!handwriting) {
             return errorResponse("INVALID_HANDWRITING", "手寫板沒有有效筆跡，請先書寫後再分析。", 400);
         }
+        let ink;
+        if (body.ink !== undefined) {
+            ink = validateHandwritingInk(body.ink);
+            if (!ink) {
+                return errorResponse("INVALID_HANDWRITING_INK", "手寫筆跡資料格式不正確。", 400);
+            }
+        }
         try {
-            const result = await transcribeLocalHandwriting(handwriting.bytes, { force: body.force === true });
+            const result = await transcribeLocalHandwriting(handwriting.bytes, {
+                force: body.force === true,
+                ink,
+            });
             return localPracticeJsonResponse({
                 data: {
                     transcription: result.transcription,
