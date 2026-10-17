@@ -125,8 +125,12 @@ interface QuestionFlowProps {
     onHandwriting: (value: string) => void;
     /** 送出答案。 */
     onSubmit: () => void;
+    /** 返回上一題。 */
+    onPrevious: () => void;
     /** 前往下一題。 */
     onNext: () => void;
+    /** 目前題目是否已送出。 */
+    submitted?: boolean;
 }
 
 interface WorkspaceHeadingProps {
@@ -1301,7 +1305,7 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 
 /** 顯示單題作答及手寫區。 */
 function QuestionFlow(props: QuestionFlowProps) {
-    const { question, serverQuestion, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
+    const { question, serverQuestion, index, total, partIds, checkMode, answer, handwriting, feedback, submitted = false } = props;
     const reviewRef = useRef<HTMLElement>(null);
     const handwritingRef = useRef(handwriting);
     const handwritingAnalysisIdRef = useRef(0);
@@ -1368,7 +1372,7 @@ function QuestionFlow(props: QuestionFlowProps) {
     }, [canAnalyzeHandwriting]);
 
     useEffect(() => {
-        if (!handwriting || !canAnalyzeHandwriting || feedback || props.busy || props.answerLocked || checkMode === "score") return;
+        if (!handwriting || !canAnalyzeHandwriting || submitted || feedback || props.busy || props.answerLocked || checkMode === "score") return;
 
         const source = handwriting;
         const timer = window.setTimeout(() => void analyzeHandwriting(source), 1500);
@@ -1377,7 +1381,7 @@ function QuestionFlow(props: QuestionFlowProps) {
             window.clearTimeout(timer);
             if (handwritingTimerRef.current === timer) handwritingTimerRef.current = null;
         };
-    }, [handwriting, canAnalyzeHandwriting, feedback, props.busy, props.answerLocked, checkMode, handwritingPart?.id]);
+    }, [handwriting, canAnalyzeHandwriting, submitted, feedback, props.busy, props.answerLocked, checkMode, handwritingPart?.id]);
 
     useEffect(() => () => handwritingAbortRef.current?.abort(), []);
 
@@ -1497,7 +1501,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                             <QuestionTypeLabel question={question} />
                             <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                         </div>
-                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={Boolean(feedback)} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
+                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
                     </section>
                     {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                         <div className="practice-feedback-status">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedbackMessage}</div>
@@ -1508,16 +1512,18 @@ function QuestionFlow(props: QuestionFlowProps) {
                             : <p className="practice-feedback-explanation">{question.explanation}</p>)}
                     </aside>}
                     <div className="practice-question-meta"><QuestionConditions question={question} /></div>
-                    <div className="practice-question-actions">{feedback
-                        ? <Button onClick={props.onNext}>{isLast ? "查看結果" : "下一題"}<ArrowRight /></Button>
-                        : <Button disabled={!canSubmit || props.busy} onClick={props.onSubmit}>{props.busy ? "正在保存…" : checkMode === "instant" ? "檢查答案" : isLast ? checkMode === "score" ? "完成並看成績" : "完成並檢核" : checkMode === "score" ? "計入成績並到下一題" : "儲存並到下一題"}<ArrowRight /></Button>}
+                    <div className="practice-question-actions">
+                        <Button appearance="outline" disabled={index <= 0 || props.busy} onClick={props.onPrevious}><ArrowLeft />上一題</Button>
+                        {submitted || feedback
+                            ? <Button onClick={props.onNext}>{isLast ? "查看結果" : "下一題"}<ArrowRight /></Button>
+                            : <Button disabled={!canSubmit || props.busy} onClick={props.onSubmit}>{props.busy ? "正在保存…" : checkMode === "instant" ? "檢查答案" : isLast ? checkMode === "score" ? "完成並看成績" : "完成並檢核" : checkMode === "score" ? "計入成績並到下一題" : "儲存並到下一題"}<ArrowRight /></Button>}
                     </div>
                 </div>
                 <aside className="practice-handwriting-pane">
                     {checkMode === "score" && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="note">只顯示成績模式不保存作答內容，因此不能提交手寫板。請改用「逐題檢核」或「全部作答後檢核」保存筆跡。</p>}
                     <HandwritingPad
                         value={handwriting}
-                        disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"}
+                        disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"}
                         recognitionStatus={canAnalyzeHandwriting ? recognitionStatus : needsCharacterRecognition ? "送出後辨識文字" : undefined}
                         analysisBusy={handwritingAnalysis.status === "loading"}
                         hasAnalysisResult={["clear", "unreadable", "error"].includes(handwritingAnalysis.status)}
@@ -1579,6 +1585,7 @@ export default function Home() {
     const [sessionExitOpen, setSessionExitOpen] = useState(false);
     const [answer, setAnswer] = useState("");
     const [handwriting, setHandwriting] = useState("");
+    const sessionResponsesRef = useRef(new Map<string, { answer: string; handwriting: string }>());
     const [mistakeFilters, setMistakeFilters] = useState<QuestionFilters>(DEFAULT_QUESTION_FILTERS);
     const [mistakeFiltersOpen, setMistakeFiltersOpen] = useState(false);
     const [mistakePage, setMistakePage] = useState(1);
@@ -2104,11 +2111,12 @@ export default function Home() {
         ? [currentPersistedItem.partId]
         : currentQuestion ? session?.partIdsByQuestion?.[currentQuestion.id] : undefined;
     const sessionQuestionLabel = getSessionQuestionLabel(currentQuestion, session, questions);
-    const currentFeedback = currentQuestion && session?.checkMode === "instant"
-        ? session.attempts.find((attempt) => currentPersistedItem
+    const currentAttempt = currentQuestion
+        ? session?.attempts.find((attempt) => currentPersistedItem
             ? attempt.sessionItemId === currentPersistedItem.id
             : attempt.questionId === currentQuestion.id)
         : undefined;
+    const currentFeedback = session?.checkMode === "instant" ? currentAttempt : undefined;
     const planSubjectLabel = activeSubject
         ? `${activeSubject} · ${activeBookVersion}版`
         : "全部科目";
@@ -2484,6 +2492,10 @@ export default function Home() {
             }
             const routeQuestionIds = getQuestionGroupIds(routeQuestion, questions);
             const routeQuestionIndex = routeQuestionIds.indexOf(routeQuestionId);
+            const hasCompleteSessionGroup = routeQuestionIds.every((questionId) => session?.questionIds.includes(questionId));
+            const reusesCurrentSession = Boolean(session
+                && session.questionIds.includes(routeQuestionId)
+                && (session.mode !== "practice" || hasCompleteSessionGroup));
             setSection("practice");
             setSession((current) => {
                 const hasCompleteGroup = routeQuestionIds.every((questionId) => current?.questionIds.includes(questionId));
@@ -2506,8 +2518,14 @@ export default function Home() {
                 const nextIndex = current.questionIds.indexOf(routeQuestionId);
                 return nextIndex === current.index ? current : { ...current, index: nextIndex, questionStartedAt: Date.now() };
             });
-            setAnswer("");
-            setHandwriting("");
+            const targetIndex = reusesCurrentSession
+                ? session?.questionIds.indexOf(routeQuestionId) ?? routeQuestionIndex
+                : routeQuestionIndex;
+            const storedResponse = session && reusesCurrentSession && targetIndex >= 0
+                ? sessionResponsesRef.current.get(`${session.id}:${targetIndex}`)
+                : undefined;
+            setAnswer(storedResponse?.answer ?? "");
+            setHandwriting(storedResponse?.handwriting ?? "");
             return;
         }
         setSection(getSectionFromPath(browserPath));
@@ -2543,6 +2561,7 @@ export default function Home() {
 
     /** 清除目前練習與暫存輸入。 */
     function clearSession() {
+        sessionResponsesRef.current.clear();
         setSession(undefined);
         setRecommendationSessionKind(null);
         setSessionPaused(false);
@@ -3477,6 +3496,7 @@ export default function Home() {
             return targets;
         }, {});
         attemptRequestRef.current = undefined;
+        sessionResponsesRef.current.clear();
         setRecommendationSessionKind(null);
         setSession({ id: sessionId, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: effectiveQuestionIds, ...(persistedItems ? { persistedItems } : {}), ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
         setSessionPaused(false); setSessionExitOpen(false); setAnswer(""); setHandwriting(""); setSection(mode === "practice" ? "practice" : "mistakes");
@@ -3751,6 +3771,7 @@ export default function Home() {
                     : [...(current[session.learnerId] ?? []), attempt],
             }));
         }
+        sessionResponsesRef.current.set(`${session.id}:${session.index}`, { answer, handwriting });
         setSession((current) => {
             if (!current) return current;
             if (current.checkMode === "instant") return { ...current, attempts };
@@ -3765,17 +3786,42 @@ export default function Home() {
         }
     }
 
-    /** 逐題檢核後前往下一題。 */
-    function moveNext() {
-        const nextIndex = session && session.index + 1 < session.questionIds.length ? session.index + 1 : -1;
-        const nextQuestionId = session && nextIndex >= 0 ? session.questionIds[nextIndex] : undefined;
-        const completesSession = Boolean(session && nextIndex < 0);
-        if (session && completesSession) saveScheduledPracticeResult(session, session.attempts);
-        setAnswer(""); setHandwriting("");
+    /** 切換練習題目，並保存目前尚未送出的畫面內容。 */
+    function moveQuestion(targetIndex: number) {
+        if (!session || targetIndex < 0) return;
+        sessionResponsesRef.current.set(`${session.id}:${session.index}`, { answer, handwriting });
+        const nextIndex = targetIndex < session.questionIds.length ? targetIndex : -1;
+        const nextQuestionId = nextIndex >= 0 ? session.questionIds[nextIndex] : undefined;
+        const completesSession = nextIndex < 0;
+        if (completesSession) saveScheduledPracticeResult(session, session.attempts);
+        const storedResponse = nextIndex >= 0
+            ? sessionResponsesRef.current.get(`${session.id}:${nextIndex}`)
+            : undefined;
+        const nextItem = nextIndex >= 0 ? session.persistedItems?.[nextIndex] : undefined;
+        const nextAttempt = nextIndex >= 0 ? session.attempts.find((attempt) => nextItem
+            ? attempt.sessionItemId === nextItem.id
+            : attempt.questionId === nextQuestionId) : undefined;
+        const nextQuestion = nextQuestionId === undefined
+            ? undefined
+            : questions.find((question) => question.id === nextQuestionId);
+        setAnswer(storedResponse?.answer ?? (nextQuestion && !persistedQuestions.has(nextQuestion.id) ? nextAttempt?.answer ?? "" : ""));
+        setHandwriting(storedResponse?.handwriting ?? nextAttempt?.handwriting ?? "");
         setSession((current) => !current ? current : completesSession
             ? { ...current, phase: "complete" }
             : { ...current, index: nextIndex, questionStartedAt: Date.now() });
         if (nextQuestionId !== undefined) router.push(getSessionQuestionPath(nextQuestionId));
+    }
+
+    /** 返回上一題。 */
+    function movePrevious() {
+        if (!session) return;
+        moveQuestion(session.index - 1);
+    }
+
+    /** 前往下一題或完成逐題檢核。 */
+    function moveNext() {
+        if (!session) return;
+        moveQuestion(session.index + 1);
     }
 
     /** 取得目前最新錯題對應的正式 queue item；不可用畫面篩選條件推測推薦來源。 */
@@ -3882,6 +3928,7 @@ export default function Home() {
                 setStorageError("此瀏覽器無法保存練習恢復識別碼；請完成本輪後再關閉頁面。");
             }
             attemptRequestRef.current = undefined;
+            sessionResponsesRef.current.clear();
             setRecommendationSessionKind(result.recommendationKind);
             setSession({
                 id: result.session.id,
@@ -4324,9 +4371,11 @@ export default function Home() {
                     answer={answer}
                     handwriting={handwriting}
                     feedback={currentFeedback}
+                    submitted={Boolean(currentAttempt)}
                     onAnswer={setAnswer}
                     onHandwriting={setHandwriting}
                     onSubmit={submitAnswer}
+                    onPrevious={movePrevious}
                     onNext={moveNext}
                 />
                 </>

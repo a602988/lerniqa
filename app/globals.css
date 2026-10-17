@@ -4250,6 +4250,7 @@ textarea:focus-visible,
     grid-area: actions;
     align-self: start;
     justify-content: flex-end;
+    gap: 0.5rem;
     border-top: 1px solid var(--color-border);
     padding-top: 1.25rem;
 }
@@ -4261,6 +4262,11 @@ textarea:focus-visible,
 }
 
 @media (max-width: 767px) {
+    .practice-question-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .practice-question-layout {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:

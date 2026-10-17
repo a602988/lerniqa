@@ -460,8 +460,11 @@ test("the UI advances only after a confirmed save, keeps uncertain retries, and 
     );
     assert.match(
         page,
-        /<HandwritingPad[\s\S]*value=\{handwriting\}[\s\S]*disabled=\{Boolean\(feedback\) \|\| props\.busy \|\| props\.answerLocked \|\| checkMode === "score"/u,
+        /<HandwritingPad[\s\S]*value=\{handwriting\}[\s\S]*disabled=\{submitted \|\| Boolean\(feedback\) \|\| props\.busy \|\| props\.answerLocked \|\| checkMode === "score"/u,
     );
+    assert.match(page, /onClick=\{props\.onPrevious\}><ArrowLeft \/>上一題<\/Button>/u);
+    assert.match(page, /sessionResponsesRef\.current\.set\(`\$\{session\.id\}:\$\{session\.index\}`[\s\S]*moveQuestion\(session\.index - 1\)/u);
+    assert.match(page, /submitted=\{Boolean\(currentAttempt\)\}/u);
     assert.match(
       adapter,
       /attempt\.parts[\s\S]*flatMap\(\(part\) => part\.handwritingAssets(?: \?\? \[\])?\)[\s\S]*\.url/u,
