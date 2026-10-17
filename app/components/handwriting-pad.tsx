@@ -4,13 +4,12 @@ import { Badge, Button } from "@keel-design/ui";
 import { Eraser, LoaderCircle, PencilLine, Sparkles, Trash2 } from "lucide-react";
 import { PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { hasVisibleHandwritingPixels } from "@/app/lib/handwriting";
-import type { HandwritingInk, HandwritingInkPoint } from "@/app/lib/handwriting-ink";
 
 interface HandwritingPadProps {
     /** 已保存的手寫影像。 */
     value?: string;
     /** 手寫內容更新事件。 */
-    onChange: (value: string, ink?: HandwritingInk) => void;
+    onChange: (value: string) => void;
     /** 開始新增或修改筆跡時通知外層停止舊分析。 */
     onStrokeStart?: () => void;
     /** 是否禁止修改。 */
@@ -34,9 +33,6 @@ interface HandwritingPadProps {
 export function HandwritingPad({ value, onChange, onStrokeStart, disabled = false, recognitionStatus, onAnalyze, analysisBusy = false, hasAnalysisResult = false }: HandwritingPadProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawingRef = useRef(false);
-    const inkRef = useRef<HandwritingInk>({ width: 1200, height: 760, strokes: [] });
-    const inkStartedAtRef = useRef<number | undefined>(undefined);
-    const inkValidRef = useRef(true);
     const [tool, setTool] = useState<"pen" | "eraser">("pen");
     const titleId = useId();
     const descriptionId = useId();
@@ -49,12 +45,7 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
         if (!context) return;
 
         context.clearRect(0, 0, canvas.width, canvas.height);
-        if (!value) {
-            inkRef.current = { width: canvas.width, height: canvas.height, strokes: [] };
-            inkStartedAtRef.current = undefined;
-            inkValidRef.current = true;
-            return;
-        }
+        if (!value) return;
 
         const image = new Image();
         image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -74,25 +65,6 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
             x: (event.clientX - bounds.left) * (canvas.width / bounds.width),
             y: (event.clientY - bounds.top) * (canvas.height / bounds.height),
         };
-    }
-
-    /**
-     * 保留原始指標座標與時間，供數位筆跡模型使用筆順辨識。
-     *
-     * @param event React 指標事件。
-     * @returns 同一批輸入事件換算後的畫布座標。
-     */
-    function getInkPoints(event: PointerEvent<HTMLCanvasElement>): HandwritingInkPoint[] {
-        const canvas = event.currentTarget;
-        const bounds = canvas.getBoundingClientRect();
-        const events = event.nativeEvent.getCoalescedEvents?.() ?? [event.nativeEvent];
-        inkStartedAtRef.current ??= events[0]?.timeStamp ?? event.timeStamp;
-        return events.map((entry) => ({
-            x: (entry.clientX - bounds.left) * (canvas.width / bounds.width),
-            y: (entry.clientY - bounds.top) * (canvas.height / bounds.height),
-            t: Math.max(0, entry.timeStamp - (inkStartedAtRef.current ?? entry.timeStamp)),
-            ...(entry.pressure > 0 ? { force: entry.pressure } : {}),
-        }));
     }
 
     /**
@@ -118,8 +90,6 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
         context.lineJoin = "round";
         context.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
         context.strokeStyle = tool === "eraser" ? "rgba(0,0,0,1)" : "#292a43";
-        if (tool === "eraser") inkValidRef.current = false;
-        else inkRef.current.strokes.push({ points: getInkPoints(event) });
     }
 
     /**
@@ -137,7 +107,6 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
         const point = getPoint(event);
         context.lineTo(point.x, point.y);
         context.stroke();
-        if (tool === "pen") inkRef.current.strokes.at(-1)?.points.push(...getInkPoints(event));
     }
 
     /**
@@ -158,13 +127,7 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
             onChange("");
             return;
         }
-        const ink = inkValidRef.current ? {
-            ...inkRef.current,
-            strokes: inkRef.current.strokes.map((stroke) => ({
-                points: stroke.points.map((point) => ({ ...point })),
-            })),
-        } : undefined;
-        onChange(canvas.toDataURL("image/png"), ink);
+        onChange(canvas.toDataURL("image/png"));
     }
 
     /**
@@ -178,9 +141,6 @@ export function HandwritingPad({ value, onChange, onStrokeStart, disabled = fals
         const canvas = canvasRef.current;
         const context = canvas?.getContext("2d");
         if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height);
-        inkRef.current = { width: 1200, height: 760, strokes: [] };
-        inkStartedAtRef.current = undefined;
-        inkValidRef.current = true;
         onChange("");
     }
 
