@@ -21,7 +21,7 @@ import {
 } from "./lib/hanlin-postgres-writer.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const APPROVED_CLEAN_DOCX_SHA256 = "00bd7648af5d34b2a0feb5b37f3b7869eeaace3aaff0f975c76ed4fcd29c894e";
+const APPROVED_CLEAN_DOCX_SHA256 = "c7ba4a74c2cfe8c7f30b8032e89ae551fd2038c5879c59648e1fef607a60e129";
 const APPROVED_QUESTION_COUNT = 279;
 const APPROVED_PART_COUNT = 337;
 const APPROVED_OPTION_COUNT = 1_049;

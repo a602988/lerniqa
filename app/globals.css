@@ -1833,7 +1833,38 @@ textarea:focus-visible,
 }
 
 .question-pagination {
-    flex-wrap: wrap;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+    white-space: nowrap;
+}
+
+.question-pagination > span,
+.question-pagination-controls {
+    flex: 0 0 auto;
+}
+
+.question-pagination-controls {
+    flex-wrap: nowrap;
+}
+
+.question-pagination-controls button {
+    flex: 0 0 auto;
+    min-width: 2.25rem;
+}
+
+.question-pagination-page[aria-current="page"] {
+    pointer-events: none;
+}
+
+.question-pagination-ellipsis {
+    display: inline-flex;
+    width: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted-foreground);
+    font-weight: 700;
 }
 
 .question-detail-card {
@@ -1909,7 +1940,7 @@ textarea:focus-visible,
 
 .question-review-layout {
     display: grid;
-    grid-template-columns: minmax(0, 0.82fr) minmax(28rem, 1.18fr);
+    grid-template-columns: minmax(0, 1.18fr) minmax(28rem, 0.82fr);
     grid-template-areas: "question handwriting";
     gap: 1rem 1.25rem;
     align-items: start;
@@ -1924,7 +1955,7 @@ textarea:focus-visible,
 }
 
 .question-review-solution {
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
     margin-top: 1rem;
     border: 1px solid #e7ddfb;
@@ -1937,6 +1968,22 @@ textarea:focus-visible,
     overflow-wrap: anywhere;
     font-size: 1.5rem;
     line-height: 1.5;
+}
+
+.question-review-explanation {
+    margin-top: 1rem;
+    border-top: 1px solid #e7ddfb;
+    padding-top: 0.85rem;
+}
+
+.question-review-explanation-text {
+    margin-top: 0.35rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+    white-space: pre-line;
 }
 
 .question-review-prompt {
@@ -2118,18 +2165,6 @@ textarea:focus-visible,
         white-space: normal;
     }
 
-    .question-pagination {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .question-pagination > div {
-        width: 100%;
-    }
-
-    .question-pagination button {
-        flex: 1;
-    }
 }
 
 .summary-panel[data-practice-list-page="true"] {
@@ -3419,6 +3454,75 @@ textarea:focus-visible,
     overflow-wrap: anywhere;
 }
 
+.bopomofo-syllable {
+    display: inline-grid;
+    grid-template-areas:
+        "neutral neutral"
+        "symbols tone";
+    grid-template-columns: auto 0.78em;
+    grid-template-rows: auto 1fr;
+    margin-inline: 0.08em;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.question-placeholder-boxes {
+    display: inline-block;
+    margin-inline: 0.06em;
+    line-height: 1;
+    vertical-align: -0.12em;
+    white-space: nowrap;
+}
+
+.question-placeholder-box-sequence {
+    display: inline-flex;
+    gap: 0.12em;
+}
+
+.question-placeholder-box {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 1em;
+    height: 1em;
+    border: 0.09em solid currentColor;
+    border-radius: 0.04em;
+}
+
+.bopomofo-symbols {
+    display: flex;
+    grid-area: symbols;
+    align-items: center;
+    flex-direction: column;
+    line-height: 0.95;
+}
+
+.bopomofo-tone-mark {
+    display: block;
+    overflow: visible;
+    color: currentColor;
+}
+
+.bopomofo-tone {
+    width: 0.78em;
+    height: 1em;
+    grid-area: tone;
+    align-self: center;
+    justify-self: center;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.25;
+}
+
+.bopomofo-neutral-tone {
+    width: 0.62em;
+    height: 0.62em;
+    grid-area: neutral;
+    justify-self: center;
+    fill: currentColor;
+}
+
 .answer-grid {
     display: grid;
     align-self: start;
@@ -3469,6 +3573,10 @@ textarea:focus-visible,
 }
 
 @media (max-width: 639px) {
+    .answer-grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .answer-grid-4 .answer-option {
         min-height: 3.75rem;
         align-items: center;
@@ -4011,10 +4119,22 @@ textarea:focus-visible,
 }
 
 .practice-feedback-explanation {
-    margin-top: 0.5rem;
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.75rem;
     color: var(--color-muted-foreground);
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+.practice-feedback-explanation > span {
     font-size: 0.75rem;
-    line-height: 1.5;
+    font-weight: 700;
 }
 
 .practice-question-meta {
@@ -4080,6 +4200,10 @@ textarea:focus-visible,
     gap: 0.85rem;
 }
 
+.written-answer-parts > :only-child {
+    grid-column: 1 / -1;
+}
+
 .written-answer-fieldset,
 .practice-handwriting-answer-field {
     width: 100%;
@@ -4118,6 +4242,17 @@ textarea:focus-visible,
 
     width: 100%;
     min-width: 0;
+}
+
+.practice-answer-input {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.practice-answer-hint {
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.4;
 }
 
 .multi-choice-part {

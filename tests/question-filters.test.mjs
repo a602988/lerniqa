@@ -42,6 +42,7 @@ function makeQuestion(id, values = {}) {
         knowledge: `知識點${id}`,
         difficulty: "基礎",
         kind: "choice",
+        typeLabel: "單一選擇題",
         prompt: `題目${id}`,
         answer: "A",
         explanation: "",
@@ -52,11 +53,20 @@ function makeQuestion(id, values = {}) {
 }
 
 const questions = [
-    makeQuestion(1, { unit: "第一冊・第一課", difficulty: "基礎", kind: "choice" }),
+    makeQuestion(1, {
+        unit: "第一冊・第一課",
+        difficulty: "基礎",
+        kind: "choice",
+        metadata: [
+            { key: "cognitive_dimension", label: "認知向度", rawValue: "基本語文知識", values: ["基本語文知識"], valueSource: "document", confidence: 1 },
+            { key: "knowledge_dimension", label: "知識向度", rawValue: "正確用字", values: ["正確用字"], valueSource: "document", confidence: 1 },
+        ],
+    }),
     makeQuestion(2, {
         unit: "第一冊・第二課",
         difficulty: "進階",
         kind: "written",
+        typeLabel: "改錯題",
         source: "素養題",
         sourceCategory: "素養題",
     }),
@@ -66,6 +76,7 @@ const questions = [
         topic: undefined,
         difficulty: "中等",
         kind: "boolean",
+        typeLabel: "是非題",
         source: "學校段考",
         sourceCategory: "校內卷",
     }),
@@ -75,6 +86,7 @@ const questions = [
         unit: "第二冊・第一課",
         difficulty: "進階",
         kind: "multi-choice",
+        typeLabel: "題組",
     }),
 ];
 
@@ -91,6 +103,28 @@ test("四個複選條件的空陣列都表示不限制", () => {
         filterQuestions(questions, filters(), []).map((question) => question.id),
         [1, 2, 3, 4],
     );
+});
+
+test("搜尋可比對題目文字與編號欄的所有顯示來源", () => {
+    const searchableQuestions = [
+        makeQuestion(3429001, { code: "05013429", prompt: "孔子被尊稱為至聖先師" }),
+        makeQuestion(3429002, {
+            code: undefined,
+            prompt: "來源文件題號搜尋",
+            sourceDetail: {
+                documentName: "題庫.docx",
+                questionNumber: "DOC-7788",
+                valueSource: "document",
+                confidence: 1,
+            },
+        }),
+        makeQuestion(3429003, { code: undefined, prompt: "系統編號備援搜尋" }),
+    ];
+
+    assert.deepEqual(filterQuestions(searchableQuestions, filters({ search: "至聖先師" }), []).map((question) => question.id), [3429001]);
+    assert.deepEqual(filterQuestions(searchableQuestions, filters({ search: "13429" }), []).map((question) => question.id), [3429001]);
+    assert.deepEqual(filterQuestions(searchableQuestions, filters({ search: "7788" }), []).map((question) => question.id), [3429002]);
+    assert.deepEqual(filterQuestions(searchableQuestions, filters({ search: "3429003" }), []).map((question) => question.id), [3429003]);
 });
 
 test("切換科目只會套用真的有候選題目的學習者學期", () => {
@@ -122,6 +156,52 @@ test("同欄複選使用 OR，不同欄使用 AND", () => {
     );
 });
 
+test("題型選項與篩選使用正式題型名稱，而不是粗略作答形式", () => {
+    const options = getQuestionFilterOptions(questions, filters(), []);
+
+    assert.deepEqual(new Set(options.kinds.map((option) => option.label)), new Set(["單一選擇題", "改錯題", "是非題", "題組"]));
+    assert.deepEqual(
+        filterQuestions(questions, filters({ kind: ["改錯題"] }), []).map((question) => question.id),
+        [2],
+    );
+});
+
+test("科目與其餘目錄欄位可複選，收藏清單取聯集", () => {
+    const catalogQuestions = [
+        makeQuestion(11, {
+            topic: "閱讀",
+            knowledge: "字義",
+            metadata: [
+                { key: "creator", label: "建立者", rawValue: "教師甲", values: ["教師甲"], valueSource: "document", confidence: 1 },
+                { key: "cognitive_dimension", label: "認知向度", rawValue: "記憶", values: ["記憶"], valueSource: "document", confidence: 1 },
+            ],
+        }),
+        makeQuestion(12, {
+            subject: "數學",
+            topic: "運算",
+            knowledge: "整數",
+            metadata: [
+                { key: "creator", label: "建立者", rawValue: "教師乙", values: ["教師乙"], valueSource: "document", confidence: 1 },
+                { key: "cognitive_dimension", label: "認知向度", rawValue: "應用", values: ["應用"], valueSource: "document", confidence: 1 },
+            ],
+        }),
+    ];
+    const collections = [
+        { id: "collection-a", name: "甲", learnerId: "learner", questionIds: [11] },
+        { id: "collection-b", name: "乙", learnerId: "learner", questionIds: [12] },
+    ];
+    const selected = filters({
+        subject: ["國語", "數學"],
+        topic: ["閱讀", "運算"],
+        knowledge: ["字義", "整數"],
+        creator: ["教師甲", "教師乙"],
+        metadata: { cognitive_dimension: ["記憶", "應用"] },
+        collection: ["collection-a", "collection-b"],
+    });
+
+    assert.deepEqual(filterQuestions(catalogQuestions, selected, collections).map((question) => question.id), [11, 12]);
+});
+
 test("不綁教材版本的來源不會被版本條件排除", () => {
     const selected = filters({ source: ["題庫題目", "校內卷"] });
 
@@ -148,7 +228,7 @@ test("上游條件變更後移除已不存在的複選值", () => {
     assert.deepEqual(normalized.source, ["題庫題目"]);
     assert.deepEqual(normalized.scope, [getUnitScopeValue(questions[0])]);
     assert.deepEqual(normalized.difficulty, ["基礎"]);
-    assert.deepEqual(normalized.kind, ["choice"]);
+    assert.deepEqual(normalized.kind, ["單一選擇題"]);
 });
 
 test("學期變更時會先校正版本，再清理下游條件", () => {
@@ -203,6 +283,16 @@ test("不限來源時會以實際候選來源決定是否顯示版本", () => {
     assert.equal(options.showVersion, false);
     assert.equal(options.showTopic, false);
     assert.equal(options.showKnowledge, false);
+});
+
+test("文件欄位未先選來源也會顯示，並可依 tag 值篩選", () => {
+    const options = getQuestionFilterOptions(questions, filters(), []);
+
+    assert.deepEqual(options.facets.map((facet) => facet.key), ["cognitive_dimension", "knowledge_dimension"]);
+    assert.deepEqual(
+        filterQuestions(questions, filters({ metadata: { knowledge_dimension: "正確用字" } }), []).map((question) => question.id),
+        [1],
+    );
 });
 
 test("舊版單選值會轉成陣列，全部條件與重複值會被移除", () => {

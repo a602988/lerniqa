@@ -1,5 +1,5 @@
 import {
-    LOCAL_PRACTICE_DEFAULT_FILTERS,
+    LOCAL_PRACTICE_CATALOG_TARGETS,
     LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE,
     type LocalPracticeAnswerInput,
     type LocalPracticeHandwritingInput,
@@ -30,6 +30,7 @@ import {
 } from "./demo-data";
 import {
     ALL_QUESTION_FILTERS,
+    normalizeQuestionFilterSelection,
     normalizeQuestionFilters,
     type QuestionFilters,
 } from "./question-filters";
@@ -53,7 +54,6 @@ const preferenceKey = (learnerId: string) => `lerniqa-practice-preferences-v2:${
 const legacyPreferenceKey = (learnerId: string) => `lerniqa-practice-preferences-v1:${learnerId}`;
 const resumeKey = (learnerId: string) => `lerniqa-practice-resume-v1:${learnerId}`;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const PLAN_QUESTION_KINDS = new Set(["all", "choice", "boolean", "written", "multi-choice"]);
 const CHECK_MODES = new Set<CheckMode>(["complete", "instant", "score"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -85,10 +85,7 @@ function sanitizeFilterList(
 }
 
 function sanitizeQuestionKinds(value: unknown, legacyValue: unknown): PracticePlan["questionKinds"] | null {
-    const items = sanitizeFilterList(value, legacyValue, ALL_QUESTION_FILTERS, 40);
-    return items?.every((item) => PLAN_QUESTION_KINDS.has(item) && item !== ALL_QUESTION_FILTERS)
-        ? items as PracticePlan["questionKinds"]
-        : null;
+    return sanitizeFilterList(value, legacyValue, ALL_QUESTION_FILTERS, 120);
 }
 
 function sanitizeQuestionLimitOptions(value: unknown): number[] | null {
@@ -552,24 +549,29 @@ export function normalizeLoadedPracticePlan(
         search: plan.search,
     };
     const normalized = normalizeQuestionFilters(filters, questions, collections);
+    const normalizedSubject = normalizeQuestionFilterSelection(normalized.subject, "全部")[0] as Subject | undefined;
+    const normalizedTopic = normalizeQuestionFilterSelection(normalized.topic)[0] ?? ALL_QUESTION_FILTERS;
+    const normalizedKnowledge = normalizeQuestionFilterSelection(normalized.knowledge)[0] ?? ALL_QUESTION_FILTERS;
+    const normalizedCreator = normalizeQuestionFilterSelection(normalized.creator)[0] ?? ALL_QUESTION_FILTERS;
+    const normalizedCollection = normalizeQuestionFilterSelection(normalized.collection)[0] ?? ALL_QUESTION_FILTERS;
     return {
         ...plan,
-        subject: normalized.subject,
-        bookVersion: normalized.subject === "全部" || normalized.version === ALL_QUESTION_FILTERS
+        subject: normalizedSubject ?? "全部",
+        bookVersion: !normalizedSubject || normalized.version === ALL_QUESTION_FILTERS
             ? undefined
             : normalized.version,
         semester: normalized.semester,
         scopeFilters: normalized.scope,
-        topic: normalized.topic,
-        knowledge: normalized.knowledge === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : normalized.knowledge,
+        topic: normalizedTopic,
+        knowledge: normalizedKnowledge === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : normalizedKnowledge,
         difficultyFilters: normalized.difficulty,
         questionKinds: normalized.kind,
         sourceFilters: normalized.source,
-        creatorFilter: normalized.creator,
+        creatorFilter: normalizedCreator,
         metadataFilters: Object.fromEntries(Object.entries(normalized.metadata).flatMap(([key, value]) => (
-            value === ALL_QUESTION_FILTERS ? [] : [[key, [value]]]
+            normalizeQuestionFilterSelection(value).length ? [[key, normalizeQuestionFilterSelection(value)]] : []
         ))),
-        collection: normalized.collection,
+        collection: normalizedCollection,
     };
 }
 
@@ -652,16 +654,25 @@ export async function loadPersistedPractice() {
         wrongReviewQueue: { pendingCount: 0, items: [] },
     };
     const catalogPageSize = LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE;
-    const filters = new URLSearchParams({ ...LOCAL_PRACTICE_DEFAULT_FILTERS, limit: String(catalogPageSize) });
-    const getPage = async (page: number) => {
+    const getPage = async (target: typeof LOCAL_PRACTICE_CATALOG_TARGETS[number], page: number) => {
+        const filters = new URLSearchParams({
+            ...target,
+            limit: String(catalogPageSize),
+        });
         const response = await fetch(`/api/v1/local-practice/questions?${filters}&page=${page}`, { cache: "no-store" });
         return readPracticeApiEnvelope<{ data: { questions: LocalPracticeQuestion[] }; meta: { total: number } }>(response, "目前無法讀取題庫。");
     };
-    const [first, history] = await Promise.all([
-        getPage(1),
+    const [catalogs, history] = await Promise.all([
+        Promise.all(LOCAL_PRACTICE_CATALOG_TARGETS.map(async (target) => {
+            const first = await getPage(target, 1);
+            const remaining = await Promise.all(Array.from(
+                { length: Math.max(0, Math.ceil(first.meta.total / catalogPageSize) - 1) },
+                (_, index) => getPage(target, index + 2),
+            ));
+            return [first, ...remaining];
+        })),
         practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100"),
     ]);
-    const pages = await Promise.all(Array.from({ length: Math.max(0, Math.ceil(first.meta.total / catalogPageSize) - 1) }, (_, index) => getPage(index + 2)));
     // Attempts, score-only summaries, and pending wrong-review sources paginate independently.
     const attempts = [...history.attempts];
     const sessions = [...history.sessions];
@@ -687,7 +698,7 @@ export async function loadPersistedPractice() {
     }
     return {
         account,
-        questions: [first, ...pages].flatMap((page) => page.data.questions),
+        questions: catalogs.flat().flatMap((page) => page.data.questions),
         attempts: [...new Map(attempts.map((attempt) => [attempt.id, attempt])).values()],
         sessions: [...new Map(sessions.map((session) => [session.id, session])).values()],
         wrongReviewQueue: {

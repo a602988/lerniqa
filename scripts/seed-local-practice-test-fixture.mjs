@@ -226,6 +226,7 @@ function createPlan() {
             sourceOrder: index,
             originalType: isManualReview ? "填充題" : "單一選擇題",
             originalDifficulty: "基礎",
+            originalCognitive: "隔離測試認知",
             originalKnowledge: "隔離測試",
             originalSource: "合成題庫",
             originalUnit: "第四課",

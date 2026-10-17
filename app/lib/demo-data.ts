@@ -50,7 +50,7 @@ export interface QuestionSourceDetail {
     /** 原始文件中的題號。 */
     questionNumber?: string;
     /** 欄位資訊的判定來源。 */
-    valueSource: "fixture" | "document" | "path" | "ai" | "user";
+    valueSource: "fixture" | "document" | "path" | "ai" | "user" | "migration";
     /** 自動判定信心值，人工輸入與 fixture 使用 1。 */
     confidence: number;
 }
@@ -65,7 +65,7 @@ export interface QuestionMetadataField {
     /** 正規化後可供複選篩選的值。 */
     values: string[];
     /** 欄位資訊的判定來源。 */
-    valueSource: "fixture" | "document" | "path" | "ai" | "user";
+    valueSource: "fixture" | "document" | "path" | "ai" | "user" | "migration";
     /** 自動判定信心值，人工輸入與 fixture 使用 1。 */
     confidence: number;
 }
@@ -196,8 +196,8 @@ export interface PracticePlan {
     difficultyMixEnabled: boolean;
     /** 指定題目來源；空陣列代表全部來源。 */
     sourceFilters: string[];
-    /** 指定題型；空陣列代表全部題型。 */
-    questionKinds: QuestionKind[];
+    /** 指定正式題型名稱；空陣列代表全部題型。 */
+    questionKinds: string[];
     /** 指定知識點；all-knowledge 代表全部知識點。 */
     knowledge: string;
     /** 依來源文件動態欄位篩選；空陣列代表不限制該欄位。 */
@@ -627,4 +627,14 @@ export function getQuestionKindLabel(kind: QuestionKind) {
     if (kind === "written") return "書寫題";
     if (kind === "multi-choice") return "複合選擇題";
     return "選擇題";
+}
+
+/**
+ * 取得題庫正式題型名稱；舊資料沒有原始題型時才退回作答形式。
+ *
+ * @param question 題目題型資料。
+ * @returns 使用者可見的正式題型名稱。
+ */
+export function getQuestionTypeLabel(question: Pick<Question, "kind" | "typeLabel">) {
+    return question.typeLabel?.trim() || getQuestionKindLabel(question.kind);
 }

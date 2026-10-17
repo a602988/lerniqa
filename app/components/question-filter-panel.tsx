@@ -1,6 +1,5 @@
 import {
-    Button, Dropdown, DropdownCheckboxItem, DropdownContent, DropdownItem, DropdownLabel,
-    DropdownSeparator, DropdownTrigger, FormField, Input, NativeSelect,
+    Button, FormField, Input, MultiSelect, NativeSelect,
 } from "@keel-design/ui";
 import { ChevronDown, ChevronUp, Library, RotateCcw, Search } from "lucide-react";
 import { ReactNode, useMemo } from "react";
@@ -14,11 +13,13 @@ interface SubjectFilterProps {
     /** 目前年級可使用的科目。 */
     subjects: Subject[];
     /** 目前選取的科目。 */
-    value: Subject | "全部";
+    value: Subject | "全部" | Subject[];
+    /** 是否允許同時選取多個科目。 */
+    multiple?: boolean;
     /** 元件所在區塊的額外樣式。 */
     className?: string;
     /** 科目更新事件。 */
-    onChange: (value: Subject | "全部") => void;
+    onChange: (value: Subject | "全部" | Subject[]) => void;
 }
 
 interface QuestionFilterPanelProps {
@@ -52,6 +53,8 @@ interface QuestionFilterPanelProps {
     onReset: () => void;
     /** 重設按鈕文案。 */
     resetLabel?: string;
+    /** 除學期與版本外，將其餘選項式欄位顯示為複選。 */
+    multiSelectCatalogFields?: boolean;
 }
 
 interface MultiSelectFilterProps {
@@ -69,70 +72,58 @@ interface MultiSelectFilterProps {
     onChange: (value: string[]) => void;
 }
 
-/** 以 KEEL 下拉檢核選單顯示可在手機上操作的複選條件。 */
+/** 以 KEEL MultiSelect 顯示可搜尋、全選與清除的複選條件。 */
 function MultiSelectFilter({ id, label, options, value, disabled = false, onChange }: MultiSelectFilterProps) {
     const selected = normalizeQuestionFilterSelection(value);
-    const labelsByValue = new Map(options.map((option) => [option.value, option.label]));
-    const selectedLabels = selected.map((item) => labelsByValue.get(item) ?? item);
-    const summary = !selectedLabels.length
-        ? `全部${label}`
-        : selectedLabels.length === 1
-            ? selectedLabels[0]
-            : `已選 ${selectedLabels.length} 項`;
-
-    function toggleValue(option: string, checked: boolean) {
-        if (checked) {
-            onChange(selected.includes(option) ? selected : [...selected, option]);
-            return;
-        }
-        onChange(selected.filter((item) => item !== option));
-    }
 
     return (
         <div className="grid content-start gap-2">
             <p className="text-sm font-semibold" id={`${id}-label`}>{label}</p>
-            <Dropdown>
-                <DropdownTrigger asChild>
-                    <Button
-                        appearance="outline"
-                        tone="muted"
-                        className="source-filter-trigger"
-                        disabled={disabled || !options.length}
-                        aria-labelledby={`${id}-label ${id}-summary`}
-                        title={selectedLabels.length ? selectedLabels.join("、") : `全部${label}`}
-                    >
-                        <span className="truncate" id={`${id}-summary`}>{options.length ? summary : `尚無可選${label}`}</span>
-                        <ChevronDown aria-hidden="true" />
-                    </Button>
-                </DropdownTrigger>
-                <DropdownContent align="start" className="source-filter-menu">
-                    <DropdownLabel>{label}（可複選）</DropdownLabel>
-                    {selected.length > 0 && <>
-                        <DropdownItem onSelect={() => onChange([])}>清除選取</DropdownItem>
-                        <DropdownSeparator />
-                    </>}
-                    {options.map((option) => (
-                        <DropdownCheckboxItem
-                            checked={selected.includes(option.value)}
-                            key={option.value}
-                            onCheckedChange={(checked) => toggleValue(option.value, checked === true)}
-                            onSelect={(event) => event.preventDefault()}
-                        >
-                            <span className="truncate">{option.label}</span>
-                        </DropdownCheckboxItem>
-                    ))}
-                </DropdownContent>
-            </Dropdown>
+            <MultiSelect
+                aria-labelledby={`${id}-label`}
+                clearAllLabel="全部清除"
+                clearable
+                disabled={disabled || !options.length}
+                emptyLabel={`尚無可選${label}`}
+                matchTriggerWidth
+                noResultsLabel={`找不到符合的${label}`}
+                onValuesChange={onChange}
+                options={options}
+                placeholder={options.length ? `全部${label}` : `尚無可選${label}`}
+                searchable
+                searchFieldStyle="outlined"
+                searchPlaceholder={`搜尋${label}...`}
+                selectAll
+                selectAllLabel="全選"
+                selectionIndicator="checkbox"
+                triggerLabelMode="count"
+                values={selected}
+            />
         </div>
     );
 }
 
 /** 顯示各頁共用的科目篩選按鈕。 */
-export function SubjectFilter({ subjects, value, className = "", onChange }: SubjectFilterProps) {
+export function SubjectFilter({ subjects, value, multiple = false, className = "", onChange }: SubjectFilterProps) {
     const options: { value: Subject | "全部"; label: string }[] = [
         { value: "全部", label: "全部" },
         ...subjects.map((subject) => ({ value: subject, label: subject })),
     ];
+    const selected = normalizeQuestionFilterSelection(value, "全部") as Subject[];
+
+    function selectSubject(subject: Subject | "全部") {
+        if (!multiple) {
+            onChange(subject);
+            return;
+        }
+        if (subject === "全部") {
+            onChange([]);
+            return;
+        }
+        onChange(selected.includes(subject)
+            ? selected.filter((item) => item !== subject)
+            : [...selected, subject]);
+    }
 
     return (
         <fieldset className={`subject-filter grid gap-2 ${className}`.trim()}>
@@ -140,11 +131,11 @@ export function SubjectFilter({ subjects, value, className = "", onChange }: Sub
             <div className="subject-filter-options">
                 {options.map((option) => (
                     <button
-                        aria-pressed={value === option.value}
+                        aria-pressed={option.value === "全部" ? selected.length === 0 : selected.includes(option.value)}
                         className="plan-choice plan-subject-choice"
-                        data-selected={value === option.value}
+                        data-selected={option.value === "全部" ? selected.length === 0 : selected.includes(option.value)}
                         key={option.value}
-                        onClick={() => onChange(option.value)}
+                        onClick={() => selectSubject(option.value)}
                         type="button"
                     >
                         <span className="text-sm font-semibold">{option.label}</span>
@@ -172,24 +163,25 @@ export function QuestionFilterPanel({
     onExpandedChange,
     onReset,
     resetLabel = "清除篩選",
+    multiSelectCatalogFields = false,
 }: QuestionFilterPanelProps) {
     const options = useMemo(
         () => getQuestionFilterOptions(questions, value, collections),
         [collections, questions, value],
     );
     const activeFilterCount = [
-        value.subject !== "全部",
+        normalizeQuestionFilterSelection(value.subject, "全部").length > 0,
         value.semester !== ALL_QUESTION_FILTERS,
         value.version !== ALL_QUESTION_FILTERS,
         normalizeQuestionFilterSelection(value.scope, ALL_UNITS).length > 0,
-        value.topic !== ALL_QUESTION_FILTERS,
-        value.knowledge !== ALL_QUESTION_FILTERS,
+        normalizeQuestionFilterSelection(value.topic).length > 0,
+        normalizeQuestionFilterSelection(value.knowledge).length > 0,
         normalizeQuestionFilterSelection(value.difficulty).length > 0,
         normalizeQuestionFilterSelection(value.kind).length > 0,
         normalizeQuestionFilterSelection(value.source).length > 0,
-        value.creator !== ALL_QUESTION_FILTERS,
-        Object.values(value.metadata).some((item) => item !== ALL_QUESTION_FILTERS),
-        value.collection !== ALL_QUESTION_FILTERS,
+        normalizeQuestionFilterSelection(value.creator).length > 0,
+        Object.values(value.metadata).some((item) => normalizeQuestionFilterSelection(item).length > 0),
+        normalizeQuestionFilterSelection(value.collection).length > 0,
         Boolean(value.search.trim()),
     ].filter(Boolean).length;
     const contentId = `${idPrefix}-filter-content`;
@@ -202,10 +194,14 @@ export function QuestionFilterPanel({
     function updateFilter<K extends keyof QuestionFilters>(field: K, nextValue: QuestionFilters[K]) {
         if (field === "subject") {
             const subject = nextValue as QuestionFilters["subject"];
-            const semester = getPreferredQuestionSemester(questions, subject, preferredSemester);
-            const preferredVersion = subject === "全部" ? undefined : preferredVersions[subject];
+            const selectedSubjects = normalizeQuestionFilterSelection(subject, "全部") as Subject[];
+            const singleSubject = selectedSubjects.length === 1 ? selectedSubjects[0] : undefined;
+            const semester = singleSubject
+                ? getPreferredQuestionSemester(questions, singleSubject, preferredSemester)
+                : value.semester;
+            const preferredVersion = singleSubject ? preferredVersions[singleSubject] : undefined;
             const version = preferredVersion && questions.some((question) => (
-                question.subject === subject
+                question.subject === singleSubject
                 && (semester === ALL_QUESTION_FILTERS || question.semester === semester)
                 && question.bookVersion === preferredVersion
             ))
@@ -217,13 +213,14 @@ export function QuestionFilterPanel({
                 semester,
                 version,
                 scope: [],
-                topic: ALL_QUESTION_FILTERS,
-                knowledge: ALL_QUESTION_FILTERS,
+                topic: multiSelectCatalogFields ? [] : ALL_QUESTION_FILTERS,
+                knowledge: multiSelectCatalogFields ? [] : ALL_QUESTION_FILTERS,
                 difficulty: [],
                 kind: [],
                 source: [],
-                creator: ALL_QUESTION_FILTERS,
+                creator: multiSelectCatalogFields ? [] : ALL_QUESTION_FILTERS,
                 metadata: {},
+                collection: value.collection,
             });
             return;
         }
@@ -236,11 +233,6 @@ export function QuestionFilterPanel({
             <div className="question-filter-heading">
                 <div>
                     <h3 id={`${idPrefix}-filter-title`}>篩選題目</h3>
-                    <p>
-                        {grade}・{value.subject === "全部" ? "全部科目" : value.subject}
-                        {value.version === ALL_QUESTION_FILTERS ? "" : `・${value.version}`}
-                        ；切換科目會套用該科教材版本。
-                    </p>
                 </div>
                 <div className="question-filter-heading-actions">
                     {activeFilterCount > 0 && <span>{activeFilterCount} 個條件</span>}
@@ -257,28 +249,33 @@ export function QuestionFilterPanel({
                     </Button>
                 </div>
             </div>
-            <SubjectFilter className="question-filter-subject" subjects={subjects} value={value.subject} onChange={(subject) => updateFilter("subject", subject)} />
-            {expanded && <div className="question-filter-grid" id={contentId}>
+            <SubjectFilter className="question-filter-subject" subjects={subjects} value={value.subject} multiple={multiSelectCatalogFields} onChange={(subject) => updateFilter("subject", subject)} />
+            <div className="question-filter-grid question-filter-core">
                 <FormField label="學期"><NativeSelect disabled={disabledFields.semester} options={options.semesters} value={value.semester} onChange={(event) => updateFilter("semester", event.target.value)} /></FormField>
-                {options.showVersion && <FormField label="版本"><NativeSelect disabled={disabledFields.version} options={options.versions} value={value.version} onChange={(event) => updateFilter("version", event.target.value)} /></FormField>}
+                <FormField label="版本"><NativeSelect disabled={disabledFields.version || !options.showVersion} options={options.versions} value={value.version} onChange={(event) => updateFilter("version", event.target.value)} /></FormField>
                 <MultiSelectFilter id={`${idPrefix}-source`} label="來源" disabled={disabledFields.source} options={options.sources} value={value.source} onChange={(next) => updateFilter("source", next)} />
                 <MultiSelectFilter id={`${idPrefix}-scope`} label="單元" disabled={disabledFields.scope} options={options.scopes} value={value.scope} onChange={(next) => updateFilter("scope", next)} />
-                {options.showTopic && <FormField label="主題"><NativeSelect disabled={disabledFields.topic} options={options.topics} value={value.topic} onChange={(event) => updateFilter("topic", event.target.value)} /></FormField>}
-                {options.showKnowledge && <FormField label="知識點"><NativeSelect disabled={disabledFields.knowledge} options={options.knowledge} value={value.knowledge} onChange={(event) => updateFilter("knowledge", event.target.value)} /></FormField>}
+            </div>
+            {expanded && <div className="question-filter-grid" id={contentId}>
+                {options.showTopic && (multiSelectCatalogFields
+                    ? <MultiSelectFilter id={`${idPrefix}-topic`} label="主題" disabled={disabledFields.topic} options={options.topics.filter((option) => option.value !== ALL_QUESTION_FILTERS)} value={normalizeQuestionFilterSelection(value.topic)} onChange={(next) => updateFilter("topic", next)} />
+                    : <FormField label="主題"><NativeSelect disabled={disabledFields.topic} options={options.topics} value={value.topic as string} onChange={(event) => updateFilter("topic", event.target.value)} /></FormField>)}
+                {options.showKnowledge && (multiSelectCatalogFields
+                    ? <MultiSelectFilter id={`${idPrefix}-knowledge`} label="知識點" disabled={disabledFields.knowledge} options={options.knowledge.filter((option) => option.value !== ALL_QUESTION_FILTERS)} value={normalizeQuestionFilterSelection(value.knowledge)} onChange={(next) => updateFilter("knowledge", next)} />
+                    : <FormField label="知識點"><NativeSelect disabled={disabledFields.knowledge} options={options.knowledge} value={value.knowledge as string} onChange={(event) => updateFilter("knowledge", event.target.value)} /></FormField>)}
                 <MultiSelectFilter id={`${idPrefix}-difficulty`} label="難易度" disabled={disabledFields.difficulty} options={options.difficulties} value={value.difficulty} onChange={(next) => updateFilter("difficulty", next)} />
-                <MultiSelectFilter id={`${idPrefix}-kind`} label="題型" disabled={disabledFields.kind} options={options.kinds} value={value.kind} onChange={(next) => updateFilter("kind", next as QuestionFilters["kind"])} />
-                {options.creators.length > 1 && <FormField label="建立者"><NativeSelect disabled={disabledFields.creator} options={options.creators} value={value.creator} onChange={(event) => updateFilter("creator", event.target.value)} /></FormField>}
-                {options.facets.map((facet) => <FormField label={facet.label} key={facet.key}>
-                    <NativeSelect
-                        disabled={disabledFields.metadata}
-                        options={facet.options}
-                        value={value.metadata[facet.key] ?? ALL_QUESTION_FILTERS}
-                        onChange={(event) => updateFilter("metadata", { ...value.metadata, [facet.key]: event.target.value })}
-                    />
-                </FormField>)}
-                <FormField label="收藏清單"><NativeSelect disabled={disabledFields.collection} options={options.collections} value={value.collection} onChange={(event) => updateFilter("collection", event.target.value)} /></FormField>
+                <MultiSelectFilter id={`${idPrefix}-kind`} label="題型" disabled={disabledFields.kind} options={options.kinds} value={value.kind} onChange={(next) => updateFilter("kind", next)} />
+                {options.creators.length > 1 && (multiSelectCatalogFields
+                    ? <MultiSelectFilter id={`${idPrefix}-creator`} label="建立者" disabled={disabledFields.creator} options={options.creators.filter((option) => option.value !== ALL_QUESTION_FILTERS)} value={normalizeQuestionFilterSelection(value.creator)} onChange={(next) => updateFilter("creator", next)} />
+                    : <FormField label="建立者"><NativeSelect disabled={disabledFields.creator} options={options.creators} value={value.creator as string} onChange={(event) => updateFilter("creator", event.target.value)} /></FormField>)}
+                {options.facets.map((facet) => multiSelectCatalogFields
+                    ? <MultiSelectFilter id={`${idPrefix}-metadata-${facet.key}`} label={facet.label} key={facet.key} disabled={disabledFields.metadata} options={facet.options.filter((option) => option.value !== ALL_QUESTION_FILTERS)} value={normalizeQuestionFilterSelection(value.metadata[facet.key])} onChange={(next) => updateFilter("metadata", { ...value.metadata, [facet.key]: next })} />
+                    : <FormField label={facet.label} key={facet.key}><NativeSelect disabled={disabledFields.metadata} options={facet.options} value={(value.metadata[facet.key] as string) ?? ALL_QUESTION_FILTERS} onChange={(event) => updateFilter("metadata", { ...value.metadata, [facet.key]: event.target.value })} /></FormField>)}
+                {multiSelectCatalogFields
+                    ? <MultiSelectFilter id={`${idPrefix}-collection`} label="收藏清單" disabled={disabledFields.collection} options={options.collections.filter((option) => option.value !== ALL_QUESTION_FILTERS)} value={normalizeQuestionFilterSelection(value.collection)} onChange={(next) => updateFilter("collection", next)} />
+                    : <FormField label="收藏清單"><NativeSelect disabled={disabledFields.collection} options={options.collections} value={value.collection as string} onChange={(event) => updateFilter("collection", event.target.value)} /></FormField>}
                 <FormField className="question-filter-search-field" label="搜尋">
-                    <div className="question-search"><Search aria-hidden="true" /><Input disabled={disabledFields.search} aria-label="搜尋題目" value={value.search} placeholder="搜尋題目、編號或來源" onChange={(event) => updateFilter("search", event.target.value)} /></div>
+                    <div className="question-search"><Search aria-hidden="true" /><Input disabled={disabledFields.search} aria-label="搜尋編號或題目" value={value.search} placeholder="搜尋編號或題目" onChange={(event) => updateFilter("search", event.target.value)} /></div>
                 </FormField>
                 {children && <div className="question-filter-extra">{children}</div>}
             </div>}

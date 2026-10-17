@@ -76,11 +76,11 @@ npm run db:local:ensure
 npm run dev
 ```
 
-先開啟 http://localhost:3500/account 完成登入，再前往 http://localhost:3500/practice，選擇國語、國一、翰林版、第一冊與第四課。驗證帳號請使用 `.invalid` 合成信箱。資料存在不進版控的 `local-data`，停止或重開 Next.js 與 PostgreSQL 後仍會保留。
+先開啟 http://localhost:3500/account 完成登入，再前往 http://localhost:3500/practice，選擇國語、國一、翰林版、第一冊與第四至第六課或語文常識（二）。驗證帳號請使用 `.invalid` 合成信箱。資料存在不進版控的 `local-data`，停止或重開 Next.js 與 PostgreSQL 後仍會保留。
 
 同一個 tailnet 可經 Tailscale Serve 提供的私有 HTTPS 網址進入。實際網址與轉送狀態以當機 `tailscale serve status` 為準，不要把舊 IP 或 `3500` port 直接改寫成 HTTPS。這個入口不是 production HTTPS；`/local-practice` 僅供內部診斷與相容。
 
-正式匯入範圍只有 `05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc`。parser v2 confirmed 批次 `2d1ff794-f6f4-5e59-baaa-8d1c767438be` 已保存 279 題，全部目前版本為 revision 2；279 筆教材單元關聯均為 `native/document`，舊的 `manual_classification/user` 為 0。來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。其餘 14 份文件尚未匯入，須先確認各自分類。
+正式匯入白名單包含第四、第五、第六課與語文常識（二）。前三課的 parser v5 confirmed 批次分別發布 279、280、258 題；語文常識（二）的 parser v6 批次解析 76 題，發布 75 題，另將原檔破圖的題號 `05011838` 保留為待檢視，共有 892 題 published/current。每份來源都綁定固定檔名、原檔 SHA-256、目標單元與預期狀態；其餘 11 份文件尚未匯入，須先確認各自分類。
 
 ## 文件
 - [產品規格](docs/PRODUCT_SPEC.md)

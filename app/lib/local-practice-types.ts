@@ -8,6 +8,27 @@ export const LOCAL_PRACTICE_DEFAULT_FILTERS = {
     lesson: "第四課",
 } as const;
 
+export const LOCAL_PRACTICE_CATALOG_LESSONS = ["第四課", "第五課", "第六課", "語文常識（二）"] as const;
+
+export const LOCAL_PRACTICE_CATALOG_TARGETS = [
+    ...LOCAL_PRACTICE_CATALOG_LESSONS.map((lesson) => ({
+        ...LOCAL_PRACTICE_DEFAULT_FILTERS,
+        lesson,
+    })),
+    ...[
+        "2-1 因數與倍數",
+        "2-2 最大公因數與最小公倍數",
+        "2-3 分數的四則運算",
+        "2-4 指數律",
+    ].map((lesson) => ({
+        grade: "國一",
+        subject: "數學",
+        publisher: "康軒",
+        volume: "第一冊",
+        lesson,
+    })),
+] as const;
+
 export const LOCAL_PRACTICE_MAX_QUESTIONS = 500;
 /** Matches the largest catalog range the existing practice UI can request. */
 export const LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE = 500;
@@ -92,6 +113,15 @@ export interface LocalPracticeKnowledgePoint extends LocalPracticeCatalogValue {
     isPrimary: boolean;
 }
 
+export interface LocalPracticeMetadataField {
+    key: string;
+    label: string;
+    rawValue: string;
+    values: string[];
+    valueSource: "document" | "path" | "ai" | "user" | "migration";
+    confidence: number | null;
+}
+
 export interface LocalPracticeQuestion {
     id: string;
     revisionId: string;
@@ -107,8 +137,12 @@ export interface LocalPracticeQuestion {
     bookVersion: LocalPracticeCatalogValue;
     unit: LocalPracticeCatalogValue & { unitType: string };
     difficulty: LocalPracticeCatalogValue | null;
+    /** Formal source classification used by question-bank filters. */
+    sourceCategory?: LocalPracticeCatalogValue | null;
     /** Optional for compatibility with catalog responses created before knowledge-point projection. */
     knowledgePoints?: LocalPracticeKnowledgePoint[];
+    /** Source-document fields that are both visible as tags and usable as exact-match filters. */
+    metadata?: LocalPracticeMetadataField[];
     prompt: string;
     promptBlocks: LocalPracticeContentBlock[];
     parts: LocalPracticeQuestionPart[];

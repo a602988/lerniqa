@@ -1,10 +1,13 @@
 "use client";
 
-import { Button, Checkbox, FormField, Input, Radio } from "@keel-design/ui";
+import { Button, Checkbox, Input, Radio } from "@keel-design/ui";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BopomofoText } from "./bopomofo-text";
 import { LOCAL_PRACTICE_MAX_ANSWER_LENGTH, type LocalPracticeAnswerValue, type LocalPracticeContentBlock, type LocalPracticeQuestion } from "../lib/local-practice-types";
 import { parsePracticeAnswers } from "../lib/practice-catalog-adapter";
+import { CORRECTION_ANSWER_HINT, CORRECTION_ANSWER_PLACEHOLDER, isCorrectionQuestion } from "../lib/question-answer-guidance";
+import { getRepeatedNumberedPartLabel } from "../lib/question-presentation";
 
 function PublicContent({ blocks, duplicateText }: { blocks: LocalPracticeContentBlock[]; duplicateText?: string }) {
     return <>{blocks.map((block) => {
@@ -21,10 +24,14 @@ function PublicContent({ blocks, duplicateText }: { blocks: LocalPracticeContent
     })}</>;
 }
 
+export function PersistedQuestionPromptContent({ question }: { question: LocalPracticeQuestion }) {
+    return <PublicContent blocks={question.promptBlocks} duplicateText={question.prompt} />;
+}
+
 function PromptText({ text }: { text: string }) {
     return <>{text.split(/( {4,}|　{2,})/g).map((segment, index) => {
         const isBlank = /^(?: {4,}|　{2,})$/.test(segment);
-        if (!isBlank) return <span key={`${index}-${segment}`}>{segment}</span>;
+        if (!isBlank) return <span key={`${index}-${segment}`}><BopomofoText text={segment} /></span>;
         const blankWidth = [...segment].reduce((width, character) => width + (character === "　" ? 1 : 0.5), 0);
         return <span key={`blank-${index}`}>
             <span aria-hidden="true" className="question-prompt-blank" style={{ width: `${Math.min(Math.max(blankWidth, 3), 8)}em` }} />
@@ -41,7 +48,11 @@ function getOptionColumnCount(part: LocalPracticeQuestion["parts"][number]) {
     return totalBytes <= 144 ? 2 : 1;
 }
 
-export function PersistedQuestionFields({ question, answer, disabled = false, handwritingOnly = false, submitted = false, recognizedAnswers, partIds, onAnswer }: {
+function countPromptBlanks(prompt: string) {
+    return prompt.match(/(?: {4,}|　{2,}|_{3,}|＿{3,})/gu)?.length ?? 0;
+}
+
+export function PersistedQuestionFields({ question, answer, disabled = false, handwritingOnly = false, submitted = false, recognizedAnswers, partIds, hidePromptContent = false, onAnswer }: {
     question: LocalPracticeQuestion;
     answer: string;
     disabled?: boolean;
@@ -49,6 +60,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
     submitted?: boolean;
     recognizedAnswers?: Record<string, string>;
     partIds?: string[];
+    hidePromptContent?: boolean;
     onAnswer: (answer: string) => void;
 }) {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -57,6 +69,11 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
     const parts = question.parts.filter((part) => !targetIds || targetIds.has(part.id));
     const usesStepNavigation = parts.length > 1 && parts.every((part) => part.answerMode !== "text");
+    const usesInlineBlankAnswerFields = !handwritingOnly
+        && parts.length > 1
+        && parts.every((part) => part.answerMode === "text")
+        && countPromptBlanks(question.prompt) >= parts.length;
+    const needsCorrectionDelimiter = isCorrectionQuestion(question.originalTypeLabel);
     const currentIndex = Math.min(activeIndex, Math.max(parts.length - 1, 0));
     const visibleParts = usesStepNavigation ? parts.slice(currentIndex, currentIndex + 1) : parts;
 
@@ -64,13 +81,13 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
 
     if (!parts.length) {
         return <div className="grid gap-5">
-            <PublicContent blocks={question.promptBlocks} duplicateText={question.prompt} />
+            {!hidePromptContent && <PublicContent blocks={question.promptBlocks} duplicateText={question.prompt} />}
             <p className="multi-choice-step-empty" role="status">這題缺少可作答的小題資料。</p>
         </div>;
     }
 
     return <div className="grid gap-5">
-        <PublicContent blocks={question.promptBlocks} duplicateText={question.prompt} />
+        {!hidePromptContent && <PublicContent blocks={question.promptBlocks} duplicateText={question.prompt} />}
         {usesStepNavigation && <div className="multi-choice-step-header">
             <p aria-live="polite">{targetIds
                 ? <>第 <strong>{question.parts.findIndex((part) => part.id === parts[currentIndex]?.id) + 1}</strong> 小題 · 複習 {currentIndex + 1}／{parts.length}</>
@@ -84,6 +101,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
         {visibleParts.map((part) => {
             const value = values[part.id];
             const sourceIndex = question.parts.findIndex((candidate) => candidate.id === part.id);
+            const repeatedNumberLabel = getRepeatedNumberedPartLabel(question.prompt, part.prompt, sourceIndex);
             const optionLabels = part.options.map((option) => option.label);
             const normalizedPrompt = part.prompt.normalize("NFKC").replace(/[\s。．.、；;]/g, "").toLocaleLowerCase();
             const normalizedOptions = optionLabels.join("").normalize("NFKC").replace(/[\s。．.、；;]/g, "").toLocaleLowerCase();
@@ -95,7 +113,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                     ? "送出後會保存答案，等待輔助批改"
                     : "";
             const fieldsetClassName = part.answerMode === "text"
-                ? "written-answer-fieldset col-span-full grid w-full min-w-0 gap-3"
+                ? `written-answer-fieldset grid w-full min-w-0 gap-3${usesInlineBlankAnswerFields ? " written-answer-fieldset-compact" : " col-span-full"}`
                 : `answer-grid answer-grid-${answerColumnCount}`;
             const legendClassName = `${usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}${part.answerMode === "text" ? " written-answer-legend" : ""}`;
             const recognitionDescription = submitted
@@ -103,14 +121,16 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                 : "停筆後會自動辨識，也可以立即分析或重新分析。";
             const recognitionDescriptionId = `handwriting-answer-description-${part.id}`;
             return <fieldset className={fieldsetClassName} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
-                <legend className={legendClassName}>
-                    {showPrompt
+                <legend className={usesInlineBlankAnswerFields && !repeatedNumberLabel ? "sr-only" : legendClassName}>
+                    {repeatedNumberLabel
+                        ? repeatedNumberLabel
+                        : showPrompt
                         ? <PromptText text={part.prompt} />
                         : usesStepNavigation ? "選擇答案" : question.parts.length > 1 ? `第 ${sourceIndex + 1} 小題` : "作答"}
                     {part.answerMode === "multiple_choice" ? "（可複選）" : ""}
-                    {gradingNotice && <span className="written-answer-notice">（{gradingNotice}）</span>}
+                    {!usesInlineBlankAnswerFields && gradingNotice && <span className="written-answer-notice">（{gradingNotice}）</span>}
                 </legend>
-                <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>
+                {!usesInlineBlankAnswerFields && <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>}
                 {part.answerMode === "text"
                     ? handwritingOnly
                         ? <div className="practice-handwriting-answer-field">
@@ -125,12 +145,30 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                             />
                             <p id={recognitionDescriptionId}>{recognitionDescription}</p>
                         </div>
-                        : <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
+                        : usesInlineBlankAnswerFields
+                            ? <Input
+                                aria-label={`第 ${sourceIndex + 1} 個答案`}
+                                value={typeof value === "string" ? value : ""}
+                                maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH}
+                                onChange={(event) => update(part.id, event.target.value)}
+                                autoComplete="off"
+                            />
+                            : <div className="practice-answer-field practice-answer-input">
+                                <Input
+                                    aria-label="文字答案"
+                                    value={typeof value === "string" ? value : ""}
+                                    maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH}
+                                    placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : undefined}
+                                    onChange={(event) => update(part.id, event.target.value)}
+                                    autoComplete="off"
+                                />
+                                {needsCorrectionDelimiter && <p className="practice-answer-hint">{CORRECTION_ANSWER_HINT}</p>}
+                            </div>
                     : part.options.map((option) => <label className="answer-option" key={option.id}>
                         {part.answerMode === "multiple_choice"
                             ? <Checkbox checked={Array.isArray(value) && value.includes(option.key)} onChange={(event) => update(part.id, event.target.checked ? [...(Array.isArray(value) ? value : []), option.key] : (Array.isArray(value) ? value : []).filter((key) => key !== option.key))} />
                             : <Radio name={`question-${question.id}-part-${part.id}`} value={option.key} checked={value === option.key} onChange={() => update(part.id, option.key)} />}
-                        <span>{option.label}<PublicContent blocks={option.contentBlocks} duplicateText={option.label} /></span>
+                        <span><BopomofoText text={option.label} /><PublicContent blocks={option.contentBlocks} duplicateText={option.label} /></span>
                     </label>)}
             </fieldset>;
         })}

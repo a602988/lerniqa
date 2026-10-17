@@ -156,6 +156,7 @@ export function parseMetadataLast(text, types, documentName)
                 number: match[4].trim(),
                 difficulty: match[5].trim(),
                 origin: match[6].trim(),
+                cognitive: match[7].trim(),
                 knowledge: match[8].trim(),
                 unit: match[9]?.trim() || path.basename(documentName, path.extname(documentName)),
                 documentName: path.basename(documentName),
@@ -167,22 +168,34 @@ export function parseMetadataLast(text, types, documentName)
 }
 
 /** 解析數學與生物使用的前置欄位格式。 */
-function parseMetadataFirst(text, types, documentName)
+export function parseMetadataFirst(text, types, documentName)
 {
     const records = [];
-    const matcher = /(?:^|\n)\s*[•]?\s*題號：([^\s]+)\s+難易度：([^\s]+)\s+學習內容：([^\s]+)\s+(?:主題：[^\n]+?\s+)?知識點：([^\n]+)\n([\s\S]*?)\n《答案》([^\n]*)(?:\n詳解：([\s\S]*?))?(?=\n\s*[•]?\s*題號：|$)/g;
-
     for (const section of splitSections(text, types)) {
-        for (const match of section.content.matchAll(matcher)) {
+        const blocks = section.content.split(/(?=^\s*[•]?\s*題號：)/gm);
+        for (const block of blocks) {
+            const header = block.match(/^\s*[•]?\s*題號：([^\s]+)\s+難易度：([^\s]+)\s+學習內容：([^\s]+)\s+(?:(?:主題|核心素養)：[^\n]+?\s+)*知識點：([^\n]+)\n([\s\S]*)$/);
+            if (!header) continue;
+            const answerIndex = header[5].indexOf("\n《答案》");
+            if (answerIndex < 0) continue;
+            const body = header[5].slice(0, answerIndex);
+            const answerAndExplanation = header[5].slice(answerIndex + "\n《答案》".length);
+            const explanationIndex = answerAndExplanation.indexOf("\n詳解：");
+            const sourceAnswer = explanationIndex >= 0
+                ? answerAndExplanation.slice(0, explanationIndex)
+                : answerAndExplanation;
+            const explanation = explanationIndex >= 0
+                ? answerAndExplanation.slice(explanationIndex + "\n詳解：".length)
+                : "";
             records.push({
                 type: section.type,
-                body: cleanText(match[5]),
-                sourceAnswer: match[6].trim(),
-                explanation: cleanText(match[7] ?? ""),
-                number: match[1].trim(),
-                difficulty: match[2].trim(),
+                body: cleanText(body),
+                sourceAnswer: sourceAnswer.trim(),
+                explanation: cleanText(explanation),
+                number: header[1].trim(),
+                difficulty: header[2].trim(),
                 origin: "題庫題目",
-                knowledge: match[4].trim(),
+                knowledge: header[4].trim(),
                 unit: path.basename(documentName, path.extname(documentName)).replace(/^\d+[\-_]?/, ""),
                 documentName: path.basename(documentName),
             });

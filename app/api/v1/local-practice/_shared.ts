@@ -55,7 +55,10 @@ export function handleLocalPracticeError(error: unknown) {
 
 function boundedFilter(value: string | null, fallback: string): string | null {
     if (value === null) return fallback;
-    const normalized = value.normalize("NFKC").trim();
+    // Catalog names are persisted with their source typography. NFC keeps
+    // canonically equivalent Unicode equal without collapsing full-width
+    // punctuation such as the parentheses in「語文常識（二）」.
+    const normalized = value.normalize("NFC").trim();
     if (!normalized || normalized.length > 80 || /[\u0000-\u001f\u007f]/u.test(normalized)) return null;
     return normalized;
 }

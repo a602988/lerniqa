@@ -119,7 +119,7 @@ Migration 會檢查 `user` actor 是當下有效的 `system_admin`，並要求�
 - 驗證：`0001` 至 `0011` 的資料庫限制、併發案例、逐層 down、第二次 up 與 schema parity 已在隔離資料庫通過。通用 fixture／JSON 全量搬移仍需另行驗證。
 - 回滾點：down migration 只供空白或合成資料的 disposable DB（一次性資料庫）驗證。已有正式資料的環境應使用向前修正或經核准的備份還原程序，不直接執行 down；原始 fixture 維持唯讀。
 - Schema／migration 狀態：`0001` 至 `0011` 的 schema、限制與 migration 往返已通過本機隔離驗證，合計 96 張業務資料表。
-- 資料搬移狀態：第四課 279 題已有可重跑的受控匯入與數量核對；通用 fixture／JSON 搬移工具及 production 資料搬移尚未實作。
+- 資料搬移狀態：第四至第六課與語文常識（二）共 892 題已有可重跑的受控匯入與逐單元數量核對；語文常識（二）另有一題來源破圖保留待檢視。通用 fixture／JSON 搬移工具及 production 資料搬移尚未實作。
 
 ### 建立登入與集中授權
 

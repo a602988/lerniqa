@@ -33,9 +33,15 @@ const question = {
     semester: null, publisher: { id: "publisher", code: "hanlin", name: "翰林" },
     bookVersion: { id: "book", code: null, name: "翰林版" },
     unit: { id: "unit", code: "l4", name: "第四課", unitType: "lesson" }, difficulty: null,
+    sourceCategory: { id: "source", code: "publisher-test-bank", name: "出版社題庫" },
     knowledgePoints: [
         { id: "knowledge-secondary", code: null, name: "次要知識點", isPrimary: false },
         { id: "knowledge-primary", code: "KP-1", name: "主要知識點", isPrimary: true },
+    ],
+    metadata: [
+        { key: "source_category", label: "來源分類", rawValue: "出版社題庫", values: ["出版社題庫"], valueSource: "document", confidence: 1 },
+        { key: "cognitive_dimension", label: "認知向度", rawValue: "基本語文知識", values: ["基本語文知識"], valueSource: "document", confidence: 1 },
+        { key: "knowledge_dimension", label: "知識向度", rawValue: "正確用字", values: ["正確用字"], valueSource: "document", confidence: 1 },
     ],
     prompt: "公開題幹", promptBlocks: [],
     parts: [{ id: "part", stableKey: "p1", position: 1, answerMode: "multiple_choice", gradingPolicy: "automatic", isIndependentlyGradable: true, prompt: "", promptBlocks: [], options: [{ id: "opt-a", key: "A", position: 1, label: "甲", contentBlocks: [] }, { id: "opt-b", key: "B", position: 2, label: "乙", contentBlocks: [] }] }],
@@ -54,6 +60,25 @@ test("public catalog joins existing subject/version/unit filters without a priva
     assert.equal(result.answer, "");
     assert.ok(result.parts.every((part) => part.answer === ""));
     assert.equal(result.prompt, "公開題幹");
+    assert.equal(result.sourceCategory, "題庫題目");
+    assert.deepEqual(result.metadata?.map((field) => [field.key, field.values]), [
+        ["source_category", ["出版社題庫"]],
+        ["cognitive_dimension", ["基本語文知識"]],
+        ["knowledge_dimension", ["正確用字"]],
+    ]);
+});
+
+test("catalog preserves the imported literacy source instead of flattening it to test-bank questions", () => {
+    const literacy = {
+        ...question,
+        sourceCategory: { id: "literacy", code: "literacy-question", name: "素養題" },
+        metadata: question.metadata.map((field) => field.key === "source_category"
+            ? { ...field, rawValue: "素養題", values: ["素養題"] }
+            : field),
+    };
+    const result = adapter.adaptPracticeQuestion(literacy);
+    assert.equal(result.source, "素養題");
+    assert.equal(result.sourceCategory, "素養題");
 });
 
 test("catalog knowledge comes from revision relations and legacy DTOs stay readable", () => {
@@ -98,9 +123,13 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
             const parsed = new URL(url, "http://localhost");
             const page = Number(parsed.searchParams.get("page"));
             const limit = Number(parsed.searchParams.get("limit"));
+            const lesson = parsed.searchParams.get("lesson");
+            const lessonCounts = new Map([["第四課", 279], ["第五課", 280], ["第六課", 258], ["語文常識（二）", 75]]);
+            const count = lessonCounts.get(lesson);
             assert.equal(limit, 500);
-            data = { questions: Array.from({ length: 279 }, (_, index) => ({ ...question, id: `q${(page - 1) * limit + index}` })) };
-            meta = { total: 279 };
+            assert.ok(count);
+            data = { questions: Array.from({ length: count }, (_, index) => ({ ...question, id: `${lesson}-q${(page - 1) * limit + index}` })) };
+            meta = { total: count };
         }
         else {
             const page = Number(new URL(url, "http://localhost").searchParams.get("page") ?? "1");
@@ -119,28 +148,30 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
     };
     try {
         const loaded = await client.loadPersistedPractice();
-        assert.equal(loaded.questions.length, 279);
+        assert.equal(loaded.questions.length, 892);
         assert.equal(loaded.attempts.length, 101);
         assert.equal(loaded.sessions.length, 101);
         assert.equal(loaded.wrongReviewQueue.pendingCount, 101);
         assert.equal(loaded.wrongReviewQueue.items.length, 101);
         assert.equal(loaded.account.learner.id, "authenticated-learner");
         assert.ok(seen.some((url) => url.includes("history?limit=100&page=2")));
-        assert.equal(seen.filter((url) => url.includes("/questions?")).length, 1);
-        assert.equal(seen.length, 4);
+        assert.equal(seen.filter((url) => url.includes("/questions?")).length, 4);
+        assert.equal(seen.length, 7);
     }
     finally { globalThis.fetch = originalFetch; }
 });
 
 test("authorized catalog accepts 500-item pages while the answer-bearing legacy route stays closed", async () => {
-    const [localRoute, legacyRoute, store] = await Promise.all([
+    const [localRoute, legacyRoute, sharedRoute, store] = await Promise.all([
         readFile(new URL("../app/api/v1/local-practice/questions/route.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/api/v1/questions/route.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/api/v1/local-practice/_shared.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8"),
     ]);
     assert.match(localRoute, /LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE/u);
     assert.match(legacyRoute, /legacyFixtureApiGone\(\)/u);
     assert.doesNotMatch(legacyRoute, /readDatabase|answer|explanation/u);
+    assert.match(sharedRoute, /value\.normalize\("NFC"\)/u);
     assert.match(store, /question\.created_at,[\s\S]*question\.id[\s\S]*LIMIT \$7 OFFSET \$8/u);
 });
 
@@ -447,6 +478,7 @@ test("stored practice plans retain every valid selection in each multi-select fi
         unit: "第一冊 · 第五課",
         difficulty: "進階",
         kind: "written",
+        typeLabel: "改錯題",
         source: "校內卷",
         sourceCategory: "校內卷",
     };
@@ -460,13 +492,13 @@ test("stored practice plans retain every valid selection in each multi-select fi
         difficultyFilters: [first.difficulty, second.difficulty],
         difficultyMixEnabled: true,
         sourceFilters: [first.sourceCategory, second.sourceCategory],
-        questionKinds: [first.kind, second.kind],
+        questionKinds: [first.typeLabel, second.typeLabel],
     }, learner, [first, second], []);
 
     assert.deepEqual(normalized.scopeFilters, scopeFilters);
     assert.deepEqual(normalized.difficultyFilters, ["中等", "進階"]);
     assert.deepEqual(normalized.sourceFilters, ["題庫題目", "校內卷"]);
-    assert.deepEqual(normalized.questionKinds, ["multi-choice", "written"]);
+    assert.deepEqual(normalized.questionKinds, ["單一選擇題", "改錯題"]);
 });
 
 test("practice API errors retain status and code for deterministic retry cleanup", async () => {

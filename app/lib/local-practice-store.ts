@@ -130,6 +130,9 @@ interface QuestionRow extends QueryResultRow {
     difficulty_id: string | null;
     difficulty_code: string | null;
     difficulty_name: string | null;
+    source_category_id?: string | null;
+    source_category_code?: string | null;
+    source_category_name?: string | null;
     total_count: string | number;
 }
 
@@ -163,6 +166,16 @@ interface BlockRow extends QueryResultRow {
     width: number | null;
     height: number | null;
     alt_text: string | null;
+}
+
+interface MetadataRow extends QueryResultRow {
+    question_revision_id: string;
+    key: string;
+    label: string;
+    raw_value: string;
+    value: string;
+    value_source: "document" | "path" | "ai" | "user" | "migration";
+    confidence: number | null;
 }
 
 interface SessionItemRow extends QueryResultRow {
@@ -367,7 +380,7 @@ function toContentBlock(row: BlockRow, filters: LocalPracticeFilters): LocalPrac
 
 function blocksToText(blocks: readonly LocalPracticeContentBlock[]): string {
     return blocks
-        .map((block) => block.text ?? block.altText ?? "")
+        .map((block) => block.text ?? "")
         .filter(Boolean)
         .join("\n")
         .trim();
@@ -384,7 +397,7 @@ async function hydrateLocalPracticeQuestions(
 ): Promise<LocalPracticeQuestion[]> {
     if (baseRows.length === 0) return [];
     const revisionIds = baseRows.map((row) => row.revision_id);
-    const [partRows, optionRows, blockRows] = await Promise.all([
+    const [partRows, optionRows, blockRows, metadataRows] = await Promise.all([
         runQuery<PartRow>(`
             SELECT id, question_revision_id, stable_key, position, answer_mode,
                 grading_policy, is_independently_gradable
@@ -431,6 +444,26 @@ async function hydrateLocalPracticeQuestions(
                 AND block.placement IN ('prompt', 'option')
             ORDER BY block.question_revision_id, block.position, block.id
         `, [revisionIds]),
+        runQuery<MetadataRow>(`
+            SELECT
+                filter_value.question_revision_id,
+                field.key,
+                field.name AS label,
+                COALESCE(filter_value.raw_value, option.label, filter_value.normalized_value, '') AS raw_value,
+                COALESCE(option.value, filter_value.normalized_value, '') AS value,
+                filter_value.value_source,
+                filter_value.confidence::double precision AS confidence
+            FROM question_revision_filter_values AS filter_value
+            JOIN filter_fields AS field
+                ON field.id = filter_value.filter_field_id
+                AND field.status = 'active'
+            LEFT JOIN filter_field_options AS option
+                ON option.id = filter_value.filter_option_id
+                AND option.filter_field_id = filter_value.filter_field_id
+                AND option.status = 'active'
+            WHERE filter_value.question_revision_id = ANY($1::uuid[])
+            ORDER BY filter_value.question_revision_id, field.sort_order, field.key, option.sort_order, option.value
+        `, [revisionIds]),
     ]);
 
     const partsByRevision = new Map<string, PartRow[]>();
@@ -450,6 +483,26 @@ async function hydrateLocalPracticeQuestions(
         const current = blocksByRevision.get(block.question_revision_id) ?? [];
         current.push(block);
         blocksByRevision.set(block.question_revision_id, current);
+    }
+    const metadataByRevision = new Map<string, LocalPracticeQuestion["metadata"]>();
+    for (const row of metadataRows) {
+        if (!row.value) continue;
+        const current = metadataByRevision.get(row.question_revision_id) ?? [];
+        const existing = current.find((field) => field.key === row.key);
+        if (existing) {
+            if (!existing.values.includes(row.value)) existing.values.push(row.value);
+        }
+        else {
+            current.push({
+                key: row.key,
+                label: row.label,
+                rawValue: row.raw_value || row.value,
+                values: [row.value],
+                valueSource: row.value_source,
+                confidence: row.confidence,
+            });
+        }
+        metadataByRevision.set(row.question_revision_id, current);
     }
 
     return baseRows.map<LocalPracticeQuestion>((row) => {
@@ -509,6 +562,10 @@ async function hydrateLocalPracticeQuestions(
             difficulty: row.difficulty_id && row.difficulty_name
                 ? { id: row.difficulty_id, code: row.difficulty_code, name: row.difficulty_name }
                 : null,
+            sourceCategory: row.source_category_id && row.source_category_name
+                ? { id: row.source_category_id, code: row.source_category_code ?? null, name: row.source_category_name }
+                : null,
+            metadata: metadataByRevision.get(row.revision_id) ?? [],
             prompt,
             promptBlocks: rootPromptBlocks,
             parts,
@@ -533,6 +590,7 @@ const TARGET_QUESTION_FROM_SQL = `
     JOIN curriculum_units AS unit ON unit.id = revision_unit.curriculum_unit_id
     LEFT JOIN curriculum_units AS volume_unit ON volume_unit.id = unit.parent_unit_id
     LEFT JOIN difficulty_levels AS difficulty ON difficulty.id = revision.difficulty_level_id
+    LEFT JOIN source_categories AS source_category ON source_category.id = revision.source_category_id
     LEFT JOIN LATERAL (
         SELECT identifier.value
         FROM question_identifiers AS identifier
@@ -644,6 +702,9 @@ export async function listLocalPracticeQuestions(
             difficulty.id AS difficulty_id,
             difficulty.code AS difficulty_code,
             difficulty.name AS difficulty_name,
+            source_category.id AS source_category_id,
+            source_category.code AS source_category_code,
+            source_category.name AS source_category_name,
             count(*) OVER () AS total_count
         ${TARGET_QUESTION_FROM_SQL}
         ORDER BY

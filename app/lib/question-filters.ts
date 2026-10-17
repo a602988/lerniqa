@@ -1,5 +1,5 @@
-import { ALL_UNITS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue } from "./demo-data";
-import type { Question, QuestionCollection, QuestionKind, Subject } from "./demo-data";
+import { ALL_UNITS, getQuestionTypeLabel, getUnitLabel, getUnitScopeValue } from "./demo-data";
+import type { Question, QuestionCollection, Subject } from "./demo-data";
 
 export const ALL_QUESTION_FILTERS = "all";
 export const QUESTION_SOURCE_CATEGORIES = [
@@ -38,30 +38,30 @@ const HIDDEN_METADATA_KEYS = new Set([
 ]);
 
 export interface QuestionFilters {
-    /** 科目條件。 */
-    subject: Subject | "全部";
+    /** 科目條件；陣列用於可複選的題目篩選。 */
+    subject: Subject | "全部" | Subject[];
     /** 學期條件。 */
     semester: string;
     /** 書籍版本條件。 */
     version: string;
     /** 章節與單元條件；空陣列代表不限制。 */
     scope: string[];
-    /** 主題條件。 */
-    topic: string;
-    /** 知識點條件。 */
-    knowledge: string;
+    /** 主題條件；陣列用於可複選的題目篩選。 */
+    topic: string | string[];
+    /** 知識點條件；陣列用於可複選的題目篩選。 */
+    knowledge: string | string[];
     /** 難易度條件；空陣列代表不限制。 */
     difficulty: string[];
     /** 題型條件；空陣列代表不限制。 */
-    kind: QuestionKind[];
+    kind: string[];
     /** 題目來源分類條件；空陣列代表不限制。 */
     source: string[];
-    /** 題目建立者條件。 */
-    creator: string;
+    /** 題目建立者條件；陣列用於可複選的題目篩選。 */
+    creator: string | string[];
     /** 來源專屬的動態條件。 */
-    metadata: Record<string, string>;
-    /** 收藏清單條件。 */
-    collection: string;
+    metadata: Record<string, string | string[]>;
+    /** 收藏清單條件；陣列用於可複選的題目篩選。 */
+    collection: string | string[];
     /** 題目關鍵字。 */
     search: string;
 }
@@ -157,6 +157,11 @@ export function getQuestionSourceCategory(question: Question) {
     return normalizeQuestionSourceCategory(question.sourceCategory ?? metadata?.rawValue ?? question.source);
 }
 
+/** 取得題目總覽「編號」欄實際顯示且應可搜尋的識別值。 */
+export function getQuestionDisplayNumber(question: Question) {
+    return question.code ?? question.sourceDetail?.questionNumber ?? String(question.id);
+}
+
 /**
  * 依來源規則判斷題目是否需要教材版本。
  * @param question 題目資料。
@@ -240,7 +245,7 @@ function retainAvailableSelections(
     options: { value: string }[],
 ) {
     const available = new Set(options.map((option) => option.value));
-    return selected.filter((value) => available.has(value));
+    return [...new Set(selected.filter((value) => available.has(value)))];
 }
 
 /**
@@ -266,7 +271,8 @@ export function getQuestionFilterOptions(
     collections: QuestionCollection[],
 ): QuestionFilterOptions {
     const selectedSources = normalizeQuestionFilterSelection(filters.source);
-    const subjectQuestions = questions.filter((question) => filters.subject === "全部" || question.subject === filters.subject);
+    const selectedSubjects = normalizeQuestionFilterSelection(filters.subject, "全部") as Subject[];
+    const subjectQuestions = questions.filter((question) => !selectedSubjects.length || selectedSubjects.includes(question.subject));
     const semesterQuestions = subjectQuestions.filter((question) => filters.semester === ALL_QUESTION_FILTERS
         || question.semester === filters.semester);
     const versionQuestions = semesterQuestions.filter((question) => matchesVersion(question, filters.version));
@@ -281,9 +287,9 @@ export function getQuestionFilterOptions(
     const showKnowledge = capabilitySources.some((source) => !SOURCE_WITHOUT_KNOWLEDGE.has(source));
     const scopes = new Map(sourceQuestions.map((question) => [
         getUnitScopeValue(question),
-        filters.subject === "全部" ? `${question.subject} · ${getUnitLabel(question.unit)}` : getUnitLabel(question.unit),
+        selectedSubjects.length !== 1 ? `${question.subject} · ${getUnitLabel(question.unit)}` : getUnitLabel(question.unit),
     ]));
-    const facets = selectedSources.length ? [...sourceQuestions.reduce((catalog, question) => {
+    const facets = [...sourceQuestions.reduce((catalog, question) => {
         question.metadata?.forEach((field) => {
             if (!isSupplementalQuestionMetadata(field.key) || !field.values.length) return;
             const current = catalog.get(field.key) ?? { key: field.key, label: field.label, values: new Set<string>() };
@@ -295,7 +301,7 @@ export function getQuestionFilterOptions(
         key: facet.key,
         label: facet.label,
         options: getValueOptions([...facet.values], `全部${facet.label}`),
-    })) : [];
+    }));
 
     return {
         semesters: getValueOptions(subjectQuestions.map((question) => question.semester), "全部學期"),
@@ -304,8 +310,9 @@ export function getQuestionFilterOptions(
         topics: getValueOptions(sourceQuestions.map((question) => question.topic), "全部主題"),
         knowledge: getValueOptions(sourceQuestions.map((question) => question.knowledge), "全部知識點"),
         difficulties: getValueOptions(sourceQuestions.map((question) => question.difficulty), "全部難度").slice(1),
-        kinds: ([...new Set(sourceQuestions.map((question) => question.kind))] as QuestionKind[])
-            .map((kind) => ({ value: kind, label: getQuestionKindLabel(kind) })),
+        kinds: [...new Set(sourceQuestions.map(getQuestionTypeLabel))]
+            .sort((left, right) => left.localeCompare(right, "zh-Hant"))
+            .map((typeLabel) => ({ value: typeLabel, label: typeLabel })),
         sources: availableSources.map((source) => ({ value: source, label: source })),
         creators: getValueOptions(sourceQuestions.map(getQuestionCreator), "全部建立者"),
         facets,
@@ -334,29 +341,40 @@ export function filterQuestions(
     filters: QuestionFilters,
     collections: QuestionCollection[],
 ) {
+    const subjects = normalizeQuestionFilterSelection(filters.subject, "全部") as Subject[];
     const scopes = normalizeQuestionFilterSelection(filters.scope, ALL_UNITS);
+    const topics = normalizeQuestionFilterSelection(filters.topic);
+    const knowledge = normalizeQuestionFilterSelection(filters.knowledge);
     const difficulties = normalizeQuestionFilterSelection(filters.difficulty);
-    const kinds = normalizeQuestionFilterSelection(filters.kind) as QuestionKind[];
+    const kinds = normalizeQuestionFilterSelection(filters.kind);
     const sources = normalizeQuestionFilterSelection(filters.source);
-    const collectionIds = collections.find((collection) => collection.id === filters.collection)?.questionIds;
+    const creators = normalizeQuestionFilterSelection(filters.creator);
+    const selectedCollections = normalizeQuestionFilterSelection(filters.collection);
+    const collectionIds = selectedCollections.length
+        ? new Set(collections.filter((collection) => selectedCollections.includes(collection.id)).flatMap((collection) => collection.questionIds))
+        : null;
     const keyword = filters.search.trim().toLocaleLowerCase();
 
     return questions
-        .filter((question) => filters.subject === "全部" || question.subject === filters.subject)
+        .filter((question) => !subjects.length || subjects.includes(question.subject))
         .filter((question) => filters.semester === ALL_QUESTION_FILTERS || question.semester === filters.semester)
         .filter((question) => matchesVersion(question, filters.version))
         .filter((question) => !scopes.length || scopes.includes(getUnitScopeValue(question)))
-        .filter((question) => filters.topic === ALL_QUESTION_FILTERS || question.topic === filters.topic)
-        .filter((question) => filters.knowledge === ALL_QUESTION_FILTERS || question.knowledge === filters.knowledge)
+        .filter((question) => !topics.length || topics.includes(question.topic))
+        .filter((question) => !knowledge.length || knowledge.includes(question.knowledge))
         .filter((question) => !difficulties.length || difficulties.includes(question.difficulty))
-        .filter((question) => !kinds.length || kinds.includes(question.kind))
+        .filter((question) => !kinds.length || kinds.includes(getQuestionTypeLabel(question)) || kinds.includes(question.kind))
         .filter((question) => !sources.length || sources.includes(getQuestionSourceCategory(question)))
-        .filter((question) => filters.creator === ALL_QUESTION_FILTERS || getQuestionCreator(question) === filters.creator)
-        .filter((question) => Object.entries(filters.metadata).every(([key, value]) => value === ALL_QUESTION_FILTERS
-            || question.metadata?.some((field) => field.key === key && field.values.includes(value))))
-        .filter((question) => !collectionIds || collectionIds.includes(question.id))
+        .filter((question) => !creators.length || creators.includes(getQuestionCreator(question) ?? ""))
+        .filter((question) => Object.entries(filters.metadata).every(([key, value]) => {
+            const selected = normalizeQuestionFilterSelection(value);
+            return !selected.length || question.metadata?.some((field) => (
+                field.key === key && field.values.some((item) => selected.includes(item))
+            ));
+        }))
+        .filter((question) => !collectionIds || collectionIds.has(question.id))
         .filter((question) => !keyword || [
-            question.code,
+            getQuestionDisplayNumber(question),
             question.prompt,
             question.knowledge,
             question.topic,
@@ -378,13 +396,17 @@ export function normalizeQuestionFilters(
     collections: QuestionCollection[],
 ): QuestionFilters {
     const subjects = new Set(questions.map((question) => question.subject));
-    const subject = filters.subject === "全部" || subjects.has(filters.subject) ? filters.subject : "全部";
+    const selectedSubjects = normalizeQuestionFilterSelection(filters.subject, "全部")
+        .filter((subject): subject is Subject => subjects.has(subject as Subject));
+    const subject = Array.isArray(filters.subject)
+        ? selectedSubjects
+        : selectedSubjects[0] ?? "全部";
     const normalized: QuestionFilters = {
         ...filters,
         subject,
         scope: normalizeQuestionFilterSelection(filters.scope, ALL_UNITS),
         difficulty: normalizeQuestionFilterSelection(filters.difficulty),
-        kind: normalizeQuestionFilterSelection(filters.kind) as QuestionKind[],
+        kind: normalizeQuestionFilterSelection(filters.kind),
         source: normalizeQuestionFilterSelection(filters.source),
     };
 
@@ -411,12 +433,15 @@ export function normalizeQuestionFilters(
         nextOptions = getQuestionFilterOptions(questions, sourceNormalized, collections);
     }
 
-    const metadata = Object.fromEntries(nextOptions.facets.map((facet) => [
-        facet.key,
-        facet.options.some((option) => option.value === filters.metadata[facet.key])
-            ? filters.metadata[facet.key]
-            : ALL_QUESTION_FILTERS,
-    ]));
+    const metadata = Object.fromEntries(nextOptions.facets.map((facet) => {
+        const current = filters.metadata[facet.key] ?? ALL_QUESTION_FILTERS;
+        const selected = retainAvailableSelections(normalizeQuestionFilterSelection(current), facet.options);
+        return [facet.key, Array.isArray(current) ? selected : selected[0] ?? ALL_QUESTION_FILTERS];
+    }));
+    const retainValue = (current: string | string[], available: { value: string }[]) => {
+        const selected = retainAvailableSelections(normalizeQuestionFilterSelection(current), available);
+        return Array.isArray(current) ? selected : selected[0] ?? ALL_QUESTION_FILTERS;
+    };
 
     return {
         ...sourceNormalized,
@@ -425,21 +450,21 @@ export function normalizeQuestionFilters(
             ? sourceNormalized.version
             : ALL_QUESTION_FILTERS,
         scope: retainAvailableSelections(sourceNormalized.scope, nextOptions.scopes),
-        topic: nextOptions.showTopic && nextOptions.topics.some((option) => option.value === filters.topic)
-            ? filters.topic
-            : ALL_QUESTION_FILTERS,
-        knowledge: nextOptions.showKnowledge && nextOptions.knowledge.some((option) => option.value === filters.knowledge)
-            ? filters.knowledge
-            : ALL_QUESTION_FILTERS,
+        topic: nextOptions.showTopic ? retainValue(filters.topic, nextOptions.topics) : Array.isArray(filters.topic) ? [] : ALL_QUESTION_FILTERS,
+        knowledge: nextOptions.showKnowledge ? retainValue(filters.knowledge, nextOptions.knowledge) : Array.isArray(filters.knowledge) ? [] : ALL_QUESTION_FILTERS,
         difficulty: retainAvailableSelections(sourceNormalized.difficulty, nextOptions.difficulties),
-        kind: retainAvailableSelections(sourceNormalized.kind, nextOptions.kinds) as QuestionKind[],
+        kind: retainAvailableSelections(
+            sourceNormalized.kind.flatMap((selected) => {
+                if (!["choice", "boolean", "written", "multi-choice"].includes(selected)) return [selected];
+                return questions
+                    .filter((question) => question.kind === selected)
+                    .map(getQuestionTypeLabel);
+            }),
+            nextOptions.kinds,
+        ),
         source,
-        creator: nextOptions.creators.some((option) => option.value === filters.creator)
-            ? filters.creator
-            : ALL_QUESTION_FILTERS,
+        creator: retainValue(filters.creator, nextOptions.creators),
         metadata,
-        collection: nextOptions.collections.some((option) => option.value === filters.collection)
-            ? filters.collection
-            : ALL_QUESTION_FILTERS,
+        collection: retainValue(filters.collection, nextOptions.collections),
     };
 }

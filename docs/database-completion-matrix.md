@@ -2,7 +2,7 @@
 
 正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
 
-279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
+第四至第六課目前的 parser v5 confirmed 批次分別為 `5855e492-9aa5-56ed-88af-2b48e50c80bf`、`4e3123eb-8b1a-5908-8104-127e0edd5f6d`、`5d630c3a-a002-525e-b023-4f56651ab2c2`；語文常識（二）的 parser v6 review 批次為 `f8533286-460d-5570-8978-8d9b0b03a277`。四個單元共有 892 題 published/current，另有一題因來源破圖保留待檢視。相同來源與 parser 版本重跑應重用對應批次，不重建或清空既有題目。
 
 這份文件把目前已核准的產品需求，對照到正式 PostgreSQL 的資料表、關鍵欄位與關聯，再標示正式 API／表單是否已經接上。範圍以 `docs/PRODUCT_SPEC.md`、`docs/question-database-design.md` 與現有前端流程為準；不把未決定的產品功能或未完成的應用程式串接算成完成。
 
@@ -71,7 +71,7 @@
 | 資料域 | `3500` 本機網站目前如何載入與保存 | PostgreSQL 狀態 |
 | --- | --- | --- |
 | 舊 JSON 題庫與匯入 | 舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`，不再向正式主流程提供 fixture 或 runtime JSON | 舊 mock `/bank` 已移除並轉址 `/questions`；需另建受權限、可追溯的 PostgreSQL 匯入 API／介面，不能重新開啟舊端點 |
-| 本機整合題庫與來源文件 | `/practice` 正常分類接入國語／國一／翰林版／第一冊／第四課的已發布題目；內部 `/local-practice` 使用相同持久服務。只有第四課原始 Word 文件會先在本機做巨集隔離與安全轉換，asset 存在 `local-data/assets`；其餘 14 份文件尚未匯入 | 本機持久服務已串接；第四課 279 題均為 published/current，279 筆教材單元關聯是 `native/document`，舊分類為 0。匯入批次、文件、版本、內容與來源關聯保存在持久 PostgreSQL |
+| 本機整合題庫與來源文件 | `/practice` 正常分類接入國語／國一／翰林版／第一冊／第四至第六課及語文常識（二）的已發布題目；內部 `/local-practice` 使用相同持久服務。四份原始 Word 文件會先在本機做巨集隔離與安全轉換，asset 存在 `local-data/assets`；其餘 11 份文件尚未匯入 | 本機持久服務已串接；第四、五、六課與語文常識（二）分別有 279、280、258、75 題 published/current，共 892 題。語文常識（二）的 2 張有效統計圖已保存，另 1 題來源破圖保留待檢視。匯入批次、文件、版本、內容與來源關聯保存在持久 PostgreSQL |
 | 帳號、角色與學習者 | `/account`、`/system-settings` 與 auth API 實際讀寫 PostgreSQL。持有有效 parent／tutor 授權的帳號切到相應 `activeRole` 後可管理有權存取的學習者，無論主要 `accountRole` 為何；受管 learner mode 的帳號層操作回 `403`；只有 self learner 能力的帳號可查看自己的帳號設定 | 本機身份、session、一般帳號角色、self learner 與學習者關係已串接。信箱驗證已串接；密碼重設與角色 PIN 設定／重設的程式與不連網測試已完成，`0012` identity binding 已整合；帳號復原 DB E2E 狀態以本節驗證紀錄為準。SMTP outbox／等時回應、Lerniqa 憑證、handshake 與實際投遞另列為上線阻擋；OAuth、邀請分享、角色 PIN 切換、`system_admin` 管理與 production 帳號生命週期尚未完成 |
 | 目前學習者設定 | `/settings` 從 session 的 active learner 載入；先區分在學或不在學。在學者依資料庫目錄選教育階段、年級與學期，各科書籍版本另行設定；不在學者不保存年級或學期 | 顯示名稱、就學狀態、年級、學期與各科書籍版本由受權限 API 寫入 PostgreSQL。學校、代表圖片、練習偏好與考試的正式寫入仍待完成 |
 | 練習 UI 設定、計畫、排程與收藏 | 非識別性的篩選與顯示設定，以及尚未切換 PostgreSQL 的計畫、排程與收藏，以 learner ID 分區保存在瀏覽器 `localStorage`。切換 learner 時從新學習者的學期與各科已保存版本重建基準；缺少版本不猜測，同一 learner 的背景重新載入不覆寫使用者手動選擇 | 計畫、排程與收藏尚未寫入 PostgreSQL；清除瀏覽器資料會失去這些本機項目，但不會刪除伺服器上的學習者、練習或作答 |
@@ -127,7 +127,7 @@
 - 產品規格要求正式相近題關聯完成前不顯示成正式功能；現有 fixture 與畫面使用 `generatedFrom`、`queuedSimilarByLearner` 模擬。搬移時要分成生成來源、舊佇列與已確認相近群組，不能把 mock 字段直接當正式關聯。
 - 現有 `Question.kind` 表達選擇、文字或多小題等作答形態，`typeLabel` 才保存來源題型名稱；正式資料庫以 `question_types`、`question_parts.answer_mode` 與內容區塊分開表示。搬移需使用核准對照表，不能以畫面名稱猜測。
 - 現有匯入把一批題目共用 `fileNames`，實作上可能把每題都連到第一個檔名；正式流程必須逐題保存 `source_document_id`、頁碼、裁切圖與來源題號。
-- 本機題庫只允許原本屬於第四課的單一來源文件歸入第四課，並保留原檔課次、檔名與來源 metadata。其餘 14 份文件尚未匯入，必須先依原生教材位置確認分類，不可套用第四課分類。
+- 本機題庫只允許第四至第六課及語文常識（二）各自核准的單一來源文件歸入對應單元，並保留原檔課次、檔名與來源 metadata。其餘 11 份文件尚未匯入，必須先依原生教材位置確認分類，不可套用既有課次分類。
 - `/practice` 已保留多科目介面，但 PostgreSQL 題庫查詢目前仍固定為已串接的國一／國語／翰林版／第一冊／第四課。其他科目顯示無資料，不代表動態多科目伺服器契約已完成。
 - `docs/plan.md` 同時記錄已封閉的歷史 JSON 功能、本機 PostgreSQL 持久服務與正式資料庫切換。這些功能不是同一個完成狀態；本文件分開標示「schema 已驗證」、「本機持久服務已串接」與「待正式串接」。
 

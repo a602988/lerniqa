@@ -540,8 +540,8 @@ export function parseStoredState(value: unknown, questions: Question[]): StoredS
             || typeof plan.difficultyMixEnabled !== "boolean"
             || !Array.isArray(plan.sourceFilters) || plan.sourceFilters.length > 100
             || !plan.sourceFilters.every((item) => typeof item === "string" && item.length <= 240)
-            || !Array.isArray(plan.questionKinds) || plan.questionKinds.length > 4
-            || !plan.questionKinds.every((item) => ["choice", "boolean", "written", "multi-choice"].includes(String(item)))
+            || !Array.isArray(plan.questionKinds) || plan.questionKinds.length > 100
+            || !plan.questionKinds.every((item) => typeof item === "string" && item.length > 0 && item.length <= 120)
             || typeof plan.knowledge !== "string"
             || !isRecord(plan.metadataFilters)
             || !Object.entries(plan.metadataFilters).every(([key, items]) => /^[a-z][a-z0-9_]{0,79}$/.test(key)

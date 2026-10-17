@@ -10,28 +10,30 @@ import {
 } from "@keel-design/ui";
 import {
     ArrowLeft, ArrowRight, BarChart3, BookOpen, Bookmark, CalendarDays, CheckCircle2, ClipboardCheck,
-    ChevronDown, ChevronRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Link2, LogIn, LogOut,
+    ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Link2, LogIn, LogOut,
     FolderInput, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
+import { BopomofoText } from "./components/bopomofo-text";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
 import { QuestionFilterPanel } from "./components/question-filter-panel";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, BOOK_SETTING_OPTIONS, CheckMode,
     DEFAULT_QUESTION_LIMIT_OPTIONS,
     DEFAULT_ASSESSMENT_RANGES, DEFAULT_EXAM_SETTING, DEFAULT_PLAN, ExamSetting, FILE_SIZE_LIMIT, formatAnswer, getQuestionPartResults,
-    GRADE_OPTIONS, getQuestionKindLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
+    GRADE_OPTIONS, getQuestionTypeLabel, getUnitLabel, getUnitScopeValue, ImportBatch, ImportBook, Learner, PracticePlan, PracticeSession, Question, QuestionBlock, QuestionCollection,
     QuestionMetadataField, RoleAccess, ScheduledPractice, Section,
     SEMESTER_OPTIONS, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
 import {
-    ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getPreferredQuestionSemester, getQuestionSourceCategory, normalizeQuestionFilters,
+    ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getPreferredQuestionSemester, getQuestionDisplayNumber, getQuestionSourceCategory, normalizeQuestionFilterSelection, normalizeQuestionFilters,
     isSupplementalQuestionMetadata, normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
 import { normalizeSubjectLabel } from "./lib/subject-labels";
+import { reflowNumberedExplanation } from "./lib/question-presentation";
 import {
     findEducationStage,
     type EducationCatalog,
@@ -43,7 +45,8 @@ import {
     isAuthSessionContextStorageEvent,
     isAuthSessionStorageEvent,
 } from "./lib/auth-session-client";
-import { PersistedQuestionFields } from "./components/persisted-question-fields";
+import { PersistedQuestionFields, PersistedQuestionPromptContent } from "./components/persisted-question-fields";
+import { CORRECTION_ANSWER_HINT, CORRECTION_ANSWER_PLACEHOLDER, isCorrectionQuestion } from "./lib/question-answer-guidance";
 import { adaptPracticeAttempt, adaptPracticeQuestion, formatPracticeResponse, parsePracticeAnswers, practiceRouteId } from "./lib/practice-catalog-adapter";
 import {
     clearPracticeSessionHint,
@@ -216,6 +219,28 @@ const AVATAR_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MISTAKE_PAGE_SIZE = 10;
 const RECENT_IMPORT_LIMIT = 10;
 const QUESTION_OVERVIEW_PAGE_SIZE = 12;
+
+type PaginationItem = number | "ellipsis-start" | "ellipsis-end";
+
+/** 建立固定長度的頁碼列；首末頁永遠可見，中間過長時以省略號取代。 */
+function getPaginationItems(activePage: number, pageCount: number): PaginationItem[] {
+    if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1);
+
+    const pages = activePage <= 4
+        ? [1, 2, 3, 4, 5, pageCount]
+        : activePage >= pageCount - 3
+            ? [1, pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount]
+            : [1, activePage - 1, activePage, activePage + 1, pageCount];
+
+    return pages.flatMap<PaginationItem>((page, index) => {
+        const previous = pages[index - 1];
+        if (previous !== undefined && page - previous > 1) {
+            return [index === 1 ? "ellipsis-start" : "ellipsis-end", page];
+        }
+        return [page];
+    });
+}
+
 /** 顯示練習設定欄位共用的圖示與標題。 */
 function PracticeFieldLabel({ icon: Icon, label, className = "" }: PracticeFieldLabelProps) {
     return <span className={`practice-field-label ${className}`}><Icon aria-hidden="true" />{label}</span>;
@@ -279,7 +304,7 @@ function getQuestionConditions(question: Question) {
         { label: "主題", value: question.topic },
         { label: "知識點", value: question.knowledge },
         { label: "難度", value: question.difficulty },
-        { label: "題型", value: question.typeLabel ?? getQuestionKindLabel(question.kind) },
+        { label: "題型", value: getQuestionTypeLabel(question) },
         { label: "來源", value: getQuestionSourceCategory(question) },
     ];
     const importedConditions = question.metadata
@@ -978,7 +1003,7 @@ function PromptText({ text }: { text: string }) {
 
     return <>{segments.map((segment, index) => {
         const isBlank = /^(?: {4,}|　{2,})$/.test(segment);
-        if (!isBlank) return <Fragment key={`${index}-${segment}`}>{segment}</Fragment>;
+        if (!isBlank) return <Fragment key={`${index}-${segment}`}><BopomofoText text={segment} /></Fragment>;
 
         const blankWidth = [...segment].reduce((width, character) => width + (character === "　" ? 1 : 0.5), 0);
         const width = `${Math.min(Math.max(blankWidth, 3), 8)}em`;
@@ -1030,7 +1055,7 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
  * @returns 題型標示。
  */
 function QuestionTypeLabel({ question }: { question: Question }) {
-    const label = question.typeLabel?.trim() || getQuestionKindLabel(question.kind);
+    const label = getQuestionTypeLabel(question);
 
     return <p className="practice-question-type"><span>題型</span><strong>{label}</strong></p>;
 }
@@ -1077,7 +1102,7 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
         <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
             <legend className={showPrompt ? "multi-choice-step-prompt" : "sr-only"}>{showPrompt ? <PromptText text={currentPart.prompt} /> : "選擇答案"}</legend>
             {options.length
-                ? options.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}-part-${currentPart.id}`} value={option} checked={sourceIndex >= 0 && selectedAnswers[sourceIndex] === option} onChange={() => selectOption(option)} /><span>{option}</span></label>)
+                ? options.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}-part-${currentPart.id}`} value={option} checked={sourceIndex >= 0 && selectedAnswers[sourceIndex] === option} onChange={() => selectOption(option)} /><span><BopomofoText text={option} /></span></label>)
                 : <p className="multi-choice-step-empty" role="status">這一小題沒有可選答案。</p>}
         </fieldset>
     </section>;
@@ -1086,6 +1111,7 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
 /** 顯示正式練習與題目檢視共用的作答欄位。 */
 function QuestionAnswerFields({ question, answer, partIds, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
+    const needsCorrectionDelimiter = isCorrectionQuestion(question.typeLabel);
     const answerColumnCount = getAnswerColumnCount(question);
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
@@ -1104,12 +1130,14 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
                         key={part.id}
                         label={isNamedPoint ? part.id.toUpperCase() : `第 ${sourceIndex + 1} 空`}
                         layout="horizontal"
-                        description={isNamedPoint ? undefined : <PromptText text={part.prompt} />}
+                        description={needsCorrectionDelimiter
+                            ? <>{!isNamedPoint && <PromptText text={part.prompt} />}<span>{CORRECTION_ANSWER_HINT}</span></>
+                            : isNamedPoint ? undefined : <PromptText text={part.prompt} />}
                     >
                         <Input
                             value={sourceIndex >= 0 ? selectedAnswers[sourceIndex] ?? "" : ""}
                             disabled={disabled}
-                            placeholder="輸入答案"
+                            placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : "輸入答案"}
                             autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="none"
@@ -1126,9 +1154,13 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
             </div>;
         }
 
-        return <FormField className="practice-answer-field w-full" label="文字答案（選填）" layout="horizontal" description="可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。">
-            <Input value={answer} disabled={disabled} placeholder="也可以只使用右側手寫板作答" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
-        </FormField>;
+        const answerHint = needsCorrectionDelimiter
+            ? CORRECTION_ANSWER_HINT
+            : "可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。";
+        return <div className="practice-answer-field practice-answer-input w-full">
+            <Input aria-label="文字答案" value={answer} disabled={disabled} placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : "也可以只使用右側手寫板作答"} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
+            <p className="practice-answer-hint">{answerHint}</p>
+        </div>;
     }
 
     if (question.kind === "multi-choice") {
@@ -1137,7 +1169,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
 
     return <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
         <legend className="mb-1 text-sm font-semibold">選擇答案</legend>
-        {question.options?.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}`} value={option} checked={answer === option} onChange={() => onAnswer(option)} /><span>{option}</span></label>)}
+        {question.options?.map((option) => <label className="answer-option" key={option}><Radio name={`question-${question.id}`} value={option} checked={answer === option} onChange={() => onAnswer(option)} /><span><BopomofoText text={option} /></span></label>)}
     </fieldset>;
 }
 
@@ -1155,10 +1187,10 @@ function formatReferenceAnswers(referenceAnswers: readonly LocalPracticeReferenc
 
 /** 將伺服器解鎖的固定版本解析去重後轉成人類可讀文字。 */
 function formatReferenceExplanations(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
-    return [...new Set(referenceAnswers
+    return reflowNumberedExplanation([...new Set(referenceAnswers
         .map((reference) => reference.explanation?.trim())
         .filter((explanation): explanation is string => Boolean(explanation)))]
-        .join("；");
+        .join("\n\n"));
 }
 
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
@@ -1214,18 +1246,22 @@ function QuestionReview({ question, serverQuestion, index, total, title, headerA
                             <div className="practice-prompt">
                                 <QuestionTypeLabel question={question} />
                                 <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
+                                {serverQuestion && <PersistedQuestionPromptContent question={serverQuestion} />}
                             </div>
-                            <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground" role="note">這裡是題目預覽，不會保存作答；請按「開始練習」正式作答。</p>
-                            {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer="" disabled onAnswer={() => {}} /> : <QuestionAnswerFields question={question} answer="" disabled onAnswer={() => {}} />}
+                            {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer="" disabled hidePromptContent onAnswer={() => {}} /> : <QuestionAnswerFields question={question} answer="" disabled onAnswer={() => {}} />}
                             <div className="question-review-solution">
                                 <p className="question-detail-label">解答</p>
-                                <strong>{serverQuestion
+                                <strong><BopomofoText text={serverQuestion
                                     ? referenceAnswers.length ? formatReferenceAnswers(referenceAnswers) : referenceAnswerStatus
-                                    : formatAnswer(question, question.sourceAnswer ?? question.answer)}</strong>
-                                {serverQuestion && referenceExplanation && <p className="mt-2 text-sm text-muted-foreground">{referenceExplanation}</p>}
+                                    : formatAnswer(question, question.sourceAnswer ?? question.answer)} /></strong>
+                                {serverQuestion && referenceExplanation && <div className="question-review-explanation">
+                                    <p className="question-detail-label">解析</p>
+                                    <p className="question-review-explanation-text"><BopomofoText text={referenceExplanation} /></p>
+                                </div>}
                                 <ContentImages blocks={question.blocks} placement="answer" />
                             </div>
                             <QuestionConditions question={question} />
+                            <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground" role="note">這裡是題目預覽，不會保存作答；請按「開始練習」正式作答。</p>
                         </section>
                         <aside className="practice-handwriting-pane question-review-handwriting-pane">
                             <HandwritingPad value="" disabled recognitionStatus="預覽模式" onChange={() => {}} />
@@ -1500,16 +1536,17 @@ function QuestionFlow(props: QuestionFlowProps) {
                         <div className="practice-prompt">
                             <QuestionTypeLabel question={question} />
                             <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
+                            {serverQuestion && <PersistedQuestionPromptContent question={serverQuestion} />}
                         </div>
-                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
+                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} hidePromptContent onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
                     </section>
                     {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                         <div className="practice-feedback-status">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedbackMessage}</div>
-                        {feedbackAnswer && <p className="practice-feedback-answer"><span>{serverQuestion ? "參考答案" : "正確答案"}</span><strong>{feedbackAnswer}</strong></p>}
+                        {feedbackAnswer && <p className="practice-feedback-answer"><span>{serverQuestion ? "參考答案" : "正確答案"}</span><strong><BopomofoText text={feedbackAnswer} /></strong></p>}
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
                         {feedback.correct !== null && (serverQuestion
-                            ? referenceExplanation ? <p className="practice-feedback-explanation">解析：{referenceExplanation}</p> : null
-                            : <p className="practice-feedback-explanation">{question.explanation}</p>)}
+                            ? referenceExplanation ? <div className="practice-feedback-explanation"><span>解析</span><p><BopomofoText text={referenceExplanation} /></p></div> : null
+                            : <p className="practice-feedback-explanation"><BopomofoText text={question.explanation} /></p>)}
                     </aside>}
                     <div className="practice-question-meta"><QuestionConditions question={question} /></div>
                     <div className="practice-question-actions">
@@ -1940,6 +1977,7 @@ export default function Home() {
     );
     const questionPageCount = Math.max(1, Math.ceil(filteredOverviewQuestions.length / QUESTION_OVERVIEW_PAGE_SIZE));
     const activeQuestionPage = Math.min(questionPage, questionPageCount);
+    const questionPaginationItems = getPaginationItems(activeQuestionPage, questionPageCount);
     const pagedOverviewQuestions = filteredOverviewQuestions.slice((activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE, activeQuestionPage * QUESTION_OVERVIEW_PAGE_SIZE);
     const selectedOverviewQuestion = questions.find((question) => question.id === selectedQuestionId);
     const detailOverviewQuestions = selectedQuestionId && filteredOverviewQuestions.some((question) => question.id === selectedQuestionId)
@@ -3210,26 +3248,27 @@ export default function Home() {
 
     /** 將共用篩選元件的值保存至目前練習計畫。 */
     function updatePracticeFilters(filters: QuestionFilters) {
+        const singleValue = (value: string | string[]) => normalizeQuestionFilterSelection(value)[0] ?? ALL_QUESTION_FILTERS;
         const metadataFilters = Object.fromEntries(Object.entries(filters.metadata)
-            .filter(([, value]) => value !== ALL_QUESTION_FILTERS)
-            .map(([key, value]) => [key, [value]]));
+            .map(([key, value]) => [key, normalizeQuestionFilterSelection(value)])
+            .filter(([, values]) => values.length > 0));
         setPlansByLearner((current) => ({
             ...current,
             [activeLearnerId]: {
                 ...(current[activeLearnerId] ?? DEFAULT_PLAN),
                 creatorRole: roleAccess.activeRole,
-                subject: filters.subject,
+                subject: normalizeQuestionFilterSelection(filters.subject, "全部")[0] ?? "全部",
                 bookVersion: filters.version === ALL_QUESTION_FILTERS ? undefined : filters.version,
                 scopeFilters: filters.scope,
                 semester: filters.semester,
-                topic: filters.topic,
+                topic: singleValue(filters.topic),
                 difficultyFilters: activePlan.difficultyMixEnabled ? activePlan.difficultyFilters : filters.difficulty,
-                creatorFilter: filters.creator,
-                collection: filters.collection,
+                creatorFilter: singleValue(filters.creator),
+                collection: singleValue(filters.collection),
                 search: filters.search,
                 sourceFilters: filters.source,
                 questionKinds: filters.kind,
-                knowledge: filters.knowledge === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : filters.knowledge,
+                knowledge: singleValue(filters.knowledge) === ALL_QUESTION_FILTERS ? ALL_KNOWLEDGE : singleValue(filters.knowledge),
                 metadataFilters,
             },
         }));
@@ -3272,13 +3311,13 @@ export default function Home() {
                 ...(current[activeLearnerId] ?? DEFAULT_PLAN),
                 difficultyMix: { ...DEFAULT_PLAN.difficultyMix },
                 difficultyMixEnabled: DEFAULT_PLAN.difficultyMixEnabled,
-                subject: normalizedDefaults.subject,
+                subject: normalizeQuestionFilterSelection(normalizedDefaults.subject, "全部")[0] ?? "全部",
                 sourceFilters: normalizedDefaults.source,
                 metadataFilters: {},
                 questionKinds: normalizedDefaults.kind,
                 knowledge: ALL_KNOWLEDGE,
                 semester: normalizedDefaults.semester,
-                topic: normalizedDefaults.topic,
+                topic: normalizeQuestionFilterSelection(normalizedDefaults.topic)[0] ?? ALL_QUESTION_FILTERS,
                 difficultyFilters: normalizedDefaults.difficulty,
                 creatorFilter: ALL_QUESTION_FILTERS,
                 collection: ALL_QUESTION_FILTERS,
@@ -4422,15 +4461,15 @@ export default function Home() {
                                     <div>
                                         <p className="font-semibold">{index + 1}.</p>
                                         <QuestionPrompt question={question} className="whitespace-pre-line font-semibold" />
-                                        <p className="mt-1 text-sm text-muted-foreground">你的答案：{formatAnswer(question, attempt.answer)}</p>
+                                        <p className="mt-1 text-sm text-muted-foreground">你的答案：<BopomofoText text={formatAnswer(question, attempt.answer)} /></p>
                                         {wrongPartLabels.length > 0 && <p className="text-sm text-rose-700">答錯小題：{wrongPartLabels.join("、")}</p>}
-                                        <p className="text-sm text-muted-foreground">{persistedQuestions.has(question.id)
+                                        <p className="text-sm text-muted-foreground"><BopomofoText text={persistedQuestions.has(question.id)
                                             ? attempt.referenceAnswers?.length ? `參考答案：${formatReferenceAnswers(attempt.referenceAnswers)}` : "這個題目版本尚無可顯示的參考答案。"
-                                            : `參考答案：${formatAnswer(question, question.answer)}`}</p><ContentImages blocks={question.blocks} placement="answer" />
+                                            : `參考答案：${formatAnswer(question, question.answer)}`} /></p><ContentImages blocks={question.blocks} placement="answer" />
                                     </div>
                                     <Badge className="shrink-0" tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "待加強" : "待檢視"}</Badge>
                                 </div>
-                                {session.checkMode === "complete" && attempt.correct !== null && <p className="text-sm md:col-start-1">{question.explanation}</p>}
+                                {session.checkMode === "complete" && attempt.correct !== null && <p className="text-sm md:col-start-1"><BopomofoText text={question.explanation} /></p>}
                                 {attempt.handwriting && <div className="md:col-start-2 md:row-span-2 md:row-start-1"><p className="mb-2 text-xs font-semibold text-muted-foreground">原始手寫</p><img src={attempt.handwriting} alt={`第 ${index + 1} 題原始手寫內容`} className="max-h-56 w-full rounded-xl border border-border bg-white object-contain" /></div>}
                                 {needsWrongReview(attempt) && <div className="col-span-full">{renderRecommendationAction(attempt.questionId)}</div>}
                                 <time className="practice-result-time col-span-full justify-self-end" dateTime={attempt.date}>{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</time>
@@ -4877,6 +4916,7 @@ export default function Home() {
                         collections={activeQuestionCollections}
                         value={questionFilters}
                         expanded={questionFiltersOpen}
+                        multiSelectCatalogFields
                         onChange={(filters) => { setQuestionFilters(filters); setQuestionPage(1); setSelectedQuestionIds([]); }}
                         onExpandedChange={setQuestionFiltersOpen}
                         onReset={resetQuestionFilters}
@@ -4901,17 +4941,28 @@ export default function Home() {
                                     const collections = activeQuestionCollections.filter((collection) => collection.questionIds.includes(question.id));
                                     return <tr data-active={selectedQuestionId === question.id} key={question.id}>
                                         <td><label className="question-checkbox" aria-label={`選取${question.prompt}`}><Checkbox checked={selected} onChange={(event) => toggleOverviewQuestion(question.id, event.target.checked)} /><span className="sr-only">選取此題</span></label></td>
-                                        <td data-label="編號">{question.code ?? question.sourceDetail?.questionNumber ?? question.id}</td>
-                                        <td className="question-overview-title-cell" data-label="題目"><button className="question-overview-title" type="button" onClick={() => openQuestionDetail(question.id)}>{question.prompt}</button><small>{getQuestionSourceCategory(question)}</small></td>
+                                        <td data-label="編號">{getQuestionDisplayNumber(question)}</td>
+                                        <td className="question-overview-title-cell" data-label="題目"><button className="question-overview-title" type="button" onClick={() => openQuestionDetail(question.id)}><BopomofoText text={question.prompt} /></button><small>{getQuestionSourceCategory(question)}</small></td>
                                         <td data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
-                                        <td data-label="題型">{getQuestionKindLabel(question.kind)}</td>
+                                        <td data-label="題型">{getQuestionTypeLabel(question)}</td>
                                         <td data-label="收藏">{collections.length ? <span className="question-collection-tags">{collections.slice(0, 2).map((collection) => <Badge tone="primary" key={collection.id}>{collection.name}</Badge>)}</span> : <span className="text-muted-foreground">—</span>}</td>
                                     </tr>;
                                 })}</tbody>
                             </table>
                             {!pagedOverviewQuestions.length && <div className="question-empty"><Search /><p>目前條件沒有符合的題目。</p><Button appearance="outline" size="sm" onClick={resetQuestionFilters}>清除篩選</Button></div>}
                         </div>
-                        <div className="question-pagination"><span>顯示 {(activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE + (pagedOverviewQuestions.length ? 1 : 0)}–{(activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE + pagedOverviewQuestions.length}，共 {filteredOverviewQuestions.length} 題</span><div><Button appearance="outline" size="sm" disabled={activeQuestionPage <= 1} onClick={() => setQuestionPage((page) => Math.max(1, page - 1))}><ArrowLeft />上一頁</Button><Button appearance="outline" size="sm" disabled={activeQuestionPage >= questionPageCount} onClick={() => setQuestionPage((page) => Math.min(questionPageCount, page + 1))}>下一頁<ArrowRight /></Button></div></div>
+                        <nav className="question-pagination" aria-label="題目分頁">
+                            <span>顯示 {(activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE + (pagedOverviewQuestions.length ? 1 : 0)}–{(activeQuestionPage - 1) * QUESTION_OVERVIEW_PAGE_SIZE + pagedOverviewQuestions.length}，共 {filteredOverviewQuestions.length} 題</span>
+                            <div className="question-pagination-controls">
+                                <Button appearance="outline" size="sm" aria-label="最前頁" title="最前頁" disabled={activeQuestionPage <= 1} onClick={() => setQuestionPage(1)}><ChevronsLeft aria-hidden="true" /></Button>
+                                <Button appearance="outline" size="sm" aria-label="上一頁" title="上一頁" disabled={activeQuestionPage <= 1} onClick={() => setQuestionPage((page) => Math.max(1, page - 1))}><ChevronLeft aria-hidden="true" /></Button>
+                                {questionPaginationItems.map((item) => typeof item === "number"
+                                    ? <Button className="question-pagination-page" appearance={item === activeQuestionPage ? "solid" : "outline"} size="sm" aria-current={item === activeQuestionPage ? "page" : undefined} aria-label={`第 ${item} 頁`} key={item} onClick={() => setQuestionPage(item)}>{item}</Button>
+                                    : <span className="question-pagination-ellipsis" aria-hidden="true" key={item}>…</span>)}
+                                <Button appearance="outline" size="sm" aria-label="下一頁" title="下一頁" disabled={activeQuestionPage >= questionPageCount} onClick={() => setQuestionPage((page) => Math.min(questionPageCount, page + 1))}><ChevronRight aria-hidden="true" /></Button>
+                                <Button appearance="outline" size="sm" aria-label="最後一頁" title="最後一頁" disabled={activeQuestionPage >= questionPageCount} onClick={() => setQuestionPage(questionPageCount)}><ChevronsRight aria-hidden="true" /></Button>
+                            </div>
+                        </nav>
                     </section>
                 </CardContent>
 
@@ -5215,9 +5266,9 @@ export default function Home() {
                                         {bankFilteredQuestions.map((question) => (
                                             <tr key={question.id}>
                                                 <td data-label="編號">{question.code ?? question.sourceDetail?.questionNumber ?? question.id}</td>
-                                                <td className="import-question-title-cell" data-label="題目"><button className="import-question-title" onClick={() => setImportReviewQuestionId(question.id)} type="button">{question.prompt}</button></td>
+                                                <td className="import-question-title-cell" data-label="題目"><button className="import-question-title" onClick={() => setImportReviewQuestionId(question.id)} type="button"><BopomofoText text={question.prompt} /></button></td>
                                                 <td data-label="科目／單元">{question.subject} · {getUnitLabel(question.unit)}</td>
-                                                <td data-label="題型">{getQuestionKindLabel(question.kind)}</td>
+                                                <td data-label="題型">{getQuestionTypeLabel(question)}</td>
                                                 <td data-label="難度">{question.difficulty}</td>
                                             </tr>
                                         ))}
@@ -5321,7 +5372,7 @@ export default function Home() {
                                         return <tr key={question.id}>
                                             <td className="mistake-select-cell"><label className="mistake-select" aria-label={`選取${question.prompt}`}><Checkbox checked={selected} onChange={(event) => setSelectedMistakes((current) => event.target.checked ? [...new Set([...current, question.id])] : current.filter((id) => id !== question.id))} /><span className="sr-only">選取此錯題</span></label></td>
                                             <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                            <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{getQuestionSourceCategory(question)}</small></td>
+                                            <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}><BopomofoText text={question.prompt} /></p><small>{getQuestionSourceCategory(question)}</small></td>
                                             <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                             <td data-label="最後測驗"><time className="mistake-meta" dateTime={lastAttempt?.date}>{lastAttempt ? formatAttemptDate(lastAttempt.date) : "尚無紀錄"}</time></td>
                                             <td data-label="錯誤次數"><Badge tone={wrongCount > 1 ? "danger" : "muted"}>{wrongCount} 次</Badge></td>
@@ -5338,7 +5389,7 @@ export default function Home() {
                                     <thead><tr><th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">作答次數</th><th scope="col">錯誤次數</th><th scope="col">錯誤率</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
                                     <tbody>{pagedCommunityMistakeRows.map(({ question, total, wrong, wrongRate }, index) => <tr key={question.id}>
                                         <td className="mistake-rank-cell" data-label="排名">{(activeMistakePage - 1) * MISTAKE_PAGE_SIZE + index + 1}</td>
-                                        <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}>{question.prompt}</p><small>{getQuestionSourceCategory(question)}</small></td>
+                                        <td className="mistake-question-cell question-overview-title-cell" data-label="題目"><p className="mistake-question-title" title={question.prompt}><BopomofoText text={question.prompt} /></p><small>{getQuestionSourceCategory(question)}</small></td>
                                         <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                         <td data-label="作答次數"><span className="mistake-meta">{total} 次</span></td>
                                         <td data-label="錯誤次數"><Badge tone={wrong > 1 ? "danger" : "muted"}>{wrong} 次</Badge></td>
@@ -5539,7 +5590,7 @@ export default function Home() {
                                         onChange={(event) => { setSelectedSubjectSettingCode(event.target.value); setSubjectSettingStatus(""); }}
                                     />
                                 </FormField>
-                                {selectedSubjectSetting && selectedSubjectSetting.availableBookVersions.length > 0 ? <FormField label="版本" description="只更新目前選取的科目。">
+                                {selectedSubjectSetting && selectedSubjectSetting.availableBookVersions.length > 0 ? <FormField label="版本">
                                     <NativeSelect
                                         disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
                                         options={[
@@ -5691,7 +5742,7 @@ export default function Home() {
             return <article className="result-wrong-item" data-result={attempt.correct === true ? "correct" : attempt.correct === false ? "wrong" : "pending"} key={`${record.id}-${attempt.questionId}-${index}`}>
                 <div>
                     <div className="result-question-heading"><p className="result-wrong-number">第 {index + 1} 題</p><Badge tone={resultTone}>{resultLabel}</Badge></div>
-                    <h5>{question.prompt}</h5>
+                    <h5><BopomofoText text={question.prompt} /></h5>
                     <p>{question.subject} · {getUnitLabel(question.unit)} · {question.knowledge}</p>
                     {wrongPartLabels.length > 0 && <p>答錯小題：{wrongPartLabels.join("、")}</p>}
                     {attempt.correct === false && <div className="result-question-actions">
@@ -5699,9 +5750,9 @@ export default function Home() {
                         {renderRecommendationAction(question.id)}
                     </div>}
                 </div>
-                <div className="result-wrong-answer"><p><span>你的答案</span>{formatAnswer(question, attempt.answer)}</p><p><span>參考答案</span>{persistedQuestions.has(question.id)
+                <div className="result-wrong-answer"><p><span>你的答案</span><BopomofoText text={formatAnswer(question, attempt.answer)} /></p><p><span>參考答案</span><BopomofoText text={persistedQuestions.has(question.id)
                     ? attempt.referenceAnswers?.length ? formatReferenceAnswers(attempt.referenceAnswers) : "這個題目版本尚無可顯示的參考答案。"
-                    : formatAnswer(question, question.answer)}</p></div>
+                    : formatAnswer(question, question.answer)} /></p></div>
             </article>;
         }
 

@@ -1,5 +1,6 @@
 import type { Attempt, Question } from "./demo-data";
 import type { LocalPracticeAnswerInput, LocalPracticeAttempt, LocalPracticeQuestion } from "./local-practice-types";
+import { normalizeQuestionSourceCategory } from "./question-filters";
 import { normalizeSubjectLabel } from "./subject-labels";
 
 /** Stable, safe numeric route key; the UUID remains the server's authoritative ID. */
@@ -21,6 +22,10 @@ export function adaptPracticeQuestion(question: LocalPracticeQuestion): Question
     const knowledge = question.knowledgePoints?.find((point) => point.isPrimary)?.name
         ?? question.knowledgePoints?.[0]?.name
         ?? "";
+    const sourceMetadata = question.metadata?.find((field) => field.key === "source_category");
+    const sourceCategory = normalizeQuestionSourceCategory(
+        question.sourceCategory?.name ?? sourceMetadata?.rawValue ?? "題庫題目",
+    );
     return {
         id: practiceRouteId(question.id),
         code: publisherQuestionNumber(question.code),
@@ -39,8 +44,13 @@ export function adaptPracticeQuestion(question: LocalPracticeQuestion): Question
         parts: question.parts.map((part) => ({ id: part.id, prompt: part.prompt, options: part.options.map((option) => option.label), answer: "" })),
         answer: "",
         explanation: "判分由伺服器完成；參考答案尚未提供查閱。",
-        source: "題庫題目",
-        sourceCategory: "題庫題目",
+        source: sourceCategory,
+        sourceCategory,
+        metadata: question.metadata?.map((field) => ({
+            ...field,
+            values: [...field.values],
+            confidence: field.confidence ?? 1,
+        })) ?? [],
     };
 }
 
