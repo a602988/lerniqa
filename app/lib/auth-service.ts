@@ -6,6 +6,7 @@ import { createSessionToken, hashAccountPassword, hashSessionToken, verifyAccoun
 import type {
     AccountRole,
     CreateAccountLearnerInput,
+    LearnerEducationStatus,
     LoginAccountInput,
     RegisterAccountInput,
     SwitchAccountRoleInput,
@@ -67,6 +68,7 @@ export interface AuthenticatedLearnerSubjectSetting {
 export interface AuthenticatedLearnerProfile {
     id: string;
     displayName: string;
+    educationStatus: LearnerEducationStatus;
     gradeCode: string | null;
     gradeName: string | null;
     semesterCode: string | null;
@@ -125,6 +127,7 @@ interface AuthAccountRow extends QueryResultRow {
 interface AccessibleLearnerRow extends QueryResultRow {
     learner_id: string;
     learner_display_name: string;
+    education_status: LearnerEducationStatus;
     grade_code: string | null;
     grade_name: string | null;
     semester_code: string | null;
@@ -182,6 +185,7 @@ interface LearnerCatalogRow extends QueryResultRow {
 interface ExistingLearnerRow extends QueryResultRow {
     learner_id: string;
     display_name: string;
+    education_status: LearnerEducationStatus;
     grade_id: string | null;
     semester_id: string | null;
     status: string;
@@ -213,6 +217,7 @@ function toLearnerProfile(row: AccessibleLearnerRow): AuthenticatedLearnerProfil
     return {
         id: row.learner_id,
         displayName: row.learner_display_name,
+        educationStatus: row.education_status,
         gradeCode: row.grade_code,
         gradeName: row.grade_name,
         semesterCode: row.semester_code,
@@ -552,8 +557,9 @@ async function createLearnerForAccount(
         learnerId: string;
         userId: string;
         displayName: string;
-        gradeId: string;
-        semesterId: string;
+        educationStatus: LearnerEducationStatus;
+        gradeId: string | null;
+        semesterId: string | null;
         accessRole: AccountRole;
     }>,
 ): Promise<void> {
@@ -562,8 +568,14 @@ async function createLearnerForAccount(
         INSERT INTO learners (
             id, display_name, education_status, grade_id, semester_id, school_name, status
         )
-        VALUES ($1, $2, 'enrolled', $3, $4, NULL, 'active')
-    `, [input.learnerId, input.displayName, input.gradeId, input.semesterId]);
+        VALUES ($1, $2, $3, $4, $5, NULL, 'active')
+    `, [
+        input.learnerId,
+        input.displayName,
+        input.educationStatus,
+        input.gradeId,
+        input.semesterId,
+    ]);
     await client.query(`
         INSERT INTO learner_access (
             id, learner_id, user_id, access_role,
@@ -582,7 +594,9 @@ async function createLearnerForAccount(
         canManage,
     ]);
     await ensureLearnerPreferences(client, input.learnerId);
-    await createDefaultSubjectSettings(client, input.userId, input.learnerId, input.gradeId);
+    if (input.gradeId) {
+        await createDefaultSubjectSettings(client, input.userId, input.learnerId, input.gradeId);
+    }
     await attachHanlinQuestionBanks(client, input.learnerId);
 }
 
@@ -707,6 +721,7 @@ async function readAccessibleLearners(
         SELECT
             learner.id AS learner_id,
             learner.display_name AS learner_display_name,
+            learner.education_status,
             grade.code AS grade_code,
             grade.name AS grade_name,
             semester.code AS semester_code,
@@ -880,28 +895,9 @@ export async function registerAccount(input: RegisterAccountInput): Promise<Issu
     const passwordHash = await hashAccountPassword(input.password);
     try {
         return await withLocalPostgresTransaction(async (client) => {
-            const gradeResult = await client.query<{ id: string }>(`
-                SELECT id FROM grades WHERE code = $1 AND status = 'active' LIMIT 1
-            `, [DEFAULT_GRADE_CODE]);
-            const gradeId = gradeResult.rows[0]?.id;
-            if (!gradeId) {
-                throw new AuthServiceError(
-                    "AUTH_SETUP_INCOMPLETE",
-                    "國一題庫目錄尚未準備完成，請先完成題庫匯入。",
-                    503,
-                );
-            }
-            const semesterResult = await client.query<{ id: string }>(`
-                SELECT id FROM semesters WHERE code = $1 AND status = 'active' LIMIT 1
-            `, [DEFAULT_SEMESTER_CODE]);
-            const semesterId = semesterResult.rows[0]?.id;
-            if (!semesterId) {
-                throw new AuthServiceError(
-                    "AUTH_SETUP_INCOMPLETE",
-                    "第一學期目錄尚未準備完成，請先完成題庫匯入。",
-                    503,
-                );
-            }
+            const catalog = input.educationStatus === "enrolled"
+                ? await resolveLearnerCatalog(client, input.gradeCode!, input.semesterCode!)
+                : null;
 
             const userId = randomUUID();
             const identityId = randomUUID();
@@ -938,8 +934,14 @@ export async function registerAccount(input: RegisterAccountInput): Promise<Issu
                 INSERT INTO learners (
                     id, display_name, education_status, grade_id, semester_id, school_name, status
                 )
-                VALUES ($1, $2, 'enrolled', $3, $4, NULL, 'active')
-            `, [learnerId, learnerDisplayName, gradeId, semesterId]);
+                VALUES ($1, $2, $3, $4, $5, NULL, 'active')
+            `, [
+                learnerId,
+                learnerDisplayName,
+                input.educationStatus,
+                catalog?.grade_id ?? null,
+                catalog?.semester_id ?? null,
+            ]);
             await client.query(`
                 INSERT INTO learner_access (
                     id, learner_id, user_id, access_role,
@@ -964,7 +966,9 @@ export async function registerAccount(input: RegisterAccountInput): Promise<Issu
                 VALUES ($1, ARRAY[5, 10, 20, 50]::smallint[], 10, 'complete')
             `, [learnerId]);
 
-            await createDefaultSubjectSettings(client, userId, learnerId, gradeId);
+            if (catalog) {
+                await createDefaultSubjectSettings(client, userId, learnerId, catalog.grade_id);
+            }
 
             await attachHanlinQuestionBanks(client, learnerId);
             const issued = await issueSession(client, { userId, role: input.role, learnerId });
@@ -1236,6 +1240,7 @@ export async function updateAccountIdentity(
                     learnerId: activeLearnerId,
                     userId: session.user_id,
                     displayName: session.display_name,
+                    educationStatus: "enrolled",
                     gradeId: catalog.grade_id,
                     semesterId: catalog.semester_id,
                     accessRole: "learner",
@@ -1281,15 +1286,14 @@ export async function createAccountLearner(
                     403,
                 );
             }
-            const catalog = await resolveLearnerCatalog(
-                client,
-                input.gradeCode,
-                input.semesterCode,
-            );
+            const catalog = input.educationStatus === "enrolled"
+                ? await resolveLearnerCatalog(client, input.gradeCode!, input.semesterCode!)
+                : null;
             const existingResult = await client.query<ExistingLearnerRow>(`
                 SELECT
                     learner.id AS learner_id,
                     learner.display_name,
+                    learner.education_status,
                     learner.grade_id,
                     learner.semester_id,
                     learner.status,
@@ -1310,8 +1314,9 @@ export async function createAccountLearner(
                 const isReplay = existing.owned
                     && existing.status === "active"
                     && existing.display_name === input.displayName
-                    && existing.grade_id === catalog.grade_id
-                    && existing.semester_id === catalog.semester_id;
+                    && existing.education_status === input.educationStatus
+                    && existing.grade_id === (catalog?.grade_id ?? null)
+                    && existing.semester_id === (catalog?.semester_id ?? null);
                 if (!isReplay) {
                     throw new AuthServiceError(
                         "LEARNER_REQUEST_CONFLICT",
@@ -1325,8 +1330,9 @@ export async function createAccountLearner(
                     learnerId: input.clientRequestId,
                     userId: session.user_id,
                     displayName: input.displayName,
-                    gradeId: catalog.grade_id,
-                    semesterId: catalog.semester_id,
+                    educationStatus: input.educationStatus,
+                    gradeId: catalog?.grade_id ?? null,
+                    semesterId: catalog?.semester_id ?? null,
                     accessRole,
                 });
             }
@@ -1449,11 +1455,9 @@ export async function updateAccountLearner(
             return readSessionById(client, session.session_id);
         }
 
-        const catalog = await resolveLearnerCatalog(
-            client,
-            input.gradeCode,
-            input.semesterCode,
-        );
+        const catalog = input.educationStatus === "enrolled"
+            ? await resolveLearnerCatalog(client, input.gradeCode!, input.semesterCode!)
+            : null;
         if (authorization.is_self) {
             await client.query(`
                 UPDATE users
@@ -1465,17 +1469,40 @@ export async function updateAccountLearner(
             UPDATE learners
             SET
                 display_name = $1,
-                grade_id = $2,
-                semester_id = $3,
+                education_status = $2::varchar(20),
+                grade_id = $3,
+                semester_id = $4,
+                school_name = CASE WHEN $2::varchar(20) = 'not_enrolled' THEN NULL ELSE school_name END,
                 updated_at = transaction_timestamp()
-            WHERE id = $4
-        `, [input.displayName, catalog.grade_id, catalog.semester_id, input.learnerId]);
-        await reconcileSubjectSettings(
-            client,
-            session.user_id,
+            WHERE id = $5
+        `, [
+            input.displayName,
+            input.educationStatus,
+            catalog?.grade_id ?? null,
+            catalog?.semester_id ?? null,
             input.learnerId,
-            catalog.grade_id,
-        );
+        ]);
+        if (catalog) {
+            await reconcileSubjectSettings(
+                client,
+                session.user_id,
+                input.learnerId,
+                catalog.grade_id,
+            );
+        }
+        else {
+            await client.query(`
+                UPDATE learner_subject_settings AS setting
+                SET
+                    book_version_id = NULL,
+                    lock_version = setting.lock_version + 1,
+                    updated_at = transaction_timestamp()
+                FROM book_versions AS book
+                WHERE setting.learner_id = $1
+                    AND book.id = setting.book_version_id
+                    AND book.grade_id IS NOT NULL
+            `, [input.learnerId]);
+        }
         await ensureLearnerPreferences(client, input.learnerId);
         await attachHanlinQuestionBanks(client, input.learnerId);
         return readSessionById(client, session.session_id);

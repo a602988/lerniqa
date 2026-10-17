@@ -119,6 +119,8 @@ export interface Learner {
     id: string;
     /** 畫面顯示稱呼。 */
     name: string;
+    /** 是否使用學校年級與學期設定。 */
+    educationStatus: "enrolled" | "not_enrolled";
     /** 學習者目前年級。 */
     grade: string;
     /** 目前學期。 */
@@ -184,6 +186,8 @@ export interface PracticePlan {
     checkMode: CheckMode;
     /** 本輪最多題數。 */
     questionLimit: number;
+    /** 是否優先安排尚未完成的相同或相近題。 */
+    prioritizeRelated: boolean;
     /** 練習範圍依章節或考試設定。 */
     basis: PlanBasis;
     /** 易、中、難題目占比。 */
@@ -490,6 +494,7 @@ export const DEFAULT_PLAN: PracticePlan = {
     activeExamId: DEFAULT_EXAM_SETTING.id,
     checkMode: "complete",
     questionLimit: 10,
+    prioritizeRelated: false,
     basis: "chapter",
     difficultyMix: { easy: 40, medium: 40, hard: 20 },
     difficultyMixEnabled: false,

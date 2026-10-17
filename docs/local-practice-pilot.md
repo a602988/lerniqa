@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-帳號郵件的驗證信與密碼重設樣板、Synology MailPlus adapter、Nodemailer transport 已完成不連網 mock 測試；SMTP 主機、寄件者、憑證等執行環境、challenge／API 串接及真實寄送尚未完成。OCR、AI 拆題、手寫辨識與相近題生成仍未串接，不得把測試替代結果視為已交付服務。
+帳號郵件的驗證信、密碼重設與角色 PIN 設定／重設樣板，以及 Synology MailPlus adapter、Nodemailer transport 已完成不連網測試。密碼／PIN 復原的 API 與介面程式也已完成針對性測試，`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實；Lerniqa 自己的憑證、outbox、實際 handshake 與真實寄送仍未設定，也不得讀取或複製 ERP secret。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration；outbox／等時回應是獨立的上線阻擋，不屬於 `0012`。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與角色切換。OCR 與 AI 拆題仍未串接。本地 AI 手寫分析已串接固定 Ollama 模型與 sidecar worker；真實筆跡品質及人工審核介面仍待驗收。
 
 Lerniqa 是持續開發中的多科目正式產品。使用者從既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」，使用正式匯入的 279 題。題庫、學習者的練習必要資料、session、作答、歷程與錯題由本機 PostgreSQL 提供。auth 公開 DTO 已具備年級、學期、練習偏好、已啟用科目與書籍版本；`/practice` 已採用這份 DTO，且不保存瀏覽器學習者快照。瀏覽器只保存篩選與顯示等非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。`/local-practice` 保留為內部診斷與相容入口，不是另一套產品流程，也不代表 production 切換已完成。本文件沿用既有檔名以保留舊連結，內容是正式產品的本機操作說明，不是另一個 pilot 產品。
 
@@ -30,6 +30,8 @@ npm run db:local:stop
 `db:local:ensure` 會在必要時初始化 cluster、啟動 PostgreSQL，再依序套用尚未執行的 migration。它只接受 repository 內 migration 的完整前綴，遇到未知版本、跳號或名稱不符時會停止，不會自動執行 down migration。
 
 目前 manifest 由 `0001` 至 `0011` 共十一個 migration 組成，合計 96 張業務資料表。`0008_auth_and_import_integrity` 要求有效 session 指定的學習者保持啟用；封存學習者時，要在同一交易撤銷仍指向該學習者的有效 session。它也只針對 confirmed 批次 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，把教材單元來源修正為 `native/document`。如果升級前已有有效 session 指向封存學習者，migration 會停止，不會默默改寫或刪除資料。`0008` 的 down 採 forward-only 資料修正策略，只移除新增的 schema 物件，不把正確的 `native/document` 資料改回舊分類。
+
+`0012` 已進入 migration manifest，包含帳號復原 identity binding、同題型來源值域、題庫補全 run／pending suggestion 與手寫 AI sidecar；不含 SMTP outbox。空庫、既有資料升級、關聯完整性與隔離 API E2E 已通過，持久資料庫仍須依備份與 migration 程序升級，不得以測試資料覆蓋。
 
 `0009_automatic_answer_completeness` 要求 published／superseded 版本的自動判分小題具備可用參考答案。單選、複選與是非題至少要有一個屬於同一小題有效選項的非空白答案鍵；文字題至少要有一個非空白可接受答案。人工檢視與 AI 輔助檢視可以沒有答案。升級前置檢查發現既有缺漏時會直接停止，不會補造答案；down 只移除這個 migration 新增的限制，不修改答案資料。
 
@@ -65,6 +67,8 @@ npm run db:import:hanlin -- \
 
 其餘 14 份題庫文件尚未匯入。它們只能先用 `--dry-run` 盤點；在各自的正確教材分類確認前，不會寫入第四課或其他正式分類。
 
+題庫補全命令只讀取目前已發布的系統題目，預設生成 JSONL dry-run，對細題型、主要知識點與解題方法提出結構化建議。`--persist` 也只能讀取一份完整、通過驗證且與目標資料庫快照相符的 JSONL，再寫入 pending suggestion；它不會直接改寫已發布題目。目前 `0012` 尚未整合，279 題尚未套用任何補全結果。先以抽樣通過品質門檻與人工核准後，才可在受控流程另行 apply。
+
 已遇過的匯入錯誤、修正方式、重跑順序與驗證條件記在 [翰林題庫匯入與排錯](hanlin-import-runbook.md)。
 
 第四課原始 `.doc` 含 VBA，不會直接成為可發布的來源。匯入器將原檔保存在 `local-data/assets/quarantine/source-documents`，標記為 `rejected`，且 `source_documents` 不引用這份原檔。接著使用全新的 LibreOffice profile、關閉巨集執行並以 headless 模式產生 DOCX 衍生檔。這份 DOCX 必須通過格式、VBA、Macro 與 ActiveX 內容檢查，才會以 `clean` 狀態保存在 `local-data/assets/sanitized-source-documents` 並作為 `source_documents.input_type=document` 的來源。PDF 與 HTML 衍生物只用於本機的頁碼、圖片配對與安全檢查。任一個步驟失敗時，該文件保持待核對或失敗，不會發布其題目。
@@ -78,14 +82,17 @@ npm run db:import:hanlin -- \
 | `POST /api/v1/auth/register` | 建立本機電子郵件密碼帳號、國一學習者、`learner_access`、練習偏好、科目設定與第四課題庫成員關係。 |
 | `POST /api/v1/auth/login` | 驗證 scrypt 密碼並建立不透明 session；資料庫只保存 token 的 SHA-256 雜湊。 |
 | `POST /api/v1/auth/logout`、`GET /api/v1/auth/me` | 撤銷目前 session，或從 HttpOnly cookie 讀取目前帳號。公開 learner DTO 包含年級、學期、練習偏好，以及已啟用科目的出版社與書籍版本，不包含學校或 private asset。 |
+| `POST /api/v1/auth/password-reset`、`POST /api/v1/auth/password-reset/confirm` | 申請與確認一次性密碼重設。申請回應不揭露帳號是否存在；確認不改動電子郵件的 `verified_at`，成功後撤銷該帳號的所有 session。 |
+| `POST /api/v1/auth/role-pin-reset`、`POST /api/v1/auth/role-pin-reset/confirm` | 登入後為仍有效的 parent／tutor 角色申請與確認 PIN 設定／重設；要求單一有效且已驗證的電子郵件，成功後只撤銷該目標角色的 session。此 PIN 尚不參與角色切換。 |
 | `PATCH /api/v1/auth/role` | 只把目前 session 切換至同一帳號已有、未撤銷的角色；不建立角色、不改寫 `learner_access`，也不是帳號角色管理 API。 |
 | `GET /api/v1/local-practice/questions` | 只回傳目前分類中已發布題目的題幹、小題、選項與正式知識點，不回傳參考答案或解析；單頁上限為 500 題。 |
 | `POST /api/v1/local-practice/sessions` | 以登入 session 可存取的學習者建立練習，並固定當時的題目版本與順序。呼叫端提供 session UUID；完全相同的重送會重用同一筆，不同帳號、設定或題目不能占用同一 UUID。 |
 | `GET /api/v1/local-practice/sessions?id=...` | 讀取同一帳號與學習者可存取的練習、固定題目版本及各題是否已送出；答案明細依 `check_mode` 與完成狀態揭露。 |
 | `PATCH /api/v1/local-practice/sessions` | 將自己的 session 切換為 `active`、`paused` 或 `abandoned`；不能修改其他帳號的 session。 |
-| `POST /api/v1/local-practice/attempts` | 由伺服器讀取標準答案並判分。`instant`／`complete` 在單一交易內寫入作答、逐小題結果、允許的錯題佇列與 `analytics_outbox`；`score` 只累加 session aggregate 並寫入不含答案／判定的冪等收據。重送相同提交不會重複寫入；同一 item 換新 key 重送會回傳衝突。 |
+| `POST /api/v1/local-practice/attempts` | 由伺服器讀取標準答案並判分。`instant`／`complete` 在單一交易內寫入作答、逐小題結果、允許的錯題佇列與 `analytics_outbox`，並可儲存通過驗證的 private 手寫 PNG；`score` 只累加 session aggregate 並寫入不含答案／判定的冪等收據，手寫與其他逐題附件一律拒絕。 |
+| `POST /api/v1/local-practice/recommendations` | 從允許揭露的錯題產生關連練習。先完整查詢同細題型候選，候選數為 0 才使用已確認相近題群組；兩者都無候選時回傳無推薦。`score` 禁止。目前程式已通過針對性測試，但來源值域與 DB E2E 仍待 `0012` 整合。 |
 | `GET /api/v1/local-practice/history` | 回傳持久的練習、作答結果與待複習錯題摘要，不回傳學習者的作答 payload 或標準答案。 |
-| `GET /api/v1/local-practice/assets/:assetId` | 只讀取已通過檢查、未刪除，且被目前已發布題目引用的本機圖片。 |
+| `GET /api/v1/local-practice/assets/:assetId` | 題目圖片只讀取已通過檢查、未刪除且被已發布題目引用的檔案；作答手寫則必須從相同學習者的 attempt／part 關聯與結果揭露規則反查權限。 |
 
 伺服器只會對「判分政策為自動判分，且標準答案完整」的小題判定對錯。沒有作答、要求人工檢視或要求 AI 輔助後確認的小題都保持 `pending`。本機整合不生成虛構答案，也不把未核對的內容當成標準答案。相同 idempotency key 只可重播完全相同的提交；同一 session 題目改用新 key 再送，或沿用 key 改變答案，都會回傳衝突，不會建立第二筆作答。
 
@@ -94,6 +101,12 @@ npm run db:import:hanlin -- \
 - `instant` 在每次送出後回傳逐題結果。
 - `complete` 在 session 完成前只標記已送出，不回傳逐題判定；完成後才回傳詳細結果。
 - `score` 進行中只回傳遮罩狀態；完成後只回傳 `{total, correct, wrong, pending, accuracy}`，任何狀態都不回傳個別結果、答案或解析。資料庫只保存 aggregate 與不含答案／判定的收據，不建立 attempt、part result、附件、審核、錯題／相近題佇列、來源追溯或 outbox。
+
+`instant`／`complete` 的手寫上傳只接受通過簽章、chunk、CRC、尺寸、解壓上限與可見墨跡檢查的 PNG，儲存為 private asset，並以學習者、session item、冪等鍵與內容雜湊建立穩定身份。文字小題沒有其他答案時，手寫只連到實際由手寫作答的小題，結果保持 `pending`／`manual`；同題已有完整文字或選項答案時，同一張圖只連到第一個小題作為計算過程附件，不改變自動判分。這些程式已通過針對性測試，但尚未在 `0012` 整合後完成整體資料庫 E2E。
+
+手寫 AI 已整合 `0012` job／run sidecar、作答交易生產者、受控 worker 與固定 Ollama 模型。只有 payload 為空且結果為 pending／manual 的手寫文字小題能進入 AI 佇列；計算過程附件不排入。worker 只把手寫圖片與固定逐字辨識指令送給模型，不傳題幹、參考答案、解析或評分規則，不解題也不判斷正誤。六張合成品質圖已完成真實 inference；真實學習者筆跡樣本仍待核准後驗收。
+
+關聯題目練習只適用於允許揭露逐題錯誤的 `instant` 與已完成 `complete`。伺服器先取得完整的同細題型候選集；只有數量為 0 才查詢原題目前 revision 的已確認相近題群組。沒有同題型候選或已確認群組時就回傳無推薦，不放寬成同單元或同科目猜測。現有程式已通過針對性測試，但 `0012` 來源值域與 DB E2E 尚未完成。
 
 歷程與錯題佇列套用同一規則，不能讓 `complete` 的進行中 session 或任何 `score` session 藉由其他端點看出逐題結果。只有允許揭露且已判定為錯誤的小題，才會出現在可見的待複習摘要。重新整理進行中的練習時，瀏覽器只用 learner-keyed session UUID 從資料庫恢復已送出的進度，並先切成暫停；尚未送出的文字答案與手寫內容不保存。固定 revision 與可用內容不一致時，舊 session 會標記為 `abandoned`，不會反覆嘗試恢復。從任意題開始作答時會尋找下一道尚未送出的題目，直接作答畫面最後一題不會讓仍有未答題的 session 提前完成。複習／相近題 session 尚未寫入 `practice_session_item_origins` 的完整來源追溯，相近題候選審核、正式關聯與查詢 API 也尚未完成。
 
@@ -105,10 +118,13 @@ npm run db:import:hanlin -- \
 npm run db:test
 npm run test:import-ownership
 npm run test:local-practice
+npm run test:account-recovery
+npm run test:handwriting
+npm run test:question-enrichment
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-前三個指令預設在 `/tmp` 建立權限受限的一次性目錄與私有 Unix socket，不沿用 `DATABASE_URL`、`PGHOST` 或 `local-data`。import ownership 驗證匯入器不會建立固定合成身份；local practice 驗證 279 題規模的合成題庫、註冊、登入、session 恢復、三種模式各自的保存與答案揭露、歷程、錯題，以及 PostgreSQL 與 Next.js 重啟後仍可讀取。測試結束只清理具有專用 marker 的暫存目錄，不會清除持久題庫或帳號資料。`practice-catalog-integration` 不啟動持久資料庫，負責檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點、三種檢核方式及 learner-keyed `localStorage` 邊界。新增 migration 後要以當次輸出作為驗收證據，不能沿用只涵蓋舊 manifest 的結果。
+前三個指令預設在 `/tmp` 建立權限受限的一次性目錄與私有 Unix socket，不沿用 `DATABASE_URL`、`PGHOST` 或 `local-data`。import ownership 驗證匯入器不會建立固定合成身份；local practice 驗證 279 題規模的合成題庫、註冊、登入、session 恢復、三種模式各自的保存與答案揭露、歷程、錯題，以及 PostgreSQL 與 Next.js 重啟後仍可讀取。測試結束只清理具有專用 marker 的暫存目錄，不會清除持久題庫或帳號資料。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 只檢查程式、輸入限制、安全邊界與 repository／route 契約，不表示 `0012` 已套用或 DB E2E 已通過。strict same-type recommendation 的針對性案例由整體 `npm test` 執行。`practice-catalog-integration` 不啟動持久資料庫，負責檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點、三種檢核方式及 learner-keyed `localStorage` 邊界。新增 migration 後要以當次輸出作為驗收證據，不能沿用只涵蓋舊 manifest 的結果。
 
 macOS 無法再建立短命 PostgreSQL cluster 時，三個 runner 都可明確借用已確認的本機 Unix-socket server：`db:test` 使用 `LERNIQA_DB_TEST_*`，import ownership 使用 `LERNIQA_IMPORT_OWNERSHIP_TEST_*`，local practice 使用 `LERNIQA_PRACTICE_TEST_*`。每組都要啟用 `*_EXISTING=1`，並指定 socket、port 與實際 data directory。runner 會核對 canonical 路徑、目前作業系統使用者及 non-recovery 狀態，只建立具隨機名稱和本次 ownership comment 的專用資料庫；清理前再核對一次，只刪除本次資料庫，不停止共用 server。這個模式不能連接 production，也不能拿來測試 `local-data` 的持久資料。
 
@@ -116,7 +132,7 @@ macOS 無法再建立短命 PostgreSQL cluster 時，三個 runner 都可明確�
 
 本機整合會實際建立電子郵件密碼帳號與 session。密碼以 scrypt 雜湊保存；session cookie 使用 HttpOnly 與 SameSite=Lax，HTTPS 時再加上 Secure，資料庫只保存 token 雜湊。練習 API 不接受前端自報使用者或學習者，而是從 session 取得帳號，再檢查有效的 `learner_access` 與 `question_bank_learners`；練習、作答、歷程及題目 asset 都依這個學習者範圍隔離。
 
-本機與私有 tailnet 已提供持久帳號、信箱驗證 challenge／API／介面與練習服務；production 帳號生命週期仍未完成。SMTP 真實投遞、公開／production HTTPS、登入 rate limit、密碼重設、OAuth、跨帳號分享、RLS、production GRANT、正式角色授權、托管式物件儲存與真實兒童資料的保存／刪除政策尚未完成。因此：
+本機與私有 tailnet 已提供持久帳號、信箱驗證、密碼重設、角色 PIN 設定／重設的 challenge／API／介面及練習服務；production 帳號生命週期仍未完成。SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、OAuth、跨帳號分享、角色 PIN 切換、RLS、production GRANT、正式角色授權、托管式物件儲存與真實兒童資料的保存／刪除政策尚未完成。因此：
 
 - 自動化測試使用隔離合成資料，不輸入真實學生個資；已建立的帳號、角色、學習者、練習與作答仍須持久保存。
 - 不連接 production 資料庫，不對 production 執行 migration。

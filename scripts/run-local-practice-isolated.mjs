@@ -136,6 +136,17 @@ function isolatedEnvironment(databaseName, socketDirectory, databasePort, existi
         LOCAL_PG_PORT: String(databasePort),
         LOCAL_PG_DATABASE: databaseName,
         LOCAL_PG_USER: os.userInfo().username,
+        // Recovery request E2E needs a configured adapter to reach the
+        // enumeration-safe accepted response.  Point it at a closed loopback
+        // port with synthetic credentials: no real SMTP service or recipient
+        // is contacted, and the application must cancel the undelivered token.
+        LERNIQA_MAIL_SMTP_HOST: "127.0.0.1",
+        LERNIQA_MAIL_SMTP_PORT: "1",
+        LERNIQA_MAIL_SMTP_SECURE: "false",
+        LERNIQA_MAIL_SMTP_USER: "isolated-test",
+        LERNIQA_MAIL_SMTP_PASSWORD: isolationToken,
+        LERNIQA_MAIL_FROM_NAME: "Lerniqa isolated test",
+        LERNIQA_MAIL_FROM_ADDRESS: "no-reply@lerniqa.invalid",
         LERNIQA_ISOLATED_TEST_ROOT: testRoot,
         LERNIQA_ISOLATED_TEST_TOKEN: isolationToken,
         LERNIQA_PRACTICE_TEST_EXISTING: existingServerConfig ? "1" : "0",

@@ -33,7 +33,7 @@ export function adaptPracticeQuestion(question: LocalPracticeQuestion): Question
         knowledge,
         difficulty: difficulty === "易" || difficulty === "基礎" ? "基礎" : difficulty === "難" || difficulty === "進階" ? "進階" : "中等",
         kind: question.parts.length > 1 || mode === "multiple_choice" ? "multi-choice" : mode === "text" ? "written" : mode === "boolean" ? "boolean" : "choice",
-        typeLabel: question.type.name,
+        typeLabel: question.originalTypeLabel?.trim() || question.type.name,
         prompt: question.prompt,
         options: question.parts.length === 1 ? question.parts[0].options.map((option) => option.label) : undefined,
         parts: question.parts.map((part) => ({ id: part.id, prompt: part.prompt, options: part.options.map((option) => option.label), answer: "" })),
@@ -55,6 +55,9 @@ export function formatPracticeResponse(question: LocalPracticeQuestion, answer: 
 }
 
 export function adaptPracticeAttempt(attempt: LocalPracticeAttempt, answer = "已保存的作答"): Attempt {
+    const handwriting = attempt.parts
+        .flatMap((part) => part.handwritingAssets ?? [])
+        .find((asset) => asset.mimeType === "image/png")?.url;
     return {
         sessionId: attempt.sessionId,
         sessionItemId: attempt.sessionItemId,
@@ -70,6 +73,7 @@ export function adaptPracticeAttempt(attempt: LocalPracticeAttempt, answer = "�
         }]),
         date: attempt.submittedAt,
         durationSeconds: attempt.durationSeconds ?? 0,
+        ...(handwriting ? { handwriting } : {}),
         referenceAnswers: attempt.referenceAnswers,
     };
 }

@@ -3,6 +3,7 @@
 import { Badge, Button } from "@keel-design/ui";
 import { Eraser, PencilLine, Sparkles, Trash2 } from "lucide-react";
 import { PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { hasVisibleHandwritingPixels } from "@/app/lib/handwriting";
 
 interface HandwritingPadProps {
     /** 已保存的手寫影像。 */
@@ -109,7 +110,15 @@ export function HandwritingPad({ value, onChange, disabled = false, recognitionS
         if (!drawingRef.current) return;
 
         drawingRef.current = false;
-        onChange(event.currentTarget.toDataURL("image/png"));
+        const canvas = event.currentTarget;
+        const context = canvas.getContext("2d");
+        if (!context || !hasVisibleHandwritingPixels(
+            context.getImageData(0, 0, canvas.width, canvas.height).data,
+        )) {
+            onChange("");
+            return;
+        }
+        onChange(canvas.toDataURL("image/png"));
     }
 
     /**
@@ -136,7 +145,7 @@ export function HandwritingPad({ value, onChange, disabled = false, recognitionS
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                     <p id={titleId} className="text-sm font-semibold">手寫板</p>
-                    {recognitionStatus && <Badge className="ai-recognition-chip" tone="warning" title="正式串接後會辨識手寫國字並比對答案；目前只保存原始手寫。"><Sparkles size={13} />AI 國字辨識 · {recognitionStatus}</Badge>}
+                    {recognitionStatus && <Badge className="ai-recognition-chip" tone="warning" title="送出後由本機 AI 逐字辨識手寫內容；不解題，也不判斷答案正誤。"><Sparkles size={13} />AI 手寫辨識 · {recognitionStatus}</Badge>}
                     <p id={descriptionId} className="text-xs text-muted-foreground">原始手寫會保留在這一題</p>
                 </div>
                 <div className="flex items-center gap-1">

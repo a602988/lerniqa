@@ -1925,6 +1925,12 @@ textarea:focus-visible,
     padding: 0.75rem 1rem;
 }
 
+.question-review-solution > strong {
+    overflow-wrap: anywhere;
+    font-size: 1.5rem;
+    line-height: 1.5;
+}
+
 .question-review-prompt {
     font-size: 1rem;
     line-height: 1.9;
@@ -3591,7 +3597,7 @@ textarea:focus-visible,
 }
 
 .mistake-personal-table th:nth-child(7) {
-    width: 8.25rem;
+    width: 15rem;
 }
 
 .mistake-community-table th:nth-child(1) {
@@ -3657,8 +3663,19 @@ textarea:focus-visible,
 .mistake-table-actions {
     display: flex;
     min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.35rem;
+}
+
+.mistake-table-actions > div {
+    justify-items: end;
+}
+
+.mistake-table-actions > p,
+.mistake-table-actions > div > p {
+    text-align: right;
 }
 
 @media (min-width: 641px) {
@@ -3807,6 +3824,16 @@ textarea:focus-visible,
         justify-content: flex-start;
     }
 
+    .mistake-table-actions > div {
+        width: 100%;
+        justify-items: start;
+    }
+
+    .mistake-table-actions > p,
+    .mistake-table-actions > div > p {
+        text-align: left;
+    }
+
     .mistake-pagination {
         align-items: flex-start;
         flex-direction: column;
@@ -3912,6 +3939,8 @@ textarea:focus-visible,
     grid-template-columns: minmax(0, 0.82fr) minmax(28rem, 1.18fr);
     grid-template-areas:
         "question handwriting"
+        "review handwriting"
+        "conditions handwriting"
         "actions handwriting";
     gap: 1rem 1.25rem;
     align-items: stretch;
@@ -3923,6 +3952,18 @@ textarea:focus-visible,
     min-width: 0;
     align-content: start;
     gap: 1.5rem;
+}
+
+.practice-answer-review {
+    grid-area: review;
+    min-width: 0;
+    align-self: start;
+}
+
+.practice-question-meta {
+    grid-area: conditions;
+    min-width: 0;
+    align-self: start;
 }
 
 .multi-choice-parts {
@@ -3982,6 +4023,10 @@ textarea:focus-visible,
     gap: 0.85rem;
 }
 
+.practice-answer-field {
+    --keel-form-field-label-width: 7.5rem;
+}
+
 .multi-choice-part {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(8.5rem, 10.5rem);
@@ -4005,6 +4050,33 @@ textarea:focus-visible,
     border-radius: 1.25rem;
     background: #f5f5f7;
     padding: 1.4rem;
+}
+
+.practice-question-type {
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #dcd5f3;
+    border-radius: 999px;
+    background: #ffffff;
+    padding: 0.3rem 0.65rem;
+    color: #35265c;
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+.practice-question-type span {
+    color: var(--color-muted-foreground);
+    font-weight: 600;
+}
+
+.practice-question-type strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 750;
 }
 
 .question-prompt-blank {
@@ -4095,6 +4167,20 @@ textarea:focus-visible,
 }
 
 @media (max-width: 767px) {
+    .practice-question-layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "question"
+            "review"
+            "conditions"
+            "actions"
+            "handwriting";
+    }
+
+    .handwriting-canvas {
+        height: 22rem;
+    }
+
     .lerniqa-shell {
         gap: 0.75rem;
     }
@@ -4253,20 +4339,32 @@ textarea:focus-visible,
         min-height: 0;
     }
 
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
     .practice-question-layout {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
             "question"
             "actions"
+            "conditions"
             "handwriting";
+        gap: 1rem;
+    }
+
+    .practice-question-layout[data-has-feedback="true"] {
+        grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.72fr);
+        grid-template-areas:
+            "question question"
+            "actions actions"
+            "conditions review"
+            "handwriting handwriting";
     }
 
     .handwriting-canvas {
         height: 22rem;
     }
-}
 
-@media (min-width: 768px) and (max-width: 1023px) {
     .lerniqa-shell {
         grid-template-columns: minmax(0, 1fr);
     }

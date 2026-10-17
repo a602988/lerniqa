@@ -12,11 +12,16 @@ Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容�
 
 ## P1 資料與練習
 - [x] `/account` 本機電子郵件密碼註冊、登入、登出與 session
-- [x] 註冊新密碼至少 8 字元、不強制字元種類混用、阻擋常見弱密碼；共用新密碼驗證函式供未來重設使用，既有密碼不變更
+- [x] 註冊與密碼重設共用新密碼驗證規則：至少 8 字元、不強制字元種類混用、阻擋常見弱密碼；既有密碼不批次變更
 - [x] 帳號郵件樣板、Synology MailPlus adapter、Nodemailer transport 與不連網測試
 - [x] 本機信箱驗證 challenge、寄送／確認 API、帳號介面與注入式 mock 驗證
+- [x] 本機密碼重設 challenge、寄送／確認 API 與介面程式；不改動 `verified_at`，成功後撤銷全帳號 session，不連網針對性測試已通過
+- [x] 本機角色 PIN 設定／重設 challenge、寄送／確認 API 與介面程式；要求已驗證電子郵件與有效目標角色，成功後只撤銷目標角色 session，不連網針對性測試已通過
+- [x] 整合 `0012` 的復原 challenge identity binding，並完成空庫、既有資料升級、migration 往返與帳號復原 DB E2E
+- [ ] 另建不屬於 `0012` 的 SMTP outbox／等時回應，消除同步寄信對已知／未知帳號造成的 timing enumeration
 - [x] 合成資料驗證的私有 tailnet HTTPS 入口
-- [ ] 實際 SMTP 執行環境設定、真實寄送驗證、密碼重設流程、公開／production HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
+- [ ] 實際 SMTP 執行環境設定、真實寄送驗證、公開／production HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
+- [ ] 讓角色 PIN 參與成人角色切換；完成前仍使用帳號密碼重新確認
 - [ ] 後端預設系統管理員、MFA 與 Secret 輪替
 - [ ] 系統管理員授權、稽核紀錄與帳號管理介面
 - [x] `/system-settings` 以 PostgreSQL 管理帳號身分、有效角色與可存取學習者；`accountRole` 是主要身分，持有有效 parent／tutor 授權的 session 切到相應 `activeRole` 後可管理學習者，即使 `accountRole=learner`
@@ -30,7 +35,7 @@ Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容�
 - [ ] 學習者跨帳號分享、權限檢查與成果共用
 - [ ] 家長／學習者／家教／審核者角色
 - [ ] 將成果統計併入總覽，移除獨立成果導覽，並把舊 `/results` 轉址到總覽
-- [x] PostgreSQL schema 與 `0001` 至 `0011` 共十一個原生 SQL migration；合計 96 張業務資料表
+- [x] PostgreSQL schema 與 `0001` 至 `0013` 共十三個原生 SQL migration；合計 106 張業務資料表
 - [x] `0009` 限制 published／superseded 的自動判分小題必須有可用參考答案，升級前發現缺漏就停止，不補造資料
 - [x] `0010` 加入 `users.account_role`、self learner 唯一性、名稱／設定權限一致性與只向前修正
 - [x] `0011` 讓 `score` 只保存 session aggregate 與不含答案／逐題判定的冪等收據；既有逐題明細、錯題／相近題佇列與 outbox 會在升級時清除，五張統計表從剩餘非 `score` 明細重建，exclusive 私有作答 asset 會標記刪除並建立 pending 清理工作，共用 asset 與非 `score` 明細保留
@@ -43,16 +48,21 @@ Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容�
 - [x] 匯入 ownership 與本機練習端到端驗證使用 `/tmp` 私有 PostgreSQL cluster，不接觸持久資料
 - [x] 封閉舊 `/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑；HTTP 固定回 `410`
 - [ ] ORM／查詢層、正式 repository 與歷史 JSON 搬移
-- [ ] 年級、科目、學期、可新增多筆的考試設定
+- [x] 年級與學期正式目錄：國小、國中、高中共十二個年級，學期含上下學期；科目與版本維持資料驅動
+- [ ] 可新增多筆的考試設定
 - [ ] 家教個人題庫與學習者練習計畫
 - [ ] 學習者自行建立練習計畫
 - [ ] 題庫 CRUD、選擇／填充／問答題
 - [ ] 系統題目與帳號題目的所有權、版本及異動權限
 - [x] 相近題群組、候選、成員與生成來源資料模型及 migration
 - [ ] 相近題候選審核、正式關聯與共用查詢 API
+- [x] 錯題的 strict same-type 推薦 API、選題與來源程式針對性測試；同細題型候選為 0 才使用已確認群組，兩者都無候選時可回傳無推薦，`score` 禁止
+- [x] 整合 `0012` 的同題型佇列／session origin 值域
+- [ ] 完成 strict same-type recommendation DB E2E
 - [ ] 作答狀態進階篩選、相近題成效與複習排程
 - [ ] 複習與相近題 session 將實際選入來源完整寫入 `practice_session_item_origins`
-- [ ] 非選項題與數學題的手寫板作答、保存及重現
+- [x] `instant`／`complete` private 手寫 PNG 格式驗證、冪等儲存、受權讀取與重現程式針對性測試；缺文字答案時保持 pending／manual，已有完整答案時只作為計算過程附件，`score` 禁止
+- [ ] 完成 private 手寫 PNG 的完整資料庫 E2E 與瀏覽器驗收
 - [ ] 審核者身份設定與答案／手寫內容比對
 - [x] 作答統計、隱私政策、管理員稽核與資料刪除 schema
 - [ ] 統計 worker、重算工具、管理稽核與資料刪除 API
@@ -64,12 +74,18 @@ Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容�
 - [ ] 圖片／掃描 PDF OCR 與逐題切分
 - [ ] 人工校對、答案核對、頁碼與來源追溯
 - [x] 本機舊版 Word 題庫安全匯入：VBA 原檔隔離，只接受通過檢查的 DOCX 衍生檔
+- [x] 已發布系統題的補全 CLI、dry-run／checkpoint 與針對性測試；建議維度為細題型、主要知識點與解題方法
+- [x] 整合 `0012` 的 enrichment run／pending suggestion schema
+- [ ] 用抽樣完成品質門檻與人工核准；279 題目前尚未 apply
 
 ## P3 智慧補強
 - [ ] 知識點分類與相似題檢索
 - [ ] 相近題關聯分析、人工審核與版本管理
 - [ ] AI 類題生成、數學答案驗算／品質審核
-- [ ] 中文國字手寫辨識、答案驗證與人工修正
+- [x] 本地 AI 手寫逐字辨識（不解題、不比對參考答案、不判斷正誤）
+- [ ] 真實筆跡品質驗收與 AI 建議人工修正介面
+- [x] 整合 `0012` 的手寫 AI job／run sidecar schema
+- [ ] 建立 worker 與品質驗收；模型只提供建議，不得直接改判、寫錯題佇列或統計
 - [ ] 考試範圍自動組卷、成效分析
 
 ## P4 正式上線
@@ -78,4 +94,4 @@ Lerniqa 是持續開發中的多科目正式產品。279 題正式匯入內容�
 
 決策原則：避免過早綁定特定雲端供應商；所有 AI 與 OCR 服務經由可替換的 adapter。
 
-勾選 schema／migration 代表程式庫已具備對應結構與限制，不代表同列的全部表單、production 權限或部署已完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 的正式主流程已改用本機 PostgreSQL，不保留瀏覽器學習者快照，也不在登入失效時回退到 fixture。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入 PostgreSQL；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊正式寫入 API。本機信箱驗證 challenge／API／介面已完成；真實匯入、SMTP 真實投遞、密碼重設 challenge、OAuth、正式相近題關聯與查詢、`practice_session_item_origins` 完整來源、production 權限與部署仍未完成；正式切換條件見 `docs/database-completion-matrix.md`。
+勾選 schema／migration 代表程式庫已具備對應結構與限制，不代表同列的全部表單、production 權限或部署已完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 的正式主流程已改用本機 PostgreSQL，不保留瀏覽器學習者快照，也不在登入失效時回退到 fixture。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入 PostgreSQL；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊正式寫入 API。本機信箱驗證、密碼重設及角色 PIN 設定／重設的 challenge、API 與介面已完成；真實匯入、SMTP 真實投遞、OAuth、角色 PIN 切換、正式相近題關聯與查詢、`practice_session_item_origins` 完整來源、production 權限與部署仍未完成；正式切換條件見 `docs/database-completion-matrix.md`。

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { request as httpRequest } from "node:http";
 import { tmpdir, userInfo } from "node:os";
@@ -18,6 +18,9 @@ import { HANLIN_IMPORT_PRINCIPAL } from "./lib/hanlin-postgres-writer.mjs";
 
 const { Pool } = pg;
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SYNTHETIC_HANDWRITING_DATA_URL = `data:image/png;base64,${(
+    await readFile(path.join(REPOSITORY_ROOT, "tests", "fixtures", "handwriting-ai-synthetic", "png", "readable-a.png"))
+).toString("base64")}`;
 const MIGRATION_DIRECTORY = path.join(REPOSITORY_ROOT, "database", "migrations");
 const ISOLATED_ROOT_BASENAME_PATTERN = /^lerniqa-practice-test\.[A-Za-z0-9_-]+$/u;
 const ISOLATED_DATABASE_PATTERN = /^lerniqa_practice_test_[a-z0-9_]+$/u;
@@ -487,6 +490,9 @@ async function createSyntheticAuthClient(origin, requestedRole = "learner") {
                 email: candidateEmail,
                 password: candidatePassword,
                 role: requestedRole,
+                educationStatus: "enrolled",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
             }),
         }, [201, 409]);
         if (response.status === 409 && response.body?.error?.code === "EMAIL_ALREADY_REGISTERED") continue;
@@ -532,6 +538,7 @@ async function createSyntheticAuthClient(origin, requestedRole = "learner") {
     );
 
     return {
+        cookieHeader: cookie.header,
         email,
         emailDomain: ".invalid",
         learnerId: account.learner.id,
@@ -590,6 +597,7 @@ async function loginSyntheticAuthClient(origin, registeredAccount) {
     );
     return {
         activeRole: account.activeRole,
+        cookieHeader: cookie.header,
         learnerId: account.learner.id,
         request,
         sessionTokenHash: `sha256:v1:${createHash("sha256").update(cookie.token, "utf8").digest("hex")}`,
@@ -624,6 +632,9 @@ async function verifyForwardedHttpsSessionLifecycle(client, origin) {
             email,
             password,
             role: "learner",
+            educationStatus: "enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: "semester-1",
         }),
     }, [201]);
     const account = registration.body?.data?.account;
@@ -723,6 +734,667 @@ async function verifyAuthSessionRevoked(client, tokenHash) {
         WHERE token_hash = $1
     `, [tokenHash])).rows[0];
     invariant(row?.revoked_at !== null && row?.revoked_at !== undefined, "AUTH_SESSION_DATABASE_NOT_REVOKED", "登出後資料庫 session 尚未標記 revoked_at。");
+}
+
+function recoveryRequestInit(origin, body, cookieHeader = undefined) {
+    return {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            origin: origin.origin,
+            ...(cookieHeader ? { cookie: cookieHeader } : {}),
+        },
+        body: JSON.stringify(body),
+    };
+}
+
+function recoveryToken() {
+    const token = randomBytes(32).toString("base64url");
+    invariant(token.length === 43, "RECOVERY_TOKEN_FIXTURE_INVALID", "隔離驗證產生了非預期長度的恢復 token。");
+    return token;
+}
+
+function recoveryTokenHash(token) {
+    return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+async function recoveryAccountRow(client, email) {
+    const result = await client.query(`
+        SELECT
+            identity.user_id,
+            identity.id AS identity_id,
+            identity.password_hash,
+            identity.verified_at
+        FROM account_identities AS identity
+        JOIN users AS app_user ON app_user.id = identity.user_id
+        WHERE identity.provider = 'email'
+            AND identity.email_normalized = $1
+            AND identity.revoked_at IS NULL
+            AND app_user.status = 'active'
+    `, [email]);
+    invariant(result.rowCount === 1, "RECOVERY_ACCOUNT_FIXTURE_INVALID", "隔離恢復驗證找不到唯一的合成帳號。");
+    return result.rows[0];
+}
+
+async function seedRecoveryChallenge(client, input) {
+    const token = recoveryToken();
+    const tokenHash = recoveryTokenHash(token);
+    const id = randomUUID();
+    await client.query(`
+        INSERT INTO verification_challenges (
+            id,
+            user_id,
+            account_identity_id,
+            purpose,
+            target_role,
+            token_hash,
+            expires_at,
+            consumed_at,
+            created_at
+        )
+        VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            transaction_timestamp() + ($7::integer * interval '1 minute'),
+            CASE WHEN $8::boolean THEN transaction_timestamp() ELSE NULL END,
+            transaction_timestamp() - ($9::integer * interval '1 second')
+        )
+    `, [
+        id,
+        input.userId,
+        input.identityId,
+        input.purpose,
+        input.targetRole ?? null,
+        tokenHash,
+        input.expiresInMinutes ?? 30,
+        input.consumed ?? false,
+        input.createdAgoSeconds ?? 0,
+    ]);
+    return { id, token, tokenHash };
+}
+
+async function verifyPasswordResetRequestPrivacy(client, origin, account, userId, identityId) {
+    const countChallenges = async () => numberValue((await client.query(`
+        SELECT count(*)::integer AS count
+        FROM verification_challenges
+        WHERE user_id = $1
+            AND purpose = 'password_reset'
+    `, [userId])).rows[0]?.count);
+    for (let index = 0; index < 4; index += 1) {
+        await seedRecoveryChallenge(client, {
+            userId,
+            identityId,
+            purpose: "password_reset",
+            consumed: true,
+            createdAgoSeconds: 120 + index,
+        });
+    }
+    const before = await countChallenges();
+    const known = await fetchJson(
+        origin,
+        "/api/v1/auth/password-reset",
+        recoveryRequestInit(origin, { email: account.email }),
+        [202],
+    );
+    const afterKnown = await countChallenges();
+    invariant(
+        known.body?.data?.status === "accepted"
+            && known.headers.get("cache-control") === "no-store"
+            && afterKnown === before + 1,
+        "PASSWORD_RESET_REQUEST_CONTRACT_INVALID",
+        "已存在帳號的密碼恢復申請未以 generic accepted 完成，或未建立單一可稽核 challenge。",
+    );
+    const deliveryFailureChallenge = (await client.query(`
+        SELECT consumed_at, attempt_count
+        FROM verification_challenges
+        WHERE user_id = $1
+            AND purpose = 'password_reset'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    `, [userId])).rows[0];
+    invariant(
+        deliveryFailureChallenge?.consumed_at !== null
+            && deliveryFailureChallenge?.consumed_at !== undefined
+            && deliveryFailureChallenge?.attempt_count === 0,
+        "PASSWORD_RESET_UNDELIVERED_TOKEN_ACTIVE",
+        "合成 SMTP 拒絕寄送後，未送達的密碼恢復 token 仍可使用。",
+    );
+
+    const unknown = await fetchJson(
+        origin,
+        "/api/v1/auth/password-reset",
+        recoveryRequestInit(origin, { email: `unknown-${randomUUID()}@lerniqa.invalid` }),
+        [202],
+    );
+    invariant(
+        JSON.stringify(unknown.body) === JSON.stringify(known.body)
+            && unknown.headers.get("cache-control") === "no-store"
+            && await countChallenges() === afterKnown,
+        "PASSWORD_RESET_REQUEST_ENUMERATION_LEAK",
+        "不存在帳號的密碼恢復申請與已存在帳號的公開回應不一致。",
+    );
+
+    const cooldown = await fetchJson(
+        origin,
+        "/api/v1/auth/password-reset",
+        recoveryRequestInit(origin, { email: account.email }),
+        [202],
+    );
+    invariant(
+        JSON.stringify(cooldown.body) === JSON.stringify(known.body)
+            && await countChallenges() === afterKnown,
+        "PASSWORD_RESET_COOLDOWN_BYPASSED",
+        "密碼恢復冷卻期間建立了第二筆 challenge，或公開回應不一致。",
+    );
+
+    invariant(await countChallenges() === 5, "PASSWORD_RESET_RATE_FIXTURE_INVALID", "密碼恢復每小時上限的合成資料不正確。");
+    const hourlyLimit = await fetchJson(
+        origin,
+        "/api/v1/auth/password-reset",
+        recoveryRequestInit(origin, { email: account.email }),
+        [202],
+    );
+    invariant(
+        JSON.stringify(hourlyLimit.body) === JSON.stringify(known.body)
+            && await countChallenges() === 5,
+        "PASSWORD_RESET_HOURLY_LIMIT_BYPASSED",
+        "密碼恢復達每小時上限後仍建立 challenge，或公開回應洩漏限制狀態。",
+    );
+    return {
+        genericAccepted: true,
+        unknownAccountIndistinguishable: true,
+        undeliveredTokenCancelled: true,
+        cooldownEnforced: true,
+        hourlyLimitEnforced: true,
+    };
+}
+
+async function verifyPasswordResetContracts(client, origin) {
+    const account = await createSyntheticAuthClient(origin, "learner");
+    let secondSession = null;
+    let replacementSession = null;
+    let finalSession = null;
+    let unrelatedAccount = null;
+    try {
+        secondSession = await loginSyntheticAuthClient(origin, account);
+        const stateBefore = await recoveryAccountRow(client, account.email);
+        const requestPrivacy = await verifyPasswordResetRequestPrivacy(
+            client,
+            origin,
+            account,
+            stateBefore.user_id,
+            stateBefore.identity_id,
+        );
+        const activeBefore = numberValue((await client.query(`
+            SELECT count(*)::integer AS count
+            FROM auth_sessions
+            WHERE user_id = $1
+                AND revoked_at IS NULL
+        `, [stateBefore.user_id])).rows[0]?.count);
+        invariant(activeBefore === 2, "PASSWORD_RESET_SESSION_FIXTURE_INVALID", "密碼恢復前未建立兩個可驗證的合成 session。");
+
+        const sibling = await seedRecoveryChallenge(client, {
+            userId: stateBefore.user_id,
+            identityId: stateBefore.identity_id,
+            purpose: "password_reset",
+            consumed: true,
+        });
+        const primary = await seedRecoveryChallenge(client, {
+            userId: stateBefore.user_id,
+            identityId: stateBefore.identity_id,
+            purpose: "password_reset",
+        });
+        const newPassword = `replacement-${randomUUID()}-${randomUUID()}`;
+        const confirmed = await fetchJson(
+            origin,
+            "/api/v1/auth/password-reset/confirm",
+            recoveryRequestInit(origin, {
+                token: primary.token,
+                newPassword,
+            }, account.cookieHeader),
+        );
+        invariant(
+            confirmed.body?.data?.status === "completed"
+                && confirmed.body?.data?.affectedUserId === undefined
+                && confirmed.headers.get("cache-control") === "no-store",
+            "PASSWORD_RESET_CONFIRM_INVALID",
+            "密碼重設確認 API 未完成或允許快取敏感回應。",
+        );
+        verifySessionCookiePolicy(confirmed.headers, { secure: false, cleared: true });
+
+        const stateAfter = await recoveryAccountRow(client, account.email);
+        invariant(
+            stateAfter.password_hash !== stateBefore.password_hash
+                && /^scrypt\$v1\$/u.test(stateAfter.password_hash),
+            "PASSWORD_RESET_HASH_NOT_REPLACED",
+            "密碼重設沒有換成預期的 scrypt 密碼 hash。",
+        );
+        const challengeRows = (await client.query(`
+            SELECT token_hash, attempt_count, consumed_at
+            FROM verification_challenges
+            WHERE token_hash = ANY($1::text[])
+            ORDER BY token_hash
+        `, [[primary.tokenHash, sibling.tokenHash]])).rows;
+        invariant(
+            challengeRows.length === 2
+                && challengeRows.every((row) => row.consumed_at !== null)
+                && challengeRows.find((row) => row.token_hash === primary.tokenHash)?.attempt_count === 1
+                && challengeRows.find((row) => row.token_hash === sibling.tokenHash)?.attempt_count === 0,
+            "PASSWORD_RESET_CHALLENGES_NOT_CONSUMED",
+            "密碼重設沒有原子地消耗本 token 與同帳號其他未完成 token。",
+        );
+        const activeAfter = numberValue((await client.query(`
+            SELECT count(*)::integer AS count
+            FROM auth_sessions
+            WHERE user_id = $1
+                AND revoked_at IS NULL
+        `, [stateBefore.user_id])).rows[0]?.count);
+        invariant(activeAfter === 0, "PASSWORD_RESET_SESSIONS_NOT_REVOKED", "密碼重設沒有撤銷該帳號全部 session。");
+        invariant(
+            (await account.request("/api/v1/auth/me", undefined, [401])).body?.error?.code === "AUTH_REQUIRED"
+                && (await secondSession.request("/api/v1/auth/me", undefined, [401])).body?.error?.code === "AUTH_REQUIRED",
+            "PASSWORD_RESET_OLD_COOKIE_ACCEPTED",
+            "密碼重設後仍可使用舊 session cookie。",
+        );
+
+        const invalidResponses = [];
+        for (const token of [primary.token, sibling.token, recoveryToken()]) {
+            const response = await fetchJson(
+                origin,
+                "/api/v1/auth/password-reset/confirm",
+                recoveryRequestInit(origin, {
+                    token,
+                    newPassword: `unused-${randomUUID()}-${randomUUID()}`,
+                }),
+                [400],
+            );
+            invalidResponses.push(response.body?.error);
+        }
+        invariant(
+            invalidResponses.every((error) => (
+                error?.code === "PASSWORD_RESET_INVALID"
+                && error?.message === invalidResponses[0]?.message
+            )),
+            "PASSWORD_RESET_INVALID_RESPONSE_INCONSISTENT",
+            "已使用、連帶失效與未知 token 的錯誤回應不一致。",
+        );
+
+        const oldLogin = await fetchJson(origin, "/api/v1/auth/login", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                origin: origin.origin,
+            },
+            body: JSON.stringify({ email: account.email, password: account.password }),
+        }, [401]);
+        invariant(oldLogin.body?.error?.code === "INVALID_CREDENTIALS", "PASSWORD_RESET_OLD_PASSWORD_ACCEPTED", "密碼重設後舊密碼仍可登入。");
+        replacementSession = await loginSyntheticAuthClient(origin, {
+            ...account,
+            password: newPassword,
+        });
+
+        const beforeExpired = await recoveryAccountRow(client, account.email);
+        const expired = await seedRecoveryChallenge(client, {
+            userId: stateBefore.user_id,
+            identityId: stateBefore.identity_id,
+            purpose: "password_reset",
+            expiresInMinutes: -1,
+        });
+        const expiredResponse = await fetchJson(
+            origin,
+            "/api/v1/auth/password-reset/confirm",
+            recoveryRequestInit(origin, {
+                token: expired.token,
+                newPassword: `must-not-apply-${randomUUID()}-${randomUUID()}`,
+            }),
+            [410],
+        );
+        const expiredState = (await client.query(`
+            SELECT attempt_count, consumed_at
+            FROM verification_challenges
+            WHERE id = $1
+        `, [expired.id])).rows[0];
+        const afterExpired = await recoveryAccountRow(client, account.email);
+        invariant(
+            expiredResponse.body?.error?.code === "PASSWORD_RESET_EXPIRED"
+                && expiredState?.attempt_count === 0
+                && expiredState?.consumed_at === null
+                && afterExpired.password_hash === beforeExpired.password_hash
+                && (await replacementSession.request("/api/v1/auth/me")).body?.data?.account?.email === account.email,
+            "PASSWORD_RESET_EXPIRED_MUTATED_ACCOUNT",
+            "過期密碼重設 token 改變了密碼、session 或 challenge 狀態不符契約。",
+        );
+        await client.query(`
+            UPDATE verification_challenges
+            SET consumed_at = transaction_timestamp()
+            WHERE id = $1
+                AND consumed_at IS NULL
+        `, [expired.id]);
+
+        unrelatedAccount = await createSyntheticAuthClient(origin, "learner");
+        const crossAccountChallenge = await seedRecoveryChallenge(client, {
+            userId: stateBefore.user_id,
+            identityId: stateBefore.identity_id,
+            purpose: "password_reset",
+        });
+        const finalPassword = `final-${randomUUID()}-${randomUUID()}`;
+        const crossAccountConfirm = await fetchJson(
+            origin,
+            "/api/v1/auth/password-reset/confirm",
+            recoveryRequestInit(origin, {
+                token: crossAccountChallenge.token,
+                newPassword: finalPassword,
+            }, unrelatedAccount.cookieHeader),
+        );
+        invariant(
+            crossAccountConfirm.body?.data?.status === "completed"
+                && crossAccountConfirm.body?.data?.affectedUserId === undefined
+                && crossAccountConfirm.headers.get("set-cookie") === null
+                && (await unrelatedAccount.request("/api/v1/auth/me")).body?.data?.account?.email
+                    === unrelatedAccount.email
+                && (await replacementSession.request("/api/v1/auth/me", undefined, [401])).body?.error?.code
+                    === "AUTH_REQUIRED",
+            "PASSWORD_RESET_CROSS_ACCOUNT_COOKIE_CLEARED",
+            "密碼重設誤清除另一帳號的有效 cookie，或沒有撤銷目標帳號 session。",
+        );
+        finalSession = await loginSyntheticAuthClient(origin, {
+            ...account,
+            password: finalPassword,
+        });
+
+        const identityBoundChallenge = await seedRecoveryChallenge(client, {
+            userId: stateBefore.user_id,
+            identityId: stateBefore.identity_id,
+            purpose: "password_reset",
+        });
+        let identityMutationCode = null;
+        await client.query("BEGIN");
+        try {
+            await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [stateBefore.user_id]);
+            await client.query(`
+                UPDATE account_identities
+                SET revoked_at = transaction_timestamp()
+                WHERE id = $1
+            `, [stateBefore.identity_id]);
+            await client.query("COMMIT");
+        }
+        catch (error) {
+            await client.query("ROLLBACK");
+            identityMutationCode = typeof error?.code === "string" ? error.code : null;
+        }
+        const retainedIdentityState = await recoveryAccountRow(client, account.email);
+        const identityBoundChallengeState = (await client.query(`
+            SELECT consumed_at, attempt_count
+            FROM verification_challenges
+            WHERE id = $1
+        `, [identityBoundChallenge.id])).rows[0];
+        invariant(
+            identityMutationCode === "23514"
+                && retainedIdentityState.identity_id === stateBefore.identity_id
+                && identityBoundChallengeState?.consumed_at === null
+                && identityBoundChallengeState?.attempt_count === 0,
+            "PASSWORD_RESET_IDENTITY_MUTATION_ACCEPTED",
+            "有效密碼重設 token 存在時，電子郵件 identity 仍可被撤銷或 challenge 被改寫。",
+        );
+
+        return {
+            requestPrivacy,
+            passwordHashReplaced: true,
+            allSessionsRevoked: true,
+            replayRejected: true,
+            singleActiveChallengeEnforced: true,
+            expiredTokenRejectedWithoutMutation: true,
+            newPasswordLogin: true,
+            sameAccountCookieCleared: true,
+            unrelatedAccountCookiePreserved: true,
+            identityMutationBlocked: true,
+        };
+    }
+    finally {
+        await account.logout();
+        if (secondSession) await secondSession.logout();
+        if (replacementSession) await replacementSession.logout();
+        if (finalSession) await finalSession.logout();
+        if (unrelatedAccount) await unrelatedAccount.logout();
+    }
+}
+
+async function verifyRolePinResetContracts(client, origin) {
+    const tutorSession = await createSyntheticAuthClient(origin, "parent");
+    let parentSession = null;
+    let unrelatedTutorSession = null;
+    try {
+        parentSession = await loginSyntheticAuthClient(origin, tutorSession);
+        const accountState = await recoveryAccountRow(client, tutorSession.email);
+        await client.query(`
+            UPDATE account_identities
+            SET verified_at = transaction_timestamp()
+            WHERE id = $1
+        `, [accountState.identity_id]);
+        const tutorIdentity = await tutorSession.request(
+            "/api/v1/auth/identity",
+            accountMutationInit(origin, {
+                targetRole: "tutor",
+                password: tutorSession.password,
+            }),
+        );
+        invariant(
+            tutorIdentity.body?.data?.account?.activeRole === "tutor",
+            "ROLE_PIN_SESSION_FIXTURE_INVALID",
+            "角色 PIN 驗證無法建立 tutor 目標 session。",
+        );
+        const roleSessionsBefore = (await client.query(`
+            SELECT active_role, count(*)::integer AS count
+            FROM auth_sessions
+            WHERE user_id = $1
+                AND revoked_at IS NULL
+            GROUP BY active_role
+            ORDER BY active_role
+        `, [accountState.user_id])).rows;
+        invariant(
+            roleSessionsBefore.some((row) => row.active_role === "parent" && row.count === 1)
+                && roleSessionsBefore.some((row) => row.active_role === "tutor" && row.count === 1),
+            "ROLE_PIN_SESSION_FIXTURE_INVALID",
+            "角色 PIN 驗證前未同時建立 parent 與 tutor session。",
+        );
+
+        const primary = await seedRecoveryChallenge(client, {
+            userId: accountState.user_id,
+            identityId: accountState.identity_id,
+            purpose: "role_pin_reset",
+            targetRole: "tutor",
+            expiresInMinutes: 15,
+        });
+        const newPin = "482951";
+        const confirmed = await fetchJson(
+            origin,
+            "/api/v1/auth/role-pin-reset/confirm",
+            recoveryRequestInit(origin, { token: primary.token, newPin }, tutorSession.cookieHeader),
+        );
+        invariant(
+            confirmed.body?.data?.status === "completed"
+                && confirmed.body?.data?.targetRole === "tutor"
+                && confirmed.body?.data?.affectedUserId === undefined
+                && confirmed.headers.get("cache-control") === "no-store",
+            "ROLE_PIN_RESET_CONFIRM_INVALID",
+            "角色 PIN 重設確認 API 未完成、角色錯誤或允許快取敏感回應。",
+        );
+        verifySessionCookiePolicy(confirmed.headers, { secure: false, cleared: true });
+        const credential = (await client.query(`
+            SELECT pin_hash, failed_attempts, locked_until
+            FROM role_pin_credentials
+            WHERE user_id = $1
+                AND role = 'tutor'
+        `, [accountState.user_id])).rows[0];
+        const challengeState = (await client.query(`
+            SELECT attempt_count, consumed_at
+            FROM verification_challenges
+            WHERE id = $1
+        `, [primary.id])).rows[0];
+        invariant(
+            /^scrypt-pin\$v1\$/u.test(credential?.pin_hash ?? "")
+                && credential?.failed_attempts === 0
+                && credential?.locked_until === null
+                && challengeState?.attempt_count === 1
+                && challengeState?.consumed_at !== null,
+            "ROLE_PIN_RESET_DATABASE_STATE_INVALID",
+            "角色 PIN hash、鎖定狀態或 challenge 消耗狀態不正確。",
+        );
+        const roleSessionsAfter = (await client.query(`
+            SELECT active_role, revoked_at
+            FROM auth_sessions
+            WHERE user_id = $1
+            ORDER BY active_role, created_at
+        `, [accountState.user_id])).rows;
+        invariant(
+            roleSessionsAfter.some((row) => row.active_role === "tutor" && row.revoked_at !== null)
+                && roleSessionsAfter.some((row) => row.active_role === "parent" && row.revoked_at === null),
+            "ROLE_PIN_RESET_SESSION_SCOPE_INVALID",
+            "角色 PIN 重設沒有只撤銷目標角色 session。",
+        );
+        invariant(
+            (await tutorSession.request("/api/v1/auth/me", undefined, [401])).body?.error?.code === "AUTH_REQUIRED"
+                && (await parentSession.request("/api/v1/auth/me")).body?.data?.account?.activeRole === "parent",
+            "ROLE_PIN_RESET_COOKIE_SCOPE_INVALID",
+            "角色 PIN 重設後 tutor 舊 cookie 仍可用，或 parent session 被誤撤銷。",
+        );
+
+        const replay = await fetchJson(
+            origin,
+            "/api/v1/auth/role-pin-reset/confirm",
+            recoveryRequestInit(origin, { token: primary.token, newPin: "739204" }),
+            [400],
+        );
+        invariant(replay.body?.error?.code === "ROLE_PIN_RESET_INVALID", "ROLE_PIN_RESET_REPLAY_ACCEPTED", "已使用的角色 PIN token 可重播。");
+
+        const beforeExpiredHash = credential.pin_hash;
+        const expired = await seedRecoveryChallenge(client, {
+            userId: accountState.user_id,
+            identityId: accountState.identity_id,
+            purpose: "role_pin_reset",
+            targetRole: "tutor",
+            expiresInMinutes: -1,
+        });
+        const expiredResponse = await fetchJson(
+            origin,
+            "/api/v1/auth/role-pin-reset/confirm",
+            recoveryRequestInit(origin, { token: expired.token, newPin: "739204" }),
+            [410],
+        );
+        const expiredState = (await client.query(`
+            SELECT attempt_count, consumed_at
+            FROM verification_challenges
+            WHERE id = $1
+        `, [expired.id])).rows[0];
+        const afterExpiredHash = (await client.query(`
+            SELECT pin_hash
+            FROM role_pin_credentials
+            WHERE user_id = $1 AND role = 'tutor'
+        `, [accountState.user_id])).rows[0]?.pin_hash;
+        invariant(
+            expiredResponse.body?.error?.code === "ROLE_PIN_RESET_EXPIRED"
+                && expiredState?.attempt_count === 0
+                && expiredState?.consumed_at === null
+                && afterExpiredHash === beforeExpiredHash
+                && (await parentSession.request("/api/v1/auth/me")).body?.data?.account?.activeRole === "parent",
+            "ROLE_PIN_RESET_EXPIRED_MUTATED_ACCOUNT",
+            "過期角色 PIN token 改變了 credential 或非目標角色 session。",
+        );
+        await client.query(`
+            UPDATE verification_challenges
+            SET consumed_at = transaction_timestamp()
+            WHERE id = $1
+                AND consumed_at IS NULL
+        `, [expired.id]);
+
+        const unchanged = await seedRecoveryChallenge(client, {
+            userId: accountState.user_id,
+            identityId: accountState.identity_id,
+            purpose: "role_pin_reset",
+            targetRole: "tutor",
+            expiresInMinutes: 15,
+        });
+        const unchangedResponse = await fetchJson(
+            origin,
+            "/api/v1/auth/role-pin-reset/confirm",
+            recoveryRequestInit(origin, { token: unchanged.token, newPin }),
+            [409],
+        );
+        const unchangedState = (await client.query(`
+            SELECT attempt_count, consumed_at
+            FROM verification_challenges
+            WHERE id = $1
+        `, [unchanged.id])).rows[0];
+        invariant(
+            unchangedResponse.body?.error?.code === "ROLE_PIN_UNCHANGED"
+                && unchangedState?.attempt_count === 0
+                && unchangedState?.consumed_at === null,
+            "ROLE_PIN_UNCHANGED_CONSUMED_CHALLENGE",
+            "重複角色 PIN 未被拒絕，或失敗交易消耗了 challenge。",
+        );
+        await client.query(`
+            UPDATE verification_challenges
+            SET consumed_at = transaction_timestamp()
+            WHERE id = $1
+                AND consumed_at IS NULL
+        `, [unchanged.id]);
+
+        unrelatedTutorSession = await createSyntheticAuthClient(origin, "tutor");
+        const crossAccount = await seedRecoveryChallenge(client, {
+            userId: accountState.user_id,
+            identityId: accountState.identity_id,
+            purpose: "role_pin_reset",
+            targetRole: "tutor",
+            expiresInMinutes: 15,
+        });
+        const crossAccountResponse = await fetchJson(
+            origin,
+            "/api/v1/auth/role-pin-reset/confirm",
+            recoveryRequestInit(
+                origin,
+                { token: crossAccount.token, newPin: "739204" },
+                unrelatedTutorSession.cookieHeader,
+            ),
+        );
+        invariant(
+            crossAccountResponse.body?.data?.status === "completed"
+                && crossAccountResponse.body?.data?.targetRole === "tutor"
+                && crossAccountResponse.body?.data?.affectedUserId === undefined
+                && crossAccountResponse.headers.get("set-cookie") === null
+                && (await unrelatedTutorSession.request("/api/v1/auth/me")).body?.data?.account?.activeRole
+                    === "tutor",
+            "ROLE_PIN_RESET_CROSS_ACCOUNT_COOKIE_CLEARED",
+            "角色 PIN 重設誤清除另一帳號相同角色的有效 cookie。",
+        );
+
+        return {
+            pinHashStoredSeparately: true,
+            targetRoleSessionsRevoked: true,
+            otherRoleSessionPreserved: true,
+            replayRejected: true,
+            expiredTokenRejectedWithoutMutation: true,
+            unchangedPinRejectedAtomically: true,
+            sameAccountTargetRoleCookieCleared: true,
+            unrelatedAccountCookiePreserved: true,
+        };
+    }
+    finally {
+        await tutorSession.logout();
+        if (parentSession) await parentSession.logout();
+        if (unrelatedTutorSession) await unrelatedTutorSession.logout();
+    }
+}
+
+async function verifyAccountRecoveryContracts(client, origin) {
+    return {
+        syntheticOnly: true,
+        password: await verifyPasswordResetContracts(client, origin),
+        rolePin: await verifyRolePinResetContracts(client, origin),
+    };
 }
 
 async function verifyRegistrationRoleContracts(client, origin) {
@@ -1062,6 +1734,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update-current",
                 learnerId: owner.learnerId,
                 displayName: "學習者模式目前學生",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1080,6 +1753,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update",
                 learnerId: owner.learnerId,
                 displayName: "不可由帳號設定修改",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1107,6 +1781,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update-current",
                 learnerId: owner.learnerId,
                 displayName: "唯讀 access 不可修改",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1134,6 +1809,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update-current",
                 learnerId: outsider.learnerId,
                 displayName: "不可修改其他學習者",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1156,6 +1832,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 body: JSON.stringify({
                     clientRequestId: forbiddenCreateId,
                     displayName: "模式拒絕學習者",
+                    educationStatus: "enrolled",
                     gradeCode: "junior-high-1",
                     semesterCode: "semester-1",
                 }),
@@ -1198,6 +1875,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 body: JSON.stringify({
                     clientRequestId: invalidCatalogId,
                     displayName: "不存在年級",
+                    educationStatus: "enrolled",
                     gradeCode: "missing-grade",
                     semesterCode: "semester-1",
                 }),
@@ -1215,6 +1893,7 @@ async function verifyAccountSettingsContracts(client, origin) {
         const learnerPayload = {
             clientRequestId: learnerId,
             displayName: "冪等受管學習者",
+            educationStatus: "enrolled",
             gradeCode: "junior-high-1",
             semesterCode: "semester-1",
         };
@@ -1289,6 +1968,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update",
                 learnerId,
                 displayName: "越權修改",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1354,6 +2034,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update",
                 learnerId,
                 displayName: "已更新受管學習者",
+                educationStatus: "enrolled",
                 gradeCode: nextGradeCode,
                 semesterCode: "semester-1",
             }),
@@ -1438,6 +2119,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update-current",
                 learnerId: firstSelfLearnerId,
                 displayName: "同步本人新名稱",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -1499,6 +2181,7 @@ async function verifyAccountSettingsContracts(client, origin) {
                 action: "update",
                 learnerId: firstSelfLearnerId,
                 displayName: "管理模式同步本人名稱",
+                educationStatus: "enrolled",
                 gradeCode: "junior-high-1",
                 semesterCode: "semester-1",
             }),
@@ -3127,6 +3810,71 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
     }, [409]);
     invariant(conflict.body?.error?.code === "IDEMPOTENCY_CONFLICT", "IDEMPOTENCY_CONFLICT_MISSING", "同一冪等鍵搭配不同內容必須回傳 409 conflict。");
 
+    const wrongQueueItemId = (await client.query(`
+        SELECT queue.id
+        FROM learner_practice_queue_items AS queue
+        WHERE queue.source_answer_part_result_id = (
+            SELECT part.id
+            FROM answer_part_results AS part
+            WHERE part.answer_attempt_id = $1
+                AND part.question_part_id = $2
+        )
+            AND queue.status = 'pending'
+        LIMIT 1
+    `, [wrongResponse.attempt.id, wrongCase.targetPartId])).rows[0]?.id;
+    invariant(UUID_PATTERN.test(wrongQueueItemId ?? ""), "RECOMMENDATION_SOURCE_QUEUE_MISSING", "錯題沒有可供推薦 API 驗證的 durable queue item。");
+    const recommendationPreview = await api.request("/api/v1/local-practice/recommendations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "preview", sourceQueueItemIds: [wrongQueueItemId], limit: 5 }),
+    });
+    invariant(
+        ["same_type", "confirmed_similar", "topic_similar"].includes(recommendationPreview.body?.data?.recommendationKind)
+            && recommendationPreview.body.data.questions.length > 0,
+        "RECOMMENDATION_PREVIEW_EMPTY",
+        "合成錯題沒有取得可追溯的相同或相近題候選。",
+        recommendationPreview.body?.data,
+    );
+    const recommendationSessionId = randomUUID();
+    const recommendationStartBody = {
+        action: "start",
+        sourceQueueItemIds: [wrongQueueItemId],
+        limit: 5,
+        checkMode: "instant",
+        sessionId: recommendationSessionId,
+    };
+    const recommendationStart = await api.request("/api/v1/local-practice/recommendations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(recommendationStartBody),
+    }, [201]);
+    const recommendationOrigins = (await client.query(`
+        SELECT origin.match_basis
+        FROM practice_session_items AS item
+        JOIN practice_session_item_origins AS origin
+            ON origin.practice_session_item_id = item.id
+        WHERE item.practice_session_id = $1
+    `, [recommendationSessionId])).rows;
+    invariant(
+        recommendationStart.body?.data?.session?.id === recommendationSessionId
+            && recommendationOrigins.length > 0
+            && recommendationOrigins.every((origin) => ["same_question_type", "confirmed_group", "same_topic"].includes(origin.match_basis)),
+        "RECOMMENDATION_SESSION_PROVENANCE_MISSING",
+        "相同或相近題 session 沒有保存完整選題依據。",
+        { origins: recommendationOrigins },
+    );
+    const recommendationReplay = await api.request("/api/v1/local-practice/recommendations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(recommendationStartBody),
+    }, [200]);
+    invariant(
+        recommendationReplay.body?.meta?.replayed === true
+            && recommendationReplay.body?.data?.session?.id === recommendationSessionId,
+        "RECOMMENDATION_SESSION_REPLAY_MISMATCH",
+        "相同的推薦請求沒有安全重播原 session。",
+    );
+
     const partSessionResponse = await api.request("/api/v1/local-practice/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -3241,6 +3989,59 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         manualReviewState,
     );
 
+    const handwrittenPart = manualReviewCase.question.parts.find(
+        (part) => manualReviewCase.manualPartIds.has(part.id) && part.answerMode === "text",
+    );
+    invariant(handwrittenPart, "HANDWRITING_TEXT_PART_NOT_FOUND", "找不到可用手寫補答的人工批改文字小題。");
+    const handwritingSession = await createSession(api, [manualReviewCase.question]);
+    const handwritingRequest = {
+        sessionId: handwritingSession.id,
+        questionId: manualReviewCase.question.id,
+        idempotencyKey: `local-practice-verify:handwriting:${runToken}`,
+        durationSeconds: 4,
+        answers: manualReviewCase.answers.filter((answer) => answer.partId !== handwrittenPart.id),
+        handwriting: { dataUrl: SYNTHETIC_HANDWRITING_DATA_URL },
+    };
+    const handwritingResponse = await submitAttempt(api, handwritingRequest, [201]);
+    const handwritingPart = handwritingResponse.attempt.parts.find((part) => part.partId === handwrittenPart.id);
+    const handwritingState = (await client.query(`
+        SELECT
+            result.current_result,
+            result.grading_source,
+            result.answer_payload->>'value' AS transcription,
+            asset.checksum AS stored_checksum,
+            count(job.id)::integer AS analysis_jobs
+        FROM answer_attempts AS attempt
+        JOIN answer_part_results AS result
+            ON result.answer_attempt_id = attempt.id
+            AND result.question_part_id = $2
+        JOIN answer_part_assets AS link
+            ON link.answer_part_result_id = result.id
+            AND link.asset_role = 'handwriting'
+        JOIN assets AS asset ON asset.id = link.asset_id
+        LEFT JOIN handwriting_analysis_jobs AS job
+            ON job.answer_part_result_id = result.id
+            AND job.asset_id = asset.id
+        WHERE attempt.id = $1
+        GROUP BY result.id, asset.id
+    `, [handwritingResponse.attempt.id, handwrittenPart.id])).rows;
+    invariant(
+        handwritingPart
+            && handwritingPart.result !== "pending"
+            && handwritingPart.gradingSource === "automatic"
+            && ["correct", "wrong"].includes(handwritingPart.feedbackCode)
+            && handwritingState.length === 1
+            && handwritingState[0].current_result === handwritingPart.result
+            && handwritingState[0].grading_source === "automatic"
+            && typeof handwritingState[0].transcription === "string"
+            && handwritingState[0].transcription.trim() !== ""
+            && handwritingState[0].stored_checksum?.length === 64
+            && Number(handwritingState[0].analysis_jobs) === 0,
+        "HANDWRITING_IMMEDIATE_GRADING_MISMATCH",
+        "清楚手寫補答沒有立即轉成文字、交由標準答案規則判分並保存原始手寫附件。",
+        { part: handwritingPart, state: handwritingState },
+    );
+
     const missingAnswerSession = await createSession(api, [wrongCase.question]);
     const missingAnswerRequest = {
         sessionId: missingAnswerSession.id,
@@ -3312,12 +4113,12 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
     invariant(Array.isArray(historyAttempts) && attemptIds.every((id) => historyAttempts.some((attempt) => attempt.id === id)), "HISTORY_ATTEMPT_MISSING", "歷史 API 找不到剛建立的作答。");
     invariant(
         Array.isArray(queueItems)
-            && queueItems.some((item) => (
+            && !queueItems.some((item) => (
                 item.questionId === wrongCase.question.id
                 && item.partId === wrongCase.targetPartId
             )),
-        "HISTORY_WRONG_QUEUE_MISSING",
-        "歷史 API 找不到剛建立之 learner + question + part 錯題佇列。",
+        "HISTORY_RESOLVED_WRONG_QUEUE_PRESENT",
+        "指定小題已有較新的正確作答，歷史 API 仍回傳舊錯題佇列。",
     );
 
     return {
@@ -3592,6 +4393,9 @@ async function main() {
             const forwardedHttpsSession = await verifyForwardedHttpsSessionLifecycle(client, origin);
             const roleContracts = await verifyRegistrationRoleContracts(client, origin);
             const accountSettings = await verifyAccountSettingsContracts(client, origin);
+            const accountRecovery = persistenceOnly
+                ? null
+                : await verifyAccountRecoveryContracts(client, origin);
             const api = await createSyntheticAuthClient(origin);
             let output;
             try {
@@ -3673,6 +4477,7 @@ async function main() {
                             forwardedHttpsSession,
                             roleContracts,
                             accountSettings,
+                            accountRecovery,
                         },
                         import: importVerification.summary,
                         catalog: {

@@ -4,12 +4,17 @@ import type {
   OutboundMailMessage,
 } from "./synology-mailplus.ts";
 import { MailServiceError } from "./synology-mailplus.ts";
+import type { RolePinTargetRole } from "../auth-input.ts";
 
 export type AccountMailInput = Readonly<{
   to: string;
   displayName?: string;
   actionUrl: string;
   expiresInMinutes: number;
+}>;
+
+export type RolePinResetMailInput = AccountMailInput & Readonly<{
+  targetRole: RolePinTargetRole;
 }>;
 
 function escapeHtml(value: string): string {
@@ -158,6 +163,18 @@ export function buildPasswordResetMessage(
   });
 }
 
+export function buildRolePinResetMessage(
+  input: RolePinResetMailInput,
+): OutboundMailMessage {
+  const roleLabel = input.targetRole === "parent" ? "家長" : "家教";
+  return buildAccountMessage(input, {
+    subject: `設定你的 Lerniqa ${roleLabel} PIN`,
+    intro: `請使用下方連結設定或重設${roleLabel}角色的六位數 PIN。這次操作不會自動切換角色。`,
+    actionLabel: `設定${roleLabel} PIN`,
+    ignoreText: `若你沒有要求設定${roleLabel} PIN，請忽略這封信；目前的帳號設定不會變更。`,
+  });
+}
+
 export async function sendEmailVerification(
   adapter: MailProviderAdapter,
   input: AccountMailInput,
@@ -170,6 +187,13 @@ export async function sendPasswordReset(
   input: AccountMailInput,
 ): Promise<MailSendResult> {
   return sendAccountMessage(adapter, buildPasswordResetMessage(input));
+}
+
+export async function sendRolePinReset(
+  adapter: MailProviderAdapter,
+  input: RolePinResetMailInput,
+): Promise<MailSendResult> {
+  return sendAccountMessage(adapter, buildRolePinResetMessage(input));
 }
 
 async function sendAccountMessage(

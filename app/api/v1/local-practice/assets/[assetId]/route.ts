@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import { findLocalPracticeAsset } from "@/app/lib/local-practice-store";
+import {
+    findLocalPracticeAnswerAsset,
+    findLocalPracticeAsset,
+} from "@/app/lib/local-practice-store";
 import {
     errorResponse,
     handleLocalPracticeError,
@@ -67,12 +70,17 @@ export async function GET(
         const account = await requireLocalPracticeAccount(request);
         const { assetId } = await context.params;
         if (!UUID_PATTERN.test(assetId)) return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
-        const filters = parseLocalPracticeFilters(new URL(request.url).searchParams);
-        if (!filters) return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
-        const asset = await findLocalPracticeAsset(assetId, filters, {
-            userId: account.userId,
-            learnerId: account.learner.id,
-        });
+        const searchParams = new URL(request.url).searchParams;
+        const kind = searchParams.get("kind");
+        const actor = { userId: account.userId, learnerId: account.learner.id };
+        const asset = kind === "answer"
+            ? await findLocalPracticeAnswerAsset(assetId, actor)
+            : kind === null
+                ? await (async () => {
+                    const filters = parseLocalPracticeFilters(searchParams);
+                    return filters ? findLocalPracticeAsset(assetId, filters, actor) : null;
+                })()
+                : null;
         if (!asset || !SAFE_MIME_TYPES.has(asset.mimeType)) {
             return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
         }

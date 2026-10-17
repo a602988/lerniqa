@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "lerniqa.handwriting-quality-fixtures/v2",
+  "qualityGates": {
+    "minimumReadableTranscriptionRate": 0.75,
+    "minimumBlankUnclearUnrecognizedRate": 1,
+    "requireFaultFailClosed": true
+  },
+  "fixtures": [
+    {
+      "id": "readable-4",
+      "kind": "readable",
+      "image": "readable-4.png",
+      "imageSha256": "aaa40d2fd229a31c09c7d9ccad79b91b093d65f5902c110ebe973cb8d4da4aa9",
+      "expectedTranscription": "4"
+    },
+    {
+      "id": "readable-12",
+      "kind": "readable",
+      "image": "readable-12.png",
+      "imageSha256": "baf065cf7386e978fe522ed6a0800985358f1d88d3e02f3b39034f101f592a10",
+      "expectedTranscription": "12"
+    },
+    {
+      "id": "readable-a",
+      "kind": "readable",
+      "image": "readable-a.png",
+      "imageSha256": "871d9dc4904447285f0de194c1196c66a0a3c130bb42ae752483bf0d7c2b9afa",
+      "expectedTranscription": "A"
+    },
+    {
+      "id": "readable-7-wrong",
+      "kind": "readable",
+      "image": "readable-7-wrong.png",
+      "imageSha256": "ab537f5da6e60c339786d49965b767981c24fa76e05966df09c86eac0b5ef1d9",
+      "expectedTranscription": "7"
+    },
+    {
+      "id": "blank",
+      "kind": "blank",
+      "image": "blank.png",
+      "imageSha256": "5370e5e2c0e05ebaaa3233d20a8f15bf98d9a4126ec1f29902942c0b77cd635b",
+      "expectedTranscription": null
+    },
+    {
+      "id": "unclear",
+      "kind": "unclear",
+      "image": "unclear.png",
+      "imageSha256": "48a1b14030dca764eada9c521998672841038f47f9b5fa24438208fc5dfb1793",
+      "expectedTranscription": null
+    }
+  ]
+}

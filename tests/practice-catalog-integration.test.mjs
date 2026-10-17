@@ -27,6 +27,7 @@ const knowledge = await import(await loadModule("../app/lib/practice-catalog-kno
 const question = {
     id: "12345678-1234-4234-a234-123456789abc", revisionId: "87654321-4321-4321-a321-cba987654321", revisionNumber: 1, code: "0123456789abcdef:10",
     type: { id: "type", code: "choice", name: "選擇題" },
+    originalTypeLabel: "單一選擇題",
     grade: { id: "grade", code: "jh1", name: "國一" },
     subject: { id: "subject", code: "zh", name: "國文" },
     semester: null, publisher: { id: "publisher", code: "hanlin", name: "翰林" },
@@ -84,7 +85,7 @@ test("answer adapter preserves option keys and free text; it never guesses gradi
     assert.equal(result.partResults[0].correct, false);
 });
 
-test("catalog uses the UI's 500-item ceiling while history still paginates beyond 100", async () => {
+test("catalog uses the UI's 500-item ceiling while history and wrong-review sources paginate beyond 100", async () => {
     const originalFetch = globalThis.fetch;
     const seen = [];
     globalThis.fetch = async (input) => {
@@ -106,6 +107,12 @@ test("catalog uses the UI's 500-item ceiling while history still paginates beyon
             data = {
                 attempts: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({ id: `a${(page - 1) * 100 + index}` })),
                 sessions: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({ id: `s${(page - 1) * 100 + index}` })),
+                wrongReviewQueue: {
+                    pendingCount: 101,
+                    items: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({
+                        id: `w${(page - 1) * 100 + index}`,
+                    })),
+                },
             };
         }
         return new Response(JSON.stringify({ data, meta }), { status: 200 });
@@ -115,6 +122,8 @@ test("catalog uses the UI's 500-item ceiling while history still paginates beyon
         assert.equal(loaded.questions.length, 279);
         assert.equal(loaded.attempts.length, 101);
         assert.equal(loaded.sessions.length, 101);
+        assert.equal(loaded.wrongReviewQueue.pendingCount, 101);
+        assert.equal(loaded.wrongReviewQueue.items.length, 101);
         assert.equal(loaded.account.learner.id, "authenticated-learner");
         assert.ok(seen.some((url) => url.includes("history?limit=100&page=2")));
         assert.equal(seen.filter((url) => url.includes("/questions?")).length, 1);
@@ -185,6 +194,63 @@ test("review/check modes reach the session API without claiming a database sched
     finally { globalThis.fetch = originalFetch; }
 });
 
+test("recommendation preview and start send only durable wrong-queue source ids", async () => {
+    const originalFetch = globalThis.fetch;
+    const submitted = [];
+    globalThis.fetch = async (url, init) => {
+        submitted.push({ url: String(url), init, body: JSON.parse(init.body) });
+        return new Response(JSON.stringify({
+            data: {
+                recommendationKind: "none",
+                availableCount: 0,
+                classificationLabel: "單一選擇題",
+                explanation: "目前沒有候選題目。",
+                questions: [],
+                session: null,
+            },
+        }), { status: 200 });
+    };
+    try {
+        const sourceQueueItemIds = ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"];
+        const preview = await client.previewPersistedPracticeRecommendations({
+            sourceQueueItemIds,
+            limit: 5,
+        });
+        const started = await client.startPersistedPracticeRecommendations({
+            sourceQueueItemIds,
+            limit: 5,
+            checkMode: "instant",
+            sessionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        });
+
+        assert.equal(preview.recommendationKind, "none");
+        assert.equal(started.session, null);
+        assert.deepEqual(submitted.map(({ url, init, body }) => ({
+            url,
+            method: init.method,
+            body,
+        })), [
+            {
+                url: "/api/v1/local-practice/recommendations",
+                method: "POST",
+                body: { action: "preview", sourceQueueItemIds, limit: 5 },
+            },
+            {
+                url: "/api/v1/local-practice/recommendations",
+                method: "POST",
+                body: {
+                    action: "start",
+                    sourceQueueItemIds,
+                    limit: 5,
+                    checkMode: "instant",
+                    sessionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                },
+            },
+        ]);
+    }
+    finally { globalThis.fetch = originalFetch; }
+});
+
 const validPlan = {
     creatorRole: "家長",
     subject: "國語",
@@ -200,6 +266,7 @@ const validPlan = {
     activeExamId: "exam-1",
     checkMode: "complete",
     questionLimit: 10,
+    prioritizeRelated: false,
     basis: "chapter",
     difficultyMix: { easy: 40, medium: 40, hard: 20 },
     difficultyMixEnabled: false,
@@ -291,6 +358,7 @@ test("server learner profile is authoritative and the first real catalog subject
     const profile = {
         id: "learner-server",
         displayName: "伺服器稱呼",
+        educationStatus: "enrolled",
         gradeCode: "jh1",
         gradeName: "國一",
         semesterCode: "s1",
@@ -311,6 +379,7 @@ test("server learner profile is authoritative and the first real catalog subject
     assert.deepEqual(learner, {
         id: "learner-server",
         name: "伺服器稱呼",
+        educationStatus: "enrolled",
         grade: "國一",
         semester: "上學期",
         bookVersions: { 國語: "翰林", 英文: "" },
@@ -484,12 +553,13 @@ test("account mode, identity, and learner controls use the authenticated server 
         await client.createPracticeLearner({
             clientRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             displayName: "合成學習者",
+            educationStatus: "enrolled",
             gradeCode: "junior-high-1",
             semesterCode: "semester-1",
         });
         await client.selectPracticeLearner("learner-2");
-        await client.updatePracticeLearner({ learnerId: "learner-2", displayName: "新稱呼", gradeCode: "junior-high-2", semesterCode: "semester-2" });
-        await client.updatePracticeLearner({ learnerId: "learner-2", displayName: "本人新稱呼", gradeCode: "junior-high-2", semesterCode: "semester-2" }, "update-current");
+        await client.updatePracticeLearner({ learnerId: "learner-2", displayName: "新稱呼", educationStatus: "enrolled", gradeCode: "junior-high-2", semesterCode: "semester-2" });
+        await client.updatePracticeLearner({ learnerId: "learner-2", displayName: "本人新稱呼", educationStatus: "not_enrolled", gradeCode: null, semesterCode: null }, "update-current");
         await client.updatePracticeLearnerSubjectSetting({
             learnerId: "learner-2",
             subjectCode: "chinese",
@@ -501,10 +571,10 @@ test("account mode, identity, and learner controls use the authenticated server 
             { url: "/api/v1/auth/role", method: "PATCH", body: { targetRole: "learner" } },
             { url: "/api/v1/auth/identity", method: "PATCH", body: { targetRole: "tutor", password: "current-password" } },
             { url: "/api/v1/auth/identity", method: "PATCH", body: { targetRole: "learner" } },
-            { url: "/api/v1/auth/learners", method: "POST", body: { clientRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", displayName: "合成學習者", gradeCode: "junior-high-1", semesterCode: "semester-1" } },
+            { url: "/api/v1/auth/learners", method: "POST", body: { clientRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", displayName: "合成學習者", educationStatus: "enrolled", gradeCode: "junior-high-1", semesterCode: "semester-1" } },
             { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "select", learnerId: "learner-2" } },
-            { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update", learnerId: "learner-2", displayName: "新稱呼", gradeCode: "junior-high-2", semesterCode: "semester-2" } },
-            { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update-current", learnerId: "learner-2", displayName: "本人新稱呼", gradeCode: "junior-high-2", semesterCode: "semester-2" } },
+            { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update", learnerId: "learner-2", displayName: "新稱呼", educationStatus: "enrolled", gradeCode: "junior-high-2", semesterCode: "semester-2" } },
+            { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update-current", learnerId: "learner-2", displayName: "本人新稱呼", educationStatus: "not_enrolled", gradeCode: null, semesterCode: null } },
             { url: "/api/v1/auth/learners/subject-settings", method: "PATCH", body: { learnerId: "learner-2", subjectCode: "chinese", bookVersionId: "20000000-0000-4000-8000-000000000002", lockVersion: 4 } },
         ]);
     }
@@ -540,7 +610,11 @@ test("account system settings and current learner settings stay separate", async
     assert.match(systemSettings, /學習者管理/u);
     assert.doesNotMatch(systemSettings, /<h3>(?:考試設定|練習偏好|啟用科目與版本)<\/h3>/u);
     assert.match(learnerSettings, /基本資料/u);
-    assert.match(learnerSettings, /啟用科目與版本/u);
+    assert.match(source, /教育階段/u);
+    assert.match(source, /loadEducationCatalog/u);
+    assert.match(learnerSettings, /科目與版本/u);
+    assert.match(learnerSettings, /availableBookVersions\.length > 0/u);
+    assert.match(learnerSettings, /這個科目沒有建立版本，可直接使用，不會套用版本篩選/u);
     assert.match(learnerSettings, /考試設定/u);
     assert.match(learnerSettings, /練習偏好/u);
     assert.doesNotMatch(learnerSettings, /<h3>帳號身分與使用角色<\/h3>|<span>帳號信箱<\/span>/u);

@@ -58,6 +58,47 @@ export async function verifyAccountPassword(password: string, encoded: string): 
     }
 }
 
+/**
+ * Role PINs deliberately use a distinct encoding prefix so a PIN credential
+ * can never be mistaken for an account password hash (or vice versa).
+ */
+export async function hashRolePin(pin: string): Promise<string> {
+    const salt = randomBytes(16);
+    const derivedKey = await deriveScrypt(pin, salt, SCRYPT_KEY_LENGTH);
+    return [
+        "scrypt-pin",
+        SCRYPT_VERSION,
+        SCRYPT_N,
+        SCRYPT_R,
+        SCRYPT_P,
+        salt.toString("base64url"),
+        derivedKey.toString("base64url"),
+    ].join("$");
+}
+
+export async function verifyRolePin(pin: string, encoded: string): Promise<boolean> {
+    const parts = encoded.split("$");
+    if (
+        parts.length !== 7
+        || parts[0] !== "scrypt-pin"
+        || parts[1] !== SCRYPT_VERSION
+        || Number(parts[2]) !== SCRYPT_N
+        || Number(parts[3]) !== SCRYPT_R
+        || Number(parts[4]) !== SCRYPT_P
+    ) return false;
+
+    try {
+        const salt = Buffer.from(parts[5] ?? "", "base64url");
+        const expected = Buffer.from(parts[6] ?? "", "base64url");
+        if (salt.length !== 16 || expected.length !== SCRYPT_KEY_LENGTH) return false;
+        const actual = await deriveScrypt(pin, salt, expected.length);
+        return timingSafeEqual(actual, expected);
+    }
+    catch {
+        return false;
+    }
+}
+
 export function createSessionToken(): string {
     return randomBytes(32).toString("base64url");
 }

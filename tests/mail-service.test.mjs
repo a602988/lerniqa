@@ -10,6 +10,7 @@ import {
 import {
   buildEmailVerificationMessage,
   buildPasswordResetMessage,
+  buildRolePinResetMessage,
   sendEmailVerification,
 } from "../app/lib/mail/account-mail.ts";
 import {
@@ -235,7 +236,7 @@ test("rejects header injection before calling the transport", async () => {
   assert.equal(calls, 0);
 });
 
-test("builds escaped verification and password-reset templates", () => {
+test("builds escaped verification and recovery templates", () => {
   const verification = buildEmailVerificationMessage({
     to: "learner@example.net",
     displayName: '<測試 & "學習者">',
@@ -247,6 +248,18 @@ test("builds escaped verification and password-reset templates", () => {
     actionUrl: "http://localhost:3500/reset-password?token=synthetic",
     expiresInMinutes: 15,
   });
+  const parentPinReset = buildRolePinResetMessage({
+    to: "parent@example.net",
+    actionUrl: "https://accounts.example.test/reset-role-pin#token=synthetic",
+    expiresInMinutes: 15,
+    targetRole: "parent",
+  });
+  const tutorPinReset = buildRolePinResetMessage({
+    to: "tutor@example.net",
+    actionUrl: "https://accounts.example.test/reset-role-pin#token=synthetic",
+    expiresInMinutes: 15,
+    targetRole: "tutor",
+  });
 
   assert.equal(verification.subject, "驗證你的 Lerniqa 信箱");
   assert.match(verification.text, /30 分鐘/);
@@ -255,6 +268,12 @@ test("builds escaped verification and password-reset templates", () => {
   assert.equal(verification.html.includes('<測試 & "學習者">'), false);
   assert.equal(reset.subject, "重設你的 Lerniqa 密碼");
   assert.match(reset.text, /原密碼不會變更/);
+  assert.equal(parentPinReset.subject, "設定你的 Lerniqa 家長 PIN");
+  assert.match(parentPinReset.text, /設定或重設家長角色/);
+  assert.doesNotMatch(parentPinReset.text, /家教角色/);
+  assert.equal(tutorPinReset.subject, "設定你的 Lerniqa 家教 PIN");
+  assert.match(tutorPinReset.text, /設定或重設家教角色/);
+  assert.doesNotMatch(tutorPinReset.text, /家長角色/);
 
   assert.throws(
     () =>

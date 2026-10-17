@@ -9,6 +9,7 @@ import {
 } from "@/app/lib/auth-service";
 import { AuthInputError, isCredentialRequestTransportAllowed } from "@/app/lib/auth-input";
 import { EmailVerificationError } from "@/app/lib/email-verification";
+import { AccountRecoveryError } from "@/app/lib/account-recovery";
 import { LocalPostgresUnavailableError } from "@/app/lib/local-postgres";
 import { MailServiceError } from "@/app/lib/mail/synology-mailplus";
 
@@ -24,6 +25,7 @@ export function handleAuthError(error: unknown) {
         error instanceof AuthInputError
         || error instanceof AuthServiceError
         || error instanceof EmailVerificationError
+        || error instanceof AccountRecoveryError
     ) {
         return authErrorResponse(error.code, error.message, error.status);
     }
@@ -73,6 +75,7 @@ export async function readJsonBody(request: Request): Promise<unknown> {
 export interface PublicLearnerProfile {
     id: string;
     displayName: string;
+    educationStatus: AuthenticatedAccount["learner"]["educationStatus"];
     gradeCode: string | null;
     gradeName: string | null;
     semesterCode: string | null;
@@ -129,6 +132,7 @@ function publicLearnerProfile(
     return {
         id: learner.id,
         displayName: learner.displayName,
+        educationStatus: learner.educationStatus,
         gradeCode: learner.gradeCode,
         gradeName: learner.gradeName,
         semesterCode: learner.semesterCode,

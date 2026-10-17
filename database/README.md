@@ -2,18 +2,21 @@
 
 正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
 
-Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0011` 共十一個 migration 定義 96 張業務資料表，另有技術性的 `schema_migrations`。`0006` 至 `0010` 在既有資料表補型別、欄位或完整性限制；`0011` 新增 `practice_score_receipts` 與 `asset_object_cleanup_jobs`，並在 `practice_sessions` 加入計分彙總欄位。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
+Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0013` 共十三個 migration 定義 106 張業務資料表，另有技術性的 `schema_migrations`。`0012` 新增管理目錄、題庫補全與手寫分析 sidecar 等十張資料表；`0013` 建立國小、國中、高中共十二個年級與上下學期正式目錄。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
 
 ## 本機驗證
 
-註冊新密碼至少 8 字元，不要求字元種類混用，阻擋常見弱密碼、全空白與首尾空白；只保存 scrypt 雜湊。既有密碼不修改，登入保留相容。信箱驗證沿用 `verification_challenges`，只保存 token 雜湊，並在同一帳號鎖及交易內處理過期、一次性消耗與 `verified_at` 更新。密碼重設可共用新密碼驗證函式，但重設 API、介面與 challenge 尚未完成；實際 SMTP 設定與真實寄信也尚未完成。
+註冊與密碼重設的新密碼至少 8 字元，不要求字元種類混用，並阻擋常見弱密碼、全空白與首尾空白；只保存 scrypt 雜湊。既有密碼不批次修改，登入保留相容。信箱驗證、密碼重設及角色 PIN 設定／重設沿用 `verification_challenges`，一次性 token 只保存雜湊。密碼重設成功後不更新 `verified_at`，並撤銷該帳號的所有 session；角色 PIN 流程要求單一有效且已驗證的電子郵件與仍有效的目標角色，成功後只撤銷該目標角色的 session。這些程式與不連網針對性測試已完成，challenge 固定綁定電子郵件 identity 的資料庫契約已由 `0012` 整合。ERP 非機密 SMTP host、port 與 TLS 已核實；Lerniqa 憑證、outbox、實際 handshake 與真實寄信仍未設定，也不得讀取或複製 ERP secret。目前同步寄信仍有已知／未知帳號的 timing enumeration 風險；outbox 與等時回應不屬於 `0012`，是獨立的上線阻擋。
 
 ```bash
 npm run db:test
 npm run test:import-ownership
 npm run test:local-practice
+npm run test:account-recovery
 node --test tests/practice-catalog-integration.test.mjs
 ```
+
+前三個資料庫 runner 使用隔離合成資料。`test:account-recovery` 不啟動資料庫或寄送真實郵件，檢查密碼／PIN 輸入、token、mail adapter 與 repository／route 契約。
 
 預設模式需要 `initdb`、`pg_ctl`、`createdb`、`psql` 與 `pg_dump` 可由 `PATH` 執行。驗證腳本會在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP，只開啟權限為 `0700` 的私有 Unix socket，並清除可能把指令導向既有伺服器的 PostgreSQL 環境設定。每個資料庫指令都明確指定 host、port、user 與 database，且以 `PSQLRC=/dev/null` 執行。
 
@@ -27,7 +30,7 @@ macOS 的 SysV shared-memory 額度無法再建立短命 cluster 時，可明確
 
 腳本會自動找出每組 migration，依序執行前進與限制測試，再逐階段回滾、檢查 migration 紀錄／資料表／schema 回復，最後再次前進並比對 schema。預設模式結束時停止 cluster 並刪除整個暫存目錄；existing-local-server 模式則刪除本次建立的所有測試資料庫與 session，不停止既有 server。兩種模式都不得沿用未經明確核對的 `PGHOST` 或 production 連線。
 
-`db:test` 會驗證 `0001` 至 `0011` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前十一個 migration 的驗收。
+`db:test` 會驗證 `0001` 至 `0013` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前十三個 migration 的驗收。
 
 最近一次完整 `db:test` 已在明確 opt-in 的本機 Unix-socket PostgreSQL 隔離資料庫模式通過。它涵蓋 `0007` 到 `0008` 安裝窗口的 archive race、`0009` preflight 與子資料發布併發、`0010` 的 `account_role`／grant 撤銷及 self access／learner rename 雙連線回歸，以及 `0011` 的舊版 `score` 明細清除、統計重建、資產清理排程、彙總與收據完整性、逐層 down、第二次 up 和 schema parity；完成後 `lerniqa_schema_test_%` 資料庫與測試 session 均為 0。
 
@@ -45,13 +48,17 @@ npm run db:local:stop
 
 本機 cluster 只監聽 `local-data/postgres-socket` 內權限為 `0700` 的 Unix socket，不開啟 TCP。它使用本機作業系統使用者，不建立新的資料庫密碼或永久憑證。`local-data`、cluster、socket、log 與 asset 全部不進版控。不要把這個 cluster 改成共用 PostgreSQL，也不要將它連向 production。
 
-本機應用以 `pg` 直接執行參數化 SQL。`instant` 與 `complete` 在交易內保存練習、需要保留的作答、錯題佇列與 `analytics_outbox`；`score` 只保存 session aggregate 與不含答案、逐題判定或耗時的冪等收據。`/account` 提供電子郵件與密碼的註冊、登入、登出、目前帳號查詢及驗證信寄送，`/account/verify-email` 使用一次性 token 完成確認；密碼使用 scrypt 雜湊，瀏覽器只持有 HttpOnly session cookie，資料庫只保存 session 與驗證 token 的 SHA-256 雜湊。未登入、cookie 無效或 session 到期時，當頁會清除帳號範圍狀態。登出、session 到期、角色、目前學習者或信箱驗證狀態改變時，其他已開分頁會重新驗證 `auth/me`，清除失效的帳號工作區或載入新的操作情境；頁面重新取得焦點與恢復可見時也會重新驗證。公開的帳號 DTO 會從 PostgreSQL 讀出學習者年級、學期、練習偏好，以及已啟用科目的出版社與書籍版本；學校與代表圖片等非練習必要資料不包含在這個回應。
+本機應用以 `pg` 直接執行參數化 SQL。`instant` 與 `complete` 在交易內保存練習、需要保留的作答、錯題佇列與 `analytics_outbox`；`score` 只保存 session aggregate 與不含答案、逐題判定或耗時的冪等收據。`/account` 提供電子郵件與密碼的註冊、登入、登出、目前帳號查詢、驗證信寄送及忘記密碼流程，`/account/verify-email` 使用一次性 token 完成確認。密碼使用 scrypt 雜湊，瀏覽器只持有 HttpOnly session cookie，資料庫只保存 session 與驗證 token 的 SHA-256 雜湊。密碼重設成功後撤銷該帳號的所有 session，但不把電子郵件標為已驗證。未登入、cookie 無效或 session 到期時，當頁會清除帳號範圍狀態。登出、session 到期、角色、目前學習者或信箱驗證狀態改變時，其他已開分頁會重新驗證 `auth/me`，清除失效的帳號工作區或載入新的操作情境；頁面重新取得焦點與恢復可見時也會重新驗證。公開的帳號 DTO 會從 PostgreSQL 讀出學習者年級、學期、練習偏好，以及已啟用科目的出版社與書籍版本；學校與代表圖片等非練習必要資料不包含在這個回應。
 
 `/system-settings` 是帳號層設定。`account_role` 表示帳號主要身分，session 的 `active_role` 表示目前能力；只要帳號仍有有效的 parent 或 tutor 授權，即使 `account_role=learner`，切到相應 `active_role` 後也可從 PostgreSQL 建立、選取及管理有權存取的學習者。切入受管學習者的 learner 模式後，帳號身分、建立、帳號層更新與選取端點回傳 `403`。只有 self learner 能力的帳號可以查看自己的系統設定，但不能建立受管學習者。`/settings` 是目前學習者的獨立設定頁；切入受管學習者模式後仍可進入，但只有有效、已接受、未撤銷且 `can_manage_settings=true` 的關係可寫入。目前資料庫寫入已涵蓋顯示名稱、年級、學期與各科書籍版本；就學狀態、學校、代表圖片、練習偏好與考試仍待正式寫入 API。
 
-一般帳號本身的 `account_role`、session 的目前角色／學習者與 `system_admin` 授權是不同概念。`account_role` 是主要身分，不會撤銷帳號另外持有的有效一般角色；實際可用能力由 `active_role` 與對應的有效 `user_roles` 授權決定。每個帳號只允許一位名稱與帳號同步的 self learner。角色端點只允許目前 session 切換至帳號已獲授、未撤銷的角色，不新增或修改 `system_admin` 授權；目前成人角色切換以帳號密碼重新確認，不使用尚未接線的角色 PIN 流程。
+一般帳號本身的 `account_role`、session 的目前角色／學習者與 `system_admin` 授權是不同概念。`account_role` 是主要身分，不會撤銷帳號另外持有的有效一般角色；實際可用能力由 `active_role` 與對應的有效 `user_roles` 授權決定。每個帳號只允許一位名稱與帳號同步的 self learner。角色 PIN 的設定／重設 challenge、API 與介面已完成，且要求已驗證的電子郵件與仍有效的 parent／tutor 目標角色；成功後只撤銷該角色的 session。角色端點仍以帳號密碼重新確認，並只允許目前 session 切換至帳號已獲授、未撤銷的角色，不新增或修改 `system_admin` 授權；角色 PIN 尚不參與角色切換。
 
-`/api/v1/local-practice/*` 從 session 取得帳號與學習者，並以 `learner_access` 及 `question_bank_learners` 限制可讀題庫、練習、作答與歷程。進行中的練習以伺服器 session UUID 恢復可安全恢復的進度，重新整理後先暫停；尚未送出的文字與手寫內容不保存。`instant` 可在送出後取得逐題結果；`complete` 在 session 完成前遮住結果，完成後才回傳明細；`score` 進行中只確認送出，完成後保存並回傳總題數、答對、答錯、待檢視與正確率，重載後仍能讀回 aggregate 與已送出狀態，但資料庫只留下不含答案／判定的冪等收據，不建立逐題明細或錯題佇列。歷程與錯題佇列遵守同一揭露規則，不能成為旁路。歷史資料若找不到建立 session 時使用的安全 revision 快照，只回傳結果、時間與內容無法安全顯示的狀態，不以題目目前版本代替。恢復 session 時若固定 revision 與可用內容不一致，伺服器會把舊 session 標記為 `abandoned` 並要求建立新練習。從任意題開始作答時會尋找下一道尚未送出的題目，只有全部 item 都完成才結束 session。驗證帳號使用合成資料；已匯入題庫與已建立的帳號、角色、學習者、練習及作答是持久資料。同一 tailnet 可使用 Tailscale Serve 顯示的私有 HTTPS 網址，實際入口以當機 `tailscale serve status` 為準。本機信箱驗證 challenge／API／介面已完成；SMTP 真實投遞、公開／production HTTPS、登入 rate limit、RLS／production GRANT 與正式角色授權尚未完成。完整操作、匯入安全限制與 production 邊界見 `../docs/local-practice-pilot.md`。
+`/api/v1/local-practice/*` 從 session 取得帳號與學習者，並以 `learner_access` 及 `question_bank_learners` 限制可讀題庫、練習、作答與歷程。進行中的練習以伺服器 session UUID 恢復可安全恢復的進度，重新整理後先暫停；尚未送出的文字與手寫內容不保存。`instant` 可在送出後取得逐題結果；`complete` 在 session 完成前遮住結果，完成後才回傳明細；`score` 進行中只確認送出，完成後保存並回傳總題數、答對、答錯、待檢視與正確率，重載後仍能讀回 aggregate 與已送出狀態，但資料庫只留下不含答案／判定的冪等收據，不建立逐題明細或錯題佇列。歷程與錯題佇列遵守同一揭露規則，不能成為旁路。歷史資料若找不到建立 session 時使用的安全 revision 快照，只回傳結果、時間與內容無法安全顯示的狀態，不以題目目前版本代替。恢復 session 時若固定 revision 與可用內容不一致，伺服器會把舊 session 標記為 `abandoned` 並要求建立新練習。從任意題開始作答時會尋找下一道尚未送出的題目，只有全部 item 都完成才結束 session。驗證帳號使用合成資料；已匯入題庫與已建立的帳號、角色、學習者、練習及作答是持久資料。同一 tailnet 可使用 Tailscale Serve 顯示的私有 HTTPS 網址，實際入口以當機 `tailscale serve status` 為準。本機信箱驗證、密碼重設與角色 PIN 設定／重設的 challenge、API 與介面已完成；SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、OAuth、RLS／production GRANT 與正式角色授權尚未完成。完整操作、匯入安全限制與 production 邊界見 `../docs/local-practice-pilot.md`。
+
+`instant`／`complete` 的手寫提交程式只接受通過嚴格格式與尺寸驗證的 PNG，以 private asset 儲存，並從作答關聯與 `learner_access` 反查讀取權限。文字小題沒有其他答案時，手寫連結只會產生 `pending`／`manual` 結果；同題已有完整文字或選項答案時，手寫圖只連到第一個小題作為計算過程附件，不改變自動判分。`score` 在寫入任何逐題檔案前就會拒絕手寫提交。這些路徑已通過針對性單元與契約測試，完整資料庫 E2E 必須以已整合的 `0012` 執行。
+
+錯題建議練習先建立完整的同細題型候選集；只有數量為 0 時，才可查詢同一已確認相近題群組。沒有同題型候選或已確認群組時回傳無建議，不放寬成同單元或同科目猜測。`score` 不允許建立這種逐題來源的練習。API、選題與來源記錄程式已通過針對性測試；`0012` 已提供正式值域；完整 DB E2E 仍需覆蓋該路徑。
 
 ## Migration 清單
 
@@ -139,7 +146,17 @@ Migration 會在建立限制前檢查既有的 published／superseded 版本；�
 
 down 可回到 `0010` 的 schema，但無法也不應虛構已由這次隱私修正刪除的舊版 `score` 明細，也不復原已標記的 `assets.deleted_at`。為通過 `0005` 的精確 DDL／資料往返 guard，標準 down 會移除 job table、相關 guard，以及 `0011` 產生的 `asset_object_cleanup_queued` 稽核。這只適用於可丟棄的隔離驗證資料庫；有 pending 物件工作的環境不得把 down 當成營運回滾。正式變更 schema 前必須先完成或受控移交工作，並另外保存操作稽核。
 
+### `0012_admin_catalog_and_question_enrichment`
+
+`0012` 補上帳號復原的電子郵件 identity binding、同細題型的佇列／session 來源值域、題庫補全 run／pending suggestion，以及手寫 AI job／run sidecar；它不包含 SMTP outbox。migration 已納入 manifest，並通過空庫、既有資料升級、逐層 down／up 與 schema parity。
+
+題庫補全以 dry-run 為預設；即使未來開啟寫入，也只能新增 `pending` 建議，不得直接改寫已發布的題目版本。手寫 AI sidecar 已接上作答交易、worker 與本機 Ollama；固定模型 metadata、digest、vision capability、合成品質 inference 及隔離的佇列 E2E 均已驗證。手寫 worker 只保存逐字辨識結果與可讀性資料，sidecar 的判定相容欄位固定保持 `pending`；它不接收參考答案，也不能更新 `current_result`、錯題佇列或統計。真實學習者筆跡樣本與人工檢視介面仍未驗收。
+
 各 down migration 只供一次性空白／合成測試資料庫驗證 schema 對稱性，不是正式環境的資料復原程序。資料庫開始承載正式資料後，回復舊版必須使用已演練的向前修正與 operational rollback，保留作答、來源與稽核紀錄，不能直接執行 down 檔。`0008` 的教材分類修正刻意採 forward-only：因為沒有可長久辨識「由 0008 修正」與「原本正確或之後新增」資料列的標記，down 只回滾索引、函式、trigger 與 migration 紀錄，不把 `native/document` 反向改回舊分類。`db:test` 會在 down 後驗證已修正及原本正確的分類都維持不變。
+
+### `0013_education_stage_catalog`
+
+`0013` 將 `grades.stage` 正式限制為 `elementary`、`junior_high`、`senior_high`，建立小一至高三共十二個啟用年級，以及上學期、下學期兩筆學期目錄。公開 `/api/v1/auth/catalog` 依資料庫排序回傳 no-store 目錄；註冊與學習者設定先選教育階段，再從該階段選年級。不在學學習者不保存年級或學期。
 
 ## 尚未完成的 production 串接
 
@@ -148,10 +165,11 @@ Schema 與本機整合通過不代表全部功能已切換至 production 後端�
 - 選定 production 後端、ORM／查詢層或 repository 邊界、PostgreSQL 託管位置、驗證信服務、物件儲存與 Secret Manager。
 - 把本機 session 與 `learner_access` 檢查擴充到正式角色、跨帳號分享與主應用全部資源；任何 API 都不得接受前端自報身份。
 - 補齊 `/settings` 尚未寫入 PostgreSQL 的就學狀態、學校、代表圖片、練習偏好與考試；各科書籍版本已具正式寫入 API，受管學習者的寫入仍須檢查 `can_manage_settings`。
-- 在開放公開／production 登入前完成 HTTPS、電子郵件驗證、密碼重設、登入 rate limit 與帳號復原政策。
+- 在開放公開／production 登入前完成 HTTPS、SMTP 真實投遞、登入 rate limit、OAuth 與正式帳號復原政策；本機密碼重設與角色 PIN 設定／重設流程不能替代這些上線條件。
 - 使用受限的應用程式資料庫角色及受控的高權限程序，補上 RLS／GRANT／必要的 `SECURITY DEFINER` 邊界；`bootstrap_admin`、`system_job` 只是資料列中的來源類型，不能單獨證明 caller 身份。
 - 建立正式匯入、考試、計畫、排程、收藏、審核、統計與附件交易 API。舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 端點已封閉並固定回傳 HTTP `410`；舊 mock `/bank` 已從主導覽移除並轉址 `/questions`。Hanlin CLI 與隔離測試不是產品匯入入口，不能重新包裝舊路徑當成正式資料來源。
-- 將複習與相近題 session 的實際選入來源寫入 `practice_session_item_origins`，並完成相近題候選審核、正式群組關聯與授權後查詢 API；目前的畫面關聯不能替代這些資料。
+- 帳號復原已在整合 `0012` 的隔離資料庫通過 API E2E；同題型推薦、private 手寫 PNG 與題庫補全仍須各自完成完整 E2E，針對性測試不能取代這項驗收。
+- 完成相近題候選審核、正式群組關聯與授權後查詢 API。同題型推薦只會使用既有已確認群組當候補，不會建立或核准新群組。
 - 建立可重跑的 fixture／JSON 搬移工具，輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告。
 - 核准兒童資料、作答、來源文件、附件、IP 與稽核的保存／刪除政策，定義一般 `answer_part_assets` 解除引用及物件刪除的受權限路徑；實作 `asset_object_cleanup_jobs` worker，確認外部物件確實刪除後才寫 `object_deleted_at`。另外完成一般資料刪除 worker、統計 worker、重算命令及管理 API。
 

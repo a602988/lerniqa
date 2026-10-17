@@ -1,4 +1,5 @@
 import {
+    findLocalPracticeHandwritingPart,
     submitLocalPracticeAttempt,
     type SubmitLocalPracticeAttemptInput,
 } from "@/app/lib/local-practice-store";
@@ -8,6 +9,10 @@ import {
     type LocalPracticeAnswerInput,
 } from "@/app/lib/local-practice-types";
 import {
+    MAX_HANDWRITING_BYTES,
+    validateHandwritingPngDataUrl,
+} from "@/app/lib/handwriting-png";
+import {
     errorResponse,
     handleLocalPracticeError,
     isRecord,
@@ -16,8 +21,29 @@ import {
     requireLocalPracticeAccount,
     UUID_PATTERN,
 } from "../_shared";
+import {
+    handwritingAiConfiguration,
+    inspectHandwritingModel,
+    transcribeHandwriting,
+} from "@/app/lib/handwriting-analysis.mjs";
 
 export const runtime = "nodejs";
+
+let handwritingModelPromise: ReturnType<typeof inspectHandwritingModel> | undefined;
+
+/** 只在目前網站程序內快取已核對 digest 與 vision capability 的本機模型。 */
+async function getHandwritingModel() {
+    handwritingModelPromise ??= inspectHandwritingModel({
+        configuration: handwritingAiConfiguration(),
+    });
+    try {
+        return await handwritingModelPromise;
+    }
+    catch (error) {
+        handwritingModelPromise = undefined;
+        throw error;
+    }
+}
 
 function parseAnswer(value: unknown): LocalPracticeAnswerInput | null {
     if (!isRecord(value) || typeof value.partId !== "string" || !UUID_PATTERN.test(value.partId)) return null;
@@ -36,7 +62,11 @@ function parseAnswer(value: unknown): LocalPracticeAnswerInput | null {
     return null;
 }
 
-function parseAttemptRequest(value: unknown): SubmitLocalPracticeAttemptInput | null {
+type ParsedAttemptRequest = Omit<SubmitLocalPracticeAttemptInput, "handwriting"> & {
+    handwritingDataUrl?: string;
+};
+
+function parseAttemptRequest(value: unknown): ParsedAttemptRequest | null {
     if (
         !isRecord(value)
         || typeof value.sessionId !== "string"
@@ -55,6 +85,14 @@ function parseAttemptRequest(value: unknown): SubmitLocalPracticeAttemptInput | 
         || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u.test(value.idempotencyKey)
         || !Array.isArray(value.answers)
         || value.answers.length > 100
+        || (
+            value.handwriting !== undefined
+            && (
+                !isRecord(value.handwriting)
+                || typeof value.handwriting.dataUrl !== "string"
+                || value.handwriting.dataUrl.length > Math.ceil(MAX_HANDWRITING_BYTES * 4 / 3) + 64
+            )
+        )
     ) return null;
 
     const answers = value.answers.map(parseAnswer);
@@ -81,6 +119,9 @@ function parseAttemptRequest(value: unknown): SubmitLocalPracticeAttemptInput | 
         idempotencyKey: value.idempotencyKey,
         durationSeconds,
         answers: parsedAnswers,
+        ...(isRecord(value.handwriting) && typeof value.handwriting.dataUrl === "string"
+            ? { handwritingDataUrl: value.handwriting.dataUrl }
+            : {}),
     };
 }
 
@@ -98,7 +139,44 @@ export async function POST(request: Request) {
         const input = parseAttemptRequest(body);
         if (!input) return errorResponse("INVALID_ATTEMPT_REQUEST", "作答資料格式不正確或超過限制。", 400);
 
-        const result = await submitLocalPracticeAttempt(input, {
+        const handwriting = input.handwritingDataUrl === undefined
+            ? undefined
+            : validateHandwritingPngDataUrl(input.handwritingDataUrl);
+        if (input.handwritingDataUrl !== undefined && !handwriting) {
+            return errorResponse("INVALID_HANDWRITING", "手寫板沒有有效筆跡，請先書寫後再送出。", 400);
+        }
+        const { handwritingDataUrl: _handwritingDataUrl, ...attemptInput } = input;
+        void _handwritingDataUrl;
+        let handwritingTranscriptionPartId: string | undefined;
+        if (handwriting) {
+            handwritingTranscriptionPartId = await findLocalPracticeHandwritingPart(attemptInput, {
+                userId: account.userId,
+                learnerId: account.learner.id,
+            }) ?? undefined;
+            if (handwritingTranscriptionPartId) {
+                try {
+                    const model = await getHandwritingModel();
+                    const transcription = await transcribeHandwriting(handwriting.bytes, model);
+                    if (transcription.legibility === "clear" && transcription.transcription) {
+                        attemptInput.answers.push({
+                            partId: handwritingTranscriptionPartId,
+                            value: transcription.transcription,
+                        });
+                    }
+                    else {
+                        handwritingTranscriptionPartId = undefined;
+                    }
+                }
+                catch {
+                    handwritingTranscriptionPartId = undefined;
+                }
+            }
+        }
+        const result = await submitLocalPracticeAttempt({
+            ...attemptInput,
+            ...(handwriting ? { handwriting } : {}),
+            ...(handwritingTranscriptionPartId ? { handwritingTranscriptionPartId } : {}),
+        }, {
             userId: account.userId,
             learnerId: account.learner.id,
         });

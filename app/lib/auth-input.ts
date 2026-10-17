@@ -1,6 +1,8 @@
 export const ACCOUNT_ROLES = ["parent", "learner", "tutor"] as const;
+export const LEARNER_EDUCATION_STATUSES = ["enrolled", "not_enrolled"] as const;
 
 export type AccountRole = (typeof ACCOUNT_ROLES)[number];
+export type LearnerEducationStatus = (typeof LEARNER_EDUCATION_STATUSES)[number];
 
 export interface RegisterAccountInput {
     displayName: string;
@@ -8,6 +10,9 @@ export interface RegisterAccountInput {
     email: string;
     password: string;
     role: AccountRole;
+    educationStatus: LearnerEducationStatus;
+    gradeCode: string | null;
+    semesterCode: string | null;
 }
 
 export interface LoginAccountInput {
@@ -20,11 +25,32 @@ export interface SwitchAccountRoleInput {
     password?: string;
 }
 
+export type RolePinTargetRole = Extract<AccountRole, "parent" | "tutor">;
+
+export interface PasswordResetRequestInput {
+    email: string;
+}
+
+export interface PasswordResetConfirmInput {
+    token: string;
+    newPassword: string;
+}
+
+export interface RolePinResetRequestInput {
+    targetRole: RolePinTargetRole;
+}
+
+export interface RolePinResetConfirmInput {
+    token: string;
+    newPin: string;
+}
+
 export interface CreateAccountLearnerInput {
     clientRequestId: string;
     displayName: string;
-    gradeCode: string;
-    semesterCode: string;
+    educationStatus: LearnerEducationStatus;
+    gradeCode: string | null;
+    semesterCode: string | null;
 }
 
 export type UpdateAccountLearnerInput =
@@ -36,8 +62,9 @@ export type UpdateAccountLearnerInput =
         action: "update" | "update-current";
         learnerId: string;
         displayName: string;
-        gradeCode: string;
-        semesterCode: string;
+        educationStatus: LearnerEducationStatus;
+        gradeCode: string | null;
+        semesterCode: string | null;
     }>;
 
 export interface UpdateLearnerSubjectSettingInput {
@@ -52,6 +79,8 @@ export const ACCOUNT_PASSWORD_MAX_LENGTH = 128;
 export const ACCOUNT_PASSWORD_HINT = "至少 8 個字元；不必混合大小寫、數字與符號，請避開常見弱密碼。";
 
 const ACCOUNT_PASSWORD_MAX_BYTES = 512;
+const ACCOUNT_RECOVERY_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const ROLE_PIN_PATTERN = /^\d{6}$/u;
 const COMMON_WEAK_PASSWORDS = new Set([
     "00000000",
     "11111111",
@@ -101,6 +130,29 @@ function normalizeName(value: unknown, label: string): string {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", `${label}必須是 1 到 80 個字元。`);
     }
     return normalized;
+}
+
+function parseLearnerEducationFields(value: Record<string, unknown>): Readonly<{
+    educationStatus: LearnerEducationStatus;
+    gradeCode: string | null;
+    semesterCode: string | null;
+}> {
+    if (!LEARNER_EDUCATION_STATUSES.includes(value.educationStatus as LearnerEducationStatus)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "學習者身分格式不正確。");
+    }
+    const educationStatus = value.educationStatus as LearnerEducationStatus;
+    if (educationStatus === "enrolled") {
+        return {
+            educationStatus,
+            gradeCode: normalizeCatalogCode(value.gradeCode, "年級", 30),
+            semesterCode: normalizeCatalogCode(value.semesterCode, "學期", 20),
+        };
+    }
+    if (![undefined, null, ""].includes(value.gradeCode as undefined | null | string)
+        || ![undefined, null, ""].includes(value.semesterCode as undefined | null | string)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "社會人士不能設定年級或學期。");
+    }
+    return { educationStatus, gradeCode: null, semesterCode: null };
 }
 
 export function normalizeAccountEmail(value: unknown): string {
@@ -166,6 +218,67 @@ export function validateNewAccountPassword(value: unknown): string {
     return password;
 }
 
+function validateAccountRecoveryToken(value: unknown): string {
+    if (typeof value !== "string" || !ACCOUNT_RECOVERY_TOKEN_PATTERN.test(value)) {
+        throw new AuthInputError(
+            "ACCOUNT_RECOVERY_INVALID",
+            "重設連結無效，請重新提出申請。",
+        );
+    }
+    return value;
+}
+
+export function validateNewRolePin(value: unknown): string {
+    if (typeof value !== "string" || !ROLE_PIN_PATTERN.test(value)) {
+        throw new AuthInputError("INVALID_ROLE_PIN", "角色 PIN 必須是六位數字。", 400);
+    }
+    if (
+        /^(.)\1{5}$/u.test(value)
+        || value === "123456"
+        || value === "654321"
+    ) {
+        throw new AuthInputError(
+            "INVALID_ROLE_PIN",
+            "這組角色 PIN 太容易猜，請改用其他六位數字。",
+        );
+    }
+    return value;
+}
+
+export function parsePasswordResetRequestInput(value: unknown): PasswordResetRequestInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "密碼重設資料格式不正確。");
+    }
+    return { email: normalizeAccountEmail(value.email) };
+}
+
+export function parsePasswordResetConfirmInput(value: unknown): PasswordResetConfirmInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "密碼重設資料格式不正確。");
+    }
+    return {
+        token: validateAccountRecoveryToken(value.token),
+        newPassword: validateNewAccountPassword(value.newPassword),
+    };
+}
+
+export function parseRolePinResetRequestInput(value: unknown): RolePinResetRequestInput {
+    if (!isRecord(value) || (value.targetRole !== "parent" && value.targetRole !== "tutor")) {
+        throw new AuthInputError("INVALID_ROLE", "請選擇家長或家教身份。", 400);
+    }
+    return { targetRole: value.targetRole };
+}
+
+export function parseRolePinResetConfirmInput(value: unknown): RolePinResetConfirmInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "角色 PIN 重設資料格式不正確。");
+    }
+    return {
+        token: validateAccountRecoveryToken(value.token),
+        newPin: validateNewRolePin(value.newPin),
+    };
+}
+
 function parseRole(value: unknown): AccountRole {
     if (typeof value !== "string" || !ACCOUNT_ROLES.includes(value as AccountRole)) {
         throw new AuthInputError("INVALID_ROLE", "請選擇家長、學習者或家教身份。");
@@ -205,6 +318,7 @@ export function parseRegisterAccountInput(value: unknown): RegisterAccountInput 
     }
     const displayName = normalizeName(value.displayName, "帳號稱呼");
     const role = parseRole(value.role);
+    const education = parseLearnerEducationFields(value);
     return {
         displayName,
         learnerName: role === "learner"
@@ -213,6 +327,7 @@ export function parseRegisterAccountInput(value: unknown): RegisterAccountInput 
         email: normalizeAccountEmail(value.email),
         password: validateNewAccountPassword(value.password),
         role,
+        ...education,
     };
 }
 
@@ -244,11 +359,11 @@ export function parseCreateAccountLearnerInput(value: unknown): CreateAccountLea
     if (!isRecord(value)) {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "新增學習者資料格式不正確。");
     }
+    const education = parseLearnerEducationFields(value);
     return {
         clientRequestId: normalizeUuid(value.clientRequestId, "請求識別碼"),
         displayName: normalizeName(value.displayName, "學習者稱呼"),
-        gradeCode: normalizeCatalogCode(value.gradeCode, "年級", 30),
-        semesterCode: normalizeCatalogCode(value.semesterCode, "學期", 20),
+        ...education,
     };
 }
 
@@ -261,12 +376,12 @@ export function parseUpdateAccountLearnerInput(value: unknown): UpdateAccountLea
     if (value.action !== "update" && value.action !== "update-current") {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "學習者設定動作不正確。");
     }
+    const education = parseLearnerEducationFields(value);
     return {
         action: value.action,
         learnerId,
         displayName: normalizeName(value.displayName, "學習者稱呼"),
-        gradeCode: normalizeCatalogCode(value.gradeCode, "年級", 30),
-        semesterCode: normalizeCatalogCode(value.semesterCode, "學期", 20),
+        ...education,
     };
 }
 

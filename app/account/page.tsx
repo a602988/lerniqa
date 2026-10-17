@@ -31,9 +31,15 @@ import {
     isAuthSessionContextStorageEvent,
     isAuthSessionStorageEvent,
 } from "../lib/auth-session-client";
+import {
+    findEducationStage,
+    type EducationCatalog,
+    type EducationStage,
+} from "../lib/education-catalog-contract";
 import styles from "./account.module.css";
 
 type AccountRole = "parent" | "learner" | "tutor";
+type LearnerEducationStatus = "enrolled" | "not_enrolled";
 type AccountMode = "login" | "register";
 type MessageTone = "error" | "success" | "warning";
 
@@ -70,6 +76,10 @@ interface VerificationRequestResponse {
     };
 }
 
+interface EducationCatalogResponse {
+    data: { catalog: EducationCatalog };
+}
+
 const ROLE_LABELS: Record<AccountRole, string> = {
     parent: "家長",
     learner: "學習者本人",
@@ -99,6 +109,12 @@ export default function AccountPage() {
     const [messageTone, setMessageTone] = useState<MessageTone>("success");
     const [transportAllowed, setTransportAllowed] = useState<boolean | null>(null);
     const [registerRole, setRegisterRole] = useState<AccountRole>("parent");
+    const [educationStatus, setEducationStatus] = useState<LearnerEducationStatus>("enrolled");
+    const [educationCatalog, setEducationCatalog] = useState<EducationCatalog>();
+    const [educationCatalogError, setEducationCatalogError] = useState("");
+    const [educationStage, setEducationStage] = useState<EducationStage | "">("");
+    const [gradeCode, setGradeCode] = useState("");
+    const [semesterCode, setSemesterCode] = useState("");
 
     const clearExpiredAccount = useCallback((nextMessage: string) => {
         setAccount(null);
@@ -120,6 +136,23 @@ export default function AccountPage() {
                 setMessage(error instanceof Error ? error.message : "無法讀取帳號狀態。");
             })
             .finally(() => setLoading(false));
+    }, []);
+
+    useEffect(() => {
+        void fetch("/api/v1/auth/catalog", { cache: "no-store" })
+            .then((response) => readApi<EducationCatalogResponse>(response))
+            .then(({ data }) => {
+                const preferredStage = data.catalog.stages.find((stage) => stage.code === "junior_high")
+                    ?? data.catalog.stages[0];
+                setEducationCatalog(data.catalog);
+                setEducationStage(preferredStage?.code ?? "");
+                setGradeCode(preferredStage?.grades[0]?.code ?? "");
+                setSemesterCode(data.catalog.semesters[0]?.code ?? "");
+                setEducationCatalogError("");
+            })
+            .catch((error) => {
+                setEducationCatalogError(error instanceof Error ? error.message : "目前無法讀取教育階段與年級。");
+            });
     }, []);
 
     useEffect(() => {
@@ -230,6 +263,11 @@ export default function AccountPage() {
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!transportAllowed || submitting) return;
+        if (mode === "register" && educationStatus === "enrolled" && (!gradeCode || !semesterCode)) {
+            setMessageTone("error");
+            setMessage("請先選擇教育階段、年級與學期。");
+            return;
+        }
         setSubmitting(true);
         setMessage("");
         try {
@@ -250,6 +288,9 @@ export default function AccountPage() {
                     email: form.get("email"),
                     password,
                     role: registerRole,
+                    educationStatus,
+                    gradeCode: educationStatus === "enrolled" ? gradeCode : null,
+                    semesterCode: educationStatus === "enrolled" ? semesterCode : null,
                 };
             const response = await fetch(`/api/v1/auth/${mode}`, {
                 method: "POST",
@@ -367,6 +408,16 @@ export default function AccountPage() {
                                         <dd><Badge tone={account.emailVerified ? "success" : "warning"}>{account.emailVerified === null ? "帳號資訊已隱藏" : account.emailVerified ? "已驗證" : "待驗證"}</Badge></dd>
                                     </div>
                                 </dl>
+                                {account.roles.some((role) => role === "parent" || role === "tutor") && (
+                                    <Link className={styles.recoveryLink} href="/account/forgot-role-pin">
+                                        <LockKeyhole aria-hidden="true" />
+                                        <span>
+                                            <strong>設定／重設角色 PIN</strong>
+                                            <small>只更新 PIN 憑證；目前切換角色仍使用帳號密碼。</small>
+                                        </span>
+                                        <ArrowRight aria-hidden="true" />
+                                    </Link>
+                                )}
                                 {account.emailVerified === false && (
                                     <div className={styles.verificationNote}>
                                         <div><MailCheck aria-hidden="true" /><span><strong>完成信箱驗證</strong><small>驗證連結只可使用一次，並會在 60 分鐘後失效。</small></span></div>
@@ -426,13 +477,60 @@ export default function AccountPage() {
                                             )}
                                         </div>
                                     )}
+                                    {mode === "register" && (
+                                        <div className={styles.identityFields}>
+                                            <label>學習身分
+                                                <select name="educationStatus" onChange={(event) => {
+                                                    const nextStatus = event.target.value as LearnerEducationStatus;
+                                                    setEducationStatus(nextStatus);
+                                                    if (nextStatus === "enrolled" && educationCatalog) {
+                                                        const stage = findEducationStage(educationCatalog, gradeCode)
+                                                            ?? educationCatalog.stages[0];
+                                                        setEducationStage(stage?.code ?? "");
+                                                        setGradeCode(stage?.grades[0]?.code ?? "");
+                                                        setSemesterCode((current) => current || educationCatalog.semesters[0]?.code || "");
+                                                    }
+                                                }} required value={educationStatus}>
+                                                    <option value="enrolled">學生</option>
+                                                    <option value="not_enrolled">社會人士</option>
+                                                </select>
+                                            </label>
+                                            {educationStatus === "enrolled" && <>
+                                                <label>教育階段
+                                                    <select disabled={!educationCatalog?.stages.length} onChange={(event) => {
+                                                        const nextStage = event.target.value as EducationStage;
+                                                        const stage = educationCatalog?.stages.find((candidate) => candidate.code === nextStage);
+                                                        setEducationStage(nextStage);
+                                                        setGradeCode(stage?.grades[0]?.code ?? "");
+                                                    }} required value={educationStage}>
+                                                        {educationCatalog?.stages.map((stage) => <option key={stage.code} value={stage.code}>{stage.name}</option>)}
+                                                    </select>
+                                                </label>
+                                                <label>年級
+                                                    <select disabled={!educationStage} name="gradeCode" onChange={(event) => setGradeCode(event.target.value)} required value={gradeCode}>
+                                                        {educationCatalog?.stages.find((stage) => stage.code === educationStage)?.grades.map((grade) => <option key={grade.code} value={grade.code}>{grade.name}</option>)}
+                                                    </select>
+                                                </label>
+                                                <label>學期
+                                                    <select disabled={!educationCatalog?.semesters.length} name="semesterCode" onChange={(event) => setSemesterCode(event.target.value)} required value={semesterCode}>
+                                                        {educationCatalog?.semesters.map((semester) => <option key={semester.code} value={semester.code}>{semester.name}</option>)}
+                                                    </select>
+                                                </label>
+                                            </>}
+                                        </div>
+                                    )}
+                                    {mode === "register" && educationCatalogError && <p className={styles.status} data-tone="error" role="alert">{educationCatalogError}</p>}
                                     <label>電子郵件<input autoCapitalize="none" autoComplete="email" inputMode="email" maxLength={320} name="email" placeholder="name@example.com" required spellCheck={false} type="email" /></label>
-                                    <label>密碼
-                                        <input aria-describedby={mode === "register" ? "new-password-hint" : undefined} autoComplete={mode === "login" ? "current-password" : "new-password"} maxLength={ACCOUNT_PASSWORD_MAX_LENGTH} minLength={ACCOUNT_PASSWORD_MIN_LENGTH} name="password" required type="password" />
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabelRow}>
+                                            <label htmlFor="account-password">密碼</label>
+                                            {mode === "login" && <Link href="/account/forgot-password">忘記密碼？</Link>}
+                                        </span>
+                                        <input id="account-password" aria-describedby={mode === "register" ? "new-password-hint" : undefined} autoComplete={mode === "login" ? "current-password" : "new-password"} maxLength={ACCOUNT_PASSWORD_MAX_LENGTH} minLength={ACCOUNT_PASSWORD_MIN_LENGTH} name="password" required type="password" />
                                         {mode === "register" && <small id="new-password-hint">{ACCOUNT_PASSWORD_HINT}</small>}
-                                    </label>
+                                    </div>
                                     {message && <p className={styles.status} data-tone={messageTone} role={messageTone === "error" ? "alert" : "status"}>{message}</p>}
-                                    <Button disabled={submitting} type="submit">
+                                    <Button disabled={submitting || (mode === "register" && educationStatus === "enrolled" && (!gradeCode || !semesterCode))} type="submit">
                                         {mode === "login" ? <LogIn aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
                                         {submitting ? "處理中…" : mode === "login" ? "登入" : "建立帳號並登入"}
                                     </Button>

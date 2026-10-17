@@ -13,6 +13,7 @@ export const LOCAL_PRACTICE_MAX_QUESTIONS = 500;
 export const LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE = 500;
 export const LOCAL_PRACTICE_MAX_ANSWER_LENGTH = 4_000;
 export const LOCAL_PRACTICE_MAX_DURATION_SECONDS = 24 * 60 * 60;
+export const LOCAL_PRACTICE_MAX_RECOMMENDATIONS = 100;
 
 export type LocalPracticeResult = "correct" | "wrong" | "pending";
 export interface LocalPracticeSessionSettings {
@@ -97,6 +98,8 @@ export interface LocalPracticeQuestion {
     revisionNumber: number;
     code: string | null;
     type: LocalPracticeCatalogValue;
+    /** Fine-grained label retained from the source when the formal type is intentionally broad. */
+    originalTypeLabel: string | null;
     grade: LocalPracticeCatalogValue;
     subject: LocalPracticeCatalogValue;
     semester: LocalPracticeCatalogValue | null;
@@ -109,6 +112,18 @@ export interface LocalPracticeQuestion {
     prompt: string;
     promptBlocks: LocalPracticeContentBlock[];
     parts: LocalPracticeQuestionPart[];
+}
+
+export type LocalPracticeRecommendationKind = "same_type" | "confirmed_similar" | "topic_similar" | "none";
+
+export interface LocalPracticeRecommendationResult {
+    recommendationKind: LocalPracticeRecommendationKind;
+    availableCount: number;
+    classificationLabel: string | null;
+    explanation: string;
+    questions: LocalPracticeQuestion[];
+    /** Present only when a start request selected at least one eligible question. */
+    session: LocalPracticeSession | null;
 }
 
 export interface LocalPracticeSessionItem {
@@ -143,11 +158,26 @@ export interface LocalPracticeAnswerInput {
     value: LocalPracticeAnswerValue;
 }
 
+export interface LocalPracticeHandwritingInput {
+    /** Browser canvas PNG. The server validates dimensions, PNG structure and visible ink. */
+    dataUrl: string;
+}
+
+export interface LocalPracticeHandwritingAsset {
+    id: string;
+    mimeType: "image/png";
+    width: number;
+    height: number;
+    /** Authorization is rechecked when this private URL is fetched. */
+    url: string;
+}
+
 export interface LocalPracticeAttemptPartResult {
     partId: string;
     result: LocalPracticeResult;
     gradingSource: LocalPracticeGradingSource;
     feedbackCode: LocalPracticeFeedbackCode;
+    handwritingAssets: LocalPracticeHandwritingAsset[];
 }
 
 /** Reference material released only after the disclosure policy unlocks an attempt. */

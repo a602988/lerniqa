@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0011` 共十一個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性，以及 `score` session 的彙總與逐題資料隱私。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0013` 共十三個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar，以及十二年國教年級目錄。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -20,7 +20,13 @@
 
 `database/migrations/0005_similarity_analytics_and_audit.up.sql` 已建立相近題、統計、隱私政策、outbox、重算工作、管理員稽核與資料刪除共 14 張業務資料表，並為 `learner_practice_queue_items` 與 `practice_session_item_origins` 加入 `similarity_group_id`、外鍵與 `confirmed_group` 值域。它也補上 `curriculum_units`、`source_categories` 的系統／帳號所有權，以及代表圖片、題目內容、來源文件、裁切圖、手寫與一般作答附件的用途、掃描狀態和刪除狀態完整性。`0006` 補齊 Word 來源型別，`0007` 補齊選項答案與 ready DOCX 來源的交易結束完整性限制。`0008` 要求有效 session 指定啟用中的學習者，固定帳號／學習者鎖定順序，並只把指定 confirmed Hanlin 批次的教材關聯修正為 `native/document`。`0009` 要求 published／superseded 版本中的自動判分小題具備可用答案，升級前發現既有缺漏就停止，不猜測或補造答案。`0010` 加入 `users.account_role`、self learner 唯一性、名稱與設定權限一致性，以及相關登入身份、角色與學習者關係的交易最終狀態限制。`0011` 為 `practice_sessions` 加入五個 `score` 彙總欄位，新增不含答案與判定的 `practice_score_receipts`，將舊版 `score` 逐題資料改為只保留彙總與收據，從剩餘非 `score` 明細重建五張統計表，並以 `asset_object_cleanup_jobs` 追蹤只屬於舊 `score` 的私有作答物件清理。
 
-十一個 migration 合計 96 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
+### `0012` 管理目錄與題庫補全契約
+
+`0012` 把密碼／角色 PIN 復原 challenge 固定綁定到電子郵件 identity，同時擴充錯題佇列與 session origin 的同細題型值域，新增 `question_enrichment_runs`、`question_revision_enrichment_suggestions`、`handwriting_analysis_jobs` 與 `handwriting_analysis_runs`；它不包含 SMTP outbox。欄位、限制與索引以已整合的 migration SQL 為權威。
+
+題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
+
+十三個 migration 合計 106 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -62,7 +68,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `user_id` | `uuid` | 必填 | 所屬帳號 | 外鍵至 `users.id` |
 | `provider` | `varchar(30)` | 必填 | 登入方式 | `email`、`google`、`line`、`facebook` 或後續核准值 |
 | `provider_subject` | `varchar(255)` | 必填 | 登入服務提供的不可變身份 | 與 `provider` 組合唯一 |
-| `email_normalized` | `varchar(320)` | 選填 | 正規化電子郵件 | 電子郵件登入或找回角色密碼時使用；有值時唯一 |
+| `email_normalized` | `varchar(320)` | 選填 | 正規化電子郵件 | 電子郵件登入、密碼重設或角色 PIN 設定／重設時使用；有值時唯一 |
 | `password_hash` | `text` | 選填 | 電子郵件登入密碼雜湊 | 不得保存明碼；社群登入為空 |
 | `verified_at` | `timestamptz` | 選填 | 身份驗證完成時間 | — |
 | `created_at` | `timestamptz` | 必填；目前時間 | 綁定時間 | — |
@@ -84,7 +90,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 建立、恢復或切換有效 session 時，必須和 `users` 狀態、`user_roles` 及 `learner_access` 異動使用同一個每帳號 transaction advisory lock，鎖後再重新驗證目前權限。migration 以 trigger 提供資料庫層防漏；正式服務仍應在相關 DML 前先取得同一把鎖並處理可重試的併發錯誤。
 
-### `verification_challenges` 帳號與角色密碼驗證
+### `verification_challenges` 帳號與角色 PIN 驗證
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
@@ -97,6 +103,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `expires_at` | `timestamptz` | 必填 | 到期時間 | — |
 | `consumed_at` | `timestamptz` | 選填 | 使用完成時間 | 已使用或過期的 token 不得再次使用 |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+信箱驗證、密碼重設與角色 PIN 設定／重設的本機 challenge、API 與介面已完成。新的申請會使同一帳號、用途與目標角色的舊 challenge 失效，並套用每帳號的重寄間隔與每小時上限；公開申請回應不揭露帳號或電子郵件是否存在。密碼重設只要求唯一有效的電子郵件身份，不會更新 `verified_at`，成功後撤銷該帳號的所有 session。角色 PIN 設定／重設要求唯一有效且已驗證的電子郵件身份，以及確認時仍有效的 parent／tutor 目標角色；成功後只撤銷該目標角色的 session。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration；SMTP outbox／等時回應、Lerniqa 憑證與 handshake、真實投遞、公開／production HTTPS 及公開登入 rate limit 都尚未完成，且 outbox 不屬於 `0012`。
 
 ### `user_roles` 帳號角色與系統管理員授權
 
@@ -114,16 +122,16 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 新帳號建立時由後端依選定的 `account_role` 一併建立相符有效角色；前端不能用 `active_role` 自行授予角色。角色授權對象、角色、授權者與授權時間不可改寫或刪除，撤銷只能從有效狀態單向發生。`system_admin` 的授予或撤銷必須由當下有效的管理員，或受控的 `bootstrap_admin` 路徑執行，並在同一交易建立目標為該 `user_roles.id` 的相符管理員稽核。
 
-### `role_pin_credentials` 角色切換密碼
+### `role_pin_credentials` 角色 PIN 憑證
 
-此表是已建立但尚未接入目前 UI 的資料契約。現行 parent／tutor 角色切換使用帳號密碼重新確認；若後續啟用角色 PIN，才使用下列欄位與 `verification_challenges` 的重設流程。
+此表已接上角色 PIN 設定／重設 challenge、API 與介面，但尚未接入角色切換驗證。現行 parent／tutor 角色切換仍使用帳號密碼重新確認；角色 PIN 只建立或更新下列憑證，不得描述為目前的切換密碼。
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 必填 | 角色密碼識別碼 | 主鍵 |
+| `id` | `uuid` | 必填 | 角色 PIN 識別碼 | 主鍵 |
 | `user_id` | `uuid` | 必填 | 所屬帳號 | 外鍵至 `users.id` |
 | `role` | `varchar(30)` | 必填 | 受保護角色 | 首批只允許 `parent`、`tutor` |
-| `pin_hash` | `text` | 必填 | 六位數角色密碼雜湊 | 只保存雜湊，不保存原始數字 |
+| `pin_hash` | `text` | 必填 | 六位數角色 PIN 雜湊 | 只保存雜湊，不保存原始數字 |
 | `failed_attempts` | `smallint` | 必填；`0` | 連續失敗次數 | 用於限制暴力嘗試 |
 | `locked_until` | `timestamptz` | 選填 | 暫停嘗試截止時間 | — |
 | `updated_at` | `timestamptz` | 必填；目前時間 | 最近設定時間 | `user_id + role` 唯一 |
@@ -184,11 +192,13 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | 必填 | 年級識別碼 | 主鍵 |
-| `stage` | `varchar(20)` | 必填 | 教育階段 | `elementary`、`junior_high` 或後續核准值 |
-| `code` | `varchar(30)` | 必填 | 年級穩定代碼 | 唯一，例如 `junior_high_1` |
+| `stage` | `varchar(20)` | 必填 | 教育階段 | `elementary`、`junior_high`、`senior_high` |
+| `code` | `varchar(30)` | 必填 | 年級穩定代碼 | 唯一，例如 `junior-high-1` |
 | `name` | `varchar(40)` | 必填 | 年級顯示名稱 | 例如「國一」 |
 | `sort_order` | `smallint` | 必填 | 排序 | — |
 | `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+`0013` 建立 `elementary-1` 至 `elementary-6`、`junior-high-1` 至 `junior-high-3`、`senior-high-1` 至 `senior-high-3` 共十二個啟用年級，並以 `seed_manifests` 保存來源與 checksum。教育階段及年級順序由資料庫目錄與公開 catalog API 提供，前端不維護另一份固定清單。
 
 ### `semesters` 學期
 
@@ -199,6 +209,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `name` | `varchar(40)` | 必填 | 學期名稱 | 例如「上學期」 |
 | `sort_order` | `smallint` | 必填 | 排序 | — |
 | `status` | `varchar(20)` | 必填；`active` | 使用狀態 | `active`、`inactive` |
+
+`0013` 建立 `semester-1` 上學期與 `semester-2` 下學期。學生必須從啟用中的學期選擇；社會人士不保存學期。
 
 ### `subjects` 科目
 
@@ -1143,6 +1155,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 立即練習直接建立 `practice_sessions`；加入後續練習則先建立佇列項目。相近題選入時要保存當時實際使用的單一 `match_basis` 及其對應外鍵，不能在事後從題目目前分類反推。舊 JSON 沒有保存原始錯題作答時，搬移為 `reason=legacy_migration` 且來源作答為空，不能偽造追溯關係。
 
+`0012` 新增 `reason=same_type_review`，並以 `same_question_type`／`matched_question_type_label` 保存同細題型的正式來源。選題服務必須先完整取得 exact type 候選；只有候選數為 0 時才能查已確認相近題群組。沒有群組或候選時回傳空結果，不使用 `same_unit`、`same_subject` 等寬鬆值當候補。`score` 不允許這種逐題來源。
+
 ### `practice_sessions` 實際練習
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -1210,7 +1224,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `matched_subject_id` | `uuid` | 選填 | 採用的科目 | `match_basis=same_subject` 時必填；外鍵至 `subjects.id` |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
 
-每個錯題或相近題練習項目都要連到觸發它的確切 `answer_part_results`。同一練習項目可由多筆歷史錯題觸發，因此使用關聯表而不是在工作階段或題目上保存單一來源。相近題優先記錄已確認群組；沒有群組時，依產品規則逐級使用主題、知識點、單元或原題科目，並保存實際命中的依據。每筆相近題來源只允許一個依據外鍵有值。查詢某筆歷史錯題的相近題累計結果時，沿此表連到練習項目、作答與小題結果，不從目前分類或群組反推來源。
+每個錯題或相近題練習項目都要連到觸發它的確切 `answer_part_results`。同一練習項目可由多筆歷史錯題觸發，因此使用關聯表而不是在工作階段或題目上保存單一來源。現有 `0011` 值域仍保留主題、知識點、單元或科目依據，但 strict same-type recommendation 不使用這些寬鬆依據。`0012` 起，該流程只記錄 exact type 或已確認群組；每筆來源仍只允許一個依據有值。查詢某筆歷史錯題的後續結果時，沿此表連到練習項目、作答與小題結果，不從目前分類或群組反推來源。
 
 ## 作答、審核與逐小題複習
 
@@ -1258,6 +1272,8 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `position` | `smallint` | 必填；`0` | 同用途順序 | — |
 
 前三欄為主鍵。`asset_role=handwriting` 只能引用 `assets.purpose=handwriting`；`asset_role=attachment` 只能引用 `assets.purpose=answer_attachment`。兩者都必須為 private、掃描狀態為 `clean` 且未邏輯刪除。檔案讀取權限沿小題作答、練習與學習者授權反查；刪除或去識別化時不得只清掉 `answer_payload` 而留下可辨識的作答檔案。此關聯可依受權限的保存／刪除流程更新或移除，不是 append-only；正式政策必須先定義解除引用、物件刪除與稽核的順序。
+
+目前手寫提交程式只接受通過嚴格格式、尺寸、解壓上限與可見墨跡檢查的 PNG，並以 private asset 冪等儲存。缺少文字答案的手寫小題保持 pending／manual；同題已有完整文字或選項答案時，手寫只連到第一個小題作為計算過程附件，不改變判分。`score` 不建立這類關聯。這些程式已通過針對性測試，完整 DB E2E 需涵蓋已整合的 `0012`。
 
 ### `answer_reviews` 人工或輔助審核
 
@@ -1643,7 +1659,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 | `queuedSimilarByLearner` | `learner_practice_queue_items` | 題號對照正式題目與目前版本，標記為 `legacy_migration`；舊資料沒有原始錯題作答，`source_answer_part_result_id` 保持空值並在搬移報告列出數量 |
 | `ImportBook` | `question_banks`、`question_bank_learners` | 保留名稱、建立角色與適用學習者；同一擁有者的名稱衝突需隔離，不自行改名 |
 | `ImportBatch` | `import_batches`、`import_batch_documents`、`import_items` | `fileNames` 每個檔名建立或對照來源文件，`questionIds` 建立已確認匯入項目並連回正式題目版本；有 `bookId` 時對照匯入本，沒有時使用該帳號 `is_default=true` 的題庫；預設題庫不存在時先建立一筆名稱為「系統預設」的帳號題庫 |
-| `RoleAccess` | `account_identities`、`user_roles`、`role_pin_credentials`、`learner_access`、`auth_sessions` | 只搬到已知的 fixture 帳號；`registrationEmail` 正規化後寫入登入身份，角色清單建立授權、PIN 只搬雜湊、各角色學習者清單轉為存取關係，`activeRole` 只在有效角色內寫入工作階段；找不到帳號時整組隔離 |
+| `RoleAccess` | `account_identities`、`user_roles`、`role_pin_credentials`、`learner_access`、`auth_sessions` | 只搬到已知的 fixture 帳號；`registrationEmail` 正規化後寫入登入身份，角色清單建立授權，各角色學習者清單轉為存取關係，`activeRole` 只在有效角色內寫入工作階段。舊 PIN 若不是可確認版本與格式的受支援雜湊，不得直接搬入、重新包裝或當成明碼；需列入隔離報告，要求帳號透過已驗證電子郵件重新設定。找不到帳號時整組隔離 |
 | 作答狀態 | `practice_sessions`、`practice_score_receipts`，以及非 `score` 使用的 `answer_attempts`、`answer_part_results`、`answer_part_assets` | 必須連結當時題目版本；`instant`／`complete` 手寫檔案以附件角色連結。`score` 只搬移 session aggregate 與不含答案／判定的冪等收據，不搬逐題答案或附件。無法判斷小題的非 `score` 舊資料只建立根小題結果；無法確認原判定依據時保留原始結果並標記為搬移資料，不重新判分 |
 
 搬移工具需輸出舊 ID 對新 UUID 對照與隔離報告，並核對題目、版本、小題、選項、答案、圖片、來源文件、收藏、計畫、作答及關聯失敗數。原始 fixture 保持唯讀，搬移可重跑。
@@ -1734,7 +1750,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
 - `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
 - `docs/plan.md`：歷史 JSON API 邊界、目前 PostgreSQL 前端狀態及正式資料庫施工確認節點。
-- `docs/database-completion-matrix.md`：目前規劃需求、96 張業務資料表、正式 API／表單與安全切換狀態對照。
+- `docs/database-completion-matrix.md`：目前規劃需求、106 張業務資料表、正式 API／表單與安全切換狀態對照。
 - `app/lib/demo-data.ts`：歷史介面與 fixture 搬移來源；目前正式主流程不以它作為帳號、題目或作答的權威資料契約。
 - `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
 - `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

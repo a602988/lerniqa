@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lerniqa.local/schemas/handwriting-quality-fixtures-v2.json",
+  "title": "Lerniqa synthetic handwriting quality fixtures",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "qualityGates", "fixtures"],
+  "properties": {
+    "schemaVersion": { "const": "lerniqa.handwriting-quality-fixtures/v2" },
+    "qualityGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumReadableTranscriptionRate",
+        "minimumBlankUnclearUnrecognizedRate",
+        "requireFaultFailClosed"
+      ],
+      "properties": {
+        "minimumReadableTranscriptionRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimumBlankUnclearUnrecognizedRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requireFaultFailClosed": { "type": "boolean" }
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "kind", "image", "imageSha256", "expectedTranscription"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" },
+          "kind": { "enum": ["readable", "unclear", "blank"] },
+          "image": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,119}\\.png$" },
+          "imageSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "expectedTranscription": { "type": ["string", "null"], "maxLength": 2000 }
+        }
+      }
+    }
+  }
+}

@@ -24,6 +24,11 @@ import {
     validateAccountPassword,
     validateNewAccountPassword,
 } from "../app/lib/auth-input.ts";
+import {
+    EDUCATION_STAGE_LABELS,
+    findEducationStage,
+    type EducationCatalog,
+} from "../app/lib/education-catalog-contract.ts";
 
 const authServiceSource = await readFile(
     new URL("../app/lib/auth-service.ts", import.meta.url),
@@ -49,6 +54,14 @@ const learnerSubjectSettingsRouteSource = await readFile(
     new URL("../app/api/v1/auth/learners/subject-settings/route.ts", import.meta.url),
     "utf8",
 );
+const educationCatalogSource = await readFile(
+    new URL("../app/lib/education-catalog.ts", import.meta.url),
+    "utf8",
+);
+const educationCatalogRouteSource = await readFile(
+    new URL("../app/api/v1/auth/catalog/route.ts", import.meta.url),
+    "utf8",
+);
 
 function assertAuthInputError(action: () => unknown, expectedCode: string): void {
     assert.throws(action, (error: unknown) => {
@@ -58,6 +71,25 @@ function assertAuthInputError(action: () => unknown, expectedCode: string): void
         return true;
     });
 }
+
+test("publishes the database-backed twelve-year education catalog", () => {
+    const catalog: EducationCatalog = {
+        stages: [{
+            code: "senior_high",
+            name: EDUCATION_STAGE_LABELS.senior_high,
+            grades: [{ code: "senior-high-1", name: "高一", stage: "senior_high" }],
+        }],
+        semesters: [{ code: "semester-1", name: "上學期" }],
+    };
+
+    assert.equal(findEducationStage(catalog, "senior-high-1")?.code, "senior_high");
+    assert.equal(findEducationStage(catalog, "missing"), undefined);
+    assert.match(educationCatalogSource, /FROM grades[\s\S]*?status = 'active'/u);
+    assert.match(educationCatalogSource, /stage IN \('elementary', 'junior_high', 'senior_high'\)/u);
+    assert.match(educationCatalogSource, /FROM semesters[\s\S]*?status = 'active'/u);
+    assert.match(educationCatalogRouteSource, /Cache-Control": "no-store"/u);
+    assert.match(educationCatalogRouteSource, /readEducationCatalog/u);
+});
 
 test("uses one account reader for newly issued and restored sessions", () => {
     const readerSource = authServiceSource.match(
@@ -184,6 +216,7 @@ test("publishes only the learner profile display contract", () => {
     assert.match(publicAccountSource, /learners: learnerScopedMode[\s\S]*?\? \[currentLearner\][\s\S]*?: account\.learners\.map\(publicLearnerProfile\)/u);
     for (const field of [
         "gradeCode",
+        "educationStatus",
         "gradeName",
         "semesterCode",
         "semesterName",
@@ -425,6 +458,9 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "  FAMILY@EXAMPLE.INVALID ",
             password: "family passphrase",
             role: "parent",
+            educationStatus: "enrolled",
+            gradeCode: " JUNIOR-HIGH-1 ",
+            semesterCode: " SEMESTER-1 ",
         }),
         {
             displayName: "Alice Parent",
@@ -432,6 +468,9 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "family@example.invalid",
             password: "family passphrase",
             role: "parent",
+            educationStatus: "enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: "semester-1",
         },
     );
 
@@ -441,6 +480,7 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "self@example.invalid",
             password: "self passphrase",
             role: "learner",
+            educationStatus: "not_enrolled",
         }),
         {
             displayName: "本人學習者",
@@ -448,6 +488,9 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "self@example.invalid",
             password: "self passphrase",
             role: "learner",
+            educationStatus: "not_enrolled",
+            gradeCode: null,
+            semesterCode: null,
         },
     );
 
@@ -458,6 +501,9 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "family@example.invalid",
             password: "family passphrase",
             role: "system_admin",
+            educationStatus: "enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: "semester-1",
         }),
         "INVALID_ROLE",
     );
@@ -468,6 +514,9 @@ test("parses and normalizes registration input while limiting self-selected role
             email: "family@example.invalid",
             password: "password",
             role: "parent",
+            educationStatus: "enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: "semester-1",
         }),
         "INVALID_PASSWORD",
     );
@@ -480,6 +529,9 @@ test("rejects invalid display names, learner names, and non-object auth payloads
         email: "family@example.invalid",
         password: "family passphrase",
         role: "parent",
+        educationStatus: "enrolled",
+        gradeCode: "junior-high-1",
+        semesterCode: "semester-1",
     };
 
     assertAuthInputError(() => parseRegisterAccountInput(null), "INVALID_ACCOUNT_INPUT");
@@ -499,12 +551,14 @@ test("parses learner creation, selection, and update bodies with canonical UUIDs
         parseCreateAccountLearnerInput({
             clientRequestId: "10000000-0000-4000-8000-000000000001",
             displayName: "  小明  ",
+            educationStatus: "enrolled",
             gradeCode: " JUNIOR-HIGH-1 ",
             semesterCode: " SEMESTER-1 ",
         }),
         {
             clientRequestId: "10000000-0000-4000-8000-000000000001",
             displayName: "小明",
+            educationStatus: "enrolled",
             gradeCode: "junior-high-1",
             semesterCode: "semester-1",
         },
@@ -524,6 +578,7 @@ test("parses learner creation, selection, and update bodies with canonical UUIDs
             action: "update-current",
             learnerId: "10000000-0000-4000-8000-000000000001",
             displayName: "目前學習者新名稱",
+            educationStatus: "enrolled",
             gradeCode: "junior-high-1",
             semesterCode: "semester-1",
         }),
@@ -531,6 +586,7 @@ test("parses learner creation, selection, and update bodies with canonical UUIDs
             action: "update-current",
             learnerId: "10000000-0000-4000-8000-000000000001",
             displayName: "目前學習者新名稱",
+            educationStatus: "enrolled",
             gradeCode: "junior-high-1",
             semesterCode: "semester-1",
         },
@@ -540,24 +596,44 @@ test("parses learner creation, selection, and update bodies with canonical UUIDs
             action: "update",
             learnerId: "10000000-0000-4000-8000-000000000001",
             displayName: "新名稱",
-            gradeCode: "junior-high-2",
-            semesterCode: "semester-2",
+            educationStatus: "not_enrolled",
         }),
         {
             action: "update",
             learnerId: "10000000-0000-4000-8000-000000000001",
             displayName: "新名稱",
-            gradeCode: "junior-high-2",
-            semesterCode: "semester-2",
+            educationStatus: "not_enrolled",
+            gradeCode: null,
+            semesterCode: null,
         },
     );
 
     for (const body of [
-        { clientRequestId: "not-a-uuid", displayName: "小明", gradeCode: "junior-high-1", semesterCode: "semester-1" },
-        { clientRequestId: "10000000-0000-4000-8000-000000000001", displayName: "小明", gradeCode: "bad code", semesterCode: "semester-1" },
+        { clientRequestId: "not-a-uuid", displayName: "小明", educationStatus: "enrolled", gradeCode: "junior-high-1", semesterCode: "semester-1" },
+        { clientRequestId: "10000000-0000-4000-8000-000000000001", displayName: "小明", educationStatus: "enrolled", gradeCode: "bad code", semesterCode: "semester-1" },
     ]) {
         assertAuthInputError(() => parseCreateAccountLearnerInput(body), "INVALID_ACCOUNT_INPUT");
     }
+    assertAuthInputError(
+        () => parseCreateAccountLearnerInput({
+            clientRequestId: "10000000-0000-4000-8000-000000000001",
+            displayName: "社會人士",
+            educationStatus: "not_enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: null,
+        }),
+        "INVALID_ACCOUNT_INPUT",
+    );
+    assertAuthInputError(
+        () => parseCreateAccountLearnerInput({
+            clientRequestId: "10000000-0000-4000-8000-000000000001",
+            displayName: "學生",
+            educationStatus: "enrolled",
+            gradeCode: "junior-high-1",
+            semesterCode: null,
+        }),
+        "INVALID_ACCOUNT_INPUT",
+    );
     assertAuthInputError(
         () => parseUpdateAccountLearnerInput({
             action: "delete",

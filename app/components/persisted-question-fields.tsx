@@ -86,23 +86,28 @@ export function PersistedQuestionFields({ question, answer, disabled = false, pa
             const normalizedOptions = optionLabels.join("").normalize("NFKC").replace(/[\s。．.、；;]/g, "").toLocaleLowerCase();
             const showPrompt = Boolean(part.prompt && part.prompt !== question.prompt && normalizedPrompt !== normalizedOptions);
             const answerColumnCount = getOptionColumnCount(part);
+            const gradingNotice = part.gradingPolicy === "manual_review"
+                ? "送出後會保存答案，等待人工批改"
+                : part.gradingPolicy !== "automatic"
+                    ? "送出後會保存答案，等待輔助批改"
+                    : "";
             return <fieldset className={part.answerMode === "text" ? "grid gap-3" : `answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
                 <legend className={usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}>
                     {showPrompt
                         ? <PromptText text={part.prompt} />
                         : usesStepNavigation ? "選擇答案" : question.parts.length > 1 ? `第 ${sourceIndex + 1} 小題` : "作答"}
                     {part.answerMode === "multiple_choice" ? "（可複選）" : ""}
+                    {gradingNotice && <span className="ml-2 text-xs font-normal text-muted-foreground">（{gradingNotice}）</span>}
                 </legend>
                 <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>
                 {part.answerMode === "text"
-                    ? <FormField label="文字答案"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
+                    ? <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
                     : part.options.map((option) => <label className="answer-option" key={option.id}>
                         {part.answerMode === "multiple_choice"
                             ? <Checkbox checked={Array.isArray(value) && value.includes(option.key)} onChange={(event) => update(part.id, event.target.checked ? [...(Array.isArray(value) ? value : []), option.key] : (Array.isArray(value) ? value : []).filter((key) => key !== option.key))} />
                             : <Radio name={`question-${question.id}-part-${part.id}`} value={option.key} checked={value === option.key} onChange={() => update(part.id, option.key)} />}
                         <span>{option.label}<PublicContent blocks={option.contentBlocks} duplicateText={option.label} /></span>
                     </label>)}
-                {part.gradingPolicy !== "automatic" && <p className="col-span-full text-sm text-muted-foreground">送出後會保存答案，等待{part.gradingPolicy === "manual_review" ? "人工" : "輔助"}批改。</p>}
             </fieldset>;
         })}
         </div>

@@ -7,17 +7,19 @@
 - 以 Keel 元件建立的響應式操作介面
 - 多學習者切換與兩層設定介面：`/system-settings` 管理登入帳號、本人的一般角色與可存取學習者；`/settings` 管理目前學習者的個人資料與學習設定
 - 練習企劃、依章節／依考試範圍、三種練習方式，以及預設收合的進階篩選；進階設定可調整難易度占比、來源、題型、知識點、建立者與本輪題數
-- 專注練習版面、每題大型手寫板、畫筆／橡皮擦，以及暫時關閉／結束練習流程
+- 專注練習版面、每題大型手寫板、畫筆／橡皮擦，以及暫時關閉／結束練習流程。`instant`／`complete` 的 private PNG 儲存、受權讀取與冪等重送程式已通過針對性測試：文字題沒有其他答案時，手寫小題保持 `pending`／`manual`；已有完整答案時，手寫圖只作為第一個小題的計算過程附件，不改變判分。`score` 不接受手寫或任何逐題作答附件。完整資料庫 E2E 仍待 `0012` 整合後驗證
 - 每個主要頁面有固定網址，重新整理後維持原頁面
-- 國字 AI 辨識預留介面（目前只顯示未連接，不產生模擬結果）
-- 錯題複習、成果統計與檢視設定介面；人工審核與正式相近題關聯尚未串接
+- 本地 AI 手寫辨識沿用 ERP 的 `OLLAMA_BASE_URL`、`OLLAMA_MODEL` 與 `OLLAMA_KEEP_ALIVE` 設定，固定核對 `qwen3.8:27b` 的 digest 與 vision capability。手寫補足的文字答案會在同一個作答交易建立 `0012` sidecar job；worker 只讀取 private PNG 並逐字辨識手寫內容，不會把題幹、參考答案、解析或評分規則送給模型，也不會解題或判斷正誤。六張合成品質圖已完成真實 Ollama inference：四張可讀筆跡有三張逐字相符，一張外形相近的「4」辨識為「A」；空白及模糊圖均保持無法辨識。真實學習者筆跡樣本與人工檢視介面仍待驗收
+- 錯題複習、成果統計與檢視設定介面。錯題的「同細題型」推薦 API 與作答串接已通過針對性測試：先完整尋找同一標準細題型的候選，只有候選數為 0 才查詢經人工確認的相近題群組；沒有同題型候選也沒有已確認群組時可回傳無推薦。`score` 不允許建立逐題推薦練習。此路徑仍待 `0012` 的來源值域整合與資料庫 E2E；人工審核與新的正式相近題關聯尚未交付
 - 圖片／PDF／貼上文字匯入與多題校正仍是待建功能。主導覽已移除舊的 mock 匯入入口，直接開啟 `/bank` 會轉到 `/questions`；OCR／AI 拆題與受權限的 PostgreSQL 匯入 API／介面尚未串接，測試替代結果不能視為已辨識或已保存的教材
-- `/account` 已接上本機 PostgreSQL，支援電子郵件密碼註冊、登入、登出與目前帳號查詢；密碼與 session token 都只保存雜湊。忘記密碼、社群登入與帳號綁定仍未開放
-- 註冊密碼至少 8 個字元，不要求大小寫、數字或符號混用，會拒絕常見弱密碼、全空白及首尾空白。既有密碼不會被修改；登入保留相容。密碼重設可共用新密碼驗證函式，但重設 API／介面與郵件流程尚未串接
-- 信箱驗證已接上 `verification_challenges`、驗證 API、`/account` 寄送入口與一次性確認頁；token 只保存雜湊，過期、重寄失效、重播與單一有效 email identity 的封閉行為已有不連網 mock 測試。Synology MailPlus adapter、Nodemailer SMTP transport 及驗證信／密碼重設樣板已備妥；寄件地址已指定為 `jean@mail.minmax.biz`，但實際 SMTP host、登入帳號、secret、測試收件人與真實投遞尚未核實或設定，密碼重設也尚未接線
+- `/account` 已接上本機 PostgreSQL，支援電子郵件密碼註冊、登入、登出、目前帳號查詢與忘記密碼流程；密碼、session token 與一次性重設 token 都只保存雜湊。社群登入與帳號綁定仍未開放
+- 註冊與密碼重設使用同一套新密碼規則：至少 8 個字元，不要求大小寫、數字或符號混用，並拒絕常見弱密碼、全空白及首尾空白。密碼重設的 challenge、API 與介面程式已完成不連網針對性測試；成功後不改動電子郵件的 `verified_at`，並撤銷該帳號的所有 session。將 challenge 固定綁定到電子郵件 identity 的資料庫契約屬於尚未整合的 `0012`，因此不得把目前的單元測試當成已通過資料庫 E2E
+- 信箱驗證、密碼重設及角色 PIN 設定／重設都使用 `verification_challenges` 與一次性確認頁；token 只保存雜湊，過期、重寄失效、重播、單一有效 email identity 與申請頻率限制已有不連網測試。角色 PIN 只允許透過已驗證的電子郵件為仍有效的目標角色設定，成功後只撤銷該角色的 session。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與切換。ERP 的非機密 SMTP host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 handshake；不得讀取或複製 ERP secret 來當作完成。目前申請流程同步嘗試寄信，已知與未知帳號仍可能產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋，不屬於 `0012`
 - 正式主流程不再從 fixture 或 runtime JSON 還原帳號範圍資料。舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 端點固定回傳 HTTP `410`；`/questions` 是目前題目入口，舊 `/bank` 只會轉址到此頁。正式 PostgreSQL 匯入 API／介面尚未交付；Hanlin CLI 與隔離匯入測試不等於可操作的產品匯入流程
 - 題目可保存版本、章節、單元、主題、難易度、來源，以及題幹與答案中的圖片區塊
 - PostgreSQL 欄位、關聯與限制由 `0001` 至 `0011` 共十一個原生 SQL migration 建立，合計 96 張業務資料表。`0010` 加入 `users.account_role`、每帳號唯一 self learner、名稱與設定權限一致性；`0011` 加入 `practice_score_receipts`、`asset_object_cleanup_jobs` 與練習 session 的計分彙總欄位。升級會清除舊版 `score` 逐題明細，並從仍可保留的非 `score` 明細重建五張統計表
+- `0012` 已整合帳號復原 identity binding、同題型來源值域、題庫補全建議及手寫 AI sidecar，並通過 migration 與隔離的作答佇列 E2E。手寫 worker 仍需由受控的本機程序啟動，不會由網站程序自動下載或替換模型
+- 題庫補全命令已建立可重跑的 dry-run／checkpoint 程式與針對性測試，但目前的 279 題尚未寫入補全結果。即使 `0012` 整合後，程式也只能先建立 `pending` 建議，不會直接改寫已發布題目；只有通過品質抽檢與人工核准後才可另行 apply
 - `/practice` 已從本機 PostgreSQL 載入已發布題庫並保存練習 session。`instant` 與 `complete` 保存已送出的作答、歷程、錯題佇列與 outbox；`score` 只保存 session 整體統計，以及不含答案與逐題判定的冪等收據，不寫入 `answer_attempts`、逐小題結果、錯題／相近題佇列或 `analytics_outbox`。重新整理進行中的練習時，畫面會用伺服器 session UUID 恢復可安全恢復的進度並暫停；尚未送出的文字與手寫內容不會保存
 - `0011` 會把只由舊 `score` 作答引用的 private `handwriting`／`answer_attachment` asset 解除引用、標記 `deleted_at`，並建立 pending 的物件清理工作；仍被題目、文件、學習者或非 `score` 作答共用的 asset 保留。migration 不會直接刪除真實物件，只有受控 worker 實際確認刪除後，才能把工作標為 completed 並寫入 `object_deleted_at`
 - 正式工作區先確認目前登入 session；未登入、cookie 無效或 session 到期時，當頁會清除帳號範圍狀態並導回 `/account`，不會改用 fixture、預設帳號或先前的瀏覽器學習者快照。登出、session 到期、角色或目前學習者改變時，其他已開分頁會同步重新驗證 `auth/me`，清除失效的帳號工作區或載入新的操作情境；頁面重新取得焦點與恢復可見時也會重新驗證
@@ -40,16 +42,26 @@ npm run dev
 
 開啟 http://localhost:3500。
 
+本機 Ollama 使用與 ERP 相同的環境變數。先用合成筆跡做真實模型驗證，再由受控程序處理已排入 PostgreSQL 的工作：
+
+```bash
+npm run handwriting:smoke -- --execute
+npm run handwriting:worker -- --continuous --execute
+```
+
+兩個命令若沒有 `--execute` 都只會檢查契約，不會執行模型推論或領取工作。worker 不會下載或替換模型，也不會直接改寫作答結果。
+
 資料庫 migration 的本機隔離驗證：
 
 ```bash
 npm run db:test
 npm run test:import-ownership
 npm run test:local-practice
+npm run test:account-recovery
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-前三項各有獨立的 existing-local-server 模式；未明確提供該 runner 要求的四個環境變數時，會在 `/tmp` 建立一次性 PostgreSQL 環境，使用隔離合成資料，不會連線或清理 `local-data` 的持久資料庫。三組環境變數與安全限制見 `database/README.md`。最後一項檢查既有 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session／attempt 串接、三種檢核方式及 learner-keyed 瀏覽器設定邊界。
+前三項各有獨立的 existing-local-server 模式；未明確提供該 runner 要求的四個環境變數時，會在 `/tmp` 建立一次性 PostgreSQL 環境，使用隔離合成資料，不會連線或清理 `local-data` 的持久資料庫。三組環境變數與安全限制見 `database/README.md`。`test:account-recovery` 不啟動資料庫或寄送真實郵件，檢查輸入規則、token、郵件 adapter、密碼／PIN 雜湊與 repository／route 契約。最後一項檢查既有 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session／attempt 串接、三種檢核方式及 learner-keyed 瀏覽器設定邊界。
 
 正式本機前台依賴 repository 管理、使用 port `55432` 的 PostgreSQL。執行 migration、practice 或 import 隔離測試時，優先讓各 runner 透過自己的 explicit existing-local-server 模式借用這個 server；runner 只可建立帶本次 ownership token 的隨機測試資料庫，結束後只刪除自己建立的資料庫，不得停止前台共用的 server。
 
@@ -78,6 +90,6 @@ npm run dev
 - [翰林題庫匯入與排錯](docs/hanlin-import-runbook.md)
 
 ## 下一階段
-學習者就學狀態、學校與代表圖片的正式設定 API，練習偏好、考試、計畫、排程與收藏等剩餘資料域的 PostgreSQL 切換，以及複習與相近題 session 的 `practice_session_item_origins`、相近題候選審核／正式關聯／查詢 API、圖片／PDF OCR、手寫辨識、AI 相近題生成與雲端報表。
+先整合並驗證 `0012`，完成同題型推薦、private 手寫 PNG、帳號復原 identity binding 與題庫補全 sidecar 的資料庫 E2E。其後再補學習者就學狀態、學校與代表圖片的正式設定 API，練習偏好、考試、計畫、排程與收藏等剩餘資料域的 PostgreSQL 切換，以及相近題候選審核、正式關聯、圖片／PDF OCR、AI 類題生成與雲端報表。
 
-公開／production HTTPS、密碼重設流程、登入 rate limit、production 資料庫角色、完整授權及剩餘瀏覽器資料域的 PostgreSQL 切換尚未完成；請勿以真實學生個資做驗證。信箱驗證的本機 challenge／API／介面已完成，但 SMTP 執行環境與真實投遞仍待設定。開發預設只在本機驗證，當次明確要求部署到 Vercel 時才可部署。
+公開／production HTTPS、公開登入的 rate limit、OAuth、production 資料庫角色、完整授權及剩餘瀏覽器資料域的 PostgreSQL 切換尚未完成；請勿以真實學生個資做驗證。信箱驗證已串接；密碼重設與角色 PIN 設定／重設的程式及不連網測試已完成，但 `0012` identity binding 與 DB E2E 尚未完成。SMTP outbox／等時回應、Lerniqa 憑證、handshake 與真實投遞另列為上線阻擋，不在 `0012`。開發預設只在本機驗證，當次明確要求部署到 Vercel 時才可部署。

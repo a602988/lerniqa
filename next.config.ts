@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
     // it while the browser is using compiled chunks.
     distDir: process.env.LERNIQA_NEXT_DIST_DIR ?? ".next",
     async redirects() {
-        return [{ source: "/local-practice", destination: "/practice", permanent: false }];
+        return [
+            { source: "/local-practice", destination: "/practice", permanent: false },
+            { source: "/forgot-password", destination: "/account/forgot-password", permanent: false },
+        ];
     },
     async rewrites() {
         return [
@@ -35,7 +38,7 @@ const nextConfig: NextConfig = {
                 destination: "/",
             },
             {
-                source: "/:path(login|register|logout|forgot-password|quick-register|account-link)",
+                source: "/:path(login|register|logout|quick-register|account-link)",
                 destination: "/",
             },
         ];

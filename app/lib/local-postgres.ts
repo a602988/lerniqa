@@ -236,6 +236,81 @@ export async function withLocalPostgresTransaction<T>(
   }
 }
 
+const SERIALIZABLE_TRANSACTION_RETRY_CODES = new Set(["40001", "40P01"]);
+const SERIALIZABLE_TRANSACTION_MAX_RETRIES = 2;
+
+function databaseErrorCode(error: unknown): string | null {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : null;
+}
+
+/**
+ * Runs a database-only callback in a serializable transaction. The callback may
+ * run again after a serialization failure or deadlock, so it must not perform
+ * network, filesystem, or other external side effects.
+ */
+export async function withLocalPostgresSerializableTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>,
+  options: Readonly<{ advisoryLockKey?: string }> = {},
+): Promise<T> {
+  const config = readConfig();
+
+  for (let retryCount = 0; ; retryCount += 1) {
+    let client: PoolClient;
+    try {
+      client = await getPool().connect();
+    } catch (error) {
+      rethrowDatabaseError(error, config);
+    }
+
+    let transactionStarted = false;
+    let advisoryLockHeld = false;
+    let discardConnection = false;
+    try {
+      if (options.advisoryLockKey !== undefined) {
+        await client.query(
+          "SELECT pg_advisory_lock(hashtextextended($1::text, 0))",
+          [options.advisoryLockKey],
+        );
+        advisoryLockHeld = true;
+      }
+      await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+      transactionStarted = true;
+      const result = await fn(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          // Preserve the original failure and discard the broken connection below.
+          discardConnection = true;
+        }
+      }
+
+      const retryable = SERIALIZABLE_TRANSACTION_RETRY_CODES.has(databaseErrorCode(error) ?? "");
+      if (!retryable || retryCount >= SERIALIZABLE_TRANSACTION_MAX_RETRIES) {
+        rethrowDatabaseError(error, config);
+      }
+    } finally {
+      if (advisoryLockHeld) {
+        try {
+          await client.query(
+            "SELECT pg_advisory_unlock(hashtextextended($1::text, 0))",
+            [options.advisoryLockKey],
+          );
+        } catch {
+          // A pooled connection must never retain a session-scoped advisory lock.
+          discardConnection = true;
+        }
+      }
+      client.release(discardConnection);
+    }
+  }
+}
+
 export async function closeLocalPostgresPool(): Promise<void> {
   const pool = globalWithLocalPostgres.__lerniqaLocalPostgresPool;
   if (pool === undefined) {

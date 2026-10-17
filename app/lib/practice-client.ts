@@ -2,10 +2,12 @@ import {
     LOCAL_PRACTICE_DEFAULT_FILTERS,
     LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE,
     type LocalPracticeAnswerInput,
+    type LocalPracticeHandwritingInput,
     type LocalPracticeAttempt,
     type LocalPracticeAttemptSubmission,
     type LocalPracticeHistory,
     type LocalPracticeQuestion,
+    type LocalPracticeRecommendationResult,
     type LocalPracticeReferenceAnswer,
     type LocalPracticeSession,
     type LocalPracticeSessionRead,
@@ -37,6 +39,7 @@ import {
     broadcastAuthSessionExpired,
     isAuthSessionExpired,
 } from "./auth-session-client";
+import type { EducationCatalog } from "./education-catalog-contract";
 
 export interface PracticePreferences {
     plan: PracticePlan | null;
@@ -114,6 +117,7 @@ function sanitizePracticePlan(value: unknown): PracticePlan | null {
         || !boundedString(value.activeExamId, 80)
         || !CHECK_MODES.has(value.checkMode as CheckMode)
         || !Number.isInteger(value.questionLimit) || Number(value.questionLimit) < 1 || Number(value.questionLimit) > 500
+        || (value.prioritizeRelated !== undefined && typeof value.prioritizeRelated !== "boolean")
         || !["chapter", "assessment"].includes(String(value.basis))
         || !isRecord(value.difficultyMix)
         || ![value.difficultyMix.easy, value.difficultyMix.medium, value.difficultyMix.hard]
@@ -162,6 +166,7 @@ function sanitizePracticePlan(value: unknown): PracticePlan | null {
         activeExamId: value.activeExamId,
         checkMode: value.checkMode as CheckMode,
         questionLimit: Number(value.questionLimit),
+        prioritizeRelated: value.prioritizeRelated === true,
         basis: value.basis as PracticePlan["basis"],
         difficultyMix: {
             easy: Number(value.difficultyMix.easy),
@@ -380,6 +385,7 @@ export type PracticeAccountRole = "parent" | "learner" | "tutor";
 export interface PracticeAccountLearner {
     id: string;
     displayName: string;
+    educationStatus: "enrolled" | "not_enrolled";
     gradeCode: string | null;
     gradeName: string | null;
     semesterCode: string | null;
@@ -421,6 +427,16 @@ export interface PracticeAccount {
     expiresAt: string;
 }
 
+/** 讀取註冊與學習者設定共用的正式教育目錄。 */
+export async function loadEducationCatalog(): Promise<EducationCatalog> {
+    const response = await fetch("/api/v1/auth/catalog", { cache: "no-store" });
+    const envelope = await readPracticeApiEnvelope<{ data: { catalog: EducationCatalog } }>(
+        response,
+        "目前無法讀取教育階段與年級。",
+    );
+    return envelope.data.catalog;
+}
+
 /** Builds the UI learner from authorized server profile data and non-identifying browser preferences. */
 export function mapPracticeAccountLearner(
     profile: PracticeAccountLearner,
@@ -449,6 +465,7 @@ export function mapPracticeAccountLearner(
     return {
         id: profile.id,
         name: profile.displayName,
+        educationStatus: profile.educationStatus,
         grade: profile.gradeName ?? "",
         semester: profile.semesterName ?? "",
         bookVersions,
@@ -483,10 +500,11 @@ export function createInitialPracticePlan(
 ): PracticePlan {
     const enabledSubjects = new Set([...Object.keys(learner.bookVersions), ...learner.customSubjects]);
     const firstSubject = questions.find((question) => (
-        question.grade === learner.grade && enabledSubjects.has(question.subject)
+        (learner.educationStatus !== "enrolled" || question.grade === learner.grade)
+        && enabledSubjects.has(question.subject)
     ))?.subject;
     const semester = firstSubject && learner.semester && questions.some((question) => (
-        question.grade === learner.grade
+        (learner.educationStatus !== "enrolled" || question.grade === learner.grade)
         && question.subject === firstSubject
         && question.semester === learner.semester
     ))
@@ -578,8 +596,9 @@ export function updatePracticeAccountIdentity(targetRole: PracticeAccountRole, p
 export function createPracticeLearner(input: {
     clientRequestId: string;
     displayName: string;
-    gradeCode: string;
-    semesterCode: string;
+    educationStatus: PracticeAccountLearner["educationStatus"];
+    gradeCode: string | null;
+    semesterCode: string | null;
 }) {
     return practiceApi<{ account: PracticeAccount }>("/api/v1/auth/learners", {
         method: "POST",
@@ -599,8 +618,9 @@ export function selectPracticeLearner(learnerId: string) {
 export function updatePracticeLearner(input: {
     learnerId: string;
     displayName: string;
-    gradeCode: string;
-    semesterCode: string;
+    educationStatus: PracticeAccountLearner["educationStatus"];
+    gradeCode: string | null;
+    semesterCode: string | null;
 }, action: "update" | "update-current" = "update") {
     return practiceApi<{ account: PracticeAccount }>("/api/v1/auth/learners", {
         method: "PATCH",
@@ -624,7 +644,13 @@ export function updatePracticeLearnerSubjectSetting(input: {
 
 export async function loadPersistedPractice() {
     const { account } = await practiceApi<{ account: PracticeAccount }>("/api/v1/auth/me");
-    if (!account.learner) return { account, questions: [], attempts: [], sessions: [] };
+    if (!account.learner) return {
+        account,
+        questions: [],
+        attempts: [],
+        sessions: [],
+        wrongReviewQueue: { pendingCount: 0, items: [] },
+    };
     const catalogPageSize = LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE;
     const filters = new URLSearchParams({ ...LOCAL_PRACTICE_DEFAULT_FILTERS, limit: String(catalogPageSize) });
     const getPage = async (page: number) => {
@@ -636,23 +662,63 @@ export async function loadPersistedPractice() {
         practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100"),
     ]);
     const pages = await Promise.all(Array.from({ length: Math.max(0, Math.ceil(first.meta.total / catalogPageSize) - 1) }, (_, index) => getPage(index + 2)));
-    // Attempts and score-only session summaries paginate independently; continue until both are exhausted.
+    // Attempts, score-only summaries, and pending wrong-review sources paginate independently.
     const attempts = [...history.attempts];
     const sessions = [...history.sessions];
+    const wrongReviewQueueItems = [...(history.wrongReviewQueue?.items ?? [])];
+    const wrongReviewPendingCount = history.wrongReviewQueue?.pendingCount
+        ?? wrongReviewQueueItems.length;
     let historyPage = 2;
-    let lastPageSize = Math.max(history.attempts.length, history.sessions.length);
+    let lastPageSize = Math.max(
+        history.attempts.length,
+        history.sessions.length,
+        wrongReviewQueueItems.length,
+    );
     while (lastPageSize === 100 && historyPage <= 10_000) {
         const next = await practiceApi<LocalPracticeHistory>(`/api/v1/local-practice/history?limit=100&page=${historyPage++}`);
         attempts.push(...next.attempts);
         sessions.push(...next.sessions);
-        lastPageSize = Math.max(next.attempts.length, next.sessions.length);
+        wrongReviewQueueItems.push(...(next.wrongReviewQueue?.items ?? []));
+        lastPageSize = Math.max(
+            next.attempts.length,
+            next.sessions.length,
+            next.wrongReviewQueue?.items.length ?? 0,
+        );
     }
     return {
         account,
         questions: [first, ...pages].flatMap((page) => page.data.questions),
         attempts: [...new Map(attempts.map((attempt) => [attempt.id, attempt])).values()],
         sessions: [...new Map(sessions.map((session) => [session.id, session])).values()],
+        wrongReviewQueue: {
+            pendingCount: wrongReviewPendingCount,
+            items: [...new Map(wrongReviewQueueItems.map((item) => [item.id, item])).values()],
+        },
     };
+}
+
+export function previewPersistedPracticeRecommendations(input: {
+    sourceQueueItemIds: string[];
+    limit?: number;
+}) {
+    return practiceApi<LocalPracticeRecommendationResult>("/api/v1/local-practice/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "preview", ...input }),
+    });
+}
+
+export function startPersistedPracticeRecommendations(input: {
+    sourceQueueItemIds: string[];
+    limit?: number;
+    checkMode: LocalPracticeSessionSettings["checkMode"];
+    sessionId?: string;
+}) {
+    return practiceApi<LocalPracticeRecommendationResult>("/api/v1/local-practice/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", ...input }),
+    });
 }
 
 export function startPersistedPractice(
@@ -694,6 +760,7 @@ export function submitPersistedPracticeAttempt(input: {
     idempotencyKey: string;
     durationSeconds: number | null;
     answers: LocalPracticeAnswerInput[];
+    handwriting?: LocalPracticeHandwritingInput;
 }) {
     return practiceApi<LocalPracticeAttemptSubmission>("/api/v1/local-practice/attempts", {
         method: "POST",

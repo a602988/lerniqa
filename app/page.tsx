@@ -28,10 +28,15 @@ import {
     SEMESTER_OPTIONS, Subject, SUBJECTS, checkAnswer, DEFAULT_ROLE_ACCESS,
 } from "./lib/demo-data";
 import {
-    ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getQuestionSourceCategory, normalizeQuestionFilters,
+    ALL_QUESTION_FILTERS, DEFAULT_QUESTION_FILTERS, filterQuestions, getPreferredQuestionSemester, getQuestionSourceCategory, normalizeQuestionFilters,
     isSupplementalQuestionMetadata, normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
 import { normalizeSubjectLabel } from "./lib/subject-labels";
+import {
+    findEducationStage,
+    type EducationCatalog,
+    type EducationStage,
+} from "./lib/education-catalog-contract";
 import {
     broadcastAuthSessionContextChanged,
     broadcastAuthSessionExpired,
@@ -48,6 +53,7 @@ import {
     getPersistedPracticeSession,
     isDeterministicPracticeApiError,
     isPracticeSessionExpired,
+    loadEducationCatalog,
     loadPersistedPractice,
     mapPracticeAccountLearner,
     normalizeLoadedPracticePlan,
@@ -58,8 +64,10 @@ import {
     type PracticeAccountRole,
     readPracticePreferences,
     readPracticeSessionHint,
+    previewPersistedPracticeRecommendations,
     shouldAdvanceAfterSubmit,
     selectPracticeLearner,
+    startPersistedPracticeRecommendations,
     startPersistedPractice,
     submitPersistedPracticeAttempt,
     switchPracticeAccountRole,
@@ -72,11 +80,22 @@ import {
 } from "./lib/practice-client";
 import {
     LOCAL_PRACTICE_MAX_QUESTIONS,
+    LOCAL_PRACTICE_MAX_RECOMMENDATIONS,
     type LocalPracticeQuestion,
+    type LocalPracticeRecommendationKind,
+    type LocalPracticeRecommendationResult,
     type LocalPracticeReferenceAnswer,
     type LocalPracticeScoreSummary,
     type LocalPracticeSessionHistory,
+    type LocalPracticeWrongQueueItem,
 } from "./lib/local-practice-types";
+
+type RecommendationPreviewState = {
+    sourceKey: string;
+    status: "loading" | "ready" | "error";
+    result?: LocalPracticeRecommendationResult;
+    error?: string;
+};
 
 interface QuestionFlowProps {
     serverQuestion?: LocalPracticeQuestion;
@@ -164,6 +183,8 @@ interface QuestionReviewProps {
 interface LearnerProfileDraft {
     learnerId?: string;
     displayName: string;
+    educationStatus: PracticeAccountLearner["educationStatus"];
+    educationStage: EducationStage | "";
     gradeCode: string;
     semesterCode: string;
 }
@@ -385,6 +406,7 @@ interface PracticeRecord {
 const EMPTY_LEARNER: Learner = {
     id: "",
     name: "",
+    educationStatus: "enrolled",
     grade: "",
     semester: "",
     bookVersions: { 數學: "", 國語: "", 英文: "", 理化: "", 生物: "", 歷史: "", 地理: "", 公民: "" },
@@ -415,19 +437,10 @@ const ACCOUNT_ROLE_CODES: Record<AccountRole, PracticeAccountRole> = {
 };
 const ACCOUNT_IDENTITY_OPTIONS = (["parent", "learner", "tutor"] satisfies PracticeAccountRole[])
     .map((value) => ({ value, label: ACCOUNT_ROLE_LABELS[value] }));
-const ACCOUNT_GRADE_OPTIONS = [
-    { value: "elementary-4", label: "小四" },
-    { value: "elementary-5", label: "小五" },
-    { value: "junior-high-1", label: "國一" },
-    { value: "junior-high-2", label: "國二" },
-    { value: "junior-high-3", label: "國三" },
-];
-const ACCOUNT_SEMESTER_OPTIONS = [
-    { value: "semester-1", label: "上學期" },
-    { value: "semester-2", label: "下學期" },
-];
 const EMPTY_LEARNER_PROFILE_DRAFT: LearnerProfileDraft = {
     displayName: "",
+    educationStatus: "enrolled",
+    educationStage: "",
     gradeCode: "",
     semesterCode: "",
 };
@@ -1005,6 +1018,17 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     })}</div>;
 }
 
+/**
+ * 顯示題庫設定的正式題型名稱，舊資料才退回一般題型名稱。
+ * @param question 題目資料。
+ * @returns 題型標示。
+ */
+function QuestionTypeLabel({ question }: { question: Question }) {
+    const label = question.typeLabel?.trim() || getQuestionKindLabel(question.kind);
+
+    return <p className="practice-question-type"><span>題型</span><strong>{label}</strong></p>;
+}
+
 /** 依題目資料逐題顯示複合選擇題的小題與選項。 */
 function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -1070,8 +1094,10 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
                     const sourceIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
                     const isNamedPoint = /^[A-Z]$/i.test(part.id);
                     return <FormField
+                        className="practice-answer-field"
                         key={part.id}
                         label={isNamedPoint ? part.id.toUpperCase() : `第 ${sourceIndex + 1} 空`}
+                        layout="horizontal"
                         description={isNamedPoint ? undefined : <PromptText text={part.prompt} />}
                     >
                         <Input
@@ -1094,7 +1120,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
             </div>;
         }
 
-        return <FormField label="文字答案（選填）" description="可以直接手寫；目前尚未連接 AI 辨識，只有文字答案會立即檢核。">
+        return <FormField className="practice-answer-field" label="文字答案（選填）" layout="horizontal" description="可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。">
             <Input value={answer} disabled={disabled} placeholder="也可以只使用右側手寫板作答" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
         </FormField>;
     }
@@ -1180,6 +1206,7 @@ function QuestionReview({ question, serverQuestion, index, total, title, headerA
                     <CardContent className="question-review-layout bg-white p-4">
                         <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                             <div className="practice-prompt">
+                                <QuestionTypeLabel question={question} />
                                 <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
                             </div>
                             <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground" role="note">這裡是題目預覽，不會保存作答；請按「開始練習」正式作答。</p>
@@ -1273,6 +1300,7 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 /** 顯示單題作答及手寫區。 */
 function QuestionFlow(props: QuestionFlowProps) {
     const { question, serverQuestion, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
+    const reviewRef = useRef<HTMLElement>(null);
     const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
     const isLast = index === total - 1;
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
@@ -1283,10 +1311,20 @@ function QuestionFlow(props: QuestionFlowProps) {
         return partIndex >= 0 && Boolean(selectedAnswers[partIndex]);
     });
     const enteredParts = new Map(parsePracticeAnswers(answer).map((entry) => [entry.partId, entry.value]));
-    const canSubmit = serverQuestion ? serverQuestion.parts.filter((part) => !partIds?.length || partIds.includes(part.id)).every((part) => {
+    const serverTargetParts = serverQuestion?.parts.filter((part) => !partIds?.length || partIds.includes(part.id)) ?? [];
+    const hasCompleteServerAnswers = serverTargetParts.length > 0 && serverTargetParts.every((part) => {
         const value = enteredParts.get(part.id);
         return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
-    }) : question.kind === "written"
+    });
+    const missingServerParts = serverTargetParts.filter((part) => {
+        const value = enteredParts.get(part.id);
+        return Array.isArray(value) ? value.length === 0 : !value?.trim();
+    });
+    const canUseServerHandwriting = checkMode !== "score"
+        && Boolean(handwriting)
+        && missingServerParts.length > 0
+        && missingServerParts.every((part) => part.answerMode === "text");
+    const canSubmit = serverQuestion ? hasCompleteServerAnswers || canUseServerHandwriting : question.kind === "written"
         ? needsCharacterRecognition
             ? Boolean(handwriting)
             : targetParts.length
@@ -1298,26 +1336,37 @@ function QuestionFlow(props: QuestionFlowProps) {
     const referenceExplanation = feedback?.referenceAnswers?.length
         ? formatReferenceExplanations(feedback.referenceAnswers)
         : "";
+
+    useEffect(() => {
+        if (!feedback || !window.matchMedia("(min-width: 768px) and (max-width: 1023px)").matches) return;
+
+        const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+        const frame = window.requestAnimationFrame(() => reviewRef.current?.scrollIntoView({ behavior, block: "nearest" }));
+        return () => window.cancelAnimationFrame(frame);
+    }, [feedback]);
+
     return (
         <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
-            <CardContent className="practice-question-layout bg-white p-4">
+            <CardContent className="practice-question-layout bg-white p-4" data-has-feedback={feedback ? "true" : "false"}>
                 <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                     <div className="practice-prompt">
+                        <QuestionTypeLabel question={question} />
                         <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                     </div>
                     {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
-                    {feedback && <div className={`rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
-                        <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{serverQuestion ? feedback.correct === true ? "答對了，作答已保存" : feedback.correct === false ? "答案不符標準答案，已加入錯題複習" : "作答已保存，等待批改或補齊標準答案" : feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
-                        {serverQuestion && feedback.referenceAnswers?.length ? <p className="mt-2 text-sm font-semibold">參考答案：{formatReferenceAnswers(feedback.referenceAnswers)}</p> : null}
-                        {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
-                        {feedback.correct !== null && (serverQuestion
-                            ? referenceExplanation ? <p className="mt-2 text-sm text-muted-foreground">解析：{referenceExplanation}</p> : null
-                            : <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>)}
-                    </div>}
-                    <QuestionConditions question={question} />
                 </section>
+                {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
+                    <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{serverQuestion ? feedback.correct === true ? "答對了，作答已保存" : feedback.correct === false ? "答案不符標準答案，已加入錯題複習" : "作答已保存，等待批改或補齊標準答案" : feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
+                    {serverQuestion && feedback.referenceAnswers?.length ? <p className="mt-2 text-sm font-semibold">參考答案：{formatReferenceAnswers(feedback.referenceAnswers)}</p> : null}
+                    {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
+                    {feedback.correct !== null && (serverQuestion
+                        ? referenceExplanation ? <p className="mt-2 text-sm text-muted-foreground">解析：{referenceExplanation}</p> : null
+                        : <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>)}
+                </aside>}
+                <div className="practice-question-meta"><QuestionConditions question={question} /></div>
                 <aside className="practice-handwriting-pane">
-                    <HandwritingPad value={handwriting} disabled={Boolean(feedback)} recognitionStatus={needsCharacterRecognition ? "尚未連接" : undefined} onChange={props.onHandwriting} />
+                    {checkMode === "score" && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="note">只顯示成績模式不保存作答內容，因此不能提交手寫板。請改用「逐題檢核」或「全部作答後檢核」保存筆跡。</p>}
+                    <HandwritingPad value={handwriting} disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"} recognitionStatus={needsCharacterRecognition ? "送出後排入分析" : undefined} onChange={props.onHandwriting} />
                 </aside>
                 <div className="practice-question-actions">{feedback
                     ? <Button onClick={props.onNext}>{isLast ? "查看結果" : "下一題"}<ArrowRight /></Button>
@@ -1338,13 +1387,18 @@ export default function Home() {
     const [practiceSessionsByLearner, setPracticeSessionsByLearner] = useState<Record<string, LocalPracticeSessionHistory[]>>({});
     const [plansByLearner, setPlansByLearner] = useState<Record<string, PracticePlan>>({});
     const [schedulesByLearner, setSchedulesByLearner] = useState<Record<string, ScheduledPractice[]>>({});
-    const [queuedSimilarByLearner, setQueuedSimilarByLearner] = useState<Record<string, number[]>>({});
+    const [wrongReviewQueue, setWrongReviewQueue] = useState<LocalPracticeWrongQueueItem[]>([]);
+    const [recommendationQueueRefreshing, setRecommendationQueueRefreshing] = useState(false);
+    const [recommendationPreviews, setRecommendationPreviews] = useState<Record<number, RecommendationPreviewState>>({});
+    const [recommendationNotice, setRecommendationNotice] = useState("");
     const [questionCollectionsByLearner, setQuestionCollectionsByLearner] = useState<Record<string, QuestionCollection[]>>({});
     const [roleAccess, setRoleAccess] = useState<RoleAccess>(DEFAULT_ROLE_ACCESS);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [persistedQuestions, setPersistedQuestions] = useState<Map<number, LocalPracticeQuestion>>(new Map());
     const [persistedLearnerId, setPersistedLearnerId] = useState("");
     const [practiceAccount, setPracticeAccount] = useState<PracticeAccount>();
+    const [educationCatalog, setEducationCatalog] = useState<EducationCatalog>();
+    const [educationCatalogError, setEducationCatalogError] = useState("");
     const [practiceReloadToken, setPracticeReloadToken] = useState(0);
     const [practiceServiceError, setPracticeServiceError] = useState("");
     const [practiceBusy, setPracticeBusy] = useState(false);
@@ -1357,12 +1411,15 @@ export default function Home() {
         partId?: string;
         idempotencyKey: string;
         answers: ReturnType<typeof parsePracticeAnswers>;
+        handwriting?: { dataUrl: string };
         durationSeconds: number;
     } | undefined>(undefined);
+    const recommendationRequestRef = useRef<{ fingerprint: string; sessionId: string } | undefined>(undefined);
     const [imports, setImports] = useState<ImportBatch[]>([]);
     const [importBooks, setImportBooks] = useState<ImportBook[]>([]);
     const [section, setSection] = useState<Section>("overview");
     const [session, setSession] = useState<PracticeSession>();
+    const [recommendationSessionKind, setRecommendationSessionKind] = useState<Exclude<LocalPracticeRecommendationKind, "none"> | null>(null);
     const [sessionPaused, setSessionPaused] = useState(false);
     const [sessionExitOpen, setSessionExitOpen] = useState(false);
     const [answer, setAnswer] = useState("");
@@ -1439,6 +1496,7 @@ export default function Home() {
     const [learnerProfileBusy, setLearnerProfileBusy] = useState(false);
     const [subjectSettingBusyCode, setSubjectSettingBusyCode] = useState("");
     const [subjectSettingStatus, setSubjectSettingStatus] = useState("");
+    const [selectedSubjectSettingCode, setSelectedSubjectSettingCode] = useState("");
     const createLearnerRequestRef = useRef<{ fingerprint: string; clientRequestId: string } | undefined>(undefined);
     const [roleSwitchBusy, setRoleSwitchBusy] = useState(false);
     const [identityRole, setIdentityRole] = useState<PracticeAccountRole>("learner");
@@ -1471,12 +1529,16 @@ export default function Home() {
         setPracticeSessionsByLearner({});
         setPlansByLearner({});
         setSchedulesByLearner({});
-        setQueuedSimilarByLearner({});
+        setWrongReviewQueue([]);
+        setRecommendationQueueRefreshing(false);
+        setRecommendationPreviews({});
+        setRecommendationNotice("");
         setQuestionCollectionsByLearner({});
         setRoleAccess(DEFAULT_ROLE_ACCESS);
         setImports([]);
         setImportBooks([]);
         setSession(undefined);
+        setRecommendationSessionKind(null);
         setSessionPaused(false);
         setSessionExitOpen(false);
         setAnswer("");
@@ -1488,6 +1550,7 @@ export default function Home() {
         practiceRequestRef.current = false;
         sessionRequestRef.current = undefined;
         attemptRequestRef.current = undefined;
+        recommendationRequestRef.current = undefined;
         setPracticeServiceError("");
         setStorageError(message);
         router.replace("/account");
@@ -1535,8 +1598,8 @@ export default function Home() {
     const difficultyTotal = activeDifficultyMix.easy + activeDifficultyMix.medium + activeDifficultyMix.hard;
     const difficultyMixValid = !activePlan.difficultyMixEnabled || difficultyTotal === 100;
     const activeAttempts = attemptsByLearner[activeLearnerId] ?? [];
+    const recommendationLimit = Math.min(activeLearner.defaultQuestionLimit, LOCAL_PRACTICE_MAX_RECOMMENDATIONS);
     const practiceStreak = useMemo(() => getPracticeStreak(activeAttempts), [activeAttempts]);
-    const activeQueue = queuedSimilarByLearner[activeLearnerId] ?? [];
     const activeSchedules = useMemo(() => [...(schedulesByLearner[activeLearnerId] ?? [])]
         .sort((left, right) => `${left.date}T${left.time ?? "23:59"}`.localeCompare(`${right.date}T${right.time ?? "23:59"}`)), [activeLearnerId, schedulesByLearner]);
     const isScheduleListPage = pathname === PRACTICE_SCHEDULES_PATH;
@@ -1555,8 +1618,23 @@ export default function Home() {
         : configurableSubjects.filter((subject) => Boolean(activeLearner.bookVersions[subject])), [activeLearner.bookVersions, activeLearner.id, configurableSubjects, persistedLearnerId]);
     const baseQuestions = useMemo(() => questions.filter((question) => !question.generatedFrom), [questions]);
     const learnerQuestions = useMemo(() => baseQuestions.filter((question) => (!persistedQuestions.has(question.id) || activeLearnerId === persistedLearnerId)
-        && question.grade === activeLearner.grade
-        && availableSubjects.includes(question.subject)), [activeLearner.grade, activeLearnerId, persistedLearnerId, persistedQuestions, availableSubjects, baseQuestions]);
+        && (activeLearner.educationStatus !== "enrolled" || question.grade === activeLearner.grade)
+        && availableSubjects.includes(question.subject)), [activeLearner.educationStatus, activeLearner.grade, activeLearnerId, persistedLearnerId, persistedQuestions, availableSubjects, baseQuestions]);
+
+    useEffect(() => {
+        let active = true;
+        void loadEducationCatalog()
+            .then((catalog) => {
+                if (!active) return;
+                setEducationCatalog(catalog);
+                setEducationCatalogError("");
+            })
+            .catch((error) => {
+                if (!active) return;
+                setEducationCatalogError(error instanceof Error ? error.message : "目前無法讀取教育階段與年級。");
+            });
+        return () => { active = false; };
+    }, []);
 
     useEffect(() => {
         const handleAuthenticationExpired = () => clearAuthenticatedWorkspace(
@@ -1760,6 +1838,30 @@ export default function Home() {
         ? selectQuestionsByDifficulty(eligibleQuestions, activePlan.questionLimit, activeDifficultyMix)
         : eligibleQuestions.slice(0, activePlan.questionLimit), [activeDifficultyMix, activePlan.difficultyMixEnabled, activePlan.questionLimit, eligibleQuestions]);
     const latestAttempts = useMemo(() => getLatestAttempts(activeAttempts), [activeAttempts]);
+    const recommendationQueueIdsByQuestion = useMemo(() => {
+        const newestQueueByQuestionPart = new Map<string, LocalPracticeWrongQueueItem>();
+        wrongReviewQueue
+            .slice()
+            .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+            .forEach((item) => {
+                const routeId = practiceRouteId(item.questionId);
+                const serverQuestion = persistedQuestions.get(routeId);
+                if (
+                    !serverQuestion
+                    || serverQuestion.id !== item.questionId
+                    || serverQuestion.revisionId !== item.revisionId
+                ) return;
+                const queueKey = `${routeId}:${item.partId ?? "whole-question"}`;
+                if (!newestQueueByQuestionPart.has(queueKey)) newestQueueByQuestionPart.set(queueKey, item);
+            });
+
+        const idsByQuestion = new Map<number, string[]>();
+        newestQueueByQuestionPart.forEach((item) => {
+            const routeId = practiceRouteId(item.questionId);
+            idsByQuestion.set(routeId, [...(idsByQuestion.get(routeId) ?? []), item.id]);
+        });
+        return idsByQuestion;
+    }, [persistedQuestions, wrongReviewQueue]);
     const selectedLatestAttempts = useMemo(() => {
         const eligibleQuestionIds = new Set(eligibleQuestions.map((question) => question.id));
         return latestAttempts.filter((attempt) => eligibleQuestionIds.has(attempt.questionId));
@@ -1783,11 +1885,18 @@ export default function Home() {
             counts.set(attempt.questionId, (counts.get(attempt.questionId) ?? 0) + 1);
             return counts;
         }, new Map());
-        return latestAttempts.filter(needsWrongReview)
-            .map((attempt) => questions.find((question) => question.id === attempt.questionId))
+        const wrongQuestionIds = new Set([
+            ...latestAttempts.filter(needsWrongReview).map((attempt) => attempt.questionId),
+            ...recommendationQueueIdsByQuestion.keys(),
+        ]);
+        return [...wrongQuestionIds]
+            .map((questionId) => questions.find((question) => question.id === questionId))
             .filter((question): question is Question => Boolean(question))
             .sort((left, right) => (wrongCounts.get(right.id) ?? 0) - (wrongCounts.get(left.id) ?? 0));
-    }, [activeAttempts, latestAttempts, questions]);
+    }, [activeAttempts, latestAttempts, questions, recommendationQueueIdsByQuestion]);
+    const recommendableMistakeIds = mistakeQuestions
+        .map((question) => question.id)
+        .filter((questionId) => recommendationQueueIdsByQuestion.has(questionId));
     const communityMistakeRows = useMemo(() => {
         const learnerQuestionMap = new Map(learnerQuestions.map((question) => [question.id, question]));
         const stats = Object.values(attemptsByLearner).flat().reduce<Map<number, { total: number; wrong: number }>>((rows, attempt) => {
@@ -1834,7 +1943,6 @@ export default function Home() {
     const historyAttemptedCount = activeAttempts.length
         + practiceRecords.reduce((total, record) => total + (record.scoreSummary ? record.attemptedItemCount : 0), 0);
     const accuracy = reviewedCount ? Math.round((totalCorrectCount / reviewedCount) * 100) : 0;
-    const usableQueue = activeQueue.filter((id) => questions.some((question) => question.id === id && question.generatedFrom && question.grade === activeLearner.grade));
     const currentQuestion = session ? questions.find((question) => question.id === session.questionIds[session.index]) : undefined;
     const currentPersistedItem = session?.persistedItems?.[session.index];
     const currentTargetPartIds = currentPersistedItem?.partId
@@ -1882,10 +1990,15 @@ export default function Home() {
                     setPlansByLearner({});
                     setSchedulesByLearner({});
                     setQuestionCollectionsByLearner({});
-                    setQueuedSimilarByLearner({});
+                    setWrongReviewQueue([]);
+                    setRecommendationQueueRefreshing(false);
+                    setRecommendationPreviews({});
+                    setRecommendationNotice("");
                     setRoleAccess(roleAccessFromPracticeAccount(persisted.account));
                     setImports([]);
                     setImportBooks([]);
+                    setSession(undefined);
+                    setRecommendationSessionKind(null);
                     setStorageError("");
                     setPracticeServiceError("請先在系統設定建立或選擇學習者。");
                     return;
@@ -1922,11 +2035,15 @@ export default function Home() {
                 setPlansByLearner({ [learner.id]: normalizedPlan });
                 setSchedulesByLearner({ [learner.id]: preferences?.schedules ?? [] });
                 setQuestionCollectionsByLearner({ [learner.id]: collections });
-                setQueuedSimilarByLearner({ [learner.id]: [] });
+                setWrongReviewQueue(persisted.wrongReviewQueue.items);
+                setRecommendationQueueRefreshing(false);
+                setRecommendationPreviews({});
+                setRecommendationNotice("");
                 setRoleAccess(roleAccessFromPracticeAccount(persisted.account));
                 setImports([]);
                 setImportBooks([]);
                 setStorageError("");
+                setRecommendationSessionKind(null);
                 const resumeSessionId = readPracticeSessionHint(learner.id);
                 if (resumeSessionId) {
                     try {
@@ -2019,12 +2136,16 @@ export default function Home() {
                     setPracticeSessionsByLearner({});
                     setPlansByLearner({});
                     setSchedulesByLearner({});
-                    setQueuedSimilarByLearner({});
+                    setWrongReviewQueue([]);
+                    setRecommendationQueueRefreshing(false);
+                    setRecommendationPreviews({});
+                    setRecommendationNotice("");
                     setQuestionCollectionsByLearner({});
                     setRoleAccess(DEFAULT_ROLE_ACCESS);
                     setImports([]);
                     setImportBooks([]);
                     setSession(undefined);
+                    setRecommendationSessionKind(null);
                     setPracticeServiceError("");
                     const practiceFailure = error instanceof Error ? error.message : "目前無法讀取正式題庫。";
                     setStorageError(`${practiceFailure} 未載入任何帳號資料，請稍後重試。`);
@@ -2268,6 +2389,7 @@ export default function Home() {
     /** 清除目前練習與暫存輸入。 */
     function clearSession() {
         setSession(undefined);
+        setRecommendationSessionKind(null);
         setSessionPaused(false);
         setSessionExitOpen(false);
         setAnswer("");
@@ -2353,6 +2475,11 @@ export default function Home() {
         if (nextLearnerId === activeLearnerId || !canLeaveSession()) return;
         if (!await abandonCurrentSession()) return;
         clearSession();
+        setWrongReviewQueue([]);
+        setRecommendationQueueRefreshing(false);
+        setRecommendationPreviews({});
+        setRecommendationNotice("");
+        recommendationRequestRef.current = undefined;
         if (practiceAccount) {
             setPracticeBusy(true);
             try {
@@ -2375,10 +2502,18 @@ export default function Home() {
 
     function openCreateLearner() {
         if (!canCreateLearner) return;
+        const stage = findEducationStage(educationCatalog, activeAccountLearner?.gradeCode)
+            ?? educationCatalog?.stages[0];
         setLearnerProfileDraft({
             displayName: "",
-            gradeCode: activeAccountLearner?.gradeCode ?? ACCOUNT_GRADE_OPTIONS[0].value,
-            semesterCode: activeAccountLearner?.semesterCode ?? ACCOUNT_SEMESTER_OPTIONS[0].value,
+            educationStatus: "enrolled",
+            educationStage: stage?.code ?? "",
+            gradeCode: stage?.grades.some((grade) => grade.code === activeAccountLearner?.gradeCode)
+                ? activeAccountLearner?.gradeCode ?? ""
+                : stage?.grades[0]?.code ?? "",
+            semesterCode: educationCatalog?.semesters.some((semester) => semester.code === activeAccountLearner?.semesterCode)
+                ? activeAccountLearner?.semesterCode ?? ""
+                : educationCatalog?.semesters[0]?.code ?? "",
         });
         setLearnerProfileStatus("");
         setLearnerProfileDialogOpen(true);
@@ -2386,9 +2521,13 @@ export default function Home() {
 
     function openEditLearner(profile: PracticeAccountLearner) {
         if (!profile.canManageSettings) return;
+        const stage = findEducationStage(educationCatalog, profile.gradeCode)
+            ?? educationCatalog?.stages[0];
         setLearnerProfileDraft({
             learnerId: profile.id,
             displayName: profile.displayName,
+            educationStatus: profile.educationStatus,
+            educationStage: profile.educationStatus === "enrolled" ? stage?.code ?? "" : "",
             gradeCode: profile.gradeCode ?? "",
             semesterCode: profile.semesterCode ?? "",
         });
@@ -2398,10 +2537,18 @@ export default function Home() {
 
     async function saveLearnerProfile() {
         const displayName = learnerProfileDraft.displayName.trim();
-        if (!displayName || !learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode || learnerProfileBusy) {
-            setLearnerProfileStatus("請填寫稱呼、年級與學期。");
+        const needsSchoolFields = learnerProfileDraft.educationStatus === "enrolled";
+        if (!displayName || (needsSchoolFields && (!learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode)) || learnerProfileBusy) {
+            setLearnerProfileStatus(needsSchoolFields ? "請填寫稱呼、年級與學期。" : "請填寫稱呼。");
             return;
         }
+        const educationFields = needsSchoolFields
+            ? {
+                educationStatus: learnerProfileDraft.educationStatus,
+                gradeCode: learnerProfileDraft.gradeCode,
+                semesterCode: learnerProfileDraft.semesterCode,
+            }
+            : { educationStatus: learnerProfileDraft.educationStatus, gradeCode: null, semesterCode: null };
         setLearnerProfileBusy(true);
         setLearnerProfileStatus("");
         try {
@@ -2410,14 +2557,13 @@ export default function Home() {
                 response = await updatePracticeLearner({
                     learnerId: learnerProfileDraft.learnerId,
                     displayName,
-                    gradeCode: learnerProfileDraft.gradeCode,
-                    semesterCode: learnerProfileDraft.semesterCode,
+                    ...educationFields,
                 }, section === "settings" && practiceAccount?.activeRole === "learner"
                     ? "update-current"
                     : "update");
             }
             else {
-                const fingerprint = JSON.stringify({ displayName, gradeCode: learnerProfileDraft.gradeCode, semesterCode: learnerProfileDraft.semesterCode });
+                const fingerprint = JSON.stringify({ displayName, ...educationFields });
                 const pending = createLearnerRequestRef.current?.fingerprint === fingerprint
                     ? createLearnerRequestRef.current
                     : { fingerprint, clientRequestId: crypto.randomUUID() };
@@ -2425,8 +2571,7 @@ export default function Home() {
                 response = await createPracticeLearner({
                     clientRequestId: pending.clientRequestId,
                     displayName,
-                    gradeCode: learnerProfileDraft.gradeCode,
-                    semesterCode: learnerProfileDraft.semesterCode,
+                    ...educationFields,
                 });
                 createLearnerRequestRef.current = undefined;
             }
@@ -2694,6 +2839,11 @@ export default function Home() {
         const dependentReset = field === "subject"
             ? {
                 bookVersion: value === "全部" ? undefined : activeLearner.bookVersions[value as Subject],
+                semester: getPreferredQuestionSemester(
+                    learnerQuestions,
+                    value as Subject | "全部",
+                    activeLearner.semester,
+                ),
                 scopeFilters: [],
                 sourceFilters: [],
                 knowledge: ALL_KNOWLEDGE,
@@ -3172,6 +3322,7 @@ export default function Home() {
             return targets;
         }, {});
         attemptRequestRef.current = undefined;
+        setRecommendationSessionKind(null);
         setSession({ id: sessionId, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: effectiveQuestionIds, ...(persistedItems ? { persistedItems } : {}), ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
         setSessionPaused(false); setSessionExitOpen(false); setAnswer(""); setHandwriting(""); setSection(mode === "practice" ? "practice" : "mistakes");
         router.push(getSessionQuestionPath(effectiveQuestionIds[0]));
@@ -3287,8 +3438,31 @@ export default function Home() {
             ? attempt.sessionItemId === currentPersistedItem.id
             : attempt.questionId === currentQuestion.id)) return;
         const hasWrittenResponse = Boolean(answer.trim() || handwriting);
-        if (!serverQuestion && isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
-        if (currentQuestion.kind === "written" ? !hasWrittenResponse : !answer.trim()) return;
+        if (serverQuestion && session.checkMode === "score" && handwriting) {
+            setPracticeServiceError("只顯示成績模式不保存作答內容；請改用逐題或全部作答後檢核。");
+            return;
+        }
+        if (serverQuestion) {
+            const values = new Map(parsePracticeAnswers(answer).map((entry) => [entry.partId, entry.value]));
+            const targetParts = serverQuestion.parts.filter((part) => (
+                !currentTargetPartIds
+                || currentTargetPartIds.length === 0
+                || currentTargetPartIds.includes(part.id)
+            ));
+            const incompleteParts = targetParts.filter((part) => {
+                const value = values.get(part.id);
+                return Array.isArray(value) ? value.length === 0 : !value?.trim();
+            });
+            const handwritingCompletesMissingText = session.checkMode !== "score"
+                && Boolean(handwriting)
+                && incompleteParts.length > 0
+                && incompleteParts.every((part) => part.answerMode === "text");
+            if (!targetParts.length || (incompleteParts.length > 0 && !handwritingCompletesMissingText)) return;
+        }
+        else {
+            if (isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
+            if (currentQuestion.kind === "written" ? !hasWrittenResponse : !answer.trim()) return;
+        }
         const targetPartIds = currentTargetPartIds;
         const partResults = !serverQuestion && currentQuestion.parts?.length ? getQuestionPartResults(currentQuestion, answer, targetPartIds) : [];
         let attempt: Attempt;
@@ -3312,6 +3486,7 @@ export default function Home() {
                         ...(currentPersistedItem?.partId ? { partId: currentPersistedItem.partId } : {}),
                         idempotencyKey: crypto.randomUUID(),
                         answers: parsePracticeAnswers(answer),
+                        ...(handwriting ? { handwriting: { dataUrl: handwriting } } : {}),
                         durationSeconds: Math.min(86400, Math.max(1, Math.round((Date.now() - session.questionStartedAt) / 1000))),
                     };
                 attemptRequestRef.current = snapshot;
@@ -3448,40 +3623,190 @@ export default function Home() {
         if (nextQuestionId !== undefined) router.push(getSessionQuestionPath(nextQuestionId));
     }
 
-    /** 加入原始錯題所對應的相近題。 */
-    function queueSimilar(sourceIds: number[]) {
-        const ids = questions.filter((question) => question.generatedFrom && sourceIds.includes(question.generatedFrom) && question.grade === activeLearner.grade).map((question) => question.id);
-        setQueuedSimilarByLearner((current) => ({ ...current, [activeLearnerId]: [...new Set([...(current[activeLearnerId] ?? []), ...ids])] }));
+    /** 取得目前最新錯題對應的正式 queue item；不可用畫面篩選條件推測推薦來源。 */
+    function getRecommendationSourceQueueItemIds(questionId: number) {
+        return [...new Set(recommendationQueueIdsByQuestion.get(questionId) ?? [])];
     }
 
-    /**
-     * 取得指定錯題可立即練習的相關題目。
-     * @param sourceId 原始錯題識別碼。
-     * @returns 依明確關聯、主題、知識點及單元排序的題目識別碼。
-     */
-    function getRelatedQuestionIds(sourceId: number) {
-        const source = questions.find((question) => question.id === sourceId);
-        if (!source) return [];
-        return questions
-            .filter((question) => question.id !== source.id && question.grade === activeLearner.grade)
-            .map((question) => ({
-                id: question.id,
-                relevance: question.generatedFrom === source.id
-                    ? 0
-                    : source.topic && question.topic === source.topic
-                        ? 1
-                        : question.knowledge === source.knowledge
-                            ? 2
-                            : question.subject === source.subject && question.unit === source.unit
-                                ? 3
-                                : question.subject === source.subject
-                                    ? 4
-                                    : 5,
-            }))
-            .filter(({ relevance }) => relevance < 5)
-            .sort((left, right) => left.relevance - right.relevance)
-            .slice(0, activeLearner.defaultQuestionLimit)
-            .map(({ id }) => id);
+    /** 將推薦 API 回傳的公開題目併入目前正式題庫，供既有作答介面直接使用。 */
+    function mergeRecommendationQuestions(serverQuestions: LocalPracticeQuestion[]) {
+        if (!serverQuestions.length) return;
+        setPersistedQuestions((current) => {
+            const merged = new Map(current);
+            serverQuestions.forEach((question) => merged.set(practiceRouteId(question.id), question));
+            return merged;
+        });
+        setQuestions((current) => {
+            const merged = new Map(current.map((question) => [question.id, question]));
+            serverQuestions.forEach((question) => merged.set(practiceRouteId(question.id), adaptPracticeQuestion(question)));
+            return [...merged.values()];
+        });
+    }
+
+    /** 讀取單一錯題的同題型／confirmed 相似題候選摘要。 */
+    async function loadRecommendationPreview(questionId: number) {
+        const sourceQueueItemIds = getRecommendationSourceQueueItemIds(questionId);
+        if (!sourceQueueItemIds.length) return;
+        const sourceKey = [...sourceQueueItemIds].sort().join(":");
+        setRecommendationPreviews((current) => ({
+            ...current,
+            [questionId]: { sourceKey, status: "loading" },
+        }));
+        try {
+            const result = await previewPersistedPracticeRecommendations({
+                sourceQueueItemIds,
+                limit: recommendationLimit,
+            });
+            setRecommendationPreviews((current) => current[questionId]?.sourceKey === sourceKey ? {
+                ...current,
+                [questionId]: { sourceKey, status: "ready", result },
+            } : current);
+        }
+        catch (error) {
+            setRecommendationPreviews((current) => current[questionId]?.sourceKey === sourceKey ? {
+                ...current,
+                [questionId]: {
+                    sourceKey,
+                    status: "error",
+                    error: error instanceof Error ? error.message : "目前無法取得延伸題目。",
+                },
+            } : current);
+        }
+    }
+
+    /** 由伺服器依嚴格層級建立同題型或 confirmed 相似題練習。 */
+    async function startRecommendationSession(sourceQuestionId: number, checkMode: CheckMode = "instant"): Promise<boolean> {
+        const sourceQueueItemIds = getRecommendationSourceQueueItemIds(sourceQuestionId);
+        if (!sourceQueueItemIds.length || practiceRequestRef.current) {
+            if (!sourceQueueItemIds.length) setRecommendationNotice("這筆錯題目前沒有可用的延伸練習來源。");
+            return false;
+        }
+        const fingerprint = JSON.stringify({ sourceQueueItemIds: [...sourceQueueItemIds].sort(), checkMode });
+        const pending = recommendationRequestRef.current?.fingerprint === fingerprint
+            ? recommendationRequestRef.current
+            : { fingerprint, sessionId: crypto.randomUUID() };
+        recommendationRequestRef.current = pending;
+        practiceRequestRef.current = true;
+        setPracticeBusy(true);
+        setRecommendationNotice("");
+        try {
+            const result = await startPersistedPracticeRecommendations({
+                sourceQueueItemIds,
+                limit: recommendationLimit,
+                checkMode,
+                sessionId: pending.sessionId,
+            });
+            if (result.recommendationKind === "none" || !result.session) {
+                recommendationRequestRef.current = undefined;
+                setRecommendationNotice(result.explanation || "目前沒有可練習的同題型或相似題型。");
+                const queueIds = recommendationQueueIdsByQuestion.get(sourceQuestionId) ?? [];
+                const sourceKey = [...queueIds].sort().join(":");
+                if (sourceKey) setRecommendationPreviews((current) => ({
+                    ...current,
+                    [sourceQuestionId]: { sourceKey, status: "ready", result },
+                }));
+                return false;
+            }
+            if (result.session.status !== "active" && result.session.status !== "paused") {
+                throw new Error("這次延伸練習已結束，請重新建立練習。");
+            }
+            const returnedQuestions = new Map(result.questions.map((question) => [question.id, question]));
+            const sessionQuestions = result.session.items.map((item) => returnedQuestions.get(item.questionId));
+            if (sessionQuestions.some((question, index) => !question || question.revisionId !== result.session!.items[index]?.revisionId)) {
+                throw new Error("延伸練習的題目版本不完整，請重新取得候選題目。");
+            }
+            mergeRecommendationQuestions(result.questions);
+            const questionIds = result.session.items.map((item) => practiceRouteId(item.questionId));
+            const persistedItems = result.session.items.map((item) => ({
+                id: item.id,
+                questionId: practiceRouteId(item.questionId),
+                partId: item.partId,
+            }));
+            recommendationRequestRef.current = undefined;
+            if (!writePracticeSessionHint(activeLearnerId, result.session.id)) {
+                setStorageError("此瀏覽器無法保存練習恢復識別碼；請完成本輪後再關閉頁面。");
+            }
+            attemptRequestRef.current = undefined;
+            setRecommendationSessionKind(result.recommendationKind);
+            setSession({
+                id: result.session.id,
+                startedAt: result.session.startedAt,
+                learnerId: activeLearnerId,
+                mode: result.session.mode,
+                checkMode: result.session.checkMode,
+                phase: "answering",
+                questionIds,
+                persistedItems,
+                index: 0,
+                attempts: [],
+                questionStartedAt: Date.now(),
+            });
+            setSessionPaused(false);
+            setSessionExitOpen(false);
+            setAnswer("");
+            setHandwriting("");
+            setSection("mistakes");
+            router.push(getSessionQuestionPath(questionIds[0]));
+            return true;
+        }
+        catch (error) {
+            if (isDeterministicPracticeApiError(error)) recommendationRequestRef.current = undefined;
+            setRecommendationNotice(error instanceof Error ? error.message : "目前無法開始延伸練習，請重試。");
+            return false;
+        }
+        finally {
+            practiceRequestRef.current = false;
+            setPracticeBusy(false);
+        }
+    }
+
+    /** 依設定優先啟動尚未完成的相同／相近題，沒有候選時接續一般篩選題目。 */
+    async function startPlannedPractice() {
+        if (activePlan.prioritizeRelated) {
+            for (const sourceQuestionId of recommendableMistakeIds) {
+                if (await startRecommendationSession(sourceQuestionId, activePlan.checkMode)) return;
+            }
+            if (recommendableMistakeIds.length) {
+                setRecommendationNotice("相同與相近題已全部練習完成，接著練習其他符合條件的題目。");
+            }
+        }
+        await beginSession("practice", plannedQuestions.map((question) => question.id));
+    }
+
+    /** 顯示伺服器決定的單一推薦層級；空結果不以其他關聯補題。 */
+    function renderRecommendationAction(questionId: number) {
+        const sourceQueueItemIds = recommendationQueueIdsByQuestion.get(questionId) ?? [];
+        if (!sourceQueueItemIds.length && recommendationQueueRefreshing) {
+            return <Button appearance="ghost" tone="muted" size="sm" disabled><Sparkles />正在更新錯題來源…</Button>;
+        }
+        const preview = recommendationPreviews[questionId];
+        if (!sourceQueueItemIds.length) {
+            return <p className="text-xs font-semibold text-muted-foreground" role="status">目前沒有可用的同題型或相似題型。</p>;
+        }
+        if (!preview || preview.status === "loading") {
+            return <Button appearance="ghost" tone="muted" size="sm" disabled><Sparkles />正在尋找延伸題目…</Button>;
+        }
+        if (preview.status === "error") {
+            return <div className="grid gap-1">
+                <p className="text-xs font-semibold text-danger" role="alert">{preview.error}</p>
+                <Button appearance="ghost" tone="muted" size="sm" onClick={() => void loadRecommendationPreview(questionId)}>重新尋找</Button>
+            </div>;
+        }
+        const result = preview.result;
+        if (!result || result.recommendationKind === "none" || result.availableCount === 0) {
+            return <p className="text-xs font-semibold text-muted-foreground" role="status">目前沒有可練習的同題型或相似題型。</p>;
+        }
+        const isSameType = result.recommendationKind === "same_type";
+        const isTopicSimilar = result.recommendationKind === "topic_similar";
+        const kindLabel = isSameType ? "同題型" : isTopicSimilar ? "相近內容" : "已確認相似題型";
+        const actionLabel = isSameType ? "同題型練習" : isTopicSimilar ? "相近題練習" : "相似題型練習";
+        const classification = isSameType && result.classificationLabel ? ` · ${result.classificationLabel}` : "";
+        const sessionCount = Math.min(result.availableCount, recommendationLimit);
+        return <div className="grid min-w-0 gap-1" title={result.explanation}>
+            <Badge className="w-fit" tone={isSameType ? "primary" : "warning"}>{kindLabel}{classification} · 可用 {result.availableCount} 題</Badge>
+            <p className="text-xs leading-relaxed text-muted-foreground">{result.explanation}</p>
+            <Button appearance="ghost" tone="muted" size="sm" disabled={practiceBusy} onClick={() => void startRecommendationSession(questionId, "instant")}><Sparkles />{actionLabel}（{sessionCount}）</Button>
+        </div>;
     }
 
     /** 驗證並載入要匯入的檔案。 */
@@ -3775,10 +4100,55 @@ export default function Home() {
     const pendingCount = session?.attempts.filter((attempt) => attempt.correct === null).length ?? 0;
     const wrongIds = [...new Set(session?.attempts.filter(needsWrongReview).map((attempt) => attempt.questionId) ?? [])];
     const wrongPartIdsByQuestion = getWrongPartIdsByQuestion(session?.attempts.filter(needsWrongReview) ?? []);
-    const similarIds = questions.filter((question) => question.generatedFrom && wrongIds.includes(question.generatedFrom)).map((question) => question.id);
+    const expandedHistoryWrongIds = practiceRecords.find((record) => record.id === selectedPracticeRecordId)
+        ?.attempts.filter(needsWrongReview).map((attempt) => attempt.questionId) ?? [];
+    const recommendationPreviewQuestionIds = [...new Set([
+        ...pagedMistakeQuestions.map((question) => question.id),
+        ...expandedHistoryWrongIds,
+        ...(session?.phase === "complete" ? wrongIds : []),
+    ])];
+    const recommendationPreviewKey = recommendationPreviewQuestionIds.join(":");
     const dayDifference = getDayDifference(activeExam.date);
     const examCountdownLabel = getExamCountdownLabel(dayDifference);
-    const sessionModeLabel = session?.mode === "similar" ? "相關題目練習" : session?.mode === "review" ? "錯題複習" : "考前練習";
+    const sessionModeLabel = recommendationSessionKind === "same_type"
+        ? "同題型練習"
+        : recommendationSessionKind === "topic_similar"
+            ? "相近題練習"
+        : recommendationSessionKind === "confirmed_similar"
+            ? "相似題型練習"
+            : session?.mode === "similar" ? "相關題目練習" : session?.mode === "review" ? "錯題複習" : "考前練習";
+
+    useEffect(() => {
+        let active = true;
+        if (session?.phase !== "complete" || !persistedLearnerId) {
+            setRecommendationQueueRefreshing(false);
+            return;
+        }
+        setRecommendationQueueRefreshing(true);
+        loadPersistedPractice().then((persisted) => {
+            if (!active || persisted.account.learner?.id !== persistedLearnerId) return;
+            setWrongReviewQueue(persisted.wrongReviewQueue.items);
+        }).catch((error) => {
+            if (active) setRecommendationNotice(error instanceof Error ? error.message : "目前無法更新錯題延伸來源。");
+        }).finally(() => {
+            if (active) setRecommendationQueueRefreshing(false);
+        });
+        return () => { active = false; };
+    }, [persistedLearnerId, session?.id, session?.phase]);
+
+    useEffect(() => {
+        if (!persistedLearnerId) return;
+        recommendationPreviewQuestionIds.forEach((questionId) => {
+            const sourceQueueItemIds = recommendationQueueIdsByQuestion.get(questionId) ?? [];
+            if (!sourceQueueItemIds.length) return;
+            const sourceKey = [...sourceQueueItemIds].sort().join(":");
+            const current = recommendationPreviews[questionId];
+            if (current?.sourceKey === sourceKey) return;
+            void loadRecommendationPreview(questionId);
+        });
+    // The key keeps preview requests scoped to cards currently rendered on screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [persistedLearnerId, recommendationPreviewKey, recommendationQueueIdsByQuestion]);
 
     /** 顯示作答中或完成結果。 */
     function renderSession() {
@@ -3835,6 +4205,7 @@ export default function Home() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 p-5 sm:p-7">
+                    {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
                     {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">{session.scoreSummary ? `本輪答對 ${session.scoreSummary.correct} 題、答錯 ${sessionWrong} 題` : "本輪未產生成績"}</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式只顯示整體統計，不顯示逐題結果、答案或解析。</p></div>}
                     {!scoreOnly && session.attempts.map((attempt, index) => {
                         const question = questions.find((item) => item.id === attempt.questionId);
@@ -3855,6 +4226,7 @@ export default function Home() {
                                 </div>
                                 {session.checkMode === "complete" && attempt.correct !== null && <p className="text-sm md:col-start-1">{question.explanation}</p>}
                                 {attempt.handwriting && <div className="md:col-start-2 md:row-span-2 md:row-start-1"><p className="mb-2 text-xs font-semibold text-muted-foreground">原始手寫</p><img src={attempt.handwriting} alt={`第 ${index + 1} 題原始手寫內容`} className="max-h-56 w-full rounded-xl border border-border bg-white object-contain" /></div>}
+                                {needsWrongReview(attempt) && <div className="col-span-full">{renderRecommendationAction(attempt.questionId)}</div>}
                                 <time className="practice-result-time col-span-full justify-self-end" dateTime={attempt.date}>{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</time>
                             </div>
                         ) : null;
@@ -3862,7 +4234,6 @@ export default function Home() {
                     <div className="flex flex-wrap justify-end gap-2">
                         <Button appearance="outline" tone="muted" onClick={leaveSession}>返回工作區</Button>
                         {!scoreOnly && wrongIds.length > 0 && <Button appearance="outline" onClick={() => beginSession("review", wrongIds, "instant", undefined, wrongPartIdsByQuestion)}>複習本輪錯題</Button>}
-                        {!scoreOnly && similarIds.length > 0 && <Button onClick={() => beginSession("similar", similarIds, "instant")}><Sparkles />練習相近題目</Button>}
                     </div>
                 </CardContent>
             </Card>
@@ -3977,7 +4348,7 @@ export default function Home() {
                         <Button
                             className="practice-header-action"
                             disabled={practiceBusy || (!sessionPaused && (!plannedQuestions.length || !difficultyMixValid))}
-                            onClick={sessionPaused ? resumeSession : () => beginSession("practice", plannedQuestions.map((question) => question.id))}
+                            onClick={sessionPaused ? resumeSession : startPlannedPractice}
                         >
                             {sessionPaused ? "繼續目前練習" : "開始練習"}<ArrowRight />
                         </Button>
@@ -4007,6 +4378,10 @@ export default function Home() {
                         resetLabel="還原學習者預設"
                     >
                         <section className="practice-difficulty-mix">
+                            <label className="practice-difficulty-toggle">
+                                <Checkbox checked={activePlan.prioritizeRelated} onChange={(event) => updatePlan("prioritizeRelated", event.target.checked)} />
+                                <span><strong>優先練習相同／相近題</strong><small>先安排尚未完成的同學習目標、同題型與相似內容，再練習其他符合條件的題目。</small></span>
+                            </label>
                             <label className="practice-difficulty-toggle">
                                 <Checkbox checked={activePlan.difficultyMixEnabled} onChange={(event) => toggleDifficultyMix(event.target.checked)} />
                                 <span><strong>按比例分配難易度</strong><small>啟用後，上方的一般難易度篩選不會生效。</small></span>
@@ -4491,7 +4866,7 @@ export default function Home() {
                                 <div className="flex items-center gap-2"><Badge tone="warning">模擬辨識</Badge><Badge tone="primary">共 {importDrafts.length} 題</Badge></div>
                             </div>
                             <div className="rounded-xl border border-border bg-white p-4">
-                                <FormField label="適用年級" description="自動帶入目前學習者年級，仍可在寫入前修改。"><NativeSelect options={GRADE_OPTIONS} value={importGrade} onChange={(event) => changeImportGrade(event.target.value)} /></FormField>
+                                <FormField label="適用年級" description="自動帶入目前學習者年級，仍可在寫入前修改。"><NativeSelect options={educationCatalog?.stages.flatMap((stage) => stage.grades.map((grade) => ({ value: grade.name, label: `${stage.name} · ${grade.name}` }))) ?? GRADE_OPTIONS} value={importGrade} onChange={(event) => changeImportGrade(event.target.value)} /></FormField>
                             </div>
                             <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                                 <Sparkles className="mt-0.5 shrink-0 text-primary" size={17} />
@@ -4655,10 +5030,6 @@ export default function Home() {
 
     /** 顯示個人與社群錯題排行。 */
     function renderMistakes() {
-        const queuedQuestions = questions.filter((question) => usableQueue.includes(question.id));
-        const visibleQueue = filterQuestions(queuedQuestions, mistakeFilters, activeQuestionCollections)
-            .map((question) => question.id);
-
         /** 套用錯題篩選並清除隱藏題目的勾選狀態。 */
         function changeMistakeFilters(filters: QuestionFilters) {
             setMistakeFilters(filters);
@@ -4700,6 +5071,7 @@ export default function Home() {
                     <WorkspaceHeading icon={Target} title="錯題英雄榜" description="查看目前學習者的累計錯題，或比較系統內全部學習者的社群錯題排行。" />
                 </CardHeader>
                 <CardContent className="mistake-content grid gap-5 p-5 sm:p-7">
+                    {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
                     <Tabs className="mistake-ranking-tabs" appearance="segmented" value={mistakeRankingView} onValueChange={changeMistakeRanking}>
                         <TabsList className="mistake-ranking-tab-list" aria-label="切換錯題排行">
                             <TabsTrigger value="personal"><UserCheck />個人錯題排行</TabsTrigger>
@@ -4723,7 +5095,6 @@ export default function Home() {
                         <div className="mistake-list-heading">
                             <div className="question-list-title"><h3>{mistakeRankingView === "personal" ? "個人錯題清單" : "社群錯題清單"}</h3><span>共 {mistakeResultCount} 題</span></div>
                             <div className="mistake-list-actions">
-                                {mistakeRankingView === "personal" && visibleQueue.length > 0 && <Button appearance="outline" size="sm" onClick={() => beginSession("similar", visibleQueue, "instant")}><Sparkles />後續練習（{visibleQueue.length}）</Button>}
                                 {mistakeRankingView === "personal" && <Button appearance="outline" size="sm" disabled={!selectedMistakes.length} onClick={() => openQuestionPlan(selectedMistakes, "錯題")}><CalendarDays />加入計劃</Button>}
                                 {mistakeRankingView === "personal" && <Button size="sm" disabled={!selectedMistakes.length} onClick={() => beginSession("review", selectedMistakes, "instant", undefined, getWrongPartIdsByQuestion(latestAttempts.filter((attempt) => selectedMistakes.includes(attempt.questionId))))}>複習已選</Button>}
                             </div>
@@ -4737,7 +5108,6 @@ export default function Home() {
                                         <th className="mistake-rank-column" scope="col">排名</th><th scope="col">題目</th><th scope="col">科目／單元</th><th scope="col">最後測驗</th><th scope="col">錯誤次數</th><th scope="col"><span className="sr-only">操作</span></th>
                                     </tr></thead>
                                     <tbody>{pagedMistakeQuestions.map((question, index) => {
-                                        const similar = questions.find((item) => item.generatedFrom === question.id && item.grade === activeLearner.grade);
                                         const selected = selectedMistakes.includes(question.id);
                                         const questionAttempts = activeAttempts.filter((attempt) => attempt.questionId === question.id);
                                         const lastAttempt = questionAttempts.reduce<Attempt | undefined>((latest, attempt) => !latest || new Date(attempt.date).getTime() > new Date(latest.date).getTime() ? attempt : latest, undefined);
@@ -4749,7 +5119,7 @@ export default function Home() {
                                             <td className="mistake-question-scope" data-label="科目／單元"><strong>{question.subject}</strong><small>{getUnitLabel(question.unit)}</small></td>
                                             <td data-label="最後測驗"><time className="mistake-meta" dateTime={lastAttempt?.date}>{lastAttempt ? formatAttemptDate(lastAttempt.date) : "尚無紀錄"}</time></td>
                                             <td data-label="錯誤次數"><Badge tone={wrongCount > 1 ? "danger" : "muted"}>{wrongCount} 次</Badge></td>
-                                            <td className="mistake-table-actions"><Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, lastAttempt ? getWrongPartIdsByQuestion([lastAttempt]) : undefined)}><RotateCcw />練習</Button><Button appearance="ghost" tone="muted" size="sm" disabled={!similar || usableQueue.includes(similar.id)} onClick={() => queueSimilar([question.id])}>{usableQueue.includes(similar?.id ?? -1) ? "已加入" : "加入後續"}</Button></td>
+                                            <td className="mistake-table-actions flex-wrap"><Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, lastAttempt ? getWrongPartIdsByQuestion([lastAttempt]) : undefined)}><RotateCcw />練習</Button>{renderRecommendationAction(question.id)}</td>
                                         </tr>;
                                     })}</tbody>
                                 </table>
@@ -4787,6 +5157,10 @@ export default function Home() {
 
     /** 顯示建立或編輯學習者的共用資料庫表單。 */
     function renderLearnerProfileDialog() {
+        const selectedStage = educationCatalog?.stages.find((stage) => stage.code === learnerProfileDraft.educationStage);
+        const stageOptions = educationCatalog?.stages.map((stage) => ({ value: stage.code, label: stage.name })) ?? [];
+        const gradeOptions = selectedStage?.grades.map((grade) => ({ value: grade.code, label: grade.name })) ?? [];
+        const semesterOptions = educationCatalog?.semesters.map((semester) => ({ value: semester.code, label: semester.name })) ?? [];
         return (
             <Dialog open={learnerProfileDialogOpen} onOpenChange={(open) => {
                 if (learnerProfileBusy) return;
@@ -4797,14 +5171,19 @@ export default function Home() {
                 }
             }}>
                 <DialogContent size="sm" closeLabel="關閉學習者設定">
-                    <DialogHeader><DialogTitle>{learnerProfileDraft.learnerId ? "編輯學習者" : "新增學習者"}</DialogTitle><DialogDescription>稱呼、年級與學期會保存到帳號資料庫，並套用到正式題庫與練習。</DialogDescription></DialogHeader>
+                    <DialogHeader><DialogTitle>{learnerProfileDraft.learnerId ? "編輯學習者" : "新增學習者"}</DialogTitle><DialogDescription>先選擇學生或社會人士；學生的年級與學期會套用到題庫與練習。</DialogDescription></DialogHeader>
                     <DialogBody className="grid gap-4">
                         <FormField label="稱呼"><Input autoFocus maxLength={80} required value={learnerProfileDraft.displayName} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, displayName: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
-                        <FormField label="年級"><NativeSelect options={[{ value: "", label: "請選擇年級" }, ...ACCOUNT_GRADE_OPTIONS]} required value={learnerProfileDraft.gradeCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, gradeCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
-                        <FormField label="學期"><NativeSelect options={[{ value: "", label: "請選擇學期" }, ...ACCOUNT_SEMESTER_OPTIONS]} required value={learnerProfileDraft.semesterCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, semesterCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                        <FormField label="學習身分"><NativeSelect options={[{ value: "enrolled", label: "學生" }, { value: "not_enrolled", label: "社會人士" }]} required value={learnerProfileDraft.educationStatus} onChange={(event) => { const educationStatus = event.target.value as PracticeAccountLearner["educationStatus"]; const stage = educationCatalog?.stages.find((candidate) => candidate.code === learnerProfileDraft.educationStage) ?? educationCatalog?.stages[0]; setLearnerProfileDraft((current) => ({ ...current, educationStatus, educationStage: educationStatus === "enrolled" ? stage?.code ?? "" : "", gradeCode: educationStatus === "enrolled" ? current.gradeCode || stage?.grades[0]?.code || "" : "", semesterCode: educationStatus === "enrolled" ? current.semesterCode || educationCatalog?.semesters[0]?.code || "" : "" })); setLearnerProfileStatus(""); }} /></FormField>
+                        {learnerProfileDraft.educationStatus === "enrolled" && <>
+                            <FormField label="教育階段"><NativeSelect disabled={!stageOptions.length} options={stageOptions} required value={learnerProfileDraft.educationStage} onChange={(event) => { const educationStage = event.target.value as EducationStage; const stage = educationCatalog?.stages.find((candidate) => candidate.code === educationStage); setLearnerProfileDraft((current) => ({ ...current, educationStage, gradeCode: stage?.grades[0]?.code ?? "" })); setLearnerProfileStatus(""); }} /></FormField>
+                            <FormField label="年級"><NativeSelect disabled={!gradeOptions.length} options={gradeOptions} required value={learnerProfileDraft.gradeCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, gradeCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                            <FormField label="學期"><NativeSelect disabled={!semesterOptions.length} options={semesterOptions} required value={learnerProfileDraft.semesterCode} onChange={(event) => { setLearnerProfileDraft((current) => ({ ...current, semesterCode: event.target.value })); setLearnerProfileStatus(""); }} /></FormField>
+                        </>}
+                        {educationCatalogError && <p className="text-sm font-semibold text-danger" role="alert">{educationCatalogError}</p>}
                         {learnerProfileStatus && <p className="text-sm font-semibold text-danger" role="alert">{learnerProfileStatus}</p>}
                     </DialogBody>
-                    <DialogFooter><Button appearance="ghost" tone="muted" disabled={learnerProfileBusy} onClick={() => setLearnerProfileDialogOpen(false)}>取消</Button><Button disabled={learnerProfileBusy || !learnerProfileDraft.displayName.trim() || !learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode} onClick={saveLearnerProfile}><Save />{learnerProfileBusy ? "正在保存…" : "保存"}</Button></DialogFooter>
+                    <DialogFooter><Button appearance="ghost" tone="muted" disabled={learnerProfileBusy} onClick={() => setLearnerProfileDialogOpen(false)}>取消</Button><Button disabled={learnerProfileBusy || !learnerProfileDraft.displayName.trim() || (learnerProfileDraft.educationStatus === "enrolled" && (!learnerProfileDraft.gradeCode || !learnerProfileDraft.semesterCode))} onClick={saveLearnerProfile}><Save />{learnerProfileBusy ? "正在保存…" : "保存"}</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         );
@@ -4831,7 +5210,7 @@ export default function Home() {
                                             <div className="learner-avatar" aria-hidden="true">{profile.displayName.slice(0, 1)}</div>
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2"><strong className="truncate">{profile.displayName}</strong>{profile.id === practiceAccount.learner?.id && <Badge tone="primary">目前使用</Badge>}{profile.isSelf && <Badge tone="muted">本人</Badge>}</div>
-                                                <p className="mt-1 text-sm text-muted-foreground">{profile.gradeName ?? "未設定年級"} · {profile.semesterName ?? "未設定學期"}</p>
+                                                <p className="mt-1 text-sm text-muted-foreground">{profile.educationStatus === "enrolled" ? `${profile.gradeName ?? "未設定年級"} · ${profile.semesterName ?? "未設定學期"}` : "社會人士"}</p>
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -4867,6 +5246,9 @@ export default function Home() {
     function renderSettings() {
         const selectedExamId = getSettingsExamId(pathname);
         const selectedExam = activePlan.examSettings.find((exam) => exam.id === selectedExamId);
+        const selectedSubjectSetting = activeAccountLearner?.subjectSettings.find(
+            (setting) => setting.subject.code === selectedSubjectSettingCode,
+        ) ?? activeAccountLearner?.subjectSettings[0];
 
         if (selectedExam) {
             return (
@@ -4919,11 +5301,11 @@ export default function Home() {
                     <CardContent className="grid gap-8 p-5 sm:p-7">
                         {!canManageCurrentLearner && <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">目前只有檢視權限；個人資料、考試與練習偏好不會被修改。</p>}
                         <section className="settings-section">
-                            <div className="settings-section-heading"><div><h3>基本資料</h3><p>稱呼會顯示在首頁，年級會自動帶入題庫與複習計畫。</p></div><Badge className="tag-purple" tone="primary">個人資料</Badge></div>
+                            <div className="settings-section-heading"><div><h3>基本資料</h3><p>稱呼會顯示在首頁；學生的年級與學期會自動帶入題庫與複習計畫。</p></div><Badge className="tag-purple" tone="primary">個人資料</Badge></div>
                             {practiceAccount && activeAccountLearner ? <div className="workspace-surface flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="flex min-w-0 items-center gap-3">
                                     <div className="learner-avatar" aria-hidden="true">{activeAccountLearner.displayName.slice(0, 1)}</div>
-                                    <div className="min-w-0"><strong className="truncate">{activeAccountLearner.displayName}</strong><p className="mt-1 text-sm text-muted-foreground">{activeAccountLearner.gradeName ?? "未設定年級"} · {activeAccountLearner.semesterName ?? "未設定學期"}</p></div>
+                                    <div className="min-w-0"><strong className="truncate">{activeAccountLearner.displayName}</strong><p className="mt-1 text-sm text-muted-foreground">{activeAccountLearner.educationStatus === "enrolled" ? `${activeAccountLearner.gradeName ?? "未設定年級"} · ${activeAccountLearner.semesterName ?? "未設定學期"}` : "社會人士"}</p></div>
                                 </div>
                                 {canManageCurrentLearner
                                     ? <Button disabled={learnerProfileBusy} onClick={() => openEditLearner(activeAccountLearner)}><Pencil />編輯自己的資料</Button>
@@ -4942,33 +5324,28 @@ export default function Home() {
                             {renderLearnerProfileDialog()}
                         </section>
                         {practiceAccount ? <section className="settings-section">
-                            <div className="settings-section-heading"><div><h3>啟用科目與版本</h3><p>每個科目的教材版本分開保存；未指定版本不會停用該科目。</p></div><Badge tone="muted">資料庫設定</Badge></div>
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {!activeAccountLearner?.subjectSettings.length && <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未啟用科目。</p><p className="mt-1">請由有管理權限的帳號完成科目設定。</p></div>}
-                                {activeAccountLearner?.subjectSettings.map((setting) => {
-                                    const subjectName = normalizeSubjectLabel(setting.subject.name);
-                                    const options = [
-                                        { value: "", label: "未指定教材版本" },
-                                        ...setting.availableBookVersions.map((bookVersion) => ({
-                                            value: bookVersion.id,
-                                            label: [bookVersion.publisher?.name, bookVersion.name]
-                                                .filter(Boolean)
-                                                .join(" · "),
-                                        })),
-                                    ];
-                                    return <article className="workspace-surface rounded-2xl p-4" key={setting.subject.code}>
-                                        <FormField label={`${subjectName}教材版本`} description="只更新這一科，不影響其他科目。">
-                                            <NativeSelect
-                                                disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
-                                                options={options}
-                                                value={setting.bookVersion?.id ?? ""}
-                                                onChange={(event) => void saveLearnerSubjectSetting(setting, event.target.value)}
-                                            />
-                                        </FormField>
-                                        {subjectSettingBusyCode === setting.subject.code && <p className="mt-2 text-sm text-muted-foreground" role="status">正在保存…</p>}
-                                    </article>;
-                                })}
-                            </div>
+                            <div className="settings-section-heading"><div><h3>科目與版本</h3><p>先選科目，再設定該科已建立的版本。沒有版本的科目可直接使用。</p></div><Badge tone="muted">資料庫設定</Badge></div>
+                            {!activeAccountLearner?.subjectSettings.length ? <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未啟用科目。</p><p className="mt-1">請由有管理權限的帳號完成科目設定。</p></div> : <div className="workspace-surface grid gap-4 rounded-2xl p-4 sm:grid-cols-2">
+                                <FormField label="科目">
+                                    <NativeSelect
+                                        options={activeAccountLearner.subjectSettings.map((setting) => ({ value: setting.subject.code, label: normalizeSubjectLabel(setting.subject.name) }))}
+                                        value={selectedSubjectSetting?.subject.code ?? ""}
+                                        onChange={(event) => { setSelectedSubjectSettingCode(event.target.value); setSubjectSettingStatus(""); }}
+                                    />
+                                </FormField>
+                                {selectedSubjectSetting && selectedSubjectSetting.availableBookVersions.length > 0 ? <FormField label="版本" description="只更新目前選取的科目。">
+                                    <NativeSelect
+                                        disabled={!activeAccountLearner.canManageSettings || Boolean(subjectSettingBusyCode)}
+                                        options={[
+                                            { value: "", label: "不指定版本" },
+                                            ...selectedSubjectSetting.availableBookVersions.map((bookVersion) => ({ value: bookVersion.id, label: [bookVersion.publisher?.name, bookVersion.name].filter(Boolean).join(" · ") })),
+                                        ]}
+                                        value={selectedSubjectSetting.bookVersion?.id ?? ""}
+                                        onChange={(event) => void saveLearnerSubjectSetting(selectedSubjectSetting, event.target.value)}
+                                    />
+                                </FormField> : <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">這個科目沒有建立版本，可直接使用，不會套用版本篩選。</div>}
+                                {selectedSubjectSetting && subjectSettingBusyCode === selectedSubjectSetting.subject.code && <p className="text-sm text-muted-foreground sm:col-span-2" role="status">正在保存…</p>}
+                            </div>}
                             {subjectSettingStatus && <p className="mt-3 text-sm font-semibold" role="status">{subjectSettingStatus}</p>}
                         </section> : <section className="settings-section">
                             <div className="settings-section-heading">
@@ -5104,7 +5481,6 @@ export default function Home() {
                     <time dateTime={attempt.date}>{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</time>
                 </article>;
             }
-            const relatedIds = attempt.correct === false ? getRelatedQuestionIds(question.id) : [];
             const wrongPartLabels = getWrongPartLabels(question, attempt);
             return <article className="result-wrong-item" data-result={attempt.correct === true ? "correct" : attempt.correct === false ? "wrong" : "pending"} key={`${record.id}-${attempt.questionId}-${index}`}>
                 <div>
@@ -5114,7 +5490,7 @@ export default function Home() {
                     {wrongPartLabels.length > 0 && <p>答錯小題：{wrongPartLabels.join("、")}</p>}
                     {attempt.correct === false && <div className="result-question-actions">
                         <Button appearance="outline" size="sm" onClick={() => beginSession("review", [question.id], "instant", undefined, getWrongPartIdsByQuestion([attempt]))}><RotateCcw />立即測驗</Button>
-                        <Button size="sm" disabled={!relatedIds.length} onClick={() => beginSession("similar", relatedIds, "instant")}><Sparkles />相關題目練習{relatedIds.length ? `（${relatedIds.length}）` : ""}</Button>
+                        {renderRecommendationAction(question.id)}
                     </div>}
                 </div>
                 <div className="result-wrong-answer"><p><span>你的答案</span>{formatAnswer(question, attempt.answer)}</p><p><span>參考答案</span>{persistedQuestions.has(question.id)
@@ -5125,6 +5501,7 @@ export default function Home() {
 
         return (
             <div className="grid gap-5">
+                {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
                 <Card className="workspace-card border-border/80 shadow-sm">
                     <CardHeader><WorkspaceHeading icon={BarChart3} title="成果摘要" description="依每次練習累積的作答紀錄計算。" /></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
@@ -5414,9 +5791,8 @@ export default function Home() {
                         </div>
                         <div className="summary-metric summary-metric-gold">
                             <div className="summary-metric-icon"><Sparkles size={19} /></div>
-                            <div className="min-w-0 flex-1"><p>後續相近題</p><strong>{usableQueue.length} 題</strong></div>
-                            <Badge className="tag-gold" tone="warning">待練習</Badge>
-                            {usableQueue.length > 0 && <Button className="col-span-full mt-1 w-full" appearance="outline" onClick={() => beginSession("similar", usableQueue, "instant")}>開始後續練習</Button>}
+                            <div className="min-w-0 flex-1"><p>可延伸錯題</p><strong>{recommendableMistakeIds.length} 題</strong></div>
+                            <Badge className="tag-gold" tone="warning">依題型</Badge>
                         </div>
                     </div>
                 </section>
