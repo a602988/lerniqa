@@ -24,11 +24,11 @@ import {
     validateQualityManifest,
 } from "../scripts/lib/handwriting-quality.mjs";
 import {
-    mergePaddleCandidates,
     resolveOcrFastResult,
     resolveOcrConsensus,
     resolveWithModel,
 } from "../app/lib/handwriting-transcription.mjs";
+import { selectPaddleCandidate } from "../app/lib/handwriting-ocr.mjs";
 import { parseArguments as parseWorkerArguments, processClaim } from "../scripts/process-handwriting-analysis.mjs";
 import { parseArguments as parseSmokeArguments } from "../scripts/smoke-handwriting-analysis.mjs";
 
@@ -236,14 +236,23 @@ test("high-confidence CJK handwriting uses Paddle directly while Latin glyphs st
     ]), null);
 });
 
-test("Paddle multi-scale candidates use their strongest agreement and reject conflicts", () => {
-    assert.deepEqual(mergePaddleCandidates([
-        { engine: "paddleocr", text: "雖", confidence: 0.76 },
-        { engine: "paddleocr", text: "雖", confidence: 0.94 },
+test("Paddle original and character variants accept agreement or a clearly stronger candidate", () => {
+    assert.deepEqual(selectPaddleCandidate([
+        { text: "雖", confidence: 0.76 },
+        { text: "雖", confidence: 0.94 },
     ]), { engine: "paddleocr", text: "雖", confidence: 0.94 });
-    assert.equal(mergePaddleCandidates([
-        { engine: "paddleocr", text: "雖", confidence: 0.94 },
-        { engine: "paddleocr", text: "誰", confidence: 0.95 },
+    assert.deepEqual(selectPaddleCandidate([
+        { text: "私", confidence: 0.06 },
+        { text: "覆", confidence: 0.94 },
+    ]), { engine: "paddleocr", text: "覆", confidence: 0.94 });
+    assert.equal(selectPaddleCandidate([
+        { text: "雖", confidence: 0.94 },
+        { text: "誰", confidence: 0.95 },
+    ]), null);
+    assert.equal(selectPaddleCandidate([{ text: "A", confidence: 0.99 }]), null);
+    assert.equal(selectPaddleCandidate([
+        { text: "A", confidence: 2 },
+        { text: "A", confidence: 0.99 },
     ]), null);
 });
 

@@ -6,7 +6,7 @@ repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 python_binary=$(command -v python3.12 || true)
 
 if [ -z "$python_binary" ]; then
-    echo "找不到 Python 3.12，無法安裝本機 PP-OCRv5。" >&2
+    echo "找不到 Python 3.12，無法安裝本機 PP-OCRv6。" >&2
     exit 1
 fi
 

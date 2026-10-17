@@ -420,19 +420,6 @@ export function prepareHandwritingOcrImage(bytes) {
     return prepareHandwritingImage(bytes, { crop: true });
 }
 
-/**
- * 產生緊密與寬鬆留白版本，降低複雜中文字因縮放比例造成的辨識落差。
- *
- * @param {Buffer} bytes 已驗證的 RGBA PNG。
- * @returns {Buffer[]} 兩種只供 OCR 使用的正規化圖片。
- */
-export function prepareHandwritingOcrImages(bytes) {
-    return [
-        prepareHandwritingImage(bytes, { crop: true, paddingRatio: 0.12 }),
-        prepareHandwritingImage(bytes, { crop: true, paddingRatio: 0.5 }),
-    ];
-}
-
 export function transcriptionJsonSchema() {
     return {
         type: "object",

@@ -243,14 +243,45 @@ export async function recognizeWithPaddle(imageBytes) {
             });
         });
         if (!response || response.error) return null;
-        const text = typeof response.text === "string" ? response.text.normalize("NFKC").trim() : null;
-        const confidence = Number(response.confidence);
-        if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
-        return Object.freeze({ engine: "paddleocr", text: text || null, confidence });
+        return selectPaddleCandidate(response.candidates);
     }
     catch {
         return null;
     }
+}
+
+/**
+ * 合併原圖與單字強化圖的辨識結果；衝突時只接受明顯領先的高信心候選。
+ *
+ * @param {unknown} value Paddle worker 回傳的候選陣列。
+ * @returns {Readonly<{engine: string, text: string | null, confidence: number}> | null} 可採用的辨識候選。
+ */
+export function selectPaddleCandidate(value) {
+    if (!Array.isArray(value) || value.length !== 2) return null;
+    const candidates = [];
+    for (const entry of value) {
+        if (!entry || typeof entry !== "object") return null;
+        const text = typeof entry.text === "string" ? entry.text.normalize("NFKC").trim() : null;
+        const confidence = Number(entry.confidence);
+        if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
+        candidates.push({ engine: "paddleocr", text: text || null, confidence });
+    }
+    const visible = candidates.filter((candidate) => candidate.text);
+    if (!visible.length) return Object.freeze({ engine: "paddleocr", text: null, confidence: 0 });
+    const strongestByText = new Map();
+    for (const candidate of visible) {
+        const existing = strongestByText.get(candidate.text);
+        if (!existing || candidate.confidence > existing.confidence) {
+            strongestByText.set(candidate.text, candidate);
+        }
+    }
+    const ranked = [...strongestByText.values()].sort((left, right) => right.confidence - left.confidence);
+    const strongest = ranked[0];
+    if (ranked.length === 1) return Object.freeze(strongest);
+    if (strongest.confidence >= 0.9 && strongest.confidence - ranked[1].confidence >= 0.05) {
+        return Object.freeze(strongest);
+    }
+    return null;
 }
 
 /**

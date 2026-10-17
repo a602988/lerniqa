@@ -6,7 +6,7 @@ import {
     HANDWRITING_SCHEMA_VERSION,
     handwritingAiConfiguration,
     inspectHandwritingModel,
-    prepareHandwritingOcrImages,
+    prepareHandwritingOcrImage,
     transcribeHandwriting,
     validateTranscription,
 } from "./handwriting-analysis.mjs";
@@ -70,26 +70,6 @@ function reliableCandidate(candidate) {
     if (candidate.engine === "paddleocr") return candidate.confidence >= PADDLE_MINIMUM_CONFIDENCE;
     if (candidate.engine === "apple-vision") return candidate.confidence >= VISION_MINIMUM_CONFIDENCE;
     return false;
-}
-
-/**
- * 合併同一模型的兩種留白比例；文字衝突時不讓其中一個版本直接決定答案。
- *
- * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates Paddle 多尺度候選。
- * @returns {Readonly<{engine: string, text: string | null, confidence: number}> | null} 合併後候選。
- */
-export function mergePaddleCandidates(candidates) {
-    const visible = candidates.filter((candidate) => (
-        candidate?.engine === "paddleocr" && normalizedText(candidate.text)
-    ));
-    if (!visible.length) return candidates.find((candidate) => candidate?.engine === "paddleocr") ?? null;
-    const transcription = normalizedText(visible[0].text);
-    if (!transcription || visible.some((candidate) => normalizedText(candidate.text) !== transcription)) return null;
-    return Object.freeze({
-        engine: "paddleocr",
-        text: transcription,
-        confidence: Math.max(...visible.map((candidate) => candidate.confidence)),
-    });
 }
 
 /**
@@ -187,14 +167,13 @@ async function runTranscription(imageBytes, {
 } = {}) {
     const startedAt = Date.now();
     const remainingBudget = () => Math.max(0, budgetMs - (Date.now() - startedAt));
-    const [standardImage, spaciousImage] = prepareHandwritingOcrImages(imageBytes);
+    const standardImage = prepareHandwritingOcrImage(imageBytes);
     const ocrResults = await withinBudget(Promise.all([
         recognizeWithPaddle(standardImage),
-        recognizeWithPaddle(spaciousImage),
         recognizeWithAppleVision(standardImage),
     ]), remainingBudget());
     if (!ocrResults) return result(null, "unreadable", 0, ["other"]);
-    const candidates = [mergePaddleCandidates(ocrResults.slice(0, 2)), ocrResults[2]];
+    const candidates = ocrResults;
     const fastResult = resolveOcrFastResult(candidates);
     if (fastResult) return fastResult;
     const hasVisibleText = candidates.some((candidate) => normalizedText(candidate?.text));
