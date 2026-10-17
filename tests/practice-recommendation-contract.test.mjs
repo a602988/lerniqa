@@ -191,6 +191,8 @@ test("the main UI uses queue-backed recommendation kinds while retaining origina
     assert.match(page, /優先練習相同／相近題/u);
     assert.match(page, /startPlannedPractice/u);
     assert.match(page, /beginSession\("review", \[question\.id\]/u);
+    assert.match(page, /practiceServiceError && <p[\s\S]*role="alert"/u);
+    assert.match(page, /disabled=\{practiceBusy\}[\s\S]*正在建立錯題練習…/u);
     assert.doesNotMatch(page, /getRelatedQuestionIds|queueSimilar|usableQueue/u);
 });
 

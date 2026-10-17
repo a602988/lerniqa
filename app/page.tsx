@@ -3417,6 +3417,7 @@ export default function Home() {
             await resumeSession();
             return;
         }
+        setPracticeServiceError("");
         let sessionId = `session-${crypto.randomUUID()}`;
         let startedAt = new Date().toISOString();
         let effectiveQuestionIds = [...ids];
@@ -4409,6 +4410,7 @@ export default function Home() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 p-5 sm:p-7">
+                    {practiceServiceError && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{practiceServiceError}</p>}
                     {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
                     {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">{session.scoreSummary ? `本輪答對 ${session.scoreSummary.correct} 題、答錯 ${sessionWrong} 題` : "本輪未產生成績"}</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式只顯示整體統計，不顯示逐題結果、答案或解析。</p></div>}
                     {!scoreOnly && session.attempts.map((attempt, index) => {
@@ -4437,7 +4439,7 @@ export default function Home() {
                     })}
                     <div className="flex flex-wrap justify-end gap-2">
                         <Button appearance="outline" tone="muted" onClick={leaveSession}>返回工作區</Button>
-                        {!scoreOnly && wrongIds.length > 0 && <Button appearance="outline" onClick={() => beginSession("review", wrongIds, "instant", undefined, wrongPartIdsByQuestion)}>複習本輪錯題</Button>}
+                        {!scoreOnly && wrongIds.length > 0 && <Button appearance="outline" disabled={practiceBusy} onClick={() => beginSession("review", wrongIds, "instant", undefined, wrongPartIdsByQuestion)}>{practiceBusy ? "正在建立錯題練習…" : "複習本輪錯題"}</Button>}
                     </div>
                 </CardContent>
             </Card>
