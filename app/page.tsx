@@ -1096,7 +1096,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
                     const sourceIndex = question.parts?.findIndex((candidate) => candidate.id === part.id) ?? -1;
                     const isNamedPoint = /^[A-Z]$/i.test(part.id);
                     return <FormField
-                        className="practice-answer-field"
+                        className="practice-answer-field col-span-full w-full"
                         key={part.id}
                         label={isNamedPoint ? part.id.toUpperCase() : `第 ${sourceIndex + 1} 空`}
                         layout="horizontal"
@@ -1122,7 +1122,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
             </div>;
         }
 
-        return <FormField className="practice-answer-field" label="文字答案（選填）" layout="horizontal" description="可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。">
+        return <FormField className="practice-answer-field w-full" label="文字答案（選填）" layout="horizontal" description="可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。">
             <Input value={answer} disabled={disabled} placeholder="也可以只使用右側手寫板作答" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
         </FormField>;
     }

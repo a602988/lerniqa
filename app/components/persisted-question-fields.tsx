@@ -95,7 +95,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                     ? "送出後會保存答案，等待輔助批改"
                     : "";
             const fieldsetClassName = part.answerMode === "text"
-                ? handwritingOnly ? "written-answer-fieldset col-span-full grid w-full min-w-0 gap-3" : "written-answer-fieldset grid w-full min-w-0 gap-3"
+                ? "written-answer-fieldset col-span-full grid w-full min-w-0 gap-3"
                 : `answer-grid answer-grid-${answerColumnCount}`;
             const legendClassName = `${usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}${part.answerMode === "text" ? " written-answer-legend" : ""}`;
             const recognitionDescription = submitted

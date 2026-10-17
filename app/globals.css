@@ -4115,6 +4115,9 @@ textarea:focus-visible,
 
 .practice-answer-field {
     --keel-form-field-label-width: 7.5rem;
+
+    width: 100%;
+    min-width: 0;
 }
 
 .multi-choice-part {
