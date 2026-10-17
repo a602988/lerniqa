@@ -41,10 +41,13 @@ function getOptionColumnCount(part: LocalPracticeQuestion["parts"][number]) {
     return totalBytes <= 144 ? 2 : 1;
 }
 
-export function PersistedQuestionFields({ question, answer, disabled = false, partIds, onAnswer }: {
+export function PersistedQuestionFields({ question, answer, disabled = false, handwritingOnly = false, submitted = false, recognizedAnswers, partIds, onAnswer }: {
     question: LocalPracticeQuestion;
     answer: string;
     disabled?: boolean;
+    handwritingOnly?: boolean;
+    submitted?: boolean;
+    recognizedAnswers?: Record<string, string>;
     partIds?: string[];
     onAnswer: (answer: string) => void;
 }) {
@@ -101,7 +104,13 @@ export function PersistedQuestionFields({ question, answer, disabled = false, pa
                 </legend>
                 <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>
                 {part.answerMode === "text"
-                    ? <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
+                    ? handwritingOnly
+                        ? recognizedAnswers?.[part.id]
+                            ? <FormField className="practice-answer-field" label="辨識文字" layout="horizontal"><Input value={recognizedAnswers[part.id]} readOnly aria-readonly="true" /></FormField>
+                            : <p className="text-sm text-muted-foreground">{submitted
+                                ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
+                                : "請在手寫板作答，送出後會辨識文字。"}</p>
+                        : <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
                     : part.options.map((option) => <label className="answer-option" key={option.id}>
                         {part.answerMode === "multiple_choice"
                             ? <Checkbox checked={Array.isArray(value) && value.includes(option.key)} onChange={(event) => update(part.id, event.target.checked ? [...(Array.isArray(value) ? value : []), option.key] : (Array.isArray(value) ? value : []).filter((key) => key !== option.key))} />

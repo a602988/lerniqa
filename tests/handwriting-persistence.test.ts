@@ -241,6 +241,21 @@ test("attempt requests accept a validated handwriting object without inventing a
     assert.match(page, /attemptRequestRef\.current = snapshot;[\s\S]*submitPersistedPracticeAttempt\(snapshot\)/u);
 });
 
+test("required handwriting questions hide typing and disclose clear recognition as read-only text", async () => {
+    const [fields, page, store, adapter] = await Promise.all([
+        readFile(new URL("../app/components/persisted-question-fields.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/lib/practice-catalog-adapter.ts", import.meta.url), "utf8"),
+    ]);
+    assert.match(page, /handwritingOnly=\{needsCharacterRecognition\}/u);
+    assert.match(fields, /handwritingOnly[\s\S]*recognizedAnswers\?\.\[part\.id\][\s\S]*label="辨識文字"[\s\S]*readOnly/u);
+    assert.match(fields, /請在手寫板作答，送出後會辨識文字。/u);
+    assert.match(store, /inputMethod: "handwriting_recognition"/u);
+    assert.match(store, /payloadRecognizedText\(part\.answer_payload\)/u);
+    assert.match(adapter, /recognizedAnswers: Object\.fromEntries/u);
+});
+
 test("handwriting-only completion is limited to text parts and remains pending manual review", async () => {
     const store = await readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8");
     const submission = store.slice(store.indexOf("export async function submitLocalPracticeAttempt("));
@@ -277,7 +292,7 @@ test("handwriting links to missing text answers or one canonical calculation anc
     assert.match(submission, /attachesHandwriting: usesHandwriting \|\| usesTranscription \|\| row\.id === calculationAnchorPartId/u);
     assert.match(
         submission,
-        /attachesHandwriting: usesHandwriting \|\| usesTranscription[\s\S]*\.\.\.\(usesHandwriting[\s\S]*result: "pending" as const[\s\S]*: gradeLocalPracticePart/u,
+        /const grade = gradeLocalPracticePart[\s\S]*attachesHandwriting: usesHandwriting \|\| usesTranscription[\s\S]*\.\.\.\(usesHandwriting[\s\S]*result: "pending" as const[\s\S]*\.\.\.grade/u,
         "an automatic answer used as the canonical anchor must keep its normal grade",
     );
     assert.match(

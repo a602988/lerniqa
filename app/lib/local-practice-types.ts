@@ -178,6 +178,8 @@ export interface LocalPracticeAttemptPartResult {
     gradingSource: LocalPracticeGradingSource;
     feedbackCode: LocalPracticeFeedbackCode;
     handwritingAssets: LocalPracticeHandwritingAsset[];
+    /** 手寫內容可清楚辨識時取得的文字。 */
+    recognizedText?: string;
 }
 
 /** Reference material released only after the disclosure policy unlocks an attempt. */

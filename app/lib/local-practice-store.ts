@@ -2044,6 +2044,28 @@ function payloadValue(payload: unknown): string | string[] | null {
     return null;
 }
 
+/**
+ * 只公開已標記為手寫辨識來源的文字，避免把鍵盤答案誤標成辨識結果。
+ * @param payload 資料庫保存的作答內容。
+ * @returns 可顯示的辨識文字；其他輸入來源不回傳內容。
+ */
+function payloadRecognizedText(payload: unknown): string | undefined {
+    let parsed = payload;
+    if (typeof parsed === "string") {
+        try {
+            parsed = JSON.parse(parsed) as unknown;
+        }
+        catch {
+            return undefined;
+        }
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+    const record = parsed as { value?: unknown; inputMethod?: unknown };
+    return record.inputMethod === "handwriting_recognition" && typeof record.value === "string"
+        ? record.value
+        : undefined;
+}
+
 function feedbackFromStored(
     row: AttemptPartRow,
     hasHandwriting: boolean,
@@ -2088,12 +2110,14 @@ function toAttempt(
                     height: asset.height,
                     url: `/api/v1/local-practice/assets/${asset.asset_id}?kind=answer`,
                 }));
+            const recognizedText = payloadRecognizedText(part.answer_payload);
             return {
                 partId: part.question_part_id,
                 result: part.current_result,
                 gradingSource: part.grading_source,
                 feedbackCode: feedbackFromStored(part, handwritingAssets.length > 0),
                 handwritingAssets,
+                ...(recognizedText ? { recognizedText } : {}),
             };
         }),
         referenceAnswers: [...referenceAnswers],
@@ -2963,6 +2987,13 @@ export async function submitLocalPracticeAttempt(
             const usesHandwriting = Boolean(input.handwriting) && handwrittenPartIds.has(row.id);
             const usesTranscription = Boolean(input.handwriting)
                 && input.handwritingTranscriptionPartId === row.id;
+            const grade = gradeLocalPracticePart({
+                answerMode: row.answer_mode,
+                gradingPolicy: usesTranscription ? "automatic" : row.grading_policy,
+                acceptedKeys,
+                acceptedValues,
+                validOptionKeys,
+            }, submittedValue);
             return {
                 partId: row.id,
                 attachesHandwriting: usesHandwriting || usesTranscription || row.id === calculationAnchorPartId,
@@ -2974,13 +3005,12 @@ export async function submitLocalPracticeAttempt(
                         feedbackCode: "manual_review" as const,
                         answerPayload: { value: null },
                     }
-                    : gradeLocalPracticePart({
-                        answerMode: row.answer_mode,
-                        gradingPolicy: usesTranscription ? "automatic" : row.grading_policy,
-                        acceptedKeys,
-                        acceptedValues,
-                        validOptionKeys,
-                    }, submittedValue)),
+                    : {
+                        ...grade,
+                        answerPayload: usesTranscription
+                            ? { ...grade.answerPayload, inputMethod: "handwriting_recognition" as const }
+                            : grade.answerPayload,
+                    }),
             };
         });
         const overallResult = deriveLocalPracticeOverallResult(gradedParts.map((part) => part.result));

@@ -340,6 +340,8 @@ export interface Attempt {
     durationSeconds: number;
     /** 手寫板原始影像。 */
     handwriting?: string;
+    /** 各小題由手寫辨識取得的唯讀文字。 */
+    recognizedAnswers?: Record<string, string>;
     /** 鍵盤輸入的計算或書寫筆記。 */
     handwritingNote?: string;
     /** 伺服器依檢核政策解鎖、且固定在作答版本的參考答案。 */

@@ -74,6 +74,9 @@ export function adaptPracticeAttempt(attempt: LocalPracticeAttempt, answer = "å·
         date: attempt.submittedAt,
         durationSeconds: attempt.durationSeconds ?? 0,
         ...(handwriting ? { handwriting } : {}),
+        recognizedAnswers: Object.fromEntries(attempt.parts.flatMap((part) => (
+            part.recognizedText ? [[part.partId, part.recognizedText] as const] : []
+        ))),
         referenceAnswers: attempt.referenceAnswers,
     };
 }

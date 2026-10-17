@@ -1353,7 +1353,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                         <QuestionTypeLabel question={question} />
                         <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                     </div>
-                    {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
+                    {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={Boolean(feedback)} recognizedAnswers={feedback?.recognizedAnswers} partIds={partIds} disabled={Boolean(feedback) || props.busy || props.answerLocked} onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={Boolean(feedback)} onAnswer={props.onAnswer} />}
                 </section>
                 {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                     <div className="flex items-center gap-2 font-bold">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{serverQuestion ? feedback.correct === true ? "答對了，作答已保存" : feedback.correct === false ? "答案不符標準答案，已加入錯題複習" : "作答已保存，等待批改或補齊標準答案" : feedback.correct === true ? "答對了" : feedback.correct === false ? `答錯了。正確答案：${formatAnswer(question, question.answer)}` : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"}</div>
@@ -1366,7 +1366,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                 <div className="practice-question-meta"><QuestionConditions question={question} /></div>
                 <aside className="practice-handwriting-pane">
                     {checkMode === "score" && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="note">只顯示成績模式不保存作答內容，因此不能提交手寫板。請改用「逐題檢核」或「全部作答後檢核」保存筆跡。</p>}
-                    <HandwritingPad value={handwriting} disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"} recognitionStatus={needsCharacterRecognition ? "送出後排入分析" : undefined} onChange={props.onHandwriting} />
+                    <HandwritingPad value={handwriting} disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"} recognitionStatus={needsCharacterRecognition ? "送出後辨識文字" : undefined} onChange={props.onHandwriting} />
                 </aside>
                 <div className="practice-question-actions">{feedback
                     ? <Button onClick={props.onNext}>{isLast ? "查看結果" : "下一題"}<ArrowRight /></Button>
