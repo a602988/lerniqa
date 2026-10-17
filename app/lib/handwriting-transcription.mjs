@@ -85,7 +85,7 @@ export function resolveOcrConsensus(candidates) {
 }
 
 /**
- * 以本地視覺模型處理 OCR 無法一致的結果；任何可靠來源衝突都保留給人工判別。
+ * 優先採用本地視覺模型；模型不清楚時才允許兩個 OCR 的一致結果補位。
  *
  * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates OCR 候選。
  * @param {Readonly<{transcription: string | null, legibility: string, transcriptionConfidence: number, uncertaintyReasons: readonly string[]}>} modelResult 視覺模型結果。
@@ -93,16 +93,8 @@ export function resolveOcrConsensus(candidates) {
  */
 export function resolveWithModel(candidates, modelResult) {
     const modelText = normalizedText(modelResult.transcription);
-    if (modelResult.legibility !== "clear" || !modelText) return modelResult;
-    const reliable = candidates.filter(reliableCandidate);
-    if (!reliable.length) return modelResult;
-    const agreeing = reliable.filter((candidate) => normalizedText(candidate.text) === modelText);
-    const conflicting = reliable.filter((candidate) => normalizedText(candidate.text) !== modelText);
-    if (agreeing.length && !conflicting.length) {
-        const confidence = Math.min(modelResult.transcriptionConfidence, ...agreeing.map((candidate) => candidate.confidence));
-        return result(modelText, "clear", confidence);
-    }
-    return result(null, "uncertain", 0, ["ambiguous_glyphs"]);
+    if (modelResult.legibility === "clear" && modelText) return modelResult;
+    return resolveOcrConsensus(candidates) ?? modelResult;
 }
 
 /**
@@ -121,46 +113,46 @@ function pruneCache(now) {
 }
 
 /**
- * 執行 OCR 共識、視覺模型複核及人工判別降級流程。
+ * 先執行本地視覺模型，只有結果不清楚時才以 OCR 共識補位。
  *
  * @param {Buffer} imageBytes 已驗證 PNG。
  * @returns {Promise<Readonly<object>>} 最終辨識結果。
  */
 async function runTranscription(imageBytes) {
-    const [paddle, vision] = await Promise.all([
-        recognizeWithPaddle(prepareHandwritingOcrImage(imageBytes)),
-        recognizeWithAppleVision(prepareHandwritingImage(imageBytes)),
-    ]);
-    const candidates = [paddle, vision];
-    const consensus = resolveOcrConsensus(candidates);
-    if (consensus) return consensus;
-
+    let modelResult;
     try {
         handwritingModelPromise ??= inspectHandwritingModel({
             configuration: handwritingAiConfiguration(),
         });
         const model = await handwritingModelPromise;
-        const modelResult = await transcribeHandwriting(imageBytes, model);
-        return resolveWithModel(candidates, modelResult);
+        modelResult = await transcribeHandwriting(imageBytes, model);
     }
     catch (error) {
         handwritingModelPromise = undefined;
-        if (candidates.some(Boolean)) return result(null, "uncertain", 0, ["other"]);
         throw error;
     }
+    if (modelResult.legibility === "clear" && normalizedText(modelResult.transcription)) return modelResult;
+
+    const candidates = await Promise.all([
+        recognizeWithPaddle(prepareHandwritingOcrImage(imageBytes)),
+        recognizeWithAppleVision(prepareHandwritingImage(imageBytes)),
+    ]);
+    return resolveWithModel(candidates, modelResult);
 }
 
 /**
  * 使用本機 OCR 共識與視覺模型辨識手寫內容，並依圖片 checksum 避免重複運算。
  *
  * @param {Buffer} imageBytes 已驗證的 PNG 內容。
+ * @param {{force?: boolean}} options 是否略過相同圖片的短期快取。
  * @returns {Promise<Readonly<{schemaVersion: string, transcription: string | null, legibility: string, transcriptionConfidence: number, uncertaintyReasons: readonly string[]}>>} 辨識結果。
  */
-export async function transcribeLocalHandwriting(imageBytes) {
+export async function transcribeLocalHandwriting(imageBytes, { force = false } = {}) {
     const checksum = createHash("sha256").update(imageBytes).digest("hex");
     const now = Date.now();
     const cached = transcriptionCache.get(checksum);
-    if (cached && cached.expiresAt > now) return cached.promise;
+    if (!force && cached && cached.expiresAt > now) return cached.promise;
+    if (force) transcriptionCache.delete(checksum);
     pruneCache(now);
     const promise = runTranscription(imageBytes).catch((error) => {
         transcriptionCache.delete(checksum);

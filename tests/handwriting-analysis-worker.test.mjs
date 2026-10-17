@@ -217,7 +217,7 @@ test("independent OCR engines must agree before bypassing the local vision model
     ]), null);
 });
 
-test("the local vision model confirms matching OCR and rejects reliable conflicts", () => {
+test("the local vision model remains primary and OCR consensus fills only unclear results", () => {
     const modelResult = validateTranscription({
         schemaVersion: HANDWRITING_SCHEMA_VERSION,
         transcription: "4",
@@ -225,17 +225,26 @@ test("the local vision model confirms matching OCR and rejects reliable conflict
         transcriptionConfidence: 0.96,
         uncertaintyReasons: [],
     });
-    const confirmed = resolveWithModel([
-        { engine: "paddleocr", text: "4", confidence: 0.91 },
-        null,
-    ], modelResult);
-    assert.equal(confirmed.transcription, "4");
     const conflict = resolveWithModel([
         { engine: "paddleocr", text: "A", confidence: 0.99 },
         null,
     ], modelResult);
-    assert.equal(conflict.transcription, null);
-    assert.equal(conflict.legibility, "uncertain");
+    assert.equal(conflict.transcription, "4");
+    assert.equal(conflict.legibility, "clear");
+
+    const unclear = validateTranscription({
+        schemaVersion: HANDWRITING_SCHEMA_VERSION,
+        transcription: null,
+        legibility: "unreadable",
+        transcriptionConfidence: 0,
+        uncertaintyReasons: ["ambiguous_glyphs"],
+    });
+    const fallback = resolveWithModel([
+        { engine: "paddleocr", text: "如", confidence: 0.98 },
+        { engine: "apple-vision", text: "如", confidence: 0.52 },
+    ], unclear);
+    assert.equal(fallback.transcription, "如");
+    assert.equal(fallback.legibility, "clear");
 });
 
 test("model attestation checks version, tags, exact digest, show and explicit vision capability", async () => {

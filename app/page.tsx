@@ -1406,7 +1406,7 @@ function QuestionFlow(props: QuestionFlowProps) {
      * 辨識目前手寫內容並把文字顯示在唯一的文字作答欄位。
      * @returns 無回傳值。
      */
-    async function analyzeHandwriting(source: string) {
+    async function analyzeHandwriting(source: string, force = false) {
         if (!source || !handwritingPart) return;
 
         if (handwritingTimerRef.current !== null) window.clearTimeout(handwritingTimerRef.current);
@@ -1417,7 +1417,10 @@ function QuestionFlow(props: QuestionFlowProps) {
         handwritingAbortRef.current = controller;
         setHandwritingAnalysis({ status: "loading", message: "正在辨識手寫內容…" });
         try {
-            const result = await transcribePersistedHandwriting({ dataUrl: source }, controller.signal);
+            const result = await transcribePersistedHandwriting(
+                { dataUrl: source },
+                { signal: controller.signal, force },
+            );
             if (analysisId !== handwritingAnalysisIdRef.current || source !== handwritingRef.current) return;
 
             if (result.legibility === "clear" && result.transcription) {
@@ -1491,7 +1494,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                         recognitionStatus={canAnalyzeHandwriting ? recognitionStatus : needsCharacterRecognition ? "送出後辨識文字" : undefined}
                         analysisBusy={handwritingAnalysis.status === "loading"}
                         hasAnalysisResult={["clear", "unreadable", "error"].includes(handwritingAnalysis.status)}
-                        onAnalyze={canAnalyzeHandwriting ? () => void analyzeHandwriting(handwriting) : undefined}
+                        onAnalyze={canAnalyzeHandwriting ? () => void analyzeHandwriting(handwriting, true) : undefined}
                         onChange={changeHandwriting}
                         onStrokeStart={canAnalyzeHandwriting ? resetHandwritingAnalysis : undefined}
                     />

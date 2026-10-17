@@ -265,7 +265,7 @@ test("handwriting preview analysis is automatic, cancellable, non-persistent, an
     ]);
     assert.match(route, /requireLocalPracticeAccount\(request\)/u);
     assert.match(route, /validateHandwritingPngDataUrl\(body\.handwriting\.dataUrl\)/u);
-    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{ force: body\.force === true \}\)/u);
     assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
     assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
     assert.match(client, /\/api\/v1\/local-practice\/handwriting\/transcription/u);
@@ -279,7 +279,8 @@ test("handwriting preview analysis is automatic, cancellable, non-persistent, an
     assert.match(page, /onStrokeStart=\{canAnalyzeHandwriting \? resetHandwritingAnalysis : undefined\}/u);
     assert.match(pad, /function startDrawing[\s\S]*onStrokeStart\?\.\(\)[\s\S]*setPointerCapture/u);
     assert.match(page, /analysisId !== handwritingAnalysisIdRef\.current \|\| source !== handwritingRef\.current/u);
-    assert.match(client, /transcribePersistedHandwriting\(handwriting: LocalPracticeHandwritingInput, signal\?: AbortSignal\)[\s\S]*signal,/u);
+    assert.match(client, /transcribePersistedHandwriting\(handwriting: LocalPracticeHandwritingInput, options:[\s\S]*force\?: boolean[\s\S]*force: options\.force === true[\s\S]*signal: options\.signal/u);
+    assert.match(page, /onAnalyze=\{canAnalyzeHandwriting \? \(\) => void analyzeHandwriting\(handwriting, true\) : undefined\}/u);
 });
 
 test("handwriting-only completion is limited to text parts and remains pending manual review", async () => {

@@ -34,6 +34,7 @@ export async function POST(request: Request) {
             || !isRecord(body.handwriting)
             || typeof body.handwriting.dataUrl !== "string"
             || body.handwriting.dataUrl.length > Math.ceil(MAX_HANDWRITING_BYTES * 4 / 3) + 64
+            || (body.force !== undefined && typeof body.force !== "boolean")
         ) {
             return errorResponse("INVALID_HANDWRITING_REQUEST", "手寫辨識資料格式不正確。", 400);
         }
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
             return errorResponse("INVALID_HANDWRITING", "手寫板沒有有效筆跡，請先書寫後再分析。", 400);
         }
         try {
-            const result = await transcribeLocalHandwriting(handwriting.bytes);
+            const result = await transcribeLocalHandwriting(handwriting.bytes, { force: body.force === true });
             return localPracticeJsonResponse({
                 data: {
                     transcription: result.transcription,
