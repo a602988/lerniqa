@@ -3829,7 +3829,7 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         body: JSON.stringify({ action: "preview", sourceQueueItemIds: [wrongQueueItemId], limit: 5 }),
     });
     invariant(
-        ["same_type", "confirmed_similar", "topic_similar"].includes(recommendationPreview.body?.data?.recommendationKind)
+        recommendationPreview.body?.data?.recommendationKind === "same_template"
             && recommendationPreview.body.data.questions.length > 0,
         "RECOMMENDATION_PREVIEW_EMPTY",
         "合成錯題沒有取得可追溯的相同或相近題候選。",
@@ -3849,7 +3849,12 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
         body: JSON.stringify(recommendationStartBody),
     }, [201]);
     const recommendationOrigins = (await client.query(`
-        SELECT origin.match_basis
+        SELECT
+            origin.match_basis,
+            origin.question_template_id,
+            origin.shared_relation_count,
+            origin.relation_method_version,
+            origin.relation_evidence
         FROM practice_session_items AS item
         JOIN practice_session_item_origins AS origin
             ON origin.practice_session_item_id = item.id
@@ -3858,7 +3863,13 @@ async function verifyAttemptFlow(client, api, questions, definitions) {
     invariant(
         recommendationStart.body?.data?.session?.id === recommendationSessionId
             && recommendationOrigins.length > 0
-            && recommendationOrigins.every((origin) => ["same_question_type", "confirmed_group", "same_topic"].includes(origin.match_basis)),
+            && recommendationOrigins.every((origin) => (
+                origin.match_basis === "same_template"
+                && UUID_PATTERN.test(origin.question_template_id ?? "")
+                && origin.shared_relation_count === 0
+                && origin.relation_method_version === "confirmed-relation-v1"
+                && origin.relation_evidence?.template_id === origin.question_template_id
+            )),
         "RECOMMENDATION_SESSION_PROVENANCE_MISSING",
         "相同或相近題 session 沒有保存完整選題依據。",
         { origins: recommendationOrigins },

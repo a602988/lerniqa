@@ -4,16 +4,16 @@
 
 信箱驗證、密碼重設與角色 PIN 設定／重設的 API、帳號介面與不連網測試已完成。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 SMTP handshake，不可讀取或複製 ERP secret 來當作完成。`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約；SMTP outbox 不在 `0012`。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋。成人角色切換仍使用帳號密碼重新確認，角色 PIN 尚不參與角色切換。OCR 與 AI 拆題仍未串接；本地 AI 手寫分析已接上 sidecar worker，但真實筆跡品質與人工審核介面仍待驗收。
 
-狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0013` 共十三個 migration 已建立 PostgreSQL schema，合計 106 張業務資料表；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程和錯題流程已接上本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的練習 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。舊 JSON API 已封閉。279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
+狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0015` 共十五個 migration 已建立 PostgreSQL schema，合計 110 張業務資料表；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程和錯題流程已接上本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的練習 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。舊 JSON API 已封閉。279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
 
 ### 本輪資料庫擴充狀態
 
-- strict same-type recommendation、private 手寫 PNG、帳號復原與題庫補全的程式／針對性測試已完成。這些結果屬於靜態、單元或契約層，不表示 migration 已套用。
-- `0012` 已整合帳號復原 identity binding、同題型來源值域、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄。空庫、既有資料升級、down／up 與 schema parity 已通過。
-- 同細題型推薦先使用完整的 exact type 候選，只在候選數為 0 時用已確認相近題群組；沒有已確認群組時可回傳無推薦。`score` 禁止逐題推薦與手寫附件。
+- 階段性相關題目推薦、private 手寫 PNG、帳號復原與題庫補全的程式／針對性測試已完成。這些結果屬於靜態、單元或契約層，不表示完整產品規則與正式資料已交付。
+- `0012` 已整合帳號復原 identity binding、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄；`0014` 建立可審核的題目模板、可變值與正式關鍵字關聯；`0015` 補上 AI／規則關鍵字目錄的 pending 與審核證據。空庫、既有資料升級、down／up 與 schema parity 已通過。
+- 推薦程式已依已確認模板、相似群組、共同正式關鍵字與共同主題逐層選題，保存方法版本與命中證據，不再把來源題型或同單元當成相同題。離線分析、pending 匯入與管理員核准／退回流程已接上；279 題尚未完成全量分析與人工核准，目前只有一題煙霧測試待審，confirmed 關聯仍為 0。`score` 禁止逐題推薦與手寫附件。
 - `instant`／`complete` 的手寫圖儲存為 private PNG。缺文字答案時保持 pending／manual；已有完整答案時只作為計算過程附件，不改變判分。
 - 題庫補全預設 dry-run，只能先建立 pending suggestion；279 題尚未 apply，必須先通過品質抽檢與人工核准。
-- 本地 AI 手寫分析沿用 ERP 的 Ollama 環境設定，已核實固定模型 metadata、digest 與 vision capability，並完成六張合成品質圖的真實 inference。作答交易只為手寫補足的文字答案建立 `0012` sidecar job；模型不得直接改判或更新錯題與統計。
+- 本地 AI 手寫分析沿用 ERP 的 Ollama 環境設定，已核實固定模型 metadata、digest 與 vision capability，並完成六張合成品質圖、四張單字真實筆跡與一張註釋雙字筆跡的 inference。「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式。作答交易只為手寫補足的文字答案建立 `0012` sidecar job；模型不得直接改判或更新錯題與統計。
 
 ## 目標與範圍
 
@@ -114,9 +114,9 @@
 - 產出：`docs/question-database-design.md`，涵蓋題目身份與版本、標準題型、內容、答案、分類、來源、題庫、相近題群組、逐次作答、日期彙總、錯題排行、搬移規則及施工順序；`docs/database-completion-matrix.md` 對照需求、資料表、正式 API／表單、完成狀態與安全切換邊界。
 - 完成條件：目前八種題型、音訊與動態欄位都有單一搬移來源；題目可跨版本歸入多個教材單元，正式課綱代碼與平台知識點分開保存；歷史作答固定引用題目版本且每次送出不可覆寫；每題作答及答錯次數可依學習者與日期查詢；相近題群組與相同題型分開建模；統計及排行榜可由明細重建；未來多帳號共享、家教題庫、OCR、AI 類題與手寫答案不需另建平行題目模型。排序、拖曳配對、圖片熱區、繪圖、錄音作答及通用版面系統不列入首版，需在產品確認後另以 migration 擴充。
 - 驗證：對照目前 TypeScript 型別、匯入 API、題庫查詢及管理員權限規劃；執行 `git diff --check`。
-- 實作結果：`0001` 至 `0013` 已以原生 SQL 完成，合計 106 張業務資料表。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
+- 實作結果：`0001` 至 `0015` 已以原生 SQL 完成，合計 110 張業務資料表。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
 - 回滾點：刪除本規劃與本任務段落，不修改既有 JSON、API 或介面。
-- 狀態：已確認；十三個 migration 已依本文件施工。`/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL；計畫、排程與收藏尚未切換
+- 狀態：已確認；十五個 migration 已依本文件施工。`/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL；計畫、排程與收藏尚未切換
 
 ### 建立身份與目錄 migration
 
@@ -240,7 +240,7 @@
 ### 串接正式後端與安全切換 PostgreSQL
 
 - 角色：後端工程師、安全審查員、驗收員。
-- 輸入：`0001` 至 `0013` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
+- 輸入：`0001` 至 `0015` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
 - 產出：正式 repository 與交易服務、依資源拆分的 `/api/v1`、可重跑的 JSON 搬移工具，以及 PostgreSQL 單一寫入來源的切換程序。
 - 完成條件：伺服器從可信 session 決定帳號、角色與學習者權限；題目查詢、匯入、考試、計畫、作答、審核、附件與統計均讀寫 PostgreSQL；搬移工具輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告；JSON 與 PostgreSQL 不同時接受寫入。
 - 驗證：空庫與既有資料升級、正式 API 授權和表單讀寫、跨帳號拒絕、併發衝突、附件權限、作答不可變性、型別檢查、lint、build 及桌面／手機核心流程。
@@ -286,7 +286,7 @@
 - 完成條件：資料依學習者隔離；相近題可追溯原始錯題；總覽顯示考試倒數、弱點、單元進度與最近練習。
 - 驗證：建立錯題、加入相近題、切換學習者、檢查成果統計。
 - 回滾點：撤回新工作區，保留一般練習紀錄。
-- 狀態：介面已用隔離合成資料驗證；相近題候選審核、正式關聯、授權查詢與 `practice_session_item_origins` 完整來源仍未交付
+- 狀態：推薦查詢、來源證據、pending 關係分析與管理員審核介面已交付；279 題仍待全量分析與人工核准，目前 confirmed 關聯為 0
 
 ### 審查、優化、安全與驗收
 
@@ -385,10 +385,102 @@
 
 ## 相同／相近題優先練習（2026-10-17）
 
-- 目標：學習者可在出題設定勾選優先練習相同／相近題；系統先使用未完成的同細題型題目，再使用已確認相似群組，最後依正式共同主題安排相近內容。
-- 選題依據：同題型仍要求原題單元及細題型一致；相似內容使用正式 `question_similarity_groups` 或 `question_revision_topics`，不以同科目或未確認的 AI 猜測直接推薦。
-- 遞補規則：排除學習者最新已答對的候選；尚未作答的候選優先，完成後才保留仍答錯或待檢視的題目。所有候選完成時回傳明確完成說明，前端接續一般篩選題目。
-- 來源追溯：每個推薦 session item 以 `same_question_type`、`confirmed_group` 或 `same_topic` 保存正式來源；相同 session id 只允許重播完全相同的請求。
+- 目標：學習者可在出題設定勾選優先練習相同／相近題。相同題先於相近題，相近題再依關聯強度由高到低推薦。
+- 相同題判定：題幹的文字骨架與解題邏輯相同，只替換數字、人物、名稱、目標字或其他已標記的可變值。相同單元或相同來源題型名稱只能縮小候選範圍，不能單獨證明文字骨架相同。
+- 相近題判定：使用資料庫中已確認的相似群組，以及經核准並寫入正式關聯的關鍵字、人物、作品、篇章、主題或知識點。兩題共同關鍵字與正式關聯越多，代表關聯越近，排序越前；不得以未保存、未核准的即時 AI 猜測直接推薦。
+- 遞補規則：每一個相近程度內先選尚未作答的候選，排除最近已答對的題目，再保留仍答錯或待檢視的題目。只有較相近層級沒有符合條件的候選時，才往共同關鍵字較少的層級遞補；所有關聯候選都完成時回傳明確完成說明，前端才接續一般篩選題目。
+- 資料要求：文字骨架、可變值、正式關鍵字與題目關聯必須保存在資料庫或受版本管理且可追溯的來源檔案。缺少這些資料時只能標示功能未完成，不得以題型名稱、同科目、同單元或程式中的固定字串假裝已完成關聯判定。
+- 來源追溯：每個新推薦 session item 以 `same_template`、`confirmed_group`、`shared_keyword` 或 `same_topic` 保存正式來源、規則版本、共同關聯數量與必要證據；`same_question_type` 只供既有歷史 session 相容。相同 session id 只允許重播完全相同的請求。
 - 介面：練習篩選新增「優先練習相同／相近題」，設定保存在瀏覽器練習偏好；錯題頁持續顯示推薦層級、候選數與選入原因。
-- 驗證：`npm run test:local-practice` 已在 279 題隔離資料、13 個 migration、Next API 與 PostgreSQL 重啟條件下通過；正式資料庫未被測試觸碰。
-- 尚待正式資料內容：人物、作品、篇章、目標字等關聯必須先存在正式 `topics` 或確認相似群組，才能參與推薦。題庫補全建議不會直接改寫正式關聯。
+- 驗證：15 組 migration 的前進、限制測試、逐階段回滾、再次前進與 schema parity 已通過；推薦契約、關係分析、既有 enrichment 與管理後台測試、TypeScript 型別檢查均通過。1 題本機模型分析與 pending 匯入已完成，沒有自動核准。隔離 local-practice E2E 的相同模板預覽、session、來源證據及冪等重播先前已通過，整套流程之後被既有手寫辨識案例維持 `manual_review` 擋住，不能宣告完整 E2E 通過。
+- 尚待正式資料內容：`question_templates`、`question_template_memberships`、`relation_keywords`、`question_revision_keywords`、`question_revision_topics` 與確認相似群組目前都沒有正式內容。人物、作品、篇章、目標字等關聯必須先完成分析、人工審核與寫入，才能參與推薦；分析結果只能先進 pending，不能直接改寫正式關聯。
+
+## 教學小助教與教材來源閱讀器（2026-10-17）
+
+狀態：部分可執行。架構已確認，本機來源取得、OCR 實驗、資料模型、匯入工具、管理後台校對與隔離測試可以施工。教材局部頁面的線上顯示授權尚未確認，學生頁面影像端點及正式介面不得啟用或部署。
+
+### 施工就緒查核
+
+- Repository 可查證：第四課有 279 題已發布題目，全部目前使用 revision 2；195 題有文字解析，84 題沒有解析。正式題目來源是 Word 文件，自修 PDF 只能建立補充教材證據，不得改寫 `question_revision_sources` 的主要出處。
+- Repository 可查證：本機 `system_admin` session、管理 API、題目審核、資產讀取與同交易稽核已接線。教材校對沿用這套授權，不建立第二套管理身分。
+- 正式來源：Google Drive 檔案 `115上[翰林]國中新無敵國文自修(1).pdf`，Drive ID 為 `1i4c-4T1_NAIhHVOkKUPDqtbJtoUsI0aE`。下載後必須驗證 MIME type、檔名、檔案大小、頁數與 SHA-256；教材內容不得依 Google Drive 網址作為執行期依賴。
+- 已確認產品決策：教材範圍為 115 學年度、國一、國文、翰林版、上學期、第一冊、第四課〈論語選〉；印刷頁碼 93 至 114 對應 PDF 第 95 至 116 頁。來源顯示只使用檔名與印刷頁碼。
+- 需要具名權利責任人核准：這份教材局部頁面可否提供學生線上查看。未完成時，所有真實頁面影像只限本機匯入與管理員校對；學生流程固定拒絕。
+- 需要 production 證據：預設管理員、MFA、Secret Manager、受限資料庫角色、物件儲存與正式部署環境。這些條件不阻擋本機施工，但阻擋 production 驗收。
+
+### 固定資料契約
+
+- 原始 PDF 與頁面影像保存在 `local-data` 或日後的 private object storage；PostgreSQL 只保存相對 storage key、checksum、尺寸、頁碼、座標、OCR 內容及審核證據。
+- `source_documents.original_file_name` 完整保存來源檔名。`source_document_catalog_profiles` 保存學年度、年級、科目、學期、版本與冊次的正式關聯；`source_document_pages.curriculum_unit_id` 保存頁面所屬課次。
+- `question_revision_sources` 繼續表示題目原始匯入出處。補充教材使用獨立的 `question_revision_source_evidence`，且固定連到 `question_revision_id`。
+- OCR 原始文字不可覆寫。人工校正文字、審核狀態、審核者與時間另存；只有核准區塊及核准題目關聯可以進入學生查詢。
+- 相同來源 checksum、頁面範圍與 parser version 重跑不得產生重複文件、頁面或區塊。任一頁失敗時不得把文件標成 ready。
+- `score` 模式永遠不回傳逐題教材來源。`instant` 只在該題送出後揭露；`complete` 只在整份完成後揭露。
+- 學生引用格式固定為「解析來源：檔案名稱，第 N 頁」。對外資料不得包含本機絕對路徑、storage key 或 Google Drive URL。
+
+### T1：取得來源並完成 OCR 抽樣
+
+- 角色：工程師。
+- 輸入與產出：下載並核對原始 PDF；渲染 PDF 第 95、97、109、116 頁；比較可在本機離線執行的文字偵測、繁體中文辨識與版面區塊方案；產出 `local-data/source-ingestion/<checksum>/reports/ocr-smoke.json` 與代表頁標示圖。
+- 完成條件與驗證：四頁都能重複渲染；報告保存工具／模型版本、輸入 checksum、耗時、辨識文字、座標、失敗項與人工抽檢結論。直排古文、注音、表格、選擇題與插圖至少各有一項代表樣本；沒有座標或品質不足的方案不得選為正式 parser。
+- 證據位置與輸出摘要：完整結果保存在不進版控的 `local-data/source-ingestion/`；交接文件只記 SHA-256、頁數、抽樣頁、成功數、失敗摘要與報告路徑。
+- 依賴與確認節點：架構已確認，可立即執行。若所有本機方案都無法可靠處理直排版面，停下提出「增加人工框選」或「安裝文件版面模型」兩個選項，不自行下載未核准模型。
+- 回滾點：移除本次抽樣輸出，不刪除原始下載檔，不寫 PostgreSQL。
+
+### T2：建立教材來源資料模型
+
+- 角色：工程師。
+- 輸入與產出：新增下一號 migration、down migration、限制測試及資料字典，擴充 `assets.purpose=source_page`，建立來源教材範圍、頁面、OCR 區塊及題目版本證據資料表。
+- 完成條件與驗證：外鍵能拒絕跨科目、跨版本與跨教材樹誤連；審核狀態不可跳過 pending；核准證據只能引用核准區塊；原始 OCR 與身分欄位不可覆寫。migration 在一次性資料庫完成前進、down、再次前進及 schema parity，既有 279 題不變。
+- 證據位置與輸出摘要：SQL 測試放在 `database/tests/`，完整 log 放在 `local-data/verification/teaching-source-schema.log`；`docs/question-database-design.md`、`docs/database-completion-matrix.md` 與本計劃同步更新。
+- 依賴與確認節點：依賴 T1 確認座標與 OCR 欄位能表達實際輸出。migration 套用正式本機資料庫前，先以隔離資料庫通過驗證並建立備份。
+- 回滾點：隔離資料庫使用 down migration；持久資料庫若已寫入正式資料，只能向前修正或使用經核准備份，不直接 down。
+
+### T3：建立可重跑的第四課匯入工具
+
+- 角色：工程師。
+- 輸入與產出：建立 parser 與 `inspect`／`apply` 命令。設定檔保存來源 checksum、115 學年度、正式目錄 ID、PDF 頁序、印刷頁碼、課次、parser version 與 OCR adapter；不把本次對照散落在程式分支。
+- 完成條件與驗證：`inspect` 不寫資料庫；`apply` 先完成全部頁面檔案與 checksum，再以單一交易建立 pending 資料。相同輸入重跑重用既有結果；來源、設定或 parser version 不同時拒絕沿用 checkpoint。匯入前後題目、revision、解析與作答數量一致。
+- 證據位置與輸出摘要：測試放在 `tests/teaching-source-import.test.mjs`；匯入 manifest 與 log 放在 `local-data/source-ingestion/<checksum>/`；README 只記操作方式與安全限制。
+- 依賴與確認節點：依賴 T2。第一次 `apply` 到持久資料庫前停下核對 dry-run 摘要、備份位置、將新增的列數與不會修改的資料表。
+- 回滾點：pending 資料以該匯入 run 的明確 ID 隔離；失敗交易整筆回滾，未引用頁面檔案列入 orphan manifest，不遞迴刪除寬泛目錄。
+
+### T4：串接管理後台校對與核准
+
+- 角色：前端工程師、工程師。
+- 輸入與產出：在既有 `/admin` 增加教材來源清單、頁面與 OCR 對照、文字校正、區塊狀態及題目證據審核；擴充管理員資產端點只讀取正式關聯的 `source_page`。
+- 完成條件與驗證：所有讀寫重新驗證 `system_admin`；寫入經 same-origin、重新驗證、idempotency 與 append-only 稽核；載入、空資料、錯誤、衝突及過期 session 都有可操作狀態。桌面與 390 像素寬度可完成代表頁校對，不洩漏 storage key 或原始 PDF。
+- 證據位置與輸出摘要：管理測試沿用 `tests/admin-*.test.ts`，瀏覽器截圖及操作紀錄放在 `local-data/verification/teaching-source-admin/`。
+- 依賴與確認節點：依賴 T3。管理員核准真實教材區塊前停下讓使用者檢視代表頁校對結果。
+- 回滾點：隱藏教材校對導覽並停用寫入規格，保留 pending 資料及稽核證據。
+
+### T5：串接學生來源跳頁
+
+- 角色：工程師、前端工程師。
+- 輸入與產出：把核准來源摘要接入現有參考答案揭露流程；建立以 question ID、revision ID 與 page ID 授權的 private 頁面端點；在既有解析區加入來源連結與單頁閱讀器。
+- 完成條件與驗證：點擊來源直接開啟正確印刷頁並標示引用區域；`instant`、`complete` 與 `score` 行為符合固定契約；未登入、不同學習者、錯誤版本、未核准證據及直接猜 ID 都不能取得頁面。閱讀器不提供整本下載或跨課瀏覽。
+- 證據位置與輸出摘要：API 測試、答案揭露測試及瀏覽器操作證據保存在對應 `tests/` 與 `local-data/verification/teaching-source-reader/`。
+- 依賴與確認節點：依賴 T4，並需要教材線上顯示授權。授權未確認時可以使用隔離合成頁面完成程式與測試，但真實來源連結保持關閉。
+- 回滾點：關閉來源摘要與頁面端點，不影響既有參考答案、題目或作答資料。
+
+### T6：加入本地 AI 教學說明
+
+- 角色：工程師。
+- 輸入與產出：建立與 handwriting worker 分離的教學工作；輸入只包含固定題目版本、必要錯誤資訊及核准教材區塊，保存模型 digest、prompt version、輸入 checksum、引用與審核狀態。
+- 完成條件與驗證：模型不能讀取整本 PDF、未校正 OCR、其他學習者資料或手寫 worker 的隔離輸入；每個教材主張都能回到核准區塊。沒有足夠證據時回傳尚無教材解析，不補造來源。
+- 證據位置與輸出摘要：合成錯題與核准教材區塊的 eval、延遲與失敗報告放在 `local-data/verification/teaching-assistant-ai/`，測試放在 `tests/`。
+- 依賴與確認節點：依賴 T4；模型與 prompt 的品質門檻需由代表題目實驗確定，未達門檻時不接學生流程。
+- 回滾點：停用教學工作及生成內容讀取，保留既有固定解析與教材來源。
+
+### 階段審查與優化
+
+- T1 至 T3 完成後，由審查員檢查資料契約、重跑安全、來源追溯、檔案邊界及文件同步；優化師只處理確認的 OCR 批次效能、影像尺寸與資料庫查詢問題。相關驗證通過後才進 T4。
+- T4 至 T6 每項完成後，各自執行差異相關的介面／API 審查及效能複查。任何驗證失敗都轉入除錯支線，固定重現、定位根因、修正並回驗；同一方案連續失敗兩次就回到該任務的回滾點。
+- 每輪審查都要反查 source document、page、block、evidence、API、管理動作及學生入口是否都有 producer、consumer、授權與測試；只有資料表或只有介面不算完成。文件與實作不一致時不得進下一項。
+
+### 凍結、安全與最終驗收
+
+- 全部 production code 完成後凍結版本，記錄 commit 與 QA 矩陣，不在 freeze gate 重跑完整集合。
+- 依序執行 Ai Slop Cleaner、Code Review、Security Review 與 UltraQA。完整 migration、測試、build、資料庫核對、桌面與手機流程由 UltraQA 統一執行；後三項若修正 production code，解除凍結並從 Ai Slop Cleaner 重跑。
+- 安全審查涵蓋路徑穿越、symlink、checksum、檔案大小與 MIME、PDF 內容、SQL 注入、越權讀取、答案提前揭露、模型 prompt injection、教材內容外洩與 log 敏感資訊。
+- 驗收對照 `docs/concept.md`：學生能在已解鎖結果看到有教材依據的解析、來源只顯示檔名與頁碼、點擊後到正確頁、沒有整本教材重排、既有 279 題與作答資料不受影響。教材授權及 production 管理條件未完成時，整體狀態保持「部分可執行」，不得宣告 production 完成。

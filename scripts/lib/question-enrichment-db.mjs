@@ -328,12 +328,10 @@ export async function readCurrentPublishedQuestionsInTransaction(client) {
     const questionResult = await client.query(CURRENT_QUESTION_SQL);
     if (questionResult.rows.length === 0) fail("EMPTY_QUESTION_CATALOG", "沒有可分類的目前已發布系統題目。 ");
     const revisionIds = questionResult.rows.map((row) => row.revision_id);
-    const [parts, options, answers, content] = await Promise.all([
-        client.query(QUESTION_PART_SQL, [revisionIds]),
-        client.query(QUESTION_OPTION_SQL, [revisionIds]),
-        client.query(QUESTION_ANSWER_SQL, [revisionIds]),
-        client.query(QUESTION_CONTENT_SQL, [revisionIds]),
-    ]);
+    const parts = await client.query(QUESTION_PART_SQL, [revisionIds]);
+    const options = await client.query(QUESTION_OPTION_SQL, [revisionIds]);
+    const answers = await client.query(QUESTION_ANSWER_SQL, [revisionIds]);
+    const content = await client.query(QUESTION_CONTENT_SQL, [revisionIds]);
     return attachRows(questionResult.rows, parts.rows, options.rows, answers.rows, content.rows);
 }
 

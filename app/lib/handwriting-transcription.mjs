@@ -14,6 +14,7 @@ import {
     recognizeWithAppleVision,
     recognizeWithPaddle,
 } from "./handwriting-ocr.mjs";
+import { isHandwritingRecognitionMode } from "./handwriting-recognition.mjs";
 
 const CACHE_LIFETIME_MS = 10 * 60 * 1_000;
 const CACHE_MAXIMUM_ENTRIES = 128;
@@ -164,12 +165,14 @@ async function runTranscription(imageBytes, {
     budgetMs = INTERACTIVE_BUDGET_MS,
     fetchImpl = fetch,
     model: suppliedModel,
+    mode = "single_character",
 } = {}) {
+    if (!isHandwritingRecognitionMode(mode)) return result(null, "unreadable", 0, ["other"]);
     const startedAt = Date.now();
     const remainingBudget = () => Math.max(0, budgetMs - (Date.now() - startedAt));
     const standardImage = prepareHandwritingOcrImage(imageBytes);
     const ocrResults = await withinBudget(Promise.all([
-        recognizeWithPaddle(standardImage),
+        recognizeWithPaddle(standardImage, mode),
         recognizeWithAppleVision(standardImage),
     ]), remainingBudget());
     if (!ocrResults) return result(null, "unreadable", 0, ["other"]);
@@ -197,7 +200,7 @@ async function runTranscription(imageBytes, {
         if (!model) return result(null, "uncertain", 0, ["other"]);
         timeoutMs = remainingBudget();
         if (timeoutMs < 1) return result(null, "uncertain", 0, ["other"]);
-        modelResult = await transcribeHandwriting(imageBytes, model, { attempts, fetchImpl, timeoutMs });
+        modelResult = await transcribeHandwriting(imageBytes, model, { attempts, fetchImpl, timeoutMs, mode });
     }
     catch (error) {
         handwritingModelPromise = undefined;
@@ -210,7 +213,7 @@ async function runTranscription(imageBytes, {
  * 執行 OCR 與本機視覺模型共用流程，供互動預覽與背景工作使用不同時間預算。
  *
  * @param {Buffer} imageBytes 已驗證的 PNG 內容。
- * @param {{attempts?: number, budgetMs?: number, fetchImpl?: typeof fetch, model?: object}} options 辨識執行條件。
+ * @param {{attempts?: number, budgetMs?: number, fetchImpl?: typeof fetch, model?: object, mode?: "single_character" | "single_line"}} options 辨識執行條件。
  * @returns {Promise<Readonly<object>>} 最終辨識結果。
  */
 export async function transcribeHybridHandwriting(imageBytes, options = {}) {
@@ -221,20 +224,22 @@ export async function transcribeHybridHandwriting(imageBytes, options = {}) {
  * 使用本機 OCR 共識與視覺模型辨識手寫內容，並依圖片 checksum 避免重複運算。
  *
  * @param {Buffer} imageBytes 已驗證的 PNG 內容。
- * @param {{force?: boolean}} options 是否略過相同圖片的短期快取。
+ * @param {{force?: boolean, mode?: "single_character" | "single_line"}} options 快取與辨識方式。
  * @returns {Promise<Readonly<{schemaVersion: string, transcription: string | null, legibility: string, transcriptionConfidence: number, uncertaintyReasons: readonly string[]}>>} 辨識結果。
  */
-export async function transcribeLocalHandwriting(imageBytes, { force = false } = {}) {
+export async function transcribeLocalHandwriting(imageBytes, { force = false, mode = "single_character" } = {}) {
+    if (!isHandwritingRecognitionMode(mode)) return result(null, "unreadable", 0, ["other"]);
     const checksum = createHash("sha256").update(imageBytes).digest("hex");
+    const cacheKey = `${mode}:${checksum}`;
     const now = Date.now();
-    const cached = transcriptionCache.get(checksum);
+    const cached = transcriptionCache.get(cacheKey);
     if (!force && cached && cached.expiresAt > now) return cached.promise;
-    if (force) transcriptionCache.delete(checksum);
+    if (force) transcriptionCache.delete(cacheKey);
     pruneCache(now);
-    const promise = transcribeHybridHandwriting(imageBytes).catch((error) => {
-        transcriptionCache.delete(checksum);
+    const promise = transcribeHybridHandwriting(imageBytes, { mode }).catch((error) => {
+        transcriptionCache.delete(cacheKey);
         throw error;
     });
-    transcriptionCache.set(checksum, { expiresAt: now + CACHE_LIFETIME_MS, promise });
+    transcriptionCache.set(cacheKey, { expiresAt: now + CACHE_LIFETIME_MS, promise });
     return promise;
 }

@@ -48,6 +48,7 @@ import {
 import { PersistedQuestionFields, PersistedQuestionPromptContent } from "./components/persisted-question-fields";
 import { CORRECTION_ANSWER_HINT, CORRECTION_ANSWER_PLACEHOLDER, isCorrectionQuestion } from "./lib/question-answer-guidance";
 import { adaptPracticeAttempt, adaptPracticeQuestion, formatPracticeResponse, parsePracticeAnswers, practiceRouteId } from "./lib/practice-catalog-adapter";
+import { handwritingRecognitionModeForLabel } from "./lib/handwriting-recognition.mjs";
 import {
     clearPracticeSessionHint,
     createPracticeLearner,
@@ -211,7 +212,6 @@ interface QuestionAnswerFieldsProps {
     onAnswer: (value: string) => void;
 }
 
-const CHARACTER_HANDWRITING_LABEL = "寫出國字、注音";
 const ANSWER_GRID_FOUR_COLUMN_BYTES = 48;
 const ANSWER_GRID_TWO_COLUMN_BYTES = 144;
 const AVATAR_FILE_SIZE_LIMIT = 1024 * 1024;
@@ -246,9 +246,9 @@ function PracticeFieldLabel({ icon: Icon, label, className = "" }: PracticeField
     return <span className={`practice-field-label ${className}`}><Icon aria-hidden="true" />{label}</span>;
 }
 
-/** 判斷題目是否必須以手寫方式作答並交由 AI 辨識。 */
-function isCharacterHandwritingQuestion(question: Question) {
-    return question.kind === "written" && question.typeLabel === CHARACTER_HANDWRITING_LABEL;
+/** 依題庫細題型取得手寫辨識方式；非書寫題不啟用辨識。 */
+function getHandwritingRecognitionMode(question: Question) {
+    return question.kind === "written" ? handwritingRecognitionModeForLabel(question.typeLabel) : null;
 }
 
 /** 依選項數量、內容長度與媒體內容決定答案欄數。 */
@@ -1110,15 +1110,16 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
 
 /** 顯示正式練習與題目檢視共用的作答欄位。 */
 function QuestionAnswerFields({ question, answer, partIds, disabled = false, onAnswer }: QuestionAnswerFieldsProps) {
-    const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
     const needsCorrectionDelimiter = isCorrectionQuestion(question.typeLabel);
+    const handwritingRecognitionMode = getHandwritingRecognitionMode(question);
+    const needsHandwritingRecognition = handwritingRecognitionMode !== null;
     const answerColumnCount = getAnswerColumnCount(question);
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
     const visibleParts = question.parts?.filter((part) => !targetIds || targetIds.has(part.id)) ?? [];
 
     if (question.kind === "written") {
-        if (needsCharacterRecognition) return null;
+        if (needsHandwritingRecognition) return null;
 
         if (visibleParts.length) {
             return <div className="written-answer-parts">
@@ -1352,7 +1353,8 @@ function QuestionFlow(props: QuestionFlowProps) {
         message: string;
         recognizedAnswers?: Record<string, string>;
     }>({ status: "idle", message: "" });
-    const needsCharacterRecognition = isCharacterHandwritingQuestion(question);
+    const handwritingRecognitionMode = getHandwritingRecognitionMode(question);
+    const needsHandwritingRecognition = handwritingRecognitionMode !== null;
     const isLast = index === total - 1;
     const selectedAnswers = question.parts?.length ? getSelectedAnswers(answer) : [];
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
@@ -1378,7 +1380,7 @@ function QuestionFlow(props: QuestionFlowProps) {
         && missingServerParts.length > 0
         && missingServerParts.every((part) => part.answerMode === "text");
     const canSubmit = serverQuestion ? hasCompleteServerAnswers || canUseServerHandwriting : question.kind === "written"
-        ? needsCharacterRecognition
+        ? needsHandwritingRecognition
             ? Boolean(handwriting)
             : targetParts.length
                 ? hasCompletePartAnswers || Boolean(handwriting)
@@ -1389,7 +1391,7 @@ function QuestionFlow(props: QuestionFlowProps) {
     const referenceExplanation = feedback?.referenceAnswers?.length
         ? formatReferenceExplanations(feedback.referenceAnswers)
         : "";
-    const canAnalyzeHandwriting = needsCharacterRecognition && Boolean(serverQuestion && handwritingPart);
+    const canAnalyzeHandwriting = needsHandwritingRecognition && Boolean(serverQuestion && handwritingPart);
 
     handwritingRef.current = handwriting;
 
@@ -1417,7 +1419,7 @@ function QuestionFlow(props: QuestionFlowProps) {
             window.clearTimeout(timer);
             if (handwritingTimerRef.current === timer) handwritingTimerRef.current = null;
         };
-    }, [handwriting, canAnalyzeHandwriting, submitted, feedback, props.busy, props.answerLocked, checkMode, handwritingPart?.id]);
+    }, [handwriting, canAnalyzeHandwriting, submitted, feedback, props.busy, props.answerLocked, checkMode, handwritingPart?.id, handwritingRecognitionMode]);
 
     useEffect(() => () => handwritingAbortRef.current?.abort(), []);
 
@@ -1456,7 +1458,7 @@ function QuestionFlow(props: QuestionFlowProps) {
      * @returns 無回傳值。
      */
     async function analyzeHandwriting(source: string, force = false) {
-        if (!source || !handwritingPart) return;
+        if (!source || !handwritingPart || !handwritingRecognitionMode) return;
 
         if (handwritingTimerRef.current !== null) window.clearTimeout(handwritingTimerRef.current);
         handwritingTimerRef.current = null;
@@ -1468,7 +1470,7 @@ function QuestionFlow(props: QuestionFlowProps) {
         try {
             const result = await transcribePersistedHandwriting(
                 { dataUrl: source },
-                { signal: controller.signal, force },
+                { signal: controller.signal, force, mode: handwritingRecognitionMode },
             );
             if (analysisId !== handwritingAnalysisIdRef.current || source !== handwritingRef.current) return;
 
@@ -1520,7 +1522,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                 ? "答對了"
                 : feedback.correct === false
                     ? "答錯了"
-                    : needsCharacterRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"
+                    : needsHandwritingRecognition ? "手寫內容已保存，等待 AI 辨識" : "手寫內容已保存，等待檢視"
         : "";
     const feedbackAnswer = feedback
         ? serverQuestion
@@ -1538,7 +1540,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                             <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
                             {serverQuestion && <PersistedQuestionPromptContent question={serverQuestion} />}
                         </div>
-                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsCharacterRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} hidePromptContent onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
+                        {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsHandwritingRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} hidePromptContent onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
                     </section>
                     {feedback && <aside ref={reviewRef} className={`practice-answer-review rounded-2xl border p-4 ${feedback.correct === true ? "border-emerald-200 bg-emerald-50" : feedback.correct === false ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`} role="status">
                         <div className="practice-feedback-status">{feedback.correct === true ? <CheckCircle2 className="text-emerald-700" /> : feedback.correct === false ? <XCircle className="text-rose-700" /> : <Clock3 className="text-amber-700" />}{feedbackMessage}</div>
@@ -1561,7 +1563,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                     <HandwritingPad
                         value={handwriting}
                         disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"}
-                        recognitionStatus={canAnalyzeHandwriting ? recognitionStatus : needsCharacterRecognition ? "送出後辨識文字" : undefined}
+                        recognitionStatus={canAnalyzeHandwriting ? recognitionStatus : needsHandwritingRecognition ? "送出後辨識文字" : undefined}
                         analysisBusy={handwritingAnalysis.status === "loading"}
                         hasAnalysisResult={["clear", "unreadable", "error"].includes(handwritingAnalysis.status)}
                         onAnalyze={canAnalyzeHandwriting ? () => void analyzeHandwriting(handwriting, true) : undefined}
@@ -3675,7 +3677,7 @@ export default function Home() {
             if (!targetParts.length || (incompleteParts.length > 0 && !handwritingCompletesMissingText)) return;
         }
         else {
-            if (isCharacterHandwritingQuestion(currentQuestion) && !handwriting) return;
+            if (getHandwritingRecognitionMode(currentQuestion) && !handwriting) return;
             if (currentQuestion.kind === "written" ? !hasWrittenResponse : !answer.trim()) return;
         }
         const targetPartIds = currentTargetPartIds;
@@ -4038,14 +4040,28 @@ export default function Home() {
         if (!result || result.recommendationKind === "none" || result.availableCount === 0) {
             return <p className="text-xs font-semibold text-muted-foreground" role="status">目前沒有可練習的同題型或相似題型。</p>;
         }
+        const isSameTemplate = result.recommendationKind === "same_template";
         const isSameType = result.recommendationKind === "same_type";
+        const isKeywordSimilar = result.recommendationKind === "keyword_similar";
         const isTopicSimilar = result.recommendationKind === "topic_similar";
-        const kindLabel = isSameType ? "同題型" : isTopicSimilar ? "相近內容" : "已確認相似題型";
-        const actionLabel = isSameType ? "同題型練習" : isTopicSimilar ? "相近題練習" : "相似題型練習";
+        const kindLabel = isSameTemplate
+            ? "相同題"
+            : isSameType
+                ? "舊版同題型"
+                : isKeywordSimilar
+                    ? "關鍵字相近題"
+                    : isTopicSimilar
+                        ? "相近內容"
+                        : "已確認相似題型";
+        const actionLabel = isSameTemplate
+            ? "相同題練習"
+            : isSameType
+                ? "同題型練習"
+                : "相近題練習";
         const classification = isSameType && result.classificationLabel ? ` · ${result.classificationLabel}` : "";
         const sessionCount = Math.min(result.availableCount, recommendationLimit);
         return <div className="grid min-w-0 gap-1" title={result.explanation}>
-            <Badge className="w-fit" tone={isSameType ? "primary" : "warning"}>{kindLabel}{classification} · 可用 {result.availableCount} 題</Badge>
+            <Badge className="w-fit" tone={isSameTemplate || isSameType ? "primary" : "warning"}>{kindLabel}{classification} · 可用 {result.availableCount} 題</Badge>
             <p className="text-xs leading-relaxed text-muted-foreground">{result.explanation}</p>
             <Button appearance="ghost" tone="muted" size="sm" disabled={practiceBusy} onClick={() => void startRecommendationSession(questionId, "instant")}><Sparkles />{actionLabel}（{sessionCount}）</Button>
         </div>;
@@ -4354,6 +4370,10 @@ export default function Home() {
     const examCountdownLabel = getExamCountdownLabel(dayDifference);
     const sessionModeLabel = recommendationSessionKind === "same_type"
         ? "同題型練習"
+        : recommendationSessionKind === "same_template"
+            ? "相同題練習"
+            : recommendationSessionKind === "keyword_similar"
+                ? "關鍵字相近題練習"
         : recommendationSessionKind === "topic_similar"
             ? "相近題練習"
         : recommendationSessionKind === "confirmed_similar"

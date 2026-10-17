@@ -3,6 +3,7 @@ import {
     validateHandwritingPngDataUrl,
 } from "@/app/lib/handwriting-png";
 import { transcribeLocalHandwriting } from "@/app/lib/handwriting-transcription.mjs";
+import { isHandwritingRecognitionMode } from "@/app/lib/handwriting-recognition.mjs";
 import {
     errorResponse,
     handleLocalPracticeError,
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
             || typeof body.handwriting.dataUrl !== "string"
             || body.handwriting.dataUrl.length > Math.ceil(MAX_HANDWRITING_BYTES * 4 / 3) + 64
             || (body.force !== undefined && typeof body.force !== "boolean")
+            || !isHandwritingRecognitionMode(body.mode)
         ) {
             return errorResponse("INVALID_HANDWRITING_REQUEST", "手寫辨識資料格式不正確。", 400);
         }
@@ -43,7 +45,10 @@ export async function POST(request: Request) {
             return errorResponse("INVALID_HANDWRITING", "手寫板沒有有效筆跡，請先書寫後再分析。", 400);
         }
         try {
-            const result = await transcribeLocalHandwriting(handwriting.bytes, { force: body.force === true });
+            const result = await transcribeLocalHandwriting(handwriting.bytes, {
+                force: body.force === true,
+                mode: body.mode,
+            });
             return localPracticeJsonResponse({
                 data: {
                     transcription: result.transcription,

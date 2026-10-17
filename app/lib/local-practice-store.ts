@@ -51,10 +51,21 @@ import {
 } from "@/app/lib/practice-catalog-knowledge";
 import { recommendationClassificationLabel } from "@/app/lib/practice-recommendations";
 import { getSubjectLookupLabels } from "@/app/lib/subject-labels";
+import {
+    handwritingRecognitionModeForLabel,
+    type HandwritingRecognitionMode,
+} from "@/app/lib/handwriting-recognition.mjs";
+
+const RECOMMENDATION_RELATION_METHOD_VERSION = "confirmed-relation-v1";
 
 export interface LocalPracticeActor {
     userId: string;
     learnerId: string;
+}
+
+export interface LocalPracticeHandwritingTarget {
+    partId: string;
+    mode: HandwritingRecognitionMode;
 }
 
 export class LocalPracticeRequestError extends Error {
@@ -313,7 +324,10 @@ interface RecommendationSourceRow extends QueryResultRow {
 
 interface RecommendationQuestionRow extends QuestionRow {
     recommendation_kind: Exclude<LocalPracticeRecommendationKind, "none">;
+    question_template_id: string | null;
     similarity_group_id: string | null;
+    matched_keyword_ids: string[] | null;
+    shared_keyword_count: number;
     matched_topic_id: string | null;
     shared_topic_count: number;
     volume_name: string;
@@ -332,8 +346,11 @@ interface RecommendationRequestRow extends QueryResultRow {
 
 interface StoredRecommendationQuestionRow extends QuestionRow {
     selection_reason: string;
+    question_template_id: string | null;
     similarity_group_id: string | null;
     match_basis: string | null;
+    shared_relation_count: number | null;
+    relation_evidence: { keyword_ids?: string[] } | null;
     matched_topic_id: string | null;
     volume_name: string;
 }
@@ -877,9 +894,12 @@ async function selectRecommendationQuestions(
                 difficulty.id AS difficulty_id,
                 difficulty.code AS difficulty_code,
                 difficulty.name AS difficulty_name,
+                template_match.question_template_id,
                 confirmed_match.similarity_group_id,
+                keyword_match.matched_keyword_ids,
+                COALESCE(keyword_match.shared_keyword_count, 0) AS shared_keyword_count,
                 topic_match.matched_topic_id,
-                topic_match.shared_topic_count,
+                COALESCE(topic_match.shared_topic_count, 0) AS shared_topic_count,
                 latest_result.current_result IS NOT NULL AS has_previous_attempt,
                 (
                     candidate_revision.question_type_id = $4
@@ -942,6 +962,23 @@ async function selectRecommendationQuestions(
                 LIMIT 1
             ) AS candidate_identifier ON true
             LEFT JOIN LATERAL (
+                SELECT template.id AS question_template_id
+                FROM question_template_memberships AS source_membership
+                JOIN question_templates AS template
+                    ON template.id = source_membership.question_template_id
+                    AND template.status = 'confirmed'
+                JOIN question_template_memberships AS target_membership
+                    ON target_membership.question_template_id = template.id
+                    AND target_membership.question_id = candidate.id
+                    AND target_membership.based_on_revision_id = candidate_revision.id
+                    AND target_membership.status = 'confirmed'
+                WHERE source_membership.question_id = $2
+                    AND source_membership.based_on_revision_id = $3
+                    AND source_membership.status = 'confirmed'
+                ORDER BY template.id
+                LIMIT 1
+            ) AS template_match ON true
+            LEFT JOIN LATERAL (
                 SELECT similarity_group.id AS similarity_group_id
                 FROM question_similarity_memberships AS source_membership
                 JOIN question_similarity_groups AS similarity_group
@@ -958,6 +995,24 @@ async function selectRecommendationQuestions(
                 ORDER BY similarity_group.id
                 LIMIT 1
             ) AS confirmed_match ON true
+            LEFT JOIN LATERAL (
+                SELECT
+                    array_agg(
+                        candidate_keyword.relation_keyword_id
+                        ORDER BY candidate_keyword.relation_keyword_id
+                    ) AS matched_keyword_ids,
+                    count(*)::integer AS shared_keyword_count
+                FROM question_revision_keywords AS candidate_keyword
+                JOIN question_revision_keywords AS source_keyword
+                    ON source_keyword.relation_keyword_id = candidate_keyword.relation_keyword_id
+                    AND source_keyword.question_revision_id = $3
+                    AND source_keyword.status = 'confirmed'
+                JOIN relation_keywords AS keyword
+                    ON keyword.id = candidate_keyword.relation_keyword_id
+                    AND keyword.status = 'active'
+                WHERE candidate_keyword.question_revision_id = candidate_revision.id
+                    AND candidate_keyword.status = 'confirmed'
+            ) AS keyword_match ON true
             LEFT JOIN LATERAL (
                 SELECT
                     min(candidate_topic.topic_id::text)::uuid AS matched_topic_id,
@@ -1152,25 +1207,42 @@ async function selectRecommendationQuestions(
                             OR invalid_media_asset.id IS NULL
                         )
                 )
-        ), same_type AS (
-            SELECT eligible.*, 'same_type'::text AS recommendation_kind
+        ), same_template AS (
+            SELECT eligible.*, 'same_template'::text AS recommendation_kind
             FROM eligible
-            WHERE eligible.is_same_type = true
+            WHERE eligible.question_template_id IS NOT NULL
         ), confirmed_similar AS (
             SELECT eligible.*, 'confirmed_similar'::text AS recommendation_kind
             FROM eligible
             WHERE eligible.similarity_group_id IS NOT NULL
-                AND NOT EXISTS (SELECT 1 FROM same_type)
+                AND NOT EXISTS (SELECT 1 FROM same_template)
+        ), keyword_similar AS (
+            SELECT eligible.*, 'keyword_similar'::text AS recommendation_kind
+            FROM eligible
+            WHERE eligible.shared_keyword_count > 0
+                AND eligible.shared_keyword_count = (
+                    SELECT max(candidate.shared_keyword_count)
+                    FROM eligible AS candidate
+                )
+                AND NOT EXISTS (SELECT 1 FROM same_template)
+                AND NOT EXISTS (SELECT 1 FROM confirmed_similar)
         ), topic_similar AS (
             SELECT eligible.*, 'topic_similar'::text AS recommendation_kind
             FROM eligible
             WHERE eligible.shared_topic_count > 0
-                AND NOT EXISTS (SELECT 1 FROM same_type)
+                AND eligible.shared_topic_count = (
+                    SELECT max(candidate.shared_topic_count)
+                    FROM eligible AS candidate
+                )
+                AND NOT EXISTS (SELECT 1 FROM same_template)
                 AND NOT EXISTS (SELECT 1 FROM confirmed_similar)
+                AND NOT EXISTS (SELECT 1 FROM keyword_similar)
         ), selected AS (
-            SELECT * FROM same_type
+            SELECT * FROM same_template
             UNION ALL
             SELECT * FROM confirmed_similar
+            UNION ALL
+            SELECT * FROM keyword_similar
             UNION ALL
             SELECT * FROM topic_similar
         ), ranked AS (
@@ -1181,6 +1253,7 @@ async function selectRecommendationQuestions(
         FROM ranked
         ORDER BY
             has_previous_attempt ASC,
+            shared_keyword_count DESC,
             shared_topic_count DESC,
             CASE WHEN difficulty_id IS NOT DISTINCT FROM $14::uuid THEN 0 ELSE 1 END,
             CASE
@@ -1346,12 +1419,16 @@ function recommendationExplanation(
     recommendationKind: LocalPracticeRecommendationKind,
     classificationLabel: string,
 ): string {
-    return recommendationKind === "same_type"
-        ? `只選出同為「${classificationLabel}」且符合原題範圍的題目。`
+    return recommendationKind === "same_template"
+        ? "只選出文字骨架與解題邏輯相同，且模板關係已確認的題目。"
+        : recommendationKind === "keyword_similar"
+            ? "相同題與已確認相似群組沒有可用題目，因此依共同正式關鍵字最多的層級安排相近題。"
+            : recommendationKind === "same_type"
+                ? `這是舊版同題型練習紀錄，分類為「${classificationLabel}」。`
         : recommendationKind === "confirmed_similar"
-            ? "同題型沒有可用題目，因此改用已確認的相似題關聯。"
+            ? "相同題沒有可用題目，因此改用已確認的相似題群組。"
             : recommendationKind === "topic_similar"
-                ? "同題型與已確認相似題已完成，因此依共同人物、作品、篇章或主題安排相近題。"
+                ? "較近的正式關聯沒有可用題目，因此依共同主題最多的層級安排相近題。"
                 : "相同與相近題已全部練習完成。";
 }
 
@@ -1395,8 +1472,11 @@ async function readStoredRecommendationResult(
             difficulty.code AS difficulty_code,
             difficulty.name AS difficulty_name,
             item.selection_reason,
+            recommendation_origin.question_template_id,
             recommendation_origin.similarity_group_id,
             recommendation_origin.match_basis,
+            recommendation_origin.shared_relation_count,
+            recommendation_origin.relation_evidence,
             recommendation_origin.matched_topic_id,
             count(*) OVER () AS total_count
         FROM practice_session_items AS item
@@ -1426,7 +1506,13 @@ async function readStoredRecommendationResult(
             LIMIT 1
         ) AS candidate_identifier ON true
         LEFT JOIN LATERAL (
-            SELECT origin.similarity_group_id, origin.match_basis, origin.matched_topic_id
+            SELECT
+                origin.question_template_id,
+                origin.similarity_group_id,
+                origin.match_basis,
+                origin.shared_relation_count,
+                origin.relation_evidence,
+                origin.matched_topic_id
             FROM practice_session_item_origins AS origin
             WHERE origin.practice_session_item_id = item.id
             ORDER BY origin.id
@@ -1442,9 +1528,19 @@ async function readStoredRecommendationResult(
         && selectionReasons.has("same_type_review")
         ? "same_type"
         : selectionReasons.size === 1 && selectionReasons.has("similar_review")
-            ? storedResult.rows.every((row) => row.match_basis === "same_topic" && row.matched_topic_id)
-                ? "topic_similar"
-                : "confirmed_similar"
+            ? storedResult.rows.every((row) => (
+                row.match_basis === "same_template" && row.question_template_id
+            ))
+                ? "same_template"
+                : storedResult.rows.every((row) => (
+                    row.match_basis === "shared_keyword"
+                    && row.shared_relation_count
+                    && row.relation_evidence?.keyword_ids?.length === row.shared_relation_count
+                ))
+                    ? "keyword_similar"
+                    : storedResult.rows.every((row) => row.match_basis === "same_topic" && row.matched_topic_id)
+                        ? "topic_similar"
+                        : "confirmed_similar"
             : "none";
     if (recommendationKind === "none" || storedResult.rows.length === 0) {
         throw new LocalPracticeRequestError(
@@ -1453,7 +1549,9 @@ async function readStoredRecommendationResult(
             409,
         );
     }
-    const expectedMode: LocalPracticeSessionSettings["mode"] = recommendationKind === "same_type"
+    const expectedMode: LocalPracticeSessionSettings["mode"] = ["same_template", "same_type"].includes(
+        recommendationKind,
+    )
         ? "review"
         : "similar";
     if (session.mode !== expectedMode || session.checkMode !== receipt.check_mode) {
@@ -1519,7 +1617,7 @@ async function readStoredRecommendationResult(
     };
 }
 
-/** Previews one source question's strict same-type-or-confirmed-similar tier. */
+/** Previews the nearest eligible confirmed relation tier for one source question. */
 export async function previewLocalPracticeRecommendations(
     queueItemIds: readonly string[],
     limit: number,
@@ -1595,7 +1693,9 @@ export async function createLocalPracticeRecommendationSession(
         if (built.result.recommendationKind === "none") {
             return { recommendation: built.result, replayed: false };
         }
-        const mode: LocalPracticeSessionSettings["mode"] = built.result.recommendationKind === "same_type"
+        const mode: LocalPracticeSessionSettings["mode"] = ["same_template", "same_type"].includes(
+            built.result.recommendationKind,
+        )
             ? "review"
             : "similar";
         const selectionReason = built.result.recommendationKind === "same_type"
@@ -1631,12 +1731,31 @@ export async function createLocalPracticeRecommendationSession(
         const originRows = built.candidates.flatMap((candidate, candidateIndex) => (
             built.sources.map((source) => ({ candidate, candidateIndex, source }))
         ));
+        const originMatchBasis = ({ candidate }: typeof originRows[number]) => (
+            candidate.recommendation_kind === "same_template"
+                ? "same_template"
+                : candidate.recommendation_kind === "keyword_similar"
+                    ? "shared_keyword"
+                    : candidate.recommendation_kind === "topic_similar"
+                        ? "same_topic"
+                        : candidate.recommendation_kind === "same_type"
+                            ? "same_question_type"
+                            : "confirmed_group"
+        );
+        const originEvidence = ({ candidate }: typeof originRows[number]) => (
+            candidate.recommendation_kind === "same_template"
+                ? JSON.stringify({ template_id: candidate.question_template_id })
+                : candidate.recommendation_kind === "keyword_similar"
+                    ? JSON.stringify({ keyword_ids: candidate.matched_keyword_ids })
+                    : null
+        );
         await client.query(`
             INSERT INTO practice_session_item_origins (
                 id, practice_session_item_id, source_answer_part_result_id,
                 queue_item_id, relation_kind, match_basis,
                 similarity_group_id, matched_topic_id, matched_knowledge_point_id,
-                matched_curriculum_unit_id, matched_subject_id
+                matched_curriculum_unit_id, matched_subject_id, question_template_id,
+                shared_relation_count, relation_method_version, relation_evidence
             )
             SELECT
                 origin.id,
@@ -1649,32 +1768,47 @@ export async function createLocalPracticeRecommendationSession(
                 origin.matched_topic_id,
                 NULL,
                 NULL,
-                NULL
+                NULL,
+                origin.question_template_id,
+                origin.shared_relation_count,
+                origin.relation_method_version,
+                origin.relation_evidence::jsonb
             FROM unnest(
-                $1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $6::uuid[], $7::text[]
+                $1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $6::uuid[],
+                $7::uuid[], $8::smallint[], $9::text[], $10::text[], $11::text[]
             ) AS origin(
-                id, item_id, source_result_id, similarity_group_id, matched_topic_id, match_basis
+                id, item_id, source_result_id, similarity_group_id, matched_topic_id,
+                question_template_id, shared_relation_count, relation_method_version,
+                relation_evidence, match_basis
             )
         `, [
             originRows.map(() => randomUUID()),
             originRows.map(({ candidateIndex }) => itemIds[candidateIndex]),
             originRows.map(({ source }) => source.source_answer_part_result_id),
             originRows.map(({ candidate }) => (
-                built.result.recommendationKind === "confirmed_similar"
+                candidate.recommendation_kind === "confirmed_similar"
                     ? candidate.similarity_group_id
                     : null
             )),
             relationKind,
             originRows.map(({ candidate }) => (
-                built.result.recommendationKind === "topic_similar"
+                candidate.recommendation_kind === "topic_similar"
                     ? candidate.matched_topic_id
                     : null
             )),
-            originRows.map(() => built.result.recommendationKind === "same_type"
-                ? "same_question_type"
-                : built.result.recommendationKind === "topic_similar"
-                    ? "same_topic"
-                    : "confirmed_group"),
+            originRows.map(({ candidate }) => candidate.recommendation_kind === "same_template"
+                ? candidate.question_template_id
+                : null),
+            originRows.map(({ candidate }) => candidate.recommendation_kind === "same_template"
+                ? 0
+                : candidate.recommendation_kind === "keyword_similar"
+                    ? candidate.shared_keyword_count
+                    : null),
+            originRows.map(({ candidate }) => ["same_template", "keyword_similar"].includes(
+                candidate.recommendation_kind,
+            ) ? RECOMMENDATION_RELATION_METHOD_VERSION : null),
+            originRows.map(originEvidence),
+            originRows.map(originMatchBasis),
         ]);
 
         const revalidatedSources = await readRecommendationSources(
@@ -1701,7 +1835,10 @@ export async function createLocalPracticeRecommendationSession(
             questionId: candidate.question_id,
             revisionId: candidate.revision_id,
             recommendationKind: candidate.recommendation_kind,
+            questionTemplateId: candidate.question_template_id,
             similarityGroupId: candidate.similarity_group_id,
+            matchedKeywordIds: candidate.matched_keyword_ids,
+            sharedKeywordCount: candidate.shared_keyword_count,
             matchedTopicId: candidate.matched_topic_id,
         });
         if (
@@ -3362,15 +3499,16 @@ export async function submitLocalPracticeAttempt(
  * 找出一次手寫送出可安全補入的唯一文字小題。
  * @param input 練習與已填答案識別。
  * @param actor 目前登入帳號與學習者。
- * @returns 唯一缺少答案的文字小題；不符合時回傳 null。
+ * @returns 唯一缺少答案且已設定辨識方式的文字小題；不符合時回傳 null。
  */
 export async function findLocalPracticeHandwritingPart(
     input: Pick<SubmitLocalPracticeAttemptInput, "sessionId" | "questionId" | "sessionItemId" | "partId" | "answers">,
     actor: LocalPracticeActor,
-): Promise<string | null> {
+): Promise<LocalPracticeHandwritingTarget | null> {
     const answeredPartIds = input.answers.map((answer) => answer.partId.toLowerCase());
-    const result = await queryLocalPostgres<{ id: string } & QueryResultRow>(`
-        SELECT part.id
+    const result = await queryLocalPostgres<{ id: string; type_label: string } & QueryResultRow>(`
+        SELECT part.id,
+            COALESCE(NULLIF(btrim(revision.original_question_type_label), ''), question_type.name) AS type_label
         FROM practice_session_items AS item
         JOIN practice_sessions AS session ON session.id = item.practice_session_id
         JOIN learner_access AS access
@@ -3382,6 +3520,8 @@ export async function findLocalPracticeHandwritingPart(
         JOIN question_parts AS part
           ON part.question_revision_id = item.question_revision_id
          AND (item.question_part_id IS NULL OR part.id = item.question_part_id)
+        JOIN question_revisions AS revision ON revision.id = item.question_revision_id
+        JOIN question_types AS question_type ON question_type.id = revision.question_type_id
         WHERE item.practice_session_id = $1
           AND item.question_id = $2
           AND ($3::uuid IS NULL OR item.id = $3)
@@ -3404,7 +3544,10 @@ export async function findLocalPracticeHandwritingPart(
         actor.userId,
         answeredPartIds,
     ]);
-    return result.rows.length === 1 ? result.rows[0]!.id : null;
+    if (result.rows.length !== 1) return null;
+    const row = result.rows[0]!;
+    const mode = handwritingRecognitionModeForLabel(row.type_label);
+    return mode ? { partId: row.id, mode } : null;
 }
 
 /** Hydrates durable attempts and pending wrong-review work without answer payloads. */

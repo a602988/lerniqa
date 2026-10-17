@@ -148,7 +148,13 @@ export interface LocalPracticeQuestion {
     parts: LocalPracticeQuestionPart[];
 }
 
-export type LocalPracticeRecommendationKind = "same_type" | "confirmed_similar" | "topic_similar" | "none";
+export type LocalPracticeRecommendationKind =
+    | "same_template"
+    | "keyword_similar"
+    | "confirmed_similar"
+    | "topic_similar"
+    | "same_type"
+    | "none";
 
 export interface LocalPracticeRecommendationResult {
     recommendationKind: LocalPracticeRecommendationKind;

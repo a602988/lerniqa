@@ -124,10 +124,19 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
             const page = Number(parsed.searchParams.get("page"));
             const limit = Number(parsed.searchParams.get("limit"));
             const lesson = parsed.searchParams.get("lesson");
-            const lessonCounts = new Map([["第四課", 279], ["第五課", 280], ["第六課", 258], ["語文常識（二）", 75]]);
+            const lessonCounts = new Map([
+                ["第四課", 279],
+                ["第五課", 280],
+                ["第六課", 258],
+                ["語文常識（二）", 75],
+                ["2-1 因數與倍數", 0],
+                ["2-2 最大公因數與最小公倍數", 0],
+                ["2-3 分數的四則運算", 0],
+                ["2-4 指數律", 0],
+            ]);
             const count = lessonCounts.get(lesson);
             assert.equal(limit, 500);
-            assert.ok(count);
+            assert.notEqual(count, undefined);
             data = { questions: Array.from({ length: count }, (_, index) => ({ ...question, id: `${lesson}-q${(page - 1) * limit + index}` })) };
             meta = { total: count };
         }
@@ -155,8 +164,8 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
         assert.equal(loaded.wrongReviewQueue.items.length, 101);
         assert.equal(loaded.account.learner.id, "authenticated-learner");
         assert.ok(seen.some((url) => url.includes("history?limit=100&page=2")));
-        assert.equal(seen.filter((url) => url.includes("/questions?")).length, 4);
-        assert.equal(seen.length, 7);
+        assert.equal(seen.filter((url) => url.includes("/questions?")).length, 8);
+        assert.equal(seen.length, 11);
     }
     finally { globalThis.fetch = originalFetch; }
 });

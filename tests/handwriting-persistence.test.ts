@@ -233,7 +233,7 @@ test("attempt requests accept a validated handwriting object without inventing a
     assert.match(route, /INVALID_HANDWRITING/u);
     assert.match(route, /answers: parsedAnswers/u);
     assert.match(route, /findLocalPracticeHandwritingPart/u);
-    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{[\s\S]*mode: handwritingTarget\.mode/u);
     assert.match(route, /transcription\.legibility === "clear" && transcription\.transcription/u);
     assert.match(route, /attemptInput\.answers\.push/u);
     assert.match(client, /handwriting\?: LocalPracticeHandwritingInput/u);
@@ -248,8 +248,8 @@ test("required handwriting questions keep a read-only answer field before and af
         readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/lib/practice-catalog-adapter.ts", import.meta.url), "utf8"),
     ]);
-    assert.match(page, /handwritingOnly=\{needsCharacterRecognition\}/u);
-    assert.match(fields, /part\.answerMode === "text"[\s\S]*written-answer-fieldset grid w-full min-w-0 gap-3/u);
+    assert.match(page, /handwritingOnly=\{needsHandwritingRecognition\}/u);
+    assert.match(fields, /part\.answerMode === "text"[\s\S]*written-answer-fieldset grid w-full min-w-0 gap-3[\s\S]*col-span-full/u);
     assert.match(fields, /handwritingOnly[\s\S]*value=\{recognizedAnswers\?\.\[part\.id\] \?\? ""\}[\s\S]*placeholder="等待辨識手寫內容"[\s\S]*readOnly[\s\S]*aria-label="作答辨識結果"/u);
     assert.doesNotMatch(fields, /label="辨識文字"/u);
     assert.match(fields, /停筆後會自動辨識，也可以立即分析或重新分析。/u);
@@ -268,7 +268,8 @@ test("handwriting preview analysis is warmed, automatic, cancellable, non-persis
     ]);
     assert.match(route, /requireLocalPracticeAccount\(request\)/u);
     assert.match(route, /validateHandwritingPngDataUrl\(body\.handwriting\.dataUrl\)/u);
-    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{ force: body\.force === true \}\)/u);
+    assert.match(route, /isHandwritingRecognitionMode\(body\.mode\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes, \{[\s\S]*mode: body\.mode/u);
     assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
     assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
     assert.match(warmup, /requireLocalPracticeAccount\(request\)[\s\S]*warmHandwritingOcr\(\)/u);

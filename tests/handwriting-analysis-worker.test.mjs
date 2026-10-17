@@ -29,6 +29,10 @@ import {
     resolveWithModel,
 } from "../app/lib/handwriting-transcription.mjs";
 import { selectPaddleCandidate } from "../app/lib/handwriting-ocr.mjs";
+import {
+    handwritingRecognitionModeForLabel,
+    isHandwritingRecognitionMode,
+} from "../app/lib/handwriting-recognition.mjs";
 import { parseArguments as parseWorkerArguments, processClaim } from "../scripts/process-handwriting-analysis.mjs";
 import { parseArguments as parseSmokeArguments } from "../scripts/smoke-handwriting-analysis.mjs";
 
@@ -61,6 +65,7 @@ function candidate(overrides = {}) {
         gradingSource: "manual_review",
         answerMode: "text",
         gradingPolicy: "manual_review",
+        recognitionMode: "single_character",
         storageKey: `handwriting/aaaa/${IDS.asset}.png`,
         assetPurpose: "handwriting",
         assetSensitivity: "private",
@@ -161,6 +166,15 @@ test("eligibility accepts only JSON {value:null} pending manual text answers wit
     assert.throws(() => assertEligibleClaim(candidate({ gradingSource: "automatic" })), /不是人工待審/u);
     assert.throws(() => assertEligibleClaim(candidate({ currentResult: "correct" })), /已非待審/u);
     assert.throws(() => assertEligibleClaim(candidate({ assetScanStatus: "pending" })), /不是 clean/u);
+    assert.throws(() => assertEligibleClaim(candidate({ recognitionMode: null })), /辨識方式/u);
+});
+
+test("formal fine question types select separate character and annotation recognition modes", () => {
+    assert.equal(handwritingRecognitionModeForLabel("寫出國字、注音"), "single_character");
+    assert.equal(handwritingRecognitionModeForLabel("注釋"), "single_line");
+    assert.equal(handwritingRecognitionModeForLabel("填充題"), null);
+    assert.equal(isHandwritingRecognitionMode("single_line"), true);
+    assert.equal(isHandwritingRecognitionMode("paragraph"), false);
 });
 
 test("worker reads the four-hex object shard emitted by the formal handwriting object store", async () => {
@@ -335,6 +349,22 @@ test("model request contains only the handwriting image and fixed transcription 
     assert.ok(prepareHandwritingImage(SYNTHETIC_PNG).subarray(0, 8).equals(SYNTHETIC_PNG.subarray(0, 8)));
 });
 
+test("annotation recognition asks for one ordered line without sending question context", async () => {
+    const { fetchImpl, calls } = modelFetch({ chatOutputs: [{
+        schemaVersion: HANDWRITING_SCHEMA_VERSION,
+        transcription: "清涼的夜晚",
+        legibility: "clear",
+        transcriptionConfidence: 0.94,
+        uncertaintyReasons: [],
+    }] });
+    const model = { engine: "ollama", name: HANDWRITING_MODEL_NAME, digest: HANDWRITING_MODEL_DIGEST, version: "ollama:0.34.4" };
+    const output = await transcribeHandwriting(SYNTHETIC_PNG, model, { fetchImpl, mode: "single_line" });
+    assert.equal(output.transcription, "清涼的夜晚");
+    const request = JSON.parse(calls.find((call) => call.url.pathname === "/api/chat").init.body);
+    assert.match(request.messages[1].content, /單行/u);
+    assert.ok(!JSON.stringify(request).includes("參考答案"));
+});
+
 test("interactive model calls accept a bounded timeout and disable retries", async () => {
     const retry = new Response("temporary", { status: 503 });
     Object.defineProperty(retry, "url", { value: "http://127.0.0.1:11434/api/chat" });
@@ -397,16 +427,21 @@ test("identity and schema violations are not retried and oversized responses fai
 
 test("processClaim writes only a sidecar completion and fails the leased job without leaking raw errors", async () => {
     const calls = [];
+    let transcriptionOptions;
     const model = { engine: "ollama", name: HANDWRITING_MODEL_NAME, digest: HANDWRITING_MODEL_DIGEST, version: "ollama:0.34.4" };
     const result = await processClaim({}, candidate(), model, "worker-test", {
         repositoryRoot: "/synthetic",
         readAsset: async () => Buffer.from("synthetic"),
-        transcribe: async () => ({ transcription: "甲", legibility: "clear", transcriptionConfidence: 1, uncertaintyReasons: [] }),
+        transcribe: async (_bytes, options) => {
+            transcriptionOptions = options;
+            return { transcription: "甲", legibility: "clear", transcriptionConfidence: 1, uncertaintyReasons: [] };
+        },
         complete: async (_client, input) => calls.push({ kind: "complete", input }),
         failJob: async () => calls.push({ kind: "fail" }),
     });
     assert.equal(result.recognized_text, "甲");
     assert.equal(result.legibility, "clear");
+    assert.equal(transcriptionOptions.mode, "single_character");
     assert.deepEqual(calls.map((call) => call.kind), ["complete"]);
 
     await assert.rejects(() => processClaim({}, candidate(), model, "worker-test", {
@@ -466,6 +501,7 @@ test("repository SQL claims with SKIP LOCKED and never mutates formal grading ta
     assert.match(source, /result\.current_result = 'pending'/u);
     assert.match(source, /result\.grading_source = 'manual_review'/u);
     assert.match(source, /part\.answer_mode = 'text'/u);
+    assert.match(source, /HANDWRITING_RECOGNITION_TYPE_LABELS/u);
     assert.match(source, /asset\.sensitivity = 'private'/u);
     assert.match(source, /asset\.scan_status = 'clean'/u);
     assert.doesNotMatch(source, /question_answers|prompt_text|reference_answers|rubric\.rows/u);

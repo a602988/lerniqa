@@ -3,8 +3,10 @@ import { lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 
+import { isHandwritingRecognitionMode } from "./handwriting-recognition.mjs";
+
 export const HANDWRITING_SCHEMA_VERSION = "lerniqa.handwriting-transcription/v1";
-export const HANDWRITING_PROMPT_VERSION = "handwriting-transcription-prompt/v1";
+export const HANDWRITING_PROMPT_VERSION = "handwriting-transcription-prompt/v2";
 export const HANDWRITING_MODEL_NAME = "qwen3.8:27b";
 export const HANDWRITING_MODEL_DIGEST = "d1613d2593b522569bd104ae217d392613e40220e2b4461129810d04752999c0";
 export const HANDWRITING_OLLAMA_ORIGIN = "http://127.0.0.1:11434";
@@ -153,10 +155,14 @@ export function assertEligibleClaim(candidate) {
         fail("INVALID_JOB", "attemptNumber 無效。 ");
     }
     if (source.answerMode !== "text") fail("INELIGIBLE_JOB", "手寫文字分析只接受 text 題型。 ");
+    if (!isHandwritingRecognitionMode(source.recognitionMode)) {
+        fail("INELIGIBLE_JOB", "題目未設定可用的手寫辨識方式。 ");
+    }
     if (source.referenceSha256) assertSha256(source.referenceSha256, "referenceSha256");
     return Object.freeze({
         questionRevisionId: source.questionRevisionId.toLowerCase(),
         questionPartId: source.questionPartId.toLowerCase(),
+        recognitionMode: source.recognitionMode,
     });
 }
 
@@ -604,6 +610,7 @@ export async function transcribeHandwriting(imageBytes, model, {
     attempts = HANDWRITING_MODEL_ATTEMPTS,
     fetchImpl = fetch,
     timeoutMs = HANDWRITING_MODEL_TIMEOUT_MS,
+    mode = "single_character",
 } = {}) {
     if (model.name !== HANDWRITING_MODEL_NAME || model.digest !== HANDWRITING_MODEL_DIGEST) {
         fail("MODEL_IDENTITY_MISMATCH", "模型 identity 與固定設定不一致。 ");
@@ -612,6 +619,7 @@ export async function transcribeHandwriting(imageBytes, model, {
         || !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > HANDWRITING_MODEL_TIMEOUT_MS) {
         fail("INVALID_TRANSCRIPTION_BUDGET", "手寫辨識時間或重試次數無效。 ");
     }
+    if (!isHandwritingRecognitionMode(mode)) fail("INVALID_RECOGNITION_MODE", "手寫辨識方式無效。 ");
     const preparedImage = prepareHandwritingImage(imageBytes);
     const request = {
         model: HANDWRITING_MODEL_NAME,
@@ -624,7 +632,9 @@ export async function transcribeHandwriting(imageBytes, model, {
             { role: "system", content: SYSTEM_PROMPT },
             {
                 role: "user",
-                content: "逐字抄錄圖片中清楚可讀的手寫內容。沒有完整且明確的字形時，transcription 回傳 null；不要猜測。",
+                content: mode === "single_line"
+                    ? "依書寫順序抄錄圖片中單行、清楚可讀的完整手寫文字，保留字元順序。沒有完整且明確的內容時，transcription 回傳 null；不要猜測。"
+                    : "逐字抄錄圖片中清楚可讀的單一手寫字元。沒有完整且明確的字形時，transcription 回傳 null；不要猜測。",
                 images: [preparedImage.toString("base64")],
             },
         ],

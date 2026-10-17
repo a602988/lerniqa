@@ -15,7 +15,10 @@ import {
     stableJson,
     TARGET_CLASSIFICATION,
 } from "./lib/hanlin-chinese-import.mjs";
-import { writeHanlinPostgresImport } from "./lib/hanlin-postgres-writer.mjs";
+import {
+    HANLIN_IMPORT_PRINCIPAL,
+    writeHanlinPostgresImport,
+} from "./lib/hanlin-postgres-writer.mjs";
 
 const ROOT_PATTERN = /^lerniqa-practice-test\.[A-Za-z0-9_-]+$/u;
 const DATABASE_PATTERN = /^lerniqa_practice_test_[a-z0-9_]+$/u;
@@ -296,9 +299,86 @@ function createPlan() {
     };
 }
 
+/**
+ * 建立只屬於隔離題庫的已確認相同題模板，供推薦 E2E 驗證正式關聯路徑。
+ * @param {ReturnType<typeof createPlan>} plan 已匯入的合成題庫計畫。
+ * @returns {Promise<void>} 寫入完成時結束。
+ */
+async function seedConfirmedTemplate(plan) {
+    const pool = new Pool({
+        host: requiredEnvironment("LOCAL_PG_SOCKET"),
+        port: Number(requiredEnvironment("LOCAL_PG_PORT")),
+        database: requiredEnvironment("LOCAL_PG_DATABASE"),
+        user: requiredEnvironment("LOCAL_PG_USER"),
+        password: async () => {
+            throw new Error("隔離 fixture 資料庫不應要求密碼。");
+        },
+        ssl: false,
+        application_name: "lerniqa-isolated-practice-relation-fixture",
+        max: 1,
+        allowExitOnIdle: true,
+    });
+    const templateId = deterministicUuid("isolated-practice:question-template:choice-sequence");
+    const choiceGroups = plan.questionGroups.slice(0, QUESTION_COUNT - 1);
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        await client.query(`
+            INSERT INTO question_templates (
+                id, template_key, normalized_pattern, logic_key, status,
+                created_source, method_version, evidence,
+                confirmed_by_user_id, confirmed_at
+            )
+            VALUES ($1, $2, $3, $4, 'confirmed', 'rule', $5, $6::jsonb, $7, CURRENT_TIMESTAMP)
+        `, [
+            templateId,
+            "isolated-practice-choice-sequence",
+            "隔離測試題目 {sequence}：請選出正確的合成選項。",
+            "select-synthetic-correct-option",
+            "isolated-fixture-v1",
+            JSON.stringify({ fixture: "synthetic-isolated-local-practice" }),
+            HANLIN_IMPORT_PRINCIPAL.userId,
+        ]);
+        await client.query(`
+            INSERT INTO question_template_memberships (
+                question_template_id, question_id, based_on_revision_id,
+                variable_values, status, evidence, reviewed_by_user_id, reviewed_at, created_at
+            )
+            SELECT
+                $1,
+                fixture.question_id,
+                fixture.revision_id,
+                jsonb_build_object('sequence', fixture.sequence),
+                'confirmed',
+                jsonb_build_object('fixture', 'synthetic-isolated-local-practice'),
+                $2,
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP
+            FROM unnest($3::uuid[], $4::uuid[], $5::integer[])
+                AS fixture(question_id, revision_id, sequence)
+        `, [
+            templateId,
+            HANLIN_IMPORT_PRINCIPAL.userId,
+            choiceGroups.map((group) => group.questionId),
+            choiceGroups.map((group) => group.revisionId),
+            choiceGroups.map((_, index) => index + 1),
+        ]);
+        await client.query("COMMIT");
+    }
+    catch (error) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw error;
+    }
+    finally {
+        client.release();
+        await pool.end();
+    }
+}
+
 await verifyIsolatedTarget();
+const plan = createPlan();
 const result = await writeHanlinPostgresImport({
-    plan: createPlan(),
+    plan,
     summary: { fixture: "synthetic-isolated-local-practice" },
     pgEnv: process.env,
     beforeCommit: async () => null,
@@ -306,6 +386,7 @@ const result = await writeHanlinPostgresImport({
 if (result.sourceFiles !== 1 || result.parsed !== QUESTION_COUNT || result.published !== QUESTION_COUNT) {
     throw new Error("隔離合成 fixture 匯入筆數不符。");
 }
+await seedConfirmedTemplate(plan);
 process.stdout.write(`${JSON.stringify({
     ok: true,
     fixture: "synthetic-isolated-local-practice",

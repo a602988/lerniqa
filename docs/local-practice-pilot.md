@@ -31,7 +31,7 @@ npm run db:local:stop
 
 目前 manifest 由 `0001` 至 `0011` 共十一個 migration 組成，合計 96 張業務資料表。`0008_auth_and_import_integrity` 要求有效 session 指定的學習者保持啟用；封存學習者時，要在同一交易撤銷仍指向該學習者的有效 session。它也只針對 confirmed 批次 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，把教材單元來源修正為 `native/document`。如果升級前已有有效 session 指向封存學習者，migration 會停止，不會默默改寫或刪除資料。`0008` 的 down 採 forward-only 資料修正策略，只移除新增的 schema 物件，不把正確的 `native/document` 資料改回舊分類。
 
-`0012` 已進入 migration manifest，包含帳號復原 identity binding、同題型來源值域、題庫補全 run／pending suggestion 與手寫 AI sidecar；不含 SMTP outbox。空庫、既有資料升級、關聯完整性與隔離 API E2E 已通過，持久資料庫仍須依備份與 migration 程序升級，不得以測試資料覆蓋。
+`0014` 已進入 migration manifest，建立題目模板、模板成員、正式關鍵字、題目版本關鍵字關聯與推薦來源證據；`0015` 補上 AI／規則關鍵字目錄的 pending 與審核證據。15 組 migration 的空庫前進、限制測試、逐階段回滾、再次前進與 schema parity 已通過；本機持久資料庫已在備份後升級，不得以測試資料覆蓋。
 
 `0009_automatic_answer_completeness` 要求 published／superseded 版本的自動判分小題具備可用參考答案。單選、複選與是非題至少要有一個屬於同一小題有效選項的非空白答案鍵；文字題至少要有一個非空白可接受答案。人工檢視與 AI 輔助檢視可以沒有答案。升級前置檢查發現既有缺漏時會直接停止，不會補造答案；down 只移除這個 migration 新增的限制，不修改答案資料。
 
@@ -90,7 +90,7 @@ npm run db:import:hanlin -- \
 | `GET /api/v1/local-practice/sessions?id=...` | 讀取同一帳號與學習者可存取的練習、固定題目版本及各題是否已送出；答案明細依 `check_mode` 與完成狀態揭露。 |
 | `PATCH /api/v1/local-practice/sessions` | 將自己的 session 切換為 `active`、`paused` 或 `abandoned`；不能修改其他帳號的 session。 |
 | `POST /api/v1/local-practice/attempts` | 由伺服器讀取標準答案並判分。`instant`／`complete` 在單一交易內寫入作答、逐小題結果、允許的錯題佇列與 `analytics_outbox`，並可儲存通過驗證的 private 手寫 PNG；`score` 只累加 session aggregate 並寫入不含答案／判定的冪等收據，手寫與其他逐題附件一律拒絕。 |
-| `POST /api/v1/local-practice/recommendations` | 從允許揭露的錯題產生關連練習。先完整查詢同細題型候選，候選數為 0 才使用已確認相近題群組；兩者都無候選時回傳無推薦。`score` 禁止。目前程式已通過針對性測試，但來源值域與 DB E2E 仍待 `0012` 整合。 |
+| `POST /api/v1/local-practice/recommendations` | 從允許揭露的錯題產生關連練習。依已確認相同模板、已確認相似群組、共同正式關鍵字最多、共同主題最多逐層選擇；同層尚未作答者優先，最近已答對者排除，並保存模板或共同關鍵字證據。`score` 禁止。279 題尚未完成分析與人工核准，因此正式關聯為空時回傳沒有推薦。 |
 | `GET /api/v1/local-practice/history` | 回傳持久的練習、作答結果與待複習錯題摘要，不回傳學習者的作答 payload 或標準答案。 |
 | `GET /api/v1/local-practice/assets/:assetId` | 題目圖片只讀取已通過檢查、未刪除且被已發布題目引用的檔案；作答手寫則必須從相同學習者的 attempt／part 關聯與結果揭露規則反查權限。 |
 
@@ -104,13 +104,13 @@ npm run db:import:hanlin -- \
 
 `instant`／`complete` 的手寫上傳只接受通過簽章、chunk、CRC、尺寸、解壓上限與可見墨跡檢查的 PNG，儲存為 private asset，並以學習者、session item、冪等鍵與內容雜湊建立穩定身份。文字小題沒有其他答案時，手寫只連到實際由手寫作答的小題，結果保持 `pending`／`manual`；同題已有完整文字或選項答案時，同一張圖只連到第一個小題作為計算過程附件，不改變自動判分。這些程式已通過針對性測試，但尚未在 `0012` 整合後完成整體資料庫 E2E。
 
-送出前的手寫辨識先把透明畫布合成白底並裁切筆跡，再由 PP-OCRv6 在同一批次辨識原始筆畫及加粗單字版。兩個版本一致時採用較高信心；衝突時只接受信心至少 0.9 且明顯領先的候選。純漢字的高信心結果可以直接回填，英文與數字仍需和 Apple Vision 一致；其餘情況才在互動時限內呼叫固定 Ollama 模型。無法確認時保持 `pending`，交由人工判別。三個辨識器都只接收手寫圖片，不接收題幹、參考答案、解析或評分規則。相同 PNG 的結果在網站程序記憶體快取十分鐘，正式送出可以重用剛完成的「AI 分析」。
+送出前的手寫辨識先把透明畫布合成白底並裁切筆跡。「寫出國字、注音」會同批辨識原始筆畫及加粗、補足留白的單字版；「注釋」則同批辨識原始筆畫及保留字距的輕度加粗版。兩個版本一致時採用較高信心；衝突時只接受信心至少 0.9 且明顯領先的候選。純漢字的高信心結果可以直接回填，英文與數字仍需和 Apple Vision 一致；其餘情況才在互動時限內呼叫固定 Ollama 模型。無法確認時保持 `pending`，交由人工判別。三個辨識器都只接收手寫圖片，不接收題幹、參考答案、解析或評分規則。快取鍵包含圖片 checksum 與辨識方式，避免相同圖片在單字與單行模式間共用結果。
 
-`0012` job／run sidecar、作答交易生產者及受控 worker 保留既有契約。只有 payload 為空且結果為 pending／manual 的手寫文字小題能進入 AI 佇列；計算過程附件不排入。六張英文、數字、空白與模糊合成圖通過品質門檻；四張已保存的繁體中文真實筆跡「謀、儒、省、覆」也逐字相符，暖機後單張為 422 至 469 毫秒。這四張樣本仍不足以代表不同年級與多字答案，需繼續擴充去識別化測試集。
+`0012` job／run sidecar、作答交易生產者及受控 worker 保留既有契約。只有 payload 為空、結果為 pending／manual，而且細題型已設定辨識方式的手寫文字小題能進入 AI 佇列；計算過程附件不排入。六張英文、數字、空白與模糊合成圖通過品質門檻；四張已保存的繁體中文單字筆跡「謀、儒、省、覆」逐字相符，一張已保存的註釋雙字筆跡「因為」也以單行模式相符，暖機後為 720 毫秒。這些樣本仍不足以代表不同年級、字數與連筆方式，需繼續擴充去識別化測試集。
 
-關聯題目練習只適用於允許揭露逐題錯誤的 `instant` 與已完成 `complete`。伺服器先取得完整的同細題型候選集；只有數量為 0 才查詢原題目前 revision 的已確認相近題群組。沒有同題型候選或已確認群組時就回傳無推薦，不放寬成同單元或同科目猜測。現有程式已通過針對性測試，但 `0012` 來源值域與 DB E2E 尚未完成。
+關聯題目練習只適用於允許揭露逐題錯誤的 `instant` 與已完成 `complete`。相同題必須共享 confirmed 模板；相近題依 confirmed 相似群組、共同 confirmed 關鍵字數量及共同主題數量逐層選擇。關鍵字與主題只採共同數量最高的級距，該級距沒有合格候選才往下一層；同層尚未作答者優先，最近已答對者排除。來源題型與同單元不再產生新推薦，只保留舊 session 相容。
 
-歷程與錯題佇列套用同一規則，不能讓 `complete` 的進行中 session 或任何 `score` session 藉由其他端點看出逐題結果。只有允許揭露且已判定為錯誤的小題，才會出現在可見的待複習摘要。重新整理進行中的練習時，瀏覽器只用 learner-keyed session UUID 從資料庫恢復已送出的進度，並先切成暫停；尚未送出的文字答案與手寫內容不保存。固定 revision 與可用內容不一致時，舊 session 會標記為 `abandoned`，不會反覆嘗試恢復。從任意題開始作答時會尋找下一道尚未送出的題目，直接作答畫面最後一題不會讓仍有未答題的 session 提前完成。複習／相近題 session 尚未寫入 `practice_session_item_origins` 的完整來源追溯，相近題候選審核、正式關聯與查詢 API 也尚未完成。
+歷程與錯題佇列套用同一規則，不能讓 `complete` 的進行中 session 或任何 `score` session 藉由其他端點看出逐題結果。只有允許揭露且已判定為錯誤的小題，才會出現在可見的待複習摘要。重新整理進行中的練習時，瀏覽器只用 learner-keyed session UUID 從資料庫恢復已送出的進度，並先切成暫停；尚未送出的文字答案與手寫內容不保存。固定 revision 與可用內容不一致時，舊 session 會標記為 `abandoned`。新推薦 session 已把實際模板、共同關鍵字數量、規則版本與證據寫入 `practice_session_item_origins`；關聯分析、人工審核與核准寫入流程仍待完成。
 
 主導覽「系統設定」已從 PostgreSQL 建立、選取與編輯有權存取的學習者；每次操作都使用目前 session 的帳號、有效角色與 `learner_access` 授權。一般帳號的 `accountRole`、session 的 `activeRole`／目前學習者，以及 `system_admin` 授權分開處理；每個帳號只保留一位名稱同步的 self learner。parent／tutor 在旗下學習者的 learner mode 看不到「系統設定」，直接呼叫設定 API 也會收到 `403`；只有 self learner 能力的帳號可以查看自己的帳號設定，但不能建立受管學習者。登出、session 到期、角色或目前學習者改變時會同步其他已開分頁；頁面重新取得焦點或恢復可見時也會重新查詢 `auth/me`。`system_admin` 管理、邀請及跨帳號分享仍未完成。
 
@@ -126,7 +126,7 @@ npm run test:question-enrichment
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-前三個指令預設在 `/tmp` 建立權限受限的一次性目錄與私有 Unix socket，不沿用 `DATABASE_URL`、`PGHOST` 或 `local-data`。import ownership 驗證匯入器不會建立固定合成身份；local practice 驗證 279 題規模的合成題庫、註冊、登入、session 恢復、三種模式各自的保存與答案揭露、歷程、錯題，以及 PostgreSQL 與 Next.js 重啟後仍可讀取。測試結束只清理具有專用 marker 的暫存目錄，不會清除持久題庫或帳號資料。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 只檢查程式、輸入限制、安全邊界與 repository／route 契約，不表示 `0012` 已套用或 DB E2E 已通過。strict same-type recommendation 的針對性案例由整體 `npm test` 執行。`practice-catalog-integration` 不啟動持久資料庫，負責檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點、三種檢核方式及 learner-keyed `localStorage` 邊界。新增 migration 後要以當次輸出作為驗收證據，不能沿用只涵蓋舊 manifest 的結果。
+前三個指令預設在 `/tmp` 建立權限受限的一次性目錄與私有 Unix socket，不沿用 `DATABASE_URL`、`PGHOST` 或 `local-data`。migration 往返測試目前涵蓋 `0015`；推薦契約測試涵蓋正式模板與關鍵字層級、最近答對排除及來源證據。隔離 local-practice E2E 已通過 confirmed 模板的預覽、session、來源證據與冪等重播，之後被既有手寫辨識案例維持 `manual_review` 擋住，因此整套 E2E 仍不是全綠。測試結束只清理具有專用 marker 的暫存目錄，不會清除持久題庫或帳號資料。
 
 macOS 無法再建立短命 PostgreSQL cluster 時，三個 runner 都可明確借用已確認的本機 Unix-socket server：`db:test` 使用 `LERNIQA_DB_TEST_*`，import ownership 使用 `LERNIQA_IMPORT_OWNERSHIP_TEST_*`，local practice 使用 `LERNIQA_PRACTICE_TEST_*`。每組都要啟用 `*_EXISTING=1`，並指定 socket、port 與實際 data directory。runner 會核對 canonical 路徑、目前作業系統使用者及 non-recovery 狀態，只建立具隨機名稱和本次 ownership comment 的專用資料庫；清理前再核對一次，只刪除本次資料庫，不停止共用 server。這個模式不能連接 production，也不能拿來測試 `local-data` 的持久資料。
 

@@ -27,7 +27,7 @@ test("recommendations use one server-authoritative queue source contract", async
     assert.match(store, /ORDER BY queue\.created_at DESC, queue\.id DESC[\s\S]*LIMIT \$2 OFFSET \$3/u);
 });
 
-test("the database query chooses a complete same-type tier before confirmed similarity", async () => {
+test("the database query chooses confirmed templates before progressively weaker relations", async () => {
     const store = await read("../app/lib/local-practice-store.ts");
     const selector = store.slice(
         store.indexOf("async function selectRecommendationQuestions"),
@@ -37,9 +37,13 @@ test("the database query chooses a complete same-type tier before confirmed simi
     assert.match(selector, /original_question_type_label = \$6::text/u);
     assert.match(selector, /source_category_id = \$7::uuid/u);
     assert.match(selector, /WITH eligible AS/u);
-    assert.match(selector, /same_type AS/u);
+    assert.match(selector, /same_template AS/u);
     assert.match(selector, /confirmed_similar AS/u);
-    assert.match(selector, /NOT EXISTS \(SELECT 1 FROM same_type\)/u);
+    assert.match(selector, /keyword_similar AS/u);
+    assert.match(selector, /topic_similar AS/u);
+    assert.match(selector, /NOT EXISTS \(SELECT 1 FROM same_template\)/u);
+    assert.match(selector, /question_template_memberships AS source_membership/u);
+    assert.match(selector, /question_templates AS template[\s\S]*template\.status = 'confirmed'/u);
     assert.match(selector, /question_similarity_groups[\s\S]*status = 'confirmed'/u);
     assert.match(selector, /source_membership\.based_on_revision_id = \$3/u);
     assert.match(selector, /target_membership\.based_on_revision_id = candidate_revision\.id/u);
@@ -76,22 +80,28 @@ test("candidate gates cover scope, learner banks, and complete independently gra
     ]) assert.match(selector, contract);
 });
 
-test("topic recommendations rank stronger overlap and retire latest-correct questions", async () => {
+test("keyword recommendations keep only the nearest overlap tier and retire latest-correct questions", async () => {
     const store = await read("../app/lib/local-practice-store.ts");
     const selector = store.slice(
         store.indexOf("async function selectRecommendationQuestions"),
         store.indexOf("async function buildRecommendationResult"),
     );
 
+    assert.match(selector, /question_revision_keywords AS candidate_keyword/u);
+    assert.match(selector, /source_keyword\.question_revision_id = \$3/u);
+    assert.match(selector, /source_keyword\.status = 'confirmed'/u);
+    assert.match(selector, /relation_keywords AS keyword[\s\S]*keyword\.status = 'active'/u);
+    assert.match(selector, /shared_keyword_count = \([\s\S]*max\(candidate\.shared_keyword_count\)/u);
+    assert.match(selector, /'keyword_similar'::text/u);
     assert.match(selector, /question_revision_topics AS candidate_topic/u);
     assert.match(selector, /source_topic\.question_revision_id = \$3/u);
     assert.match(selector, /shared_topic_count > 0/u);
     assert.match(selector, /'topic_similar'::text/u);
     assert.match(selector, /latest_result\.current_result IS DISTINCT FROM 'correct'/u);
-    assert.match(selector, /ORDER BY[\s\S]*has_previous_attempt ASC,[\s\S]*shared_topic_count DESC/u);
+    assert.match(selector, /ORDER BY[\s\S]*has_previous_attempt ASC,[\s\S]*shared_keyword_count DESC[\s\S]*shared_topic_count DESC/u);
 });
 
-test("session creation durably replays the exact request and writes explicit 0012 provenance", async () => {
+test("session creation durably replays the exact request and writes confirmed relation evidence", async () => {
     const store = await read("../app/lib/local-practice-store.ts");
     const creator = store.slice(
         store.indexOf("export async function createLocalPracticeRecommendationSession"),
@@ -115,13 +125,19 @@ test("session creation durably replays the exact request and writes explicit 001
     );
     assert.match(creator, /same_type_review/u);
     assert.match(creator, /same_question_type/u);
+    assert.match(creator, /same_template/u);
+    assert.match(creator, /shared_keyword/u);
     assert.match(creator, /confirmed_group/u);
     assert.match(creator, /same_topic/u);
     assert.match(creator, /INSERT INTO practice_session_item_origins/u);
     assert.match(creator, /queue_item_id[\s\S]*NULL/u);
     assert.match(creator, /origin\.match_basis/u);
+    assert.match(creator, /question_template_id/u);
+    assert.match(creator, /shared_relation_count/u);
+    assert.match(creator, /relation_method_version/u);
+    assert.match(creator, /relation_evidence::jsonb/u);
     assert.doesNotMatch(creator, /matched_question_type_label/u);
-    assert.match(creator, /recommendationKind === "confirmed_similar"[\s\S]*candidate\.similarity_group_id[\s\S]*: null/u);
+    assert.match(creator, /candidate\.recommendation_kind === "confirmed_similar"[\s\S]*candidate\.similarity_group_id[\s\S]*: null/u);
     assert.match(creator, /if \(checkMode === "score"\)/u);
     assert.doesNotMatch(creator, /UPDATE learner_practice_queue_items|status\s*=\s*'consumed'/u);
     assert.doesNotMatch(creator, /same_unit/u);

@@ -24,6 +24,7 @@ import {
     ACCOUNT_PASSWORD_MIN_LENGTH,
     validateNewAccountPassword,
 } from "../lib/auth-input";
+import { resolveAdminReturnPath } from "../lib/admin-return-path";
 import {
     AUTH_SESSION_EXPIRED_EVENT,
     broadcastAuthSessionExpired,
@@ -301,6 +302,15 @@ export default function AccountPage() {
             setAccount(result.data.account);
             setMessageTone("success");
             setMessage(mode === "register" ? "帳號已建立，學習者資料也已連結。" : "登入成功。" );
+            const returnPath = mode === "login"
+                ? resolveAdminReturnPath(new URLSearchParams(window.location.search).get("returnTo"))
+                : null;
+
+            if (returnPath !== null) {
+                window.location.replace(returnPath);
+                return;
+            }
+
             if (mode === "register" && result.data.account.emailVerified === false) {
                 await sendVerificationEmail(true);
             }

@@ -34,6 +34,7 @@ import {
     normalizeQuestionFilters,
     type QuestionFilters,
 } from "./question-filters";
+import type { HandwritingRecognitionMode } from "./handwriting-recognition.mjs";
 import { normalizeSubjectLabel } from "./subject-labels";
 import {
     AUTH_SESSION_EXPIRED_EVENT,
@@ -784,13 +785,14 @@ export function warmPersistedHandwriting(signal?: AbortSignal) {
 export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput, options: {
     signal?: AbortSignal;
     force?: boolean;
-} = {}) {
+    mode: HandwritingRecognitionMode;
+}) {
     return practiceApi<{ transcription: string | null; legibility: "clear" | "uncertain" | "unreadable" }>(
         "/api/v1/local-practice/handwriting/transcription",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ handwriting, force: options.force === true }),
+            body: JSON.stringify({ handwriting, force: options.force === true, mode: options.mode }),
             signal: options.signal,
         },
     );

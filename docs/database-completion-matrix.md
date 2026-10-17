@@ -6,7 +6,7 @@
 
 這份文件把目前已核准的產品需求，對照到正式 PostgreSQL 的資料表、關鍵欄位與關聯，再標示正式 API／表單是否已經接上。範圍以 `docs/PRODUCT_SPEC.md`、`docs/question-database-design.md` 與現有前端流程為準；不把未決定的產品功能或未完成的應用程式串接算成完成。
 
-目前十三個 migration 共涵蓋 106 張業務資料表，另有一張只供 migration 工具使用的 `schema_migrations`。`0012` 新增管理目錄、題庫補全與手寫分析 sidecar 等十張資料表；`0013` 建立國小、國中、高中共十二個年級與上下學期正式目錄。`0001` 至 `0013` 已通過空庫、既有資料升級、逐層回滾、再次前進與 schema parity。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
+目前十五個 migration 共涵蓋 110 張業務資料表，另有一張只供 migration 工具使用的 `schema_migrations`。`0014` 新增題目模板、模板成員、正式關鍵字與題目版本關鍵字關聯，並擴充推薦來源證據；`0015` 補上 AI／規則關鍵字目錄的待審與審核證據。`0001` 至 `0015` 已通過空庫、既有資料升級、逐層回滾、再次前進與 schema parity。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
 
 ## 狀態定義
 
@@ -31,14 +31,14 @@
 | 題幹、小題、選項、答案、解析與音訊 | `question_parts`、`question_options`、`question_content_blocks`、`question_answers`；每次練習固定引用 revision；選擇類題目的答案鍵值必須屬於同一小題的選項 | 編輯與匯入表單依作答方式驗證內容、選項與答案；正式 API 不應把無權查看的答案送到作答端 | `0007` 檢查答案鍵與同一小題選項；`0009` 進一步要求 published／superseded 的自動判分選擇類小題至少有一個有效答案鍵，自動判分文字題至少有一個非空白可接受答案。人工與 AI 輔助檢視可無答案；升級前發現缺漏即停止，不補造資料。`/practice` 作答前只取得題幹、小題與選項 |
 | 單元、主題、知識點與課綱代碼 | `curriculum_units`、`topics`、`knowledge_points`、`curriculum_codes` 及四組 revision 關聯表；自訂單元、主題與知識點有帳號所有權 | 匯入與編輯只把核准對照寫入正式分類；跨版本歸檔與原生教材位置分開保存 | Schema 已驗證；`/practice` 題庫 API 會從 `question_revision_knowledge_points` 與 `knowledge_points` 讀取正式知識點，不再把題型名稱當成知識點。自訂目錄與完整對照 API 待建 |
 | 題目來源與來源專屬篩選 | `source_categories`、`source_category_dimensions`、`filter_fields`、scope／option／value 關聯；自訂來源有帳號所有權 | 依來源、科目、年級、版本與考試級別產生可用欄位；只允許核准欄位成為可搜尋資料 | Schema 已驗證；自訂來源所有權由 `0005` 補齊。現有 publisher 題庫只設定已確認的 4 組來源維度規則，其餘維度需先有產品規格；正式查詢服務待建 |
-| 圖片、掃描 PDF、舊版 Word、文字貼上與逐題校正 | `assets`、`source_documents`、`source_document_classification_candidates`、`import_batches`、`import_batch_documents`、`import_items`、`question_revision_sources`；`0012` 已建立 `question_enrichment_runs` 與 revision pending suggestions | 上傳、掃描、OCR／拆題、人工校正與確認分階段處理；每題保存正確文件、頁碼、裁切圖、題號及冪等鍵。補全建議只能先進 pending sidecar，核准前不得改寫已發布 revision | Schema `0001`–`0013` 已驗證；Hanlin CLI 的 279 題已匯入。題庫補全 CLI、dry-run／checkpoint 與針對性測試已完成，`0012` 已整合，但 279 題尚未 apply；必須先做品質抽檢與人工核准。正式 PostgreSQL 匯入 API／介面、OCR／AI 拆題與受權 apply 流程待建 |
+| 圖片、掃描 PDF、舊版 Word、文字貼上與逐題校正 | `assets`、`source_documents`、`source_document_classification_candidates`、`import_batches`、`import_batch_documents`、`import_items`、`question_revision_sources`；`0012` 已建立 `question_enrichment_runs` 與 revision pending suggestions | 上傳、掃描、OCR／拆題、人工校正與確認分階段處理；每題保存正確文件、頁碼、裁切圖、題號及冪等鍵。補全建議只能先進 pending sidecar，核准前不得改寫已發布 revision | Schema `0001`–`0015` 已驗證；Hanlin CLI 的 279 題已匯入。題庫補全 CLI、dry-run／checkpoint 與針對性測試已完成，`0012` 已整合，但 279 題尚未 apply；必須先做品質抽檢與人工核准。正式 PostgreSQL 匯入 API／介面、OCR／AI 拆題與受權 apply 流程待建 |
 | 一般作答附件與手寫內容 | `answer_part_assets` 關聯 `assets`；`assets.purpose` 分成 `handwriting` 與 `answer_attachment`；被作答引用期間凍結檔案內容與上傳證據 | 附件必須是 `private`、格式驗證通過且未刪除；讀取時從作答關聯反查權限。缺文字答案時手寫小題保持 pending／manual；已有完整答案時手寫只作為第一小題的計算過程附件，不改變判分。`score` 不建立逐題附件 | `instant`／`complete` private PNG 的驗證、冪等儲存、受權讀取與 UI 串接程式已通過針對性測試；完整 DB E2E 仍需涵蓋 private PNG 路徑。一般附件、刪除政策與 production 物件儲存待建 |
 | 收藏與題目清單 | `question_collections`、`question_collection_items`；收藏依學習者隔離並保存穩定的 `question_id` | 收藏表單以交易移動項目；收藏跟隨題目的目前發布版本，真正建立固定計畫、排程或 session 時才保存當時的 revision | Schema 已驗證；`/practice` 的收藏目前依學習者存在 `localStorage`，尚未寫入正式收藏表 |
 | 題目總覽、錯題榜與開始練習共用查詢 | 題目 revision、分類、來源、收藏、`learner_question_stats`、`learner_part_stats`；權限從帳號與學習者關聯進入 | 三個入口共用同一個篩選元件與伺服器查詢規則。單元、來源、題型與難易度使用陣列傳遞；同欄多值為 OR，跨欄為 AND，空陣列表示該欄不限定。服務先授權再篩選、分頁或抽題，不能先下載全題庫給前端篩選 | 前端共用篩選契約已對齊題目總覽、錯題與練習；`/practice` 已從登入 session 取得學習者、檢查題庫成員關係，再以最多 500 題一頁列出第四課的已發布題目，且作答前不回傳答案。其他科目保留正常分類與無資料狀態；動態多科目伺服器查詢及全部正式篩選欄位仍待建 |
 | 練習計畫、難易度比例、固定題目與排程 | `practice_plans`、`practice_plan_difficulty_mix`、`practice_plan_items`、`practice_schedules`、`practice_schedule_items` | 練習不另設「篩選方式」選擇器；除共用題目篩選外，只增加本輪題數與難易度比例。儲存計畫時固定篩選快照；建立排程時固定題目版本與順序；重送不得重複建立 session | Schema 已驗證；現有計畫與排程依學習者存在 `localStorage`，尚未寫入正式資料表 |
 | 全部作答後、逐題檢核與只顯示成績 | `practice_sessions`、`practice_session_items`、`answer_attempts`、`answer_part_results`、`practice_score_receipts`；`check_mode` 與版本快照固定。`score` 的五個 aggregate 欄位只能反映 session item 與收據數量；收據不含答案、逐題判定、小題或耗時 | 開始 session、提交作答與結束練習使用交易。`instant`／`complete` 需保留的原始嘗試不可覆寫；`score` 只新增每個 item 一筆的冪等收據並累加 aggregate，不建立逐題明細。歷程與錯題佇列不得繞過檢核模式的揭露時機 | `/practice` 的三種模式都建立 PostgreSQL session。`instant` 送出後回傳逐題明細；`complete` 完成前遮住明細、完成後才揭露；`score` 進行中遮住明細，完成後保存並只回傳 `{total, correct, wrong, pending, accuracy}`。重載後仍可讀回 session aggregate，但不保存各題送出的答案內容。所有 item 都有收據後才完成；從任意題開始作答時會尋找下一道未送出的題目，直接作答畫面最後一題不會提早完成 session |
-| 人工檢視、手寫比對與改判 | `answer_reviews`、`answer_part_assets`；`0012` 已建立 `handwriting_analysis_jobs` 與 append-only runs sidecar；改判保留原判定並新增 review | 授權審核者才可新增 review。AI 輸出只是建議，不得直接更新目前結果、錯題佇列或統計；只有作答 payload 為空且結果為 pending／manual 的手寫小題可排入 AI job，計算過程附件不排入 | 人工 review 的 schema 已驗證。AI sidecar schema 已由 `0012` 整合，worker 與品質驗收尚未完成。Ollama metadata、digest 與 vision capability 已核實，但沒有手寫 inference、worker 呼叫或品質樣本驗收 |
-| 錯題、小題複習與後續練習 | `learner_practice_queue_items`、`practice_session_item_origins`、`learner_question_stats`、`learner_part_stats`；`0012` 已建立同細題型的 `reason`、`relation_kind` 與 `match_basis` | `instant`／已完成 `complete` 的錯題可建立關連練習。先建立完整的同細題型候選集；只有數量為 0 時才使用已確認相近題群組，兩者都無候選時回傳無推薦。`score` 不建立逐題來源、錯題或推薦佇列 | `wrong_review` 佇列與歷程摘要已串接 PostgreSQL。strict same-type 推薦 API、選題、來源記錄與介面程式已通過針對性測試；`0012` 值域已整合，該推薦路徑的完整 DB E2E 尚未執行。新相近題關聯的審核與共用查詢 API 待建 |
+| 人工檢視、手寫比對與改判 | `answer_reviews`、`answer_part_assets`；`0012` 已建立 `handwriting_analysis_jobs` 與 append-only runs sidecar；改判保留原判定並新增 review | 授權審核者才可新增 review。AI 輸出只是建議，不得直接更新目前結果、錯題佇列或統計；只有作答 payload 為空、結果為 pending／manual，而且細題型已設定辨識方式的手寫小題可由 worker 處理，計算過程附件不排入 | AI sidecar、受控 worker 與品質驗收已完成。單一字元及單行多字模式均有真實筆跡通過；人工 review 介面與更廣泛的筆跡樣本仍待完成 |
+| 錯題、小題複習與後續練習 | `learner_practice_queue_items`、`practice_session_item_origins`、`question_templates`、`question_template_memberships`、`relation_keywords`、`question_revision_keywords`、學習統計表 | `instant`／已完成 `complete` 的錯題依已確認模板、相似群組、共同正式關鍵字與共同主題逐層建立關連練習；同層尚未作答者優先，最近已答對者排除。`score` 不建立逐題來源、錯題或推薦佇列 | `0014`／`0015` schema、推薦查詢、pending 分析匯入、管理員核准／退回、來源證據與學生端層級說明已完成。279 題尚未全量分析；目前只有一題煙霧測試的 1 個待審模板、1 個待審成員與 2 個待審關鍵字關聯，confirmed 關聯仍為 0，因此學生端仍不會使用這批資料 |
 | 相近題候選、人工核准、正式群組與生成題追溯 | `question_similarity_candidates`、`question_similarity_groups`、`question_similarity_memberships`、`question_generation_relations` | 相似分數只能建立候選；人工核准後才加入正式群組，生成題另存來源與模型版本，不把 `generatedFrom` 當正式關聯 | Schema 已驗證（`0005_similarity_analytics_and_audit`）；現有 UI 使用 mock 關聯，審核與查詢 API 待建 |
 | 題目、小題、相近群組與每日學習統計 | `learner_question_stats`、`learner_part_stats`、`learner_similarity_group_stats`、`learner_daily_stats`、`question_daily_stats` | `instant`／`complete` 的作答或改判交易寫 `analytics_outbox`，worker 更新可重建彙總；歷史查詢仍可回到明細。`score` 不寫逐題 outbox，且 aggregate 不可反推明細 | Schema 已驗證（`0005`、`0011`）；本機 `instant`／`complete` 作答交易已寫入 `analytics_outbox`，worker、重算命令與成果 API 待建 |
 | 舊 `score` 作答 asset 的兩階段清理 | `assets.deleted_at`、`asset_object_cleanup_jobs`、`admin_audit_logs` | 只有解除 `score` 關聯後無其他引用的 private `handwriting`／`answer_attachment` 才能標記刪除並排程；共用 asset 保留。worker 實際刪除外部物件後才可寫 `object_deleted_at` 並完成工作 | `0011` 已完成資料庫解除引用、邏輯刪除、pending 工作與稽核；本輪未對真實 storage 執行破壞性清理，受控 worker 與操作程序待建 |
@@ -46,7 +46,7 @@
 | 管理員稽核與資料刪除／去識別化 | `admin_audit_logs`、`data_erasure_requests`；要求只能以 `pending` 建立並單向推進，身份／目標不可改、不可刪、終態不可變，完成需同交易管理員稽核 | 高權限變更與搬移寫不可變稽核；正式 worker 依核准保存政策真正刪除或去識別化，並留下不含個資的摘要 | 要求 ledger 與流程 Schema 已驗證（`0005`）；真正資料／物件刪除、保存政策與管理 API 待決策 |
 | 正式目錄與 fixture 搬移 | `seed_manifests` 加上全部目標表；每批記錄來源版本、雜湊、筆數與 migration | 搬移工具保持 fixture 唯讀，可重跑，輸出舊 ID 對新 UUID、各表筆數、衝突與隔離報告 | Schema 已驗證；Hanlin 單檔匯入器已可重跑並驗證不建立固定合成身份，但通用 fixture／JSON 搬移工具與 production 資料搬移尚未完成 |
 
-## 106 張業務資料表
+## 110 張業務資料表
 
 | Migration | 數量 | 資料表 |
 | --- | ---: | --- |
@@ -63,8 +63,10 @@
 | `0011_score_session_aggregates` | 2 | `practice_score_receipts`、`asset_object_cleanup_jobs`；另為 `practice_sessions` 加入五個計分彙總欄位，清除既有 `score` session 的逐題明細、錯題／相近題佇列與 outbox，從剩餘非 `score` 明細重建五張統計表，並排程清理只屬於舊 `score` 的私有作答物件 |
 | `0012_admin_catalog_and_question_enrichment` | 10 | 帳號復原 identity binding、同題型來源值域、題庫補全 pending suggestion、手寫 AI sidecar 與管理目錄；不含 SMTP outbox |
 | `0013_education_stage_catalog` | 0 | 擴充 `grades.stage` 至高中，建立小一至高三共十二個年級與上下學期正式目錄，不新增資料表 |
+| `0014_question_relation_profiles` | 4 | `question_templates`、`question_template_memberships`、`relation_keywords`、`question_revision_keywords`；另擴充 `practice_session_item_origins` 的模板、共同關聯數量、方法版本與證據欄位 |
+| `0015_relation_keyword_review` | 0 | AI／規則產生的 `relation_keywords` 先進 pending；新增來源、方法版本、證據、審核者與審核時間限制，不新增資料表 |
 
-`schema_migrations` 是技術性版本紀錄，不列入 106 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
+`schema_migrations` 是技術性版本紀錄，不列入 110 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
 
 ## 目前網站的實際資料來源
 
@@ -75,7 +77,7 @@
 | 帳號、角色與學習者 | `/account`、`/system-settings` 與 auth API 實際讀寫 PostgreSQL。持有有效 parent／tutor 授權的帳號切到相應 `activeRole` 後可管理有權存取的學習者，無論主要 `accountRole` 為何；受管 learner mode 的帳號層操作回 `403`；只有 self learner 能力的帳號可查看自己的帳號設定 | 本機身份、session、一般帳號角色、self learner 與學習者關係已串接。信箱驗證已串接；密碼重設與角色 PIN 設定／重設的程式與不連網測試已完成，`0012` identity binding 已整合；帳號復原 DB E2E 狀態以本節驗證紀錄為準。SMTP outbox／等時回應、Lerniqa 憑證、handshake 與實際投遞另列為上線阻擋；OAuth、邀請分享、角色 PIN 切換、`system_admin` 管理與 production 帳號生命週期尚未完成 |
 | 目前學習者設定 | `/settings` 從 session 的 active learner 載入；先區分在學或不在學。在學者依資料庫目錄選教育階段、年級與學期，各科書籍版本另行設定；不在學者不保存年級或學期 | 顯示名稱、就學狀態、年級、學期與各科書籍版本由受權限 API 寫入 PostgreSQL。學校、代表圖片、練習偏好與考試的正式寫入仍待完成 |
 | 練習 UI 設定、計畫、排程與收藏 | 非識別性的篩選與顯示設定，以及尚未切換 PostgreSQL 的計畫、排程與收藏，以 learner ID 分區保存在瀏覽器 `localStorage`。切換 learner 時從新學習者的學期與各科已保存版本重建基準；缺少版本不猜測，同一 learner 的背景重新載入不覆寫使用者手動選擇 | 計畫、排程與收藏尚未寫入 PostgreSQL；清除瀏覽器資料會失去這些本機項目，但不會刪除伺服器上的學習者、練習或作答 |
-| `/practice` 的練習、作答與錯題 | `/api/v1/local-practice/*` 在伺服器交易內保存 session。`instant`／`complete` 另保存逐題作答、允許的 `wrong_review` 佇列與 `analytics_outbox`；`score` 只保存 aggregate 與不含答案的冪等收據。瀏覽器只以 session UUID 提示恢復，不保存作答結果 | 基本練習、作答與錯題的本機持久服務已串接，結果揭露與保存範圍由 `check_mode` 控制。private 手寫 PNG 與 strict same-type recommendation 的程式已通過針對性測試，`0012` 已整合；private 手寫與 strict same-type recommendation 仍須各自完成完整 E2E |
+| `/practice` 的練習、作答與錯題 | `/api/v1/local-practice/*` 在伺服器交易內保存 session。`instant`／`complete` 另保存逐題作答、允許的 `wrong_review` 佇列與 `analytics_outbox`；`score` 只保存 aggregate 與不含答案的冪等收據。瀏覽器只以 session UUID 提示恢復，不保存作答結果 | 基本練習、作答與錯題的本機持久服務已串接，結果揭露與保存範圍由 `check_mode` 控制。private 手寫 PNG 與階段性推薦程式已通過針對性測試，`0012` 已整合；private 手寫仍須完成完整 E2E，推薦功能另缺文字骨架、可變值、正式關鍵字資料與完整 E2E |
 | 總覽與成果 | 成果摘要使用既有作答與統計資料，併入總覽；舊 `/results` 只保留轉址 | 導覽合併與轉址仍在本輪整合，完成前不宣稱獨立成果頁已移除 |
 
 `/practice` 的題庫、session、作答、歷程與錯題不以瀏覽器儲存為權威來源。PostgreSQL auth DTO 已提供學習者的年級、學期、偏好、科目與版本，頁面不保留 learner snapshot。`localStorage` 只保留篩選與顯示等 UI 設定、計畫、排程及收藏。Next runtime 已透過 `pg` 連接持久的本機 PostgreSQL，連線只使用 `local-data/postgres-socket` 中的私有 Unix socket，不需要 `DATABASE_URL`。自動化預設在 `/tmp` 建立短命隔離 cluster；`db:test` 也提供明確 opt-in 的 existing-local-server 模式，只在指定的本機 Unix-socket server 建立具隨機名稱的隔離測試資料庫，完成後全部刪除。`npm run db:local:ensure` 才會維護不進版控、可跨進程重啟保留的持久資料庫。
@@ -114,7 +116,7 @@
 | 學習者設定權限 | `/settings` 永遠以 session 的 active learner 為目標。受管 learner mode 可進入；只有有效、已接受、未撤銷且 `can_manage_settings=true` 的 `learner_access` 可寫入 | 顯示名稱、年級、學期與各科書籍版本已有正式寫入；其餘欄位依完成對照保持只讀或瀏覽器狀態 |
 | 題庫與作答持久性 | 依「國語 → 國一 → 翰林版 → 第一冊 → 第四課」可讀 279 題，建立 session、送出作答並從 PostgreSQL 讀回結果、歷程與錯題；重新整理與重開後以 session UUID 恢復已送出進度。從任意題開始時會尋找下一道未送出題目，只有全部 item 都完成才結束 session | 尚未送出的文字與手寫內容不保存；其他科目尚未接入正式題庫。`score` 只有 aggregate 與不含答案／判定的冪等收據，不會出現在逐題歷程或錯題中 |
 | private 手寫 PNG | `instant`／`complete` 只接受格式、尺寸與可見墨跡通過驗證的 PNG，以 private asset 冪等儲存，取回時從作答關聯反查權限。手寫替代缺少文字答案時結果保持 pending／manual；已有完整答案時只作為計算過程附件 | 針對性單元／契約測試已通過；已整合 `0012`；private PNG 的 DB E2E 與瀏覽器驗收尚未執行。`score` 不允許手寫或其他逐題附件 |
-| strict same-type recommendation | 同細題型候選必須先完整取得；只有候選數為 0 才可使用原題目前 revision 的已確認相近題群組。兩者都無候選時回傳無推薦，不放寬成同單元或同科目；`score` 禁止 | API、選題、來源記錄與介面程式的針對性測試已通過，`0012` 值域已整合；該推薦路徑的 DB E2E 尚未執行。沒有已確認群組時，候補結果可以為空 |
+| 相同／相近題推薦 | 相同題要求文字骨架與解題邏輯一致，只允許核准的可變值不同；相近題依已確認群組及共同正式關鍵字／主題數量排序。同一相近程度內尚未作答者優先，較相近層級沒有符合條件的候選時才向外遞補；`score` 禁止 | `0014`／`0015` 已完成資料模型、正式關聯查詢、排序、來源證據、pending 分析管線、管理員審核介面與學生端層級文案。279 題尚未全量分析與核准；目前 confirmed 關聯仍為 0，不能宣告已有可用的正式相同／相近題內容 |
 | 題庫補全 | 對已發布系統題提出細題型、主要知識點與解題方法建議；dry-run 為預設，寫入時也只能建立 pending suggestion | CLI／checkpoint 與針對性測試已完成；`0012` run／suggestion schema 已整合，279 題尚未 apply。先通過品質抽檢與人工核准，才能另行建立新 revision |
 | 歷史版本與安全恢復 | 歷程使用當時固定的 revision；缺少安全快照時只顯示結果、時間與無法安全顯示內容的提示，不用目前題目冒充。resume 發現 revision mismatch 時把舊 session 標記為 `abandoned`，提示重新建立練習 | 不為修復舊歷程而補造題目內容或改寫原 session 的 revision |
 | 帳號隔離 | 直接改 learner、session、attempt 或 asset 識別碼不能讀寫其他帳號或學習者資料；切換角色或學習者後只看目前授權範圍 | production RLS／GRANT 與可信高權限 caller 尚未建立 |
@@ -156,9 +158,9 @@ npm run test:question-enrichment
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-最近一次完整 `npm run db:test` 使用明確 opt-in 的本機 Unix-socket PostgreSQL，在具隨機名稱的隔離資料庫中通過十三個 migration。範圍包括首次前進、`0007` 到 `0008` 安裝窗口的 archive race、`0009` preflight 與子資料發布併發、`0010` 的 `account_role`／grant 撤銷及 self access／learner rename 雙連線回歸、`0011` 的舊版 `score` 資料回填／清除、五張統計表重建、exclusive／shared asset 分流、物件清理工作狀態、aggregate／receipt 完整性、逐層 down、第二次前進與 schema parity。完成後沒有留下 `lerniqa_schema_test_%` 資料庫或測試 session。
+最近一次完整 `npm run db:test` 使用明確 opt-in 的本機 Unix-socket PostgreSQL，在具隨機名稱的隔離資料庫中通過十五個 migration。範圍包括首次前進、既有完整性與併發回歸、`0014` 的模板／關鍵字與來源證據限制、`0015` 的 AI 關鍵字審核限制、逐層 down、第二次前進與 schema parity。完成後沒有留下 `lerniqa_schema_test_%` 資料庫或測試 session。
 
-驗證預設自行在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP、使用私有 Unix socket，並對每個資料庫指令明確指定 host、port、user 與 database；同時以 `PSQLRC=/dev/null` 避免本機設定改變測試行為。`db:test`、import ownership 與 local practice runner 也分別提供 `LERNIQA_DB_TEST_*`、`LERNIQA_IMPORT_OWNERSHIP_TEST_*`、`LERNIQA_PRACTICE_TEST_*` 的 existing-local-server 明確 opt-in。這些模式都要提供本機 Unix socket、port 及預期 data directory，並核對目前作業系統使用者與 non-recovery 狀態；runner 只建立具隨機名稱及本次 ownership comment 的隔離資料庫，清理前再次核對身分，不停止共用 server，也不得連接 production。import ownership 測試只檢查隔離匯入後的資料所有權；local practice 測試使用 279 題規模的合成題庫完成註冊、登入、session 恢復、三種模式的保存與答案揭露、歷程、錯題及 PostgreSQL／Next.js 重啟驗證。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 檢查程式、輸入限制、安全邊界與 repository／route 契約；migration 契約另由 `db:test` 驗證。strict same-type recommendation 的針對性案例由整體 `npm test` 執行。`practice-catalog-integration` 另檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯及 learner-keyed `localStorage` 邊界。完成後再執行：
+驗證預設自行在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP、使用私有 Unix socket，並對每個資料庫指令明確指定 host、port、user 與 database；同時以 `PSQLRC=/dev/null` 避免本機設定改變測試行為。`db:test`、import ownership 與 local practice runner 也分別提供 `LERNIQA_DB_TEST_*`、`LERNIQA_IMPORT_OWNERSHIP_TEST_*`、`LERNIQA_PRACTICE_TEST_*` 的 existing-local-server 明確 opt-in。這些模式都要提供本機 Unix socket、port 及預期 data directory，並核對目前作業系統使用者與 non-recovery 狀態；runner 只建立具隨機名稱及本次 ownership comment 的隔離資料庫，清理前再次核對身分，不停止共用 server，也不得連接 production。import ownership 測試只檢查隔離匯入後的資料所有權；local practice 測試使用 279 題規模的合成題庫完成註冊、登入、session 恢復、三種模式的保存與答案揭露、歷程、錯題及 PostgreSQL／Next.js 重啟驗證。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 檢查程式、輸入限制、安全邊界與 repository／route 契約；migration 契約另由 `db:test` 驗證。現有階段性推薦案例由整體 `npm test` 執行，但不代表文字骨架、可變值與正式關鍵字關係已完成。`practice-catalog-integration` 另檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯及 learner-keyed `localStorage` 邊界。完成後再執行：
 
 ```bash
 npm run lint
@@ -170,7 +172,7 @@ git diff --check
 ## 明確不在本輪
 
 - 排序、拖曳配對、圖片熱區、自由繪圖、錄音作答與通用互動版面；需求確認後再以新 migration 擴充。
-- 真實 OCR、AI 拆題、AI 自動判分與生成題服務；本地手寫 AI 目前只產生可追溯的逐字辨識紀錄，不接收參考答案或判斷正誤，真實筆跡品質與人工檢視介面仍待驗收。
+- 真實教材 OCR、AI 拆題、AI 自動判分與生成題服務；本地手寫 AI 目前只產生可追溯的單一字元或單行多字辨識紀錄，不接收參考答案或判斷正誤。現有少量真實筆跡已通過，更多字數、連筆方式及人工檢視介面仍待驗收。
 - 相近題候選審核、正式群組關聯與共用查詢 API，以及複習／相近題 session 的完整 `practice_session_item_origins` 寫入；現有 schema 或畫面中的固定關係不代表這些流程已完成。
 - 計畫、排程、收藏及其他仍由 `localStorage` 保存的資料寫入 API；schema 已存在不代表表單已經切換。
 - 未核准的考試級別展開規則、社群榜門檻、管理員跨帳號改題權限與資料保存期限。
