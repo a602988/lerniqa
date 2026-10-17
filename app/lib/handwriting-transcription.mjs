@@ -15,6 +15,7 @@ import {
 
 const CACHE_LIFETIME_MS = 10 * 60 * 1_000;
 const CACHE_MAXIMUM_ENTRIES = 128;
+const INTERACTIVE_BUDGET_MS = 4_500;
 const PADDLE_MINIMUM_CONFIDENCE = 0.6;
 const VISION_MINIMUM_CONFIDENCE = 0.25;
 
@@ -68,6 +69,27 @@ function reliableCandidate(candidate) {
 }
 
 /**
+ * 讓互動式辨識在指定時間內回應；底層辨識器仍自行回收程序與請求。
+ *
+ * @param {Promise<unknown>} promise 目前執行中的辨識工作。
+ * @param {number} timeoutMs 剩餘等待時間。
+ * @returns {Promise<unknown | null>} 時限內的結果；逾時回傳 null。
+ */
+async function withinBudget(promise, timeoutMs) {
+    let timer;
+    const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+        timer.unref?.();
+    });
+    try {
+        return await Promise.race([promise, timeout]);
+    }
+    finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * 只在兩個獨立 OCR 對同一文字達成一致時直接採用，避免單一模型高信心誤讀。
  *
  * @param {Array<{engine: string, text: string | null, confidence: number} | null>} candidates OCR 候選。
@@ -118,25 +140,38 @@ function pruneCache(now) {
  * @returns {Promise<Readonly<object>>} 最終辨識結果。
  */
 async function runTranscription(imageBytes) {
+    const startedAt = Date.now();
+    const remainingBudget = () => Math.max(0, INTERACTIVE_BUDGET_MS - (Date.now() - startedAt));
     const ocrImage = prepareHandwritingOcrImage(imageBytes);
-    const candidates = await Promise.all([
+    const candidates = await withinBudget(Promise.all([
         recognizeWithPaddle(ocrImage),
         recognizeWithAppleVision(ocrImage),
-    ]);
+    ]), remainingBudget());
+    if (!candidates) return result(null, "unreadable", 0, ["other"]);
     const consensus = resolveOcrConsensus(candidates);
     if (consensus) return consensus;
+    const hasVisibleText = candidates.some((candidate) => normalizedText(candidate?.text));
+    if (!candidates.some(reliableCandidate)) {
+        return result(null, "unreadable", 0, [hasVisibleText ? "ambiguous_glyphs" : "empty"]);
+    }
 
     let modelResult;
     try {
+        let timeoutMs = remainingBudget();
+        if (timeoutMs < 1) return result(null, "uncertain", 0, ["other"]);
         handwritingModelPromise ??= inspectHandwritingModel({
             configuration: handwritingAiConfiguration(),
+            timeoutMs,
         });
-        const model = await handwritingModelPromise;
-        modelResult = await transcribeHandwriting(imageBytes, model);
+        const model = await withinBudget(handwritingModelPromise, timeoutMs);
+        if (!model) return result(null, "uncertain", 0, ["other"]);
+        timeoutMs = remainingBudget();
+        if (timeoutMs < 1) return result(null, "uncertain", 0, ["other"]);
+        modelResult = await transcribeHandwriting(imageBytes, model, { attempts: 1, timeoutMs });
     }
     catch (error) {
         handwritingModelPromise = undefined;
-        throw error;
+        return result(null, "uncertain", 0, ["other"]);
     }
     return resolveWithModel(candidates, modelResult);
 }

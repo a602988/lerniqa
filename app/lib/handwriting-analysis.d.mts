@@ -24,10 +24,11 @@ export function handwritingAiConfiguration(environment?: NodeJS.ProcessEnv): {
 export function inspectHandwritingModel(options?: {
     configuration?: { baseUrl: string; model: string; keepAlive: string };
     fetchImpl?: typeof fetch;
+    timeoutMs?: number;
 }): Promise<HandwritingModel>;
 
 export function transcribeHandwriting(
     imageBytes: Buffer,
     model: HandwritingModel,
-    options?: { fetchImpl?: typeof fetch },
+    options?: { attempts?: number; fetchImpl?: typeof fetch; timeoutMs?: number },
 ): Promise<HandwritingTranscription>;

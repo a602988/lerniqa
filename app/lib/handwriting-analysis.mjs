@@ -553,10 +553,24 @@ async function fetchBoundedJson(pathname, init, {
 export async function inspectHandwritingModel({
     configuration = handwritingAiConfiguration(),
     fetchImpl = fetch,
+    timeoutMs = 10_000,
 } = {}) {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > HANDWRITING_MODEL_TIMEOUT_MS) {
+        fail("INVALID_INSPECTION_BUDGET", "模型檢查時間無效。 ");
+    }
+    const startedAt = Date.now();
+    const remainingTimeout = () => Math.max(1, timeoutMs - (Date.now() - startedAt));
     const [runtime, tags] = await Promise.all([
-        fetchBoundedJson("/api/version", { method: "GET" }, { baseUrl: configuration.baseUrl, fetchImpl }),
-        fetchBoundedJson("/api/tags", { method: "GET" }, { baseUrl: configuration.baseUrl, fetchImpl }),
+        fetchBoundedJson("/api/version", { method: "GET" }, {
+            baseUrl: configuration.baseUrl,
+            fetchImpl,
+            timeoutMs: remainingTimeout(),
+        }),
+        fetchBoundedJson("/api/tags", { method: "GET" }, {
+            baseUrl: configuration.baseUrl,
+            fetchImpl,
+            timeoutMs: remainingTimeout(),
+        }),
     ]);
     if (typeof runtime.version !== "string" || runtime.version.trim() === "" || runtime.version.length > 80) {
         fail("OLLAMA_VERSION_INVALID", "Ollama version 無效。 ");
@@ -571,7 +585,7 @@ export async function inspectHandwritingModel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: HANDWRITING_MODEL_NAME }),
-    }, { baseUrl: configuration.baseUrl, fetchImpl });
+    }, { baseUrl: configuration.baseUrl, fetchImpl, timeoutMs: remainingTimeout() });
     if (!Array.isArray(show.capabilities) || !show.capabilities.includes("vision")) {
         fail("MODEL_VISION_UNAVAILABLE", "固定模型未明確宣告 vision 能力。 ");
     }
@@ -585,9 +599,17 @@ export async function inspectHandwritingModel({
     });
 }
 
-export async function transcribeHandwriting(imageBytes, model, { fetchImpl = fetch } = {}) {
+export async function transcribeHandwriting(imageBytes, model, {
+    attempts = HANDWRITING_MODEL_ATTEMPTS,
+    fetchImpl = fetch,
+    timeoutMs = HANDWRITING_MODEL_TIMEOUT_MS,
+} = {}) {
     if (model.name !== HANDWRITING_MODEL_NAME || model.digest !== HANDWRITING_MODEL_DIGEST) {
         fail("MODEL_IDENTITY_MISMATCH", "模型 identity 與固定設定不一致。 ");
+    }
+    if (!Number.isInteger(attempts) || attempts < 1 || attempts > HANDWRITING_MODEL_ATTEMPTS
+        || !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > HANDWRITING_MODEL_TIMEOUT_MS) {
+        fail("INVALID_TRANSCRIPTION_BUDGET", "手寫辨識時間或重試次數無效。 ");
     }
     const preparedImage = prepareHandwritingImage(imageBytes);
     const request = {
@@ -607,13 +629,13 @@ export async function transcribeHandwriting(imageBytes, model, { fetchImpl = fet
         ],
     };
     let lastError;
-    for (let attempt = 1; attempt <= HANDWRITING_MODEL_ATTEMPTS; attempt += 1) {
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
         try {
             const response = await fetchBoundedJson("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(request),
-            }, { baseUrl: model.baseUrl ?? HANDWRITING_OLLAMA_ORIGIN, fetchImpl, timeoutMs: HANDWRITING_MODEL_TIMEOUT_MS });
+            }, { baseUrl: model.baseUrl ?? HANDWRITING_OLLAMA_ORIGIN, fetchImpl, timeoutMs });
             if (response.model !== undefined && response.model !== HANDWRITING_MODEL_NAME) {
                 fail("MODEL_IDENTITY_MISMATCH", "Ollama 回應的 model identity 不一致。 ");
             }
@@ -631,7 +653,7 @@ export async function transcribeHandwriting(imageBytes, model, { fetchImpl = fet
         }
         catch (error) {
             lastError = error;
-            if (!(error instanceof HandwritingAnalysisError) || !error.retryable || attempt === HANDWRITING_MODEL_ATTEMPTS) break;
+            if (!(error instanceof HandwritingAnalysisError) || !error.retryable || attempt === attempts) break;
         }
     }
     if (lastError instanceof HandwritingAnalysisError) throw lastError;

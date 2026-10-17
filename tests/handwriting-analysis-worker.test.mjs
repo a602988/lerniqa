@@ -296,6 +296,32 @@ test("model request contains only the handwriting image and fixed transcription 
     assert.ok(prepareHandwritingImage(SYNTHETIC_PNG).subarray(0, 8).equals(SYNTHETIC_PNG.subarray(0, 8)));
 });
 
+test("interactive model calls accept a bounded timeout and disable retries", async () => {
+    const retry = new Response("temporary", { status: 503 });
+    Object.defineProperty(retry, "url", { value: "http://127.0.0.1:11434/api/chat" });
+    const { fetchImpl, calls } = modelFetch({ chatOutputs: [retry] });
+    const model = { engine: "ollama", name: HANDWRITING_MODEL_NAME, digest: HANDWRITING_MODEL_DIGEST, version: "ollama:0.34.4" };
+    await assert.rejects(
+        () => transcribeHandwriting(SYNTHETIC_PNG, model, { attempts: 1, fetchImpl, timeoutMs: 4_500 }),
+        /HTTP 503/u,
+    );
+    assert.equal(calls.filter((call) => call.url.pathname === "/api/chat").length, 1);
+    await assert.rejects(
+        () => transcribeHandwriting(SYNTHETIC_PNG, model, { attempts: 0, fetchImpl }),
+        /時間或重試次數/u,
+    );
+
+    const slowFetch = async (_url, init) => new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true });
+    });
+    const startedAt = Date.now();
+    await assert.rejects(
+        () => transcribeHandwriting(SYNTHETIC_PNG, model, { attempts: 1, fetchImpl: slowFetch, timeoutMs: 25 }),
+        /無法連線/u,
+    );
+    assert.ok(Date.now() - startedAt < 500);
+});
+
 test("identity and schema violations are not retried and oversized responses fail closed", async () => {
     const model = { engine: "ollama", name: HANDWRITING_MODEL_NAME, digest: HANDWRITING_MODEL_DIGEST, version: "ollama:0.34.4" };
     let identityCalls = 0;
