@@ -10,14 +10,14 @@
 - 專注練習版面、每題大型手寫板、畫筆／橡皮擦，以及暫時關閉／結束練習流程。`instant`／`complete` 的 private PNG 儲存、受權讀取與冪等重送程式已通過針對性測試：文字題沒有其他答案時，手寫小題保持 `pending`／`manual`；已有完整答案時，手寫圖只作為第一個小題的計算過程附件，不改變判分。`score` 不接受手寫或任何逐題作答附件。完整資料庫 E2E 仍待 `0012` 整合後驗證
 - 每個主要頁面有固定網址，重新整理後維持原頁面
 - 送出前的本地手寫辨識會把同一張裁切圖以原始筆畫及加粗單字版交給 PP-OCRv6，兩個版本一致或其中一個高信心且明顯領先時，再與 Apple Vision 交叉檢查。純漢字的 PP-OCRv6 高信心結果可直接回填；英文與數字仍要求兩個辨識器一致。沒有可靠結果時，才在 4.5 秒互動時限內使用固定 digest 的 `qwen3.8:27b` 複核；逾時或來源衝突則等待人工判別。同一張 PNG 的結果會在網站程序記憶體保存十分鐘，避免按「AI 分析」後正式送出又重跑。辨識器只讀取手寫圖片，不接收題幹、參考答案、解析或評分規則。六張英文、數字、空白與模糊合成圖通過品質門檻；四張已保存的繁體中文真實筆跡「謀、儒、省、覆」也逐字相符，暖機後單張為 422 至 469 毫秒。人工檢視介面仍待完成
-- 錯題複習、成果統計與檢視設定介面。錯題的「同細題型」推薦 API 與作答串接已通過針對性測試：先完整尋找同一標準細題型的候選，只有候選數為 0 才查詢經人工確認的相近題群組；沒有同題型候選也沒有已確認群組時可回傳無推薦。`score` 不允許建立逐題推薦練習。此路徑仍待 `0012` 的來源值域整合與資料庫 E2E；人工審核與新的正式相近題關聯尚未交付
+- 錯題複習、成果統計與檢視設定介面。`0014` 已建立可審核的文字模板、可變值與正式關鍵字關聯，`0015` 補上 AI 關鍵字的待審與核准證據；推薦 API 依「已確認相同模板 → 已確認相似群組 → 共同正式關鍵字最多 → 共同主題最多」選擇單一層級，同層未作答者優先，最近已答對者排除，並保存實際模板或共同關鍵字證據。`questions:relations` 只讀目前已發布系統題目，分析檔需另以 `--persist` 匯入 pending；管理員再到 `/admin/questions/relations` 核准或退回。現有 279 題尚未完成全量分析與人工核准；目前只有一題煙霧測試產生的 1 個待審模板、1 個待審成員與 2 個待審關鍵字關聯，正式 confirmed 關聯仍為 0，因此學生端不會使用這批資料。`score` 不允許建立逐題推薦練習
 - 圖片／PDF／貼上文字匯入與多題校正仍是待建功能。主導覽已移除舊的 mock 匯入入口，直接開啟 `/bank` 會轉到 `/questions`；OCR／AI 拆題與受權限的 PostgreSQL 匯入 API／介面尚未串接，測試替代結果不能視為已辨識或已保存的教材
 - `/account` 已接上本機 PostgreSQL，支援電子郵件密碼註冊、登入、登出、目前帳號查詢與忘記密碼流程；密碼、session token 與一次性重設 token 都只保存雜湊。社群登入與帳號綁定仍未開放
 - 註冊與密碼重設使用同一套新密碼規則：至少 8 個字元，不要求大小寫、數字或符號混用，並拒絕常見弱密碼、全空白及首尾空白。密碼重設的 challenge、API 與介面程式已完成不連網針對性測試；成功後不改動電子郵件的 `verified_at`，並撤銷該帳號的所有 session。將 challenge 固定綁定到電子郵件 identity 的資料庫契約屬於尚未整合的 `0012`，因此不得把目前的單元測試當成已通過資料庫 E2E
 - 信箱驗證、密碼重設及角色 PIN 設定／重設都使用 `verification_challenges` 與一次性確認頁；token 只保存雜湊，過期、重寄失效、重播、單一有效 email identity 與申請頻率限制已有不連網測試。角色 PIN 只允許透過已驗證的電子郵件為仍有效的目標角色設定，成功後只撤銷該角色的 session。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與切換。ERP 的非機密 SMTP host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 handshake；不得讀取或複製 ERP secret 來當作完成。目前申請流程同步嘗試寄信，已知與未知帳號仍可能產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋，不屬於 `0012`
 - 正式主流程不再從 fixture 或 runtime JSON 還原帳號範圍資料。舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 端點固定回傳 HTTP `410`；`/questions` 是目前題目入口，舊 `/bank` 只會轉址到此頁。正式 PostgreSQL 匯入 API／介面尚未交付；Hanlin CLI 與隔離匯入測試不等於可操作的產品匯入流程
 - 題目可保存版本、章節、單元、主題、難易度、來源，以及題幹與答案中的圖片區塊
-- PostgreSQL 欄位、關聯與限制由 `0001` 至 `0011` 共十一個原生 SQL migration 建立，合計 96 張業務資料表。`0010` 加入 `users.account_role`、每帳號唯一 self learner、名稱與設定權限一致性；`0011` 加入 `practice_score_receipts`、`asset_object_cleanup_jobs` 與練習 session 的計分彙總欄位。升級會清除舊版 `score` 逐題明細，並從仍可保留的非 `score` 明細重建五張統計表
+- PostgreSQL 欄位、關聯與限制由 `0001` 至 `0015` 共十五個原生 SQL migration 建立，合計 110 張業務資料表。`0014` 新增可審核的題目模板、模板成員、正式關鍵字與題目版本關鍵字關聯，並擴充推薦來源證據；`0015` 不新增資料表，只把 AI／規則產生的關鍵字目錄也納入 pending、reviewer 與 evidence 契約
 - `0012` 已整合帳號復原 identity binding、同題型來源值域、題庫補全建議及手寫 AI sidecar，並通過 migration 與隔離的作答佇列 E2E。手寫 worker 仍需由受控的本機程序啟動，不會由網站程序自動下載或替換模型
 - 題庫補全命令已建立可重跑的 dry-run／checkpoint 程式與針對性測試，但目前的 279 題尚未寫入補全結果。即使 `0012` 整合後，程式也只能先建立 `pending` 建議，不會直接改寫已發布題目；只有通過品質抽檢與人工核准後才可另行 apply
 - `/practice` 已從本機 PostgreSQL 載入已發布題庫並保存練習 session。`instant` 與 `complete` 保存已送出的作答、歷程、錯題佇列與 outbox；`score` 只保存 session 整體統計，以及不含答案與逐題判定的冪等收據，不寫入 `answer_attempts`、逐小題結果、錯題／相近題佇列或 `analytics_outbox`。重新整理進行中的練習時，畫面會用伺服器 session UUID 恢復可安全恢復的進度並暫停；尚未送出的文字與手寫內容不會保存
@@ -52,6 +52,15 @@ npm run handwriting:worker -- --continuous --execute
 ```
 
 `handwriting:setup` 只把 Python 套件放在不進版控的 `local-data/handwriting-python`，模型預載後，網站執行期不會下載模型。smoke 或 worker 命令若沒有 `--execute`，只會檢查契約，不會執行模型推論或領取工作。worker 不會直接改寫作答結果。
+
+題型關係分析分成唯讀產檔與 pending 匯入兩步；模型結果不會自動成為正式關聯：
+
+```bash
+npm run questions:relations -- --sample 10 --output local-data/question-relations.json
+npm run questions:relations -- --persist --input local-data/question-relations.json
+```
+
+全量分析改用 `--all`。分析檔會在每題完成後以原子替換保存 checkpoint；相同題庫、模型與輸出路徑可安全續跑，來源或模型版本不同時則拒絕沿用。匯入後由具 `system_admin` 權限的管理員在 `/admin/questions/relations` 核准或退回；只有核准資料會被學生端推薦查詢讀取。
 
 資料庫 migration 的本機隔離驗證：
 

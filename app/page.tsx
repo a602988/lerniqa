@@ -3999,14 +3999,28 @@ export default function Home() {
         if (!result || result.recommendationKind === "none" || result.availableCount === 0) {
             return <p className="text-xs font-semibold text-muted-foreground" role="status">目前沒有可練習的同題型或相似題型。</p>;
         }
+        const isSameTemplate = result.recommendationKind === "same_template";
         const isSameType = result.recommendationKind === "same_type";
+        const isKeywordSimilar = result.recommendationKind === "keyword_similar";
         const isTopicSimilar = result.recommendationKind === "topic_similar";
-        const kindLabel = isSameType ? "同題型" : isTopicSimilar ? "相近內容" : "已確認相似題型";
-        const actionLabel = isSameType ? "同題型練習" : isTopicSimilar ? "相近題練習" : "相似題型練習";
+        const kindLabel = isSameTemplate
+            ? "相同題"
+            : isSameType
+                ? "舊版同題型"
+                : isKeywordSimilar
+                    ? "關鍵字相近題"
+                    : isTopicSimilar
+                        ? "相近內容"
+                        : "已確認相似題型";
+        const actionLabel = isSameTemplate
+            ? "相同題練習"
+            : isSameType
+                ? "同題型練習"
+                : "相近題練習";
         const classification = isSameType && result.classificationLabel ? ` · ${result.classificationLabel}` : "";
         const sessionCount = Math.min(result.availableCount, recommendationLimit);
         return <div className="grid min-w-0 gap-1" title={result.explanation}>
-            <Badge className="w-fit" tone={isSameType ? "primary" : "warning"}>{kindLabel}{classification} · 可用 {result.availableCount} 題</Badge>
+            <Badge className="w-fit" tone={isSameTemplate || isSameType ? "primary" : "warning"}>{kindLabel}{classification} · 可用 {result.availableCount} 題</Badge>
             <p className="text-xs leading-relaxed text-muted-foreground">{result.explanation}</p>
             <Button appearance="ghost" tone="muted" size="sm" disabled={practiceBusy} onClick={() => void startRecommendationSession(questionId, "instant")}><Sparkles />{actionLabel}（{sessionCount}）</Button>
         </div>;
@@ -4315,6 +4329,10 @@ export default function Home() {
     const examCountdownLabel = getExamCountdownLabel(dayDifference);
     const sessionModeLabel = recommendationSessionKind === "same_type"
         ? "同題型練習"
+        : recommendationSessionKind === "same_template"
+            ? "相同題練習"
+            : recommendationSessionKind === "keyword_similar"
+                ? "關鍵字相近題練習"
         : recommendationSessionKind === "topic_similar"
             ? "相近題練習"
         : recommendationSessionKind === "confirmed_similar"

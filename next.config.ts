@@ -11,6 +11,21 @@ const nextConfig: NextConfig = {
             { source: "/forgot-password", destination: "/account/forgot-password", permanent: false },
         ];
     },
+    async headers() {
+        return [
+            {
+                source: "/admin/:path*",
+                headers: [
+                    {
+                        key: "Content-Security-Policy",
+                        value: "frame-ancestors 'none'",
+                    },
+                    { key: "X-Frame-Options", value: "DENY" },
+                    { key: "Referrer-Policy", value: "no-referrer" },
+                ],
+            },
+        ];
+    },
     async rewrites() {
         return [
             {

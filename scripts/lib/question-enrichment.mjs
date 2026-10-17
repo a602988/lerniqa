@@ -509,17 +509,26 @@ export async function assertLocalModelUnchanged(expected, options = {}) {
     return current;
 }
 
-export async function classifyWithLocalModel(prepared, model, { fetchImpl = fetch } = {}) {
+export async function requestStructuredLocalModel({
+    model,
+    systemPrompt,
+    userPrompt,
+    schema,
+    maximumTokens = 512,
+    validate,
+    fetchImpl = fetch,
+}) {
+    const initialMessages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+    ];
     const requestBody = {
         model: MODEL_NAME,
         stream: false,
         think: false,
-        format: classificationJsonSchema(),
-        options: { temperature: 0, seed: 0, num_predict: 512 },
-        messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: `${taxonomyPrompt()}\n\n待分類資料：\n${stableJson(prepared.input)}` },
-        ],
+        format: schema,
+        options: { temperature: 0, seed: 0, num_predict: maximumTokens },
+        messages: initialMessages,
     };
     let lastError;
     for (let attempt = 1; attempt <= MODEL_ATTEMPTS; attempt += 1) {
@@ -542,7 +551,23 @@ export async function classifyWithLocalModel(prepared, model, { fetchImpl = fetc
             catch (error) {
                 fail("INVALID_MODEL_OUTPUT", "本機模型輸出不是 strict JSON。", error);
             }
-            return validateModelClassification(parsed);
+            try {
+                return validate(parsed);
+            }
+            catch (error) {
+                const correction = error instanceof Error
+                    ? error.message.replace(/[\u0000-\u001f\u007f]/gu, " ").slice(0, 500)
+                    : "輸出未通過固定 schema 驗證。";
+                requestBody.messages = [
+                    ...initialMessages,
+                    { role: "assistant", content: response.message.content },
+                    {
+                        role: "user",
+                        content: `上次輸出未通過驗證：${correction}\n請修正後重新輸出完整 JSON；不要解釋。`,
+                    },
+                ];
+                throw error;
+            }
         }
         catch (error) {
             lastError = error;
@@ -550,6 +575,17 @@ export async function classifyWithLocalModel(prepared, model, { fetchImpl = fetc
         }
     }
     fail("MODEL_CLASSIFICATION_FAILED", "本機模型單題分類在一次重試後仍失敗。", lastError);
+}
+
+export async function classifyWithLocalModel(prepared, model, { fetchImpl = fetch } = {}) {
+    return requestStructuredLocalModel({
+        model,
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt: `${taxonomyPrompt()}\n\n待分類資料：\n${stableJson(prepared.input)}`,
+        schema: classificationJsonSchema(),
+        validate: validateModelClassification,
+        fetchImpl,
+    });
 }
 
 function manifest(records) {

@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0013` 共十三個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar，以及十二年國教年級目錄。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0015` 共十五個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar、十二年國教年級目錄，以及可審核的題目模板與正式關鍵字關聯。`0015` 不新增資料表，只補強 AI／規則關鍵字目錄的待審、方法版本、證據與審核者限制。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -26,7 +26,7 @@
 
 題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
 
-十三個 migration 合計 106 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
+十五個 migration 合計 110 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -1021,7 +1021,21 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `method_version` | `varchar(80)` | 必填 | 生成方法版本 | — |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | 前兩欄為主鍵 |
 
-生成關係不等於相近關係。只有已確認的相近題群組能用於「相近題」篩選及排除已掌握題組。
+生成關係不等於相近關係。只有已確認的相近題群組，以及經核准並寫入正式題目關聯的關鍵字、主題或知識點，能用於「相近題」篩選；未核准的模型分數不得直接參與推薦。排除已掌握題組仍以已確認的相近題群組為單位，不能用即時計算結果臨時組群。
+
+### `question_templates` 與 `question_template_memberships` 相同題模板
+
+`question_templates` 保存穩定的 `template_key`、正規化文字骨架 `normalized_pattern`、解題邏輯 `logic_key`、建立來源、方法版本、證據與確認人。模板狀態為 `pending`、`confirmed` 或 `inactive`；非人工來源必須保存方法版本，確認或停用都必須保存確認人與時間。
+
+`question_template_memberships` 把題目及判定時的確切 revision 關聯到模板，並以 `variable_values` 保存該題替換的數字、人物、名稱、目標字或其他可變值。成員狀態為 `pending`、`confirmed`、`rejected` 或 `expired`；confirmed 成員只能引用 confirmed 模板。題目改版後必須以新 revision 重新分析，不能沿用舊成員關係。
+
+兩題只有在目前 revision 都是同一 confirmed 模板的 confirmed 成員時，才能以 `same_template` 推薦。相同來源題型、科目或單元不構成模板相同證據。
+
+### `relation_keywords` 與 `question_revision_keywords` 正式關鍵字
+
+`relation_keywords` 保存正規化 key、顯示名稱與類型；類型涵蓋人物、作品、篇章、目標字、概念、主題、知識點及其他經核准關係。`question_revision_keywords` 保存題目 revision、關鍵字、資料來源、方法版本、狀態、證據與審核資訊。規則或 AI 產生的關聯必須先保存為 pending 並附方法版本，只有 confirmed 且關鍵字仍為 active 的關聯能進入推薦。
+
+相近度以兩題共同 confirmed 關鍵字的不同 ID 數量計算，重複 ID 不得增加分數。查詢只採目前合格候選中的最高共同數量級距；這一級沒有候選時，才進入較弱的下一個關聯層。每次選入都要把共同關鍵字 ID、共同數量與推薦規則版本保存到 `practice_session_item_origins`。
 
 ### `exams` 考試設定
 
@@ -1155,7 +1169,9 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 立即練習直接建立 `practice_sessions`；加入後續練習則先建立佇列項目。相近題選入時要保存當時實際使用的單一 `match_basis` 及其對應外鍵，不能在事後從題目目前分類反推。舊 JSON 沒有保存原始錯題作答時，搬移為 `reason=legacy_migration` 且來源作答為空，不能偽造追溯關係。
 
-`0012` 新增 `reason=same_type_review`，並以 `same_question_type`／`matched_question_type_label` 保存同細題型的正式來源。選題服務必須先完整取得 exact type 候選；只有候選數為 0 時才能查已確認相近題群組。沒有群組或候選時回傳空結果，不使用 `same_unit`、`same_subject` 等寬鬆值當候補。`score` 不允許這種逐題來源。
+`0012` 新增 `reason=same_type_review`，並以 `same_question_type`／`matched_question_type_label` 保存階段性同細題型來源。產品要求的「相同題」不是只比對題型名稱，而是題幹文字骨架與解題邏輯相同，只替換數字、人物、名稱、目標字等可變值；「相近題」則依已確認相似群組與正式關鍵字、人物、作品、篇章、主題或知識點的共同數量計算，重疊越多越優先。每一個相近程度內先選尚未作答者，排除最近已答對者；只有較相近層級沒有符合條件的候選時，才往共同關聯較少的層級遞補。
+
+`0014` 以 `question_templates` 保存正規化文字骨架與解題邏輯，以 `question_template_memberships.variable_values` 保存各題替換的數字、人物、名稱、目標字或其他可變值；`relation_keywords` 與 `question_revision_keywords` 保存經核准的正式關鍵字及題目版本關聯。模板成員與關鍵字關聯都分成 pending、confirmed、rejected、expired，只有 confirmed 關聯可參與推薦。`0015` 讓 AI／規則建立的關鍵字目錄本身也先進 pending，核准時才切為 active。`questions:relations` 分開執行唯讀分析與 pending 匯入，`/admin/questions/relations` 再以管理員交易核准或退回並留下稽核；不得從模型輸出直接確認。現有 `same_question_type`、`same_unit`、`same_subject` 只供歷史相容或縮小候選範圍，不能單獨證明題目相同或相近。`score` 不允許這種逐題來源。
 
 ### `practice_sessions` 實際練習
 
@@ -1222,9 +1238,13 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `matched_knowledge_point_id` | `uuid` | 選填 | 採用的知識點 | `match_basis=same_knowledge_point` 時必填；外鍵至 `knowledge_points.id` |
 | `matched_curriculum_unit_id` | `uuid` | 選填 | 採用的教材單元 | `match_basis=same_unit` 時必填；外鍵至 `curriculum_units.id` |
 | `matched_subject_id` | `uuid` | 選填 | 採用的科目 | `match_basis=same_subject` 時必填；外鍵至 `subjects.id` |
+| `question_template_id` | `uuid` | 選填 | 採用的已確認模板 | `match_basis=same_template` 時必填；來源與目標版本都必須是 confirmed 成員 |
+| `shared_relation_count` | `smallint` | 選填 | 實際共同關聯數量 | `same_template` 為 0；`shared_keyword` 必須大於 0 |
+| `relation_method_version` | `varchar(80)` | 選填 | 推薦規則版本 | `same_template`、`shared_keyword` 必填 |
+| `relation_evidence` | `jsonb` | 選填 | 模板或共同關鍵字證據 | `shared_keyword.keyword_ids` 數量、有效狀態與兩題 confirmed 關聯由資料庫驗證 |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
 
-每個錯題或相近題練習項目都要連到觸發它的確切 `answer_part_results`。同一練習項目可由多筆歷史錯題觸發，因此使用關聯表而不是在工作階段或題目上保存單一來源。現有 `0011` 值域仍保留主題、知識點、單元或科目依據，但 strict same-type recommendation 不使用這些寬鬆依據。`0012` 起，該流程只記錄 exact type 或已確認群組；每筆來源仍只允許一個依據有值。查詢某筆歷史錯題的後續結果時，沿此表連到練習項目、作答與小題結果，不從目前分類或群組反推來源。
+每個錯題或相近題練習項目都要連到觸發它的確切 `answer_part_results`。同一練習項目可由多筆歷史錯題觸發，因此使用關聯表而不是在工作階段或題目上保存單一來源。新推薦依 `same_template`、`confirmed_group`、`shared_keyword`、`same_topic` 的順序選擇第一個有合格候選的層級；關鍵字與主題層只選共同數量最高的級距，不以較弱關聯補滿題數。同層先排未作答者，最近答對者排除。每筆來源保存實際採用的單一主要依據、規則版本與排序證據；查詢歷史結果不從題目目前分類反推來源。
 
 ## 作答、審核與逐小題複習
 
@@ -1750,7 +1770,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
 - `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
 - `docs/plan.md`：歷史 JSON API 邊界、目前 PostgreSQL 前端狀態及正式資料庫施工確認節點。
-- `docs/database-completion-matrix.md`：目前規劃需求、106 張業務資料表、正式 API／表單與安全切換狀態對照。
+- `docs/database-completion-matrix.md`：目前規劃需求、110 張業務資料表、正式 API／表單與安全切換狀態對照。
 - `app/lib/demo-data.ts`：歷史介面與 fixture 搬移來源；目前正式主流程不以它作為帳號、題目或作答的權威資料契約。
 - `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
 - `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

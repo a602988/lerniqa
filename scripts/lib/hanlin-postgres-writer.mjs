@@ -30,6 +30,8 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0011", "score_session_aggregates"],
     ["0012", "admin_catalog_and_question_enrichment"],
     ["0013", "education_stage_catalog"],
+    ["0014", "question_relation_profiles"],
+    ["0015", "relation_keyword_review"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -655,7 +657,7 @@ async function assertSchema(client) {
     if (JSON.stringify(actual) !== JSON.stringify(EXPECTED_MIGRATIONS)) {
         fail(
             "SCHEMA_VERSION_MISMATCH",
-            `本機資料庫 migration 必須精確為 0001–0013；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
+            `本機資料庫 migration 必須精確為 0001–0015；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
         );
     }
 }

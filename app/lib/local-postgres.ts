@@ -5,6 +5,8 @@ import path from "node:path";
 import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
+import { runReadOnlyRepeatableReadTransaction } from "./postgres-read-transaction.ts";
+
 const DEFAULT_PORT = 55432;
 const DEFAULT_DATABASE = "lerniqa_local";
 
@@ -233,6 +235,29 @@ export async function withLocalPostgresTransaction<T>(
     rethrowDatabaseError(error, config);
   } finally {
     client.release();
+  }
+}
+
+/**
+ * Gives reporting code one connection and one read-only repeatable-read
+ * snapshot without changing the transaction semantics used by write paths.
+ */
+export async function withLocalPostgresReadTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const config = readConfig();
+  let client: PoolClient;
+
+  try {
+    client = await getPool().connect();
+  } catch (error) {
+    rethrowDatabaseError(error, config);
+  }
+
+  try {
+    return await runReadOnlyRepeatableReadTransaction(client, fn);
+  } catch (error) {
+    rethrowDatabaseError(error, config);
   }
 }
 
