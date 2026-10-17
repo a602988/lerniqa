@@ -1338,7 +1338,7 @@ function QuestionFlow(props: QuestionFlowProps) {
         : "";
 
     useEffect(() => {
-        if (!feedback || !window.matchMedia("(min-width: 768px) and (max-width: 1023px)").matches) return;
+        if (!feedback || !window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches) return;
 
         const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
         const frame = window.requestAnimationFrame(() => reviewRef.current?.scrollIntoView({ behavior, block: "nearest" }));
