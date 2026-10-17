@@ -736,6 +736,8 @@ textarea:focus-visible,
 }
 
 .practice-header-actions {
+    --practice-header-action-height: 2.75rem;
+
     display: flex;
     flex: 0 1 auto;
     flex-wrap: wrap;
@@ -746,7 +748,8 @@ textarea:focus-visible,
 
 .practice-streak {
     display: flex;
-    min-height: 2.75rem;
+    height: var(--practice-header-action-height);
+    min-height: var(--practice-header-action-height);
     align-items: center;
     gap: 0.55rem;
     border: 1px solid #f2c9da;
@@ -754,6 +757,11 @@ textarea:focus-visible,
     padding: 0.35rem 0.7rem;
     background: #fff4f8;
     color: #96365e;
+}
+
+.practice-header-actions > button[data-slot="button"] {
+    height: var(--practice-header-action-height);
+    min-height: var(--practice-header-action-height);
 }
 
 .practice-streak-icon {
