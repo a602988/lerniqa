@@ -94,7 +94,10 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                 : part.gradingPolicy !== "automatic"
                     ? "送出後會保存答案，等待輔助批改"
                     : "";
-            return <fieldset className={part.answerMode === "text" ? "grid gap-3" : `answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
+            const fieldsetClassName = part.answerMode === "text"
+                ? handwritingOnly ? "col-span-full grid gap-3" : "grid gap-3"
+                : `answer-grid answer-grid-${answerColumnCount}`;
+            return <fieldset className={fieldsetClassName} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
                 <legend className={usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}>
                     {showPrompt
                         ? <PromptText text={part.prompt} />
@@ -106,9 +109,8 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                 {part.answerMode === "text"
                     ? handwritingOnly
                         ? <FormField
-                            className="practice-answer-field"
+                            className="practice-answer-field w-full"
                             label="辨識文字"
-                            layout="horizontal"
                             description={submitted
                                 ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
                                 : "停筆後會自動辨識，也可以立即分析或重新分析。"}
@@ -118,6 +120,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                                 placeholder="等待辨識手寫內容"
                                 readOnly
                                 aria-readonly="true"
+                                className="w-full"
                             />
                         </FormField>
                         : <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
