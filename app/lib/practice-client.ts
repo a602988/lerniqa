@@ -752,6 +752,22 @@ export function getPersistedQuestionReferenceAnswers(questionId: string, revisio
     }>(`/api/v1/local-practice/questions/${encodeURIComponent(questionId)}/reference-answer?${query}`);
 }
 
+/**
+ * 辨識尚未送出的手寫內容，不建立正式作答紀錄。
+ * @param handwriting 目前手寫板的 PNG 內容。
+ * @returns 可辨識文字與清晰狀態。
+ */
+export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput) {
+    return practiceApi<{ transcription: string | null; legibility: "clear" | "unreadable" }>(
+        "/api/v1/local-practice/handwriting/transcription",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ handwriting }),
+        },
+    );
+}
+
 export function submitPersistedPracticeAttempt(input: {
     sessionId: string;
     questionId: string;

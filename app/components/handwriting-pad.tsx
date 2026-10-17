@@ -14,6 +14,10 @@ interface HandwritingPadProps {
     disabled?: boolean;
     /** 顯示於標題旁的 AI 辨識狀態。 */
     recognitionStatus?: string;
+    /** 執行送出前的 AI 手寫辨識。 */
+    onAnalyze?: () => void;
+    /** AI 是否正在辨識目前筆跡。 */
+    analysisBusy?: boolean;
 }
 
 /**
@@ -22,7 +26,7 @@ interface HandwritingPadProps {
  * @param props 已保存內容、更新事件與停用狀態。
  * @returns 可觸控與滑鼠書寫的畫布。
  */
-export function HandwritingPad({ value, onChange, disabled = false, recognitionStatus }: HandwritingPadProps) {
+export function HandwritingPad({ value, onChange, disabled = false, recognitionStatus, onAnalyze, analysisBusy = false }: HandwritingPadProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawingRef = useRef(false);
     const [tool, setTool] = useState<"pen" | "eraser">("pen");
@@ -145,10 +149,13 @@ export function HandwritingPad({ value, onChange, disabled = false, recognitionS
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                     <p id={titleId} className="text-sm font-semibold">手寫板</p>
-                    {recognitionStatus && <Badge className="ai-recognition-chip" tone="warning" title="送出後由本機 AI 逐字辨識手寫內容；不解題，也不判斷答案正誤。"><Sparkles size={13} />AI 手寫辨識 · {recognitionStatus}</Badge>}
+                    {recognitionStatus && <Badge className="ai-recognition-chip" tone="warning" title="由本機 AI 逐字辨識手寫內容；不解題，也不判斷答案正誤。"><Sparkles size={13} />AI 手寫辨識 · {recognitionStatus}</Badge>}
                     <p id={descriptionId} className="text-xs text-muted-foreground">原始手寫會保留在這一題</p>
                 </div>
                 <div className="flex items-center gap-1">
+                    {onAnalyze && <Button appearance="outline" size="sm" disabled={disabled || analysisBusy || !value} onClick={onAnalyze}>
+                        <Sparkles />{analysisBusy ? "分析中…" : "AI 分析"}
+                    </Button>}
                     <Button appearance={tool === "pen" ? "solid" : "ghost"} tone={tool === "pen" ? "primary" : "muted"} size="sm" disabled={disabled} aria-pressed={tool === "pen"} onClick={() => setTool("pen")}>
                         <PencilLine />畫筆
                     </Button>

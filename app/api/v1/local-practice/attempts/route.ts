@@ -22,28 +22,10 @@ import {
     UUID_PATTERN,
 } from "../_shared";
 import {
-    handwritingAiConfiguration,
-    inspectHandwritingModel,
-    transcribeHandwriting,
-} from "@/app/lib/handwriting-analysis.mjs";
+    transcribeLocalHandwriting,
+} from "@/app/lib/handwriting-transcription.mjs";
 
 export const runtime = "nodejs";
-
-let handwritingModelPromise: ReturnType<typeof inspectHandwritingModel> | undefined;
-
-/** 只在目前網站程序內快取已核對 digest 與 vision capability 的本機模型。 */
-async function getHandwritingModel() {
-    handwritingModelPromise ??= inspectHandwritingModel({
-        configuration: handwritingAiConfiguration(),
-    });
-    try {
-        return await handwritingModelPromise;
-    }
-    catch (error) {
-        handwritingModelPromise = undefined;
-        throw error;
-    }
-}
 
 function parseAnswer(value: unknown): LocalPracticeAnswerInput | null {
     if (!isRecord(value) || typeof value.partId !== "string" || !UUID_PATTERN.test(value.partId)) return null;
@@ -155,8 +137,7 @@ export async function POST(request: Request) {
             }) ?? undefined;
             if (handwritingTranscriptionPartId) {
                 try {
-                    const model = await getHandwritingModel();
-                    const transcription = await transcribeHandwriting(handwriting.bytes, model);
+                    const transcription = await transcribeLocalHandwriting(handwriting.bytes);
                     if (transcription.legibility === "clear" && transcription.transcription) {
                         attemptInput.answers.push({
                             partId: handwritingTranscriptionPartId,

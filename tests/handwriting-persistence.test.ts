@@ -233,7 +233,7 @@ test("attempt requests accept a validated handwriting object without inventing a
     assert.match(route, /INVALID_HANDWRITING/u);
     assert.match(route, /answers: parsedAnswers/u);
     assert.match(route, /findLocalPracticeHandwritingPart/u);
-    assert.match(route, /transcribeHandwriting\(handwriting\.bytes, model\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes\)/u);
     assert.match(route, /transcription\.legibility === "clear" && transcription\.transcription/u);
     assert.match(route, /attemptInput\.answers\.push/u);
     assert.match(client, /handwriting\?: LocalPracticeHandwritingInput/u);
@@ -250,10 +250,28 @@ test("required handwriting questions hide typing and disclose clear recognition 
     ]);
     assert.match(page, /handwritingOnly=\{needsCharacterRecognition\}/u);
     assert.match(fields, /handwritingOnly[\s\S]*recognizedAnswers\?\.\[part\.id\][\s\S]*label="辨識文字"[\s\S]*readOnly/u);
-    assert.match(fields, /請在手寫板作答，送出後會辨識文字。/u);
+    assert.match(fields, /請在手寫板作答，完成後按「AI 分析」。/u);
     assert.match(store, /inputMethod: "handwriting_recognition"/u);
     assert.match(store, /payloadRecognizedText\(part\.answer_payload\)/u);
     assert.match(adapter, /recognizedAnswers: Object\.fromEntries/u);
+});
+
+test("handwriting preview analysis is authenticated, non-persistent, and cleared by new ink", async () => {
+    const [route, client, page, pad] = await Promise.all([
+        readFile(new URL("../app/api/v1/local-practice/handwriting/transcription/route.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/lib/practice-client.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../app/components/handwriting-pad.tsx", import.meta.url), "utf8"),
+    ]);
+    assert.match(route, /requireLocalPracticeAccount\(request\)/u);
+    assert.match(route, /validateHandwritingPngDataUrl\(body\.handwriting\.dataUrl\)/u);
+    assert.match(route, /transcribeLocalHandwriting\(handwriting\.bytes\)/u);
+    assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
+    assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
+    assert.match(client, /\/api\/v1\/local-practice\/handwriting\/transcription/u);
+    assert.match(pad, /AI 分析/u);
+    assert.match(page, /recognizedAnswers: \{ \[handwritingPart\.id\]: result\.transcription \}/u);
+    assert.match(page, /function changeHandwriting[\s\S]*setHandwritingAnalysis\(\{ status: "idle", message: "" \}\)[\s\S]*props\.onHandwriting\(value\)/u);
 });
 
 test("handwriting-only completion is limited to text parts and remains pending manual review", async () => {
@@ -427,7 +445,7 @@ test("the UI advances only after a confirmed save, keeps uncertain retries, and 
     );
     assert.match(
         page,
-        /<HandwritingPad value=\{handwriting\} disabled=\{Boolean\(feedback\) \|\| props\.busy \|\| props\.answerLocked \|\| checkMode === "score"\}/u,
+        /<HandwritingPad[\s\S]*value=\{handwriting\}[\s\S]*disabled=\{Boolean\(feedback\) \|\| props\.busy \|\| props\.answerLocked \|\| checkMode === "score"/u,
     );
     assert.match(
       adapter,
