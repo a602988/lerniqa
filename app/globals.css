@@ -4040,6 +4040,39 @@ textarea:focus-visible,
     gap: 0.85rem;
 }
 
+.written-answer-fieldset,
+.practice-handwriting-answer-field {
+    width: 100%;
+    min-width: 0;
+}
+
+.written-answer-legend {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.written-answer-notice {
+    min-width: 0;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.practice-handwriting-answer-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.practice-handwriting-answer-field > p {
+    width: 100%;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
 .practice-answer-field {
     --keel-form-field-label-width: 7.5rem;
 }
@@ -4394,6 +4427,13 @@ textarea:focus-visible,
 
     .handwriting-canvas {
         height: 22rem;
+    }
+}
+
+@media (min-width: 640px) {
+    .written-answer-legend {
+        flex-wrap: nowrap;
+        white-space: nowrap;
     }
 }
 

@@ -95,34 +95,36 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                     ? "送出後會保存答案，等待輔助批改"
                     : "";
             const fieldsetClassName = part.answerMode === "text"
-                ? handwritingOnly ? "col-span-full grid gap-3" : "grid gap-3"
+                ? handwritingOnly ? "written-answer-fieldset col-span-full grid w-full min-w-0 gap-3" : "written-answer-fieldset grid w-full min-w-0 gap-3"
                 : `answer-grid answer-grid-${answerColumnCount}`;
+            const legendClassName = `${usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}${part.answerMode === "text" ? " written-answer-legend" : ""}`;
+            const recognitionDescription = submitted
+                ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
+                : "停筆後會自動辨識，也可以立即分析或重新分析。";
+            const recognitionDescriptionId = `handwriting-answer-description-${part.id}`;
             return <fieldset className={fieldsetClassName} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
-                <legend className={usesStepNavigation && showPrompt ? "multi-choice-step-prompt" : "mb-2 font-semibold"}>
+                <legend className={legendClassName}>
                     {showPrompt
                         ? <PromptText text={part.prompt} />
                         : usesStepNavigation ? "選擇答案" : question.parts.length > 1 ? `第 ${sourceIndex + 1} 小題` : "作答"}
                     {part.answerMode === "multiple_choice" ? "（可複選）" : ""}
-                    {gradingNotice && <span className="ml-2 text-xs font-normal text-muted-foreground">（{gradingNotice}）</span>}
+                    {gradingNotice && <span className="written-answer-notice">（{gradingNotice}）</span>}
                 </legend>
                 <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>
                 {part.answerMode === "text"
                     ? handwritingOnly
-                        ? <FormField
-                            className="practice-answer-field w-full"
-                            label="辨識文字"
-                            description={submitted
-                                ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
-                                : "停筆後會自動辨識，也可以立即分析或重新分析。"}
-                        >
+                        ? <div className="practice-handwriting-answer-field">
                             <Input
                                 value={recognizedAnswers?.[part.id] ?? ""}
                                 placeholder="等待辨識手寫內容"
                                 readOnly
                                 aria-readonly="true"
+                                aria-label="作答辨識結果"
+                                aria-describedby={recognitionDescriptionId}
                                 className="w-full"
                             />
-                        </FormField>
+                            <p id={recognitionDescriptionId}>{recognitionDescription}</p>
+                        </div>
                         : <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
                     : part.options.map((option) => <label className="answer-option" key={option.id}>
                         {part.answerMode === "multiple_choice"

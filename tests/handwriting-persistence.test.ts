@@ -249,8 +249,9 @@ test("required handwriting questions keep a read-only answer field before and af
         readFile(new URL("../app/lib/practice-catalog-adapter.ts", import.meta.url), "utf8"),
     ]);
     assert.match(page, /handwritingOnly=\{needsCharacterRecognition\}/u);
-    assert.match(fields, /handwritingOnly \? "col-span-full grid gap-3"/u);
-    assert.match(fields, /handwritingOnly[\s\S]*label="辨識文字"[\s\S]*value=\{recognizedAnswers\?\.\[part\.id\] \?\? ""\}[\s\S]*placeholder="等待辨識手寫內容"[\s\S]*readOnly/u);
+    assert.match(fields, /handwritingOnly \? "written-answer-fieldset col-span-full grid w-full min-w-0 gap-3"/u);
+    assert.match(fields, /handwritingOnly[\s\S]*value=\{recognizedAnswers\?\.\[part\.id\] \?\? ""\}[\s\S]*placeholder="等待辨識手寫內容"[\s\S]*readOnly[\s\S]*aria-label="作答辨識結果"/u);
+    assert.doesNotMatch(fields, /label="辨識文字"/u);
     assert.match(fields, /停筆後會自動辨識，也可以立即分析或重新分析。/u);
     assert.match(store, /inputMethod: "handwriting_recognition"/u);
     assert.match(store, /payloadRecognizedText\(part\.answer_payload\)/u);
