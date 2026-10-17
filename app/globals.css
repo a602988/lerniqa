@@ -3940,8 +3940,8 @@ textarea:focus-visible,
     grid-template-areas:
         "question handwriting"
         "review handwriting"
-        "conditions handwriting"
-        "actions handwriting";
+        "actions handwriting"
+        "conditions handwriting";
     gap: 1rem 1.25rem;
     align-items: stretch;
 }
@@ -4173,8 +4173,8 @@ textarea:focus-visible,
         grid-template-areas:
             "question"
             "review"
-            "conditions"
             "actions"
+            "conditions"
             "handwriting";
     }
 
