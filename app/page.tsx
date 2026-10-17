@@ -1302,6 +1302,10 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
 function QuestionFlow(props: QuestionFlowProps) {
     const { question, serverQuestion, index, total, partIds, checkMode, answer, handwriting, feedback } = props;
     const reviewRef = useRef<HTMLElement>(null);
+    const handwritingRef = useRef(handwriting);
+    const handwritingAnalysisIdRef = useRef(0);
+    const handwritingAbortRef = useRef<AbortController | null>(null);
+    const handwritingTimerRef = useRef<number | null>(null);
     const [handwritingAnalysis, setHandwritingAnalysis] = useState<{
         status: "idle" | "loading" | "clear" | "unreadable" | "error";
         message: string;
@@ -1344,10 +1348,29 @@ function QuestionFlow(props: QuestionFlowProps) {
     const referenceExplanation = feedback?.referenceAnswers?.length
         ? formatReferenceExplanations(feedback.referenceAnswers)
         : "";
+    const canAnalyzeHandwriting = needsCharacterRecognition && Boolean(serverQuestion && handwritingPart);
+
+    handwritingRef.current = handwriting;
 
     useEffect(() => {
+        handwritingAnalysisIdRef.current += 1;
+        handwritingAbortRef.current?.abort();
         setHandwritingAnalysis({ status: "idle", message: "" });
     }, [question.id, serverQuestion?.revisionId]);
+
+    useEffect(() => {
+        if (!handwriting || !canAnalyzeHandwriting || feedback || props.busy || props.answerLocked || checkMode === "score") return;
+
+        const source = handwriting;
+        const timer = window.setTimeout(() => void analyzeHandwriting(source), 1500);
+        handwritingTimerRef.current = timer;
+        return () => {
+            window.clearTimeout(timer);
+            if (handwritingTimerRef.current === timer) handwritingTimerRef.current = null;
+        };
+    }, [handwriting, canAnalyzeHandwriting, feedback, props.busy, props.answerLocked, checkMode, handwritingPart?.id]);
+
+    useEffect(() => () => handwritingAbortRef.current?.abort(), []);
 
     useEffect(() => {
         if (!feedback || !window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches) return;
@@ -1358,12 +1381,24 @@ function QuestionFlow(props: QuestionFlowProps) {
     }, [feedback]);
 
     /**
+     * 停止舊辨識並清除畫面結果，避免舊請求覆蓋新筆跡。
+     * @returns 無回傳值。
+     */
+    function resetHandwritingAnalysis() {
+        handwritingAnalysisIdRef.current += 1;
+        handwritingAbortRef.current?.abort();
+        if (handwritingTimerRef.current !== null) window.clearTimeout(handwritingTimerRef.current);
+        handwritingTimerRef.current = null;
+        setHandwritingAnalysis({ status: "idle", message: "" });
+    }
+
+    /**
      * 清除舊辨識結果後更新筆跡，避免作答區顯示先前畫面的文字。
      * @param value 最新手寫 PNG；空字串代表已清除。
      * @returns 無回傳值。
      */
     function changeHandwriting(value: string) {
-        setHandwritingAnalysis({ status: "idle", message: "" });
+        resetHandwritingAnalysis();
         props.onHandwriting(value);
     }
 
@@ -1371,12 +1406,20 @@ function QuestionFlow(props: QuestionFlowProps) {
      * 辨識目前手寫內容並把文字顯示在唯一的文字作答欄位。
      * @returns 無回傳值。
      */
-    async function analyzeHandwriting() {
-        if (!handwriting || !handwritingPart || handwritingAnalysis.status === "loading") return;
+    async function analyzeHandwriting(source: string) {
+        if (!source || !handwritingPart) return;
 
+        if (handwritingTimerRef.current !== null) window.clearTimeout(handwritingTimerRef.current);
+        handwritingTimerRef.current = null;
+        const analysisId = ++handwritingAnalysisIdRef.current;
+        const controller = new AbortController();
+        handwritingAbortRef.current?.abort();
+        handwritingAbortRef.current = controller;
         setHandwritingAnalysis({ status: "loading", message: "正在辨識手寫內容…" });
         try {
-            const result = await transcribePersistedHandwriting({ dataUrl: handwriting });
+            const result = await transcribePersistedHandwriting({ dataUrl: source }, controller.signal);
+            if (analysisId !== handwritingAnalysisIdRef.current || source !== handwritingRef.current) return;
+
             if (result.legibility === "clear" && result.transcription) {
                 setHandwritingAnalysis({
                     status: "clear",
@@ -1391,6 +1434,8 @@ function QuestionFlow(props: QuestionFlowProps) {
             });
         }
         catch (error) {
+            if (controller.signal.aborted || analysisId !== handwritingAnalysisIdRef.current) return;
+
             setHandwritingAnalysis({
                 status: "error",
                 message: error instanceof Error
@@ -1398,14 +1443,20 @@ function QuestionFlow(props: QuestionFlowProps) {
                     : "本機 AI 目前無法使用，可直接送出並等待人工批改。",
             });
         }
+        finally {
+            if (handwritingAbortRef.current === controller) handwritingAbortRef.current = null;
+        }
     }
 
-    const canAnalyzeHandwriting = needsCharacterRecognition && Boolean(serverQuestion && handwritingPart);
     const recognitionStatus = handwritingAnalysis.status === "loading"
         ? "正在分析"
         : handwritingAnalysis.status === "clear"
             ? "已填入作答"
-            : "寫完後按 AI 分析";
+            : handwritingAnalysis.status === "unreadable"
+                ? "需要重新書寫或人工檢視"
+                : handwritingAnalysis.status === "error"
+                    ? "目前改由人工檢視"
+                    : handwriting ? "停筆 1.5 秒後自動分析" : "等待手寫內容";
 
     return (
         <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
@@ -1436,11 +1487,13 @@ function QuestionFlow(props: QuestionFlowProps) {
                     {checkMode === "score" && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="note">只顯示成績模式不保存作答內容，因此不能提交手寫板。請改用「逐題檢核」或「全部作答後檢核」保存筆跡。</p>}
                     <HandwritingPad
                         value={handwriting}
-                        disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score" || handwritingAnalysis.status === "loading"}
+                        disabled={Boolean(feedback) || props.busy || props.answerLocked || checkMode === "score"}
                         recognitionStatus={canAnalyzeHandwriting ? recognitionStatus : needsCharacterRecognition ? "送出後辨識文字" : undefined}
                         analysisBusy={handwritingAnalysis.status === "loading"}
-                        onAnalyze={canAnalyzeHandwriting ? analyzeHandwriting : undefined}
+                        hasAnalysisResult={["clear", "unreadable", "error"].includes(handwritingAnalysis.status)}
+                        onAnalyze={canAnalyzeHandwriting ? () => void analyzeHandwriting(handwriting) : undefined}
                         onChange={changeHandwriting}
+                        onStrokeStart={canAnalyzeHandwriting ? resetHandwritingAnalysis : undefined}
                     />
                     {canAnalyzeHandwriting && handwritingAnalysis.message && <p className="text-sm text-muted-foreground" role="status">{handwritingAnalysis.message}</p>}
                 </aside>

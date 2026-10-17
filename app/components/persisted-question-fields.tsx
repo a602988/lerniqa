@@ -105,11 +105,21 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                 <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>
                 {part.answerMode === "text"
                     ? handwritingOnly
-                        ? recognizedAnswers?.[part.id]
-                            ? <FormField className="practice-answer-field" label="辨識文字" layout="horizontal"><Input value={recognizedAnswers[part.id]} readOnly aria-readonly="true" /></FormField>
-                            : <p className="text-sm text-muted-foreground">{submitted
+                        ? <FormField
+                            className="practice-answer-field"
+                            label="辨識文字"
+                            layout="horizontal"
+                            description={submitted
                                 ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
-                                : "請在手寫板作答，完成後按「AI 分析」。"}</p>
+                                : "停筆後會自動辨識，也可以立即分析或重新分析。"}
+                        >
+                            <Input
+                                value={recognizedAnswers?.[part.id] ?? ""}
+                                placeholder="等待辨識手寫內容"
+                                readOnly
+                                aria-readonly="true"
+                            />
+                        </FormField>
                         : <FormField className="practice-answer-field" label="文字答案" layout="horizontal"><Input value={typeof value === "string" ? value : ""} maxLength={LOCAL_PRACTICE_MAX_ANSWER_LENGTH} onChange={(event) => update(part.id, event.target.value)} autoComplete="off" /></FormField>
                     : part.options.map((option) => <label className="answer-option" key={option.id}>
                         {part.answerMode === "multiple_choice"

@@ -755,15 +755,17 @@ export function getPersistedQuestionReferenceAnswers(questionId: string, revisio
 /**
  * 辨識尚未送出的手寫內容，不建立正式作答紀錄。
  * @param handwriting 目前手寫板的 PNG 內容。
+ * @param signal 取消尚未完成的預覽請求。
  * @returns 可辨識文字與清晰狀態。
  */
-export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput) {
+export function transcribePersistedHandwriting(handwriting: LocalPracticeHandwritingInput, signal?: AbortSignal) {
     return practiceApi<{ transcription: string | null; legibility: "clear" | "uncertain" | "unreadable" }>(
         "/api/v1/local-practice/handwriting/transcription",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ handwriting }),
+            signal,
         },
     );
 }

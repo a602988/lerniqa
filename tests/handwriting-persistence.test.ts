@@ -241,7 +241,7 @@ test("attempt requests accept a validated handwriting object without inventing a
     assert.match(page, /attemptRequestRef\.current = snapshot;[\s\S]*submitPersistedPracticeAttempt\(snapshot\)/u);
 });
 
-test("required handwriting questions hide typing and disclose clear recognition as read-only text", async () => {
+test("required handwriting questions keep a read-only answer field before and after recognition", async () => {
     const [fields, page, store, adapter] = await Promise.all([
         readFile(new URL("../app/components/persisted-question-fields.tsx", import.meta.url), "utf8"),
         readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -249,14 +249,14 @@ test("required handwriting questions hide typing and disclose clear recognition 
         readFile(new URL("../app/lib/practice-catalog-adapter.ts", import.meta.url), "utf8"),
     ]);
     assert.match(page, /handwritingOnly=\{needsCharacterRecognition\}/u);
-    assert.match(fields, /handwritingOnly[\s\S]*recognizedAnswers\?\.\[part\.id\][\s\S]*label="辨識文字"[\s\S]*readOnly/u);
-    assert.match(fields, /請在手寫板作答，完成後按「AI 分析」。/u);
+    assert.match(fields, /handwritingOnly[\s\S]*label="辨識文字"[\s\S]*value=\{recognizedAnswers\?\.\[part\.id\] \?\? ""\}[\s\S]*placeholder="等待辨識手寫內容"[\s\S]*readOnly/u);
+    assert.match(fields, /停筆後會自動辨識，也可以立即分析或重新分析。/u);
     assert.match(store, /inputMethod: "handwriting_recognition"/u);
     assert.match(store, /payloadRecognizedText\(part\.answer_payload\)/u);
     assert.match(adapter, /recognizedAnswers: Object\.fromEntries/u);
 });
 
-test("handwriting preview analysis is authenticated, non-persistent, and cleared by new ink", async () => {
+test("handwriting preview analysis is automatic, cancellable, non-persistent, and cleared by new ink", async () => {
     const [route, client, page, pad] = await Promise.all([
         readFile(new URL("../app/api/v1/local-practice/handwriting/transcription/route.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/lib/practice-client.ts", import.meta.url), "utf8"),
@@ -269,9 +269,17 @@ test("handwriting preview analysis is authenticated, non-persistent, and cleared
     assert.match(route, /HANDWRITING_AI_UNAVAILABLE[\s\S]*直接送出並等待人工批改/u);
     assert.doesNotMatch(route, /submitLocalPracticeAttempt|storeHandwritingObject/u);
     assert.match(client, /\/api\/v1\/local-practice\/handwriting\/transcription/u);
-    assert.match(pad, /AI 分析/u);
+    assert.match(pad, /LoaderCircle className="animate-spin"/u);
+    assert.match(pad, /hasAnalysisResult \? "重新分析" : "立即分析"/u);
     assert.match(page, /recognizedAnswers: \{ \[handwritingPart\.id\]: result\.transcription \}/u);
-    assert.match(page, /function changeHandwriting[\s\S]*setHandwritingAnalysis\(\{ status: "idle", message: "" \}\)[\s\S]*props\.onHandwriting\(value\)/u);
+    assert.match(page, /window\.setTimeout\(\(\) => void analyzeHandwriting\(source\), 1500\)/u);
+    assert.match(page, /function resetHandwritingAnalysis[\s\S]*handwritingAbortRef\.current\?\.abort\(\)[\s\S]*window\.clearTimeout\(handwritingTimerRef\.current\)[\s\S]*setHandwritingAnalysis\(\{ status: "idle", message: "" \}\)/u);
+    assert.match(page, /async function analyzeHandwriting[\s\S]*window\.clearTimeout\(handwritingTimerRef\.current\)[\s\S]*transcribePersistedHandwriting/u);
+    assert.match(page, /function changeHandwriting[\s\S]*resetHandwritingAnalysis\(\)[\s\S]*props\.onHandwriting\(value\)/u);
+    assert.match(page, /onStrokeStart=\{canAnalyzeHandwriting \? resetHandwritingAnalysis : undefined\}/u);
+    assert.match(pad, /function startDrawing[\s\S]*onStrokeStart\?\.\(\)[\s\S]*setPointerCapture/u);
+    assert.match(page, /analysisId !== handwritingAnalysisIdRef\.current \|\| source !== handwritingRef\.current/u);
+    assert.match(client, /transcribePersistedHandwriting\(handwriting: LocalPracticeHandwritingInput, signal\?: AbortSignal\)[\s\S]*signal,/u);
 });
 
 test("handwriting-only completion is limited to text parts and remains pending manual review", async () => {
