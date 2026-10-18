@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input } from "@keel-design/ui";
-import { ArrowLeft, ArrowRight, Bell, BookOpen, CalendarDays, Copy, Link2, Plus, RefreshCw } from "lucide-react";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input, MultiSelect, NativeSelect } from "@keel-design/ui";
+import { ArrowLeft, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, ChevronUp, Copy, Link2, Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
 import type { LearningBookContent, LearningBookDetail, LearningBookDto, LearningBookInviteDto, LearningBookListQuery, LearningBookListResult, LearningBookMigrationResult, LearningBookNotificationDto, LearningBookPerson, LearningBookScheduleDto } from "../lib/learning-book-contract";
 import { LEARNING_BOOK_POLICY } from "../lib/learning-book-contract";
 import { createLearningBook, getLearningBook, learningBookMutation, learningBookQuery, listLearningBooks, type LegacyBookMigration } from "../lib/learning-book-client";
@@ -17,16 +17,30 @@ const notificationLabels: Record<string, string> = { share_received: "收到學�
 const displayDate = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const today = () => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-function PeopleFilter({ label, people, values, onChange }: { label: string; people: LearningBookPerson[]; values: string[]; onChange: (values: string[]) => void }) {
-    const [search, setSearch] = useState("");
-    const visible = people.filter((person) => person.displayName.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-    return <details className="learning-book-people-filter"><summary>{label} · {values.length ? `已選 ${values.length}` : "全部"}</summary>
-        <div><Input aria-label={`搜尋${label}`} placeholder={`搜尋${label}`} value={search} onChange={(event) => setSearch(event.target.value)} />
-            <div className="learning-book-actions"><Button size="sm" appearance="ghost" onClick={() => onChange([...new Set([...values, ...visible.map((person) => person.id)])])}>全選</Button><Button size="sm" appearance="ghost" onClick={() => onChange([])}>取消選擇</Button></div>
-            {visible.map((person) => <label key={person.id}><input type="checkbox" checked={values.includes(person.id)} onChange={(event) => onChange(event.target.checked ? [...values, person.id] : values.filter((id) => id !== person.id))} />{person.displayName}</label>)}
-            {!visible.length && <p>沒有符合的{label}</p>}
-        </div>
-    </details>;
+function PeopleFilter({ id, label, people, values, onChange }: { id: string; label: string; people: LearningBookPerson[]; values: string[]; onChange: (values: string[]) => void }) {
+    return <div className="learning-book-multi-select">
+        <p id={`${id}-label`}>{label}</p>
+        <MultiSelect
+            aria-labelledby={`${id}-label`}
+            clearAllLabel="全部清除"
+            clearable
+            disabled={!people.length}
+            emptyLabel={`尚無可選${label}`}
+            matchTriggerWidth
+            noResultsLabel={`找不到符合的${label}`}
+            onValuesChange={onChange}
+            options={people.map((person) => ({ label: person.displayName, value: person.id }))}
+            placeholder={people.length ? `全部${label}` : `尚無可選${label}`}
+            searchable
+            searchFieldStyle="outlined"
+            searchPlaceholder={`搜尋${label}...`}
+            selectAll
+            selectAllLabel="全選"
+            selectionIndicator="checkbox"
+            triggerLabelMode="count"
+            values={values}
+        />
+    </div>;
 }
 
 interface Props {
@@ -43,6 +57,7 @@ interface Props {
 /** The API is authoritative; browser preferences are read solely for explicit migration. */
 export function LearningBookWorkspace({ learnerId, canCreatePlans, currentContent, catalog, refreshToken = 0, onChanged, onStarted, onBack }: Props) {
     const [filters, setFilters] = useState<Partial<LearningBookListQuery>>({ arrangement: "all", source: "all", sync: "all", status: "active", sort: "updated", creatorIds: [], sharerIds: [], search: "" });
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
     const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
     const [result, setResult] = useState<LearningBookListResult>();
     const [loading, setLoading] = useState(false);
@@ -122,6 +137,10 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
         setCursorHistory([null]);
         setFilters((current) => ({ ...current, [key]: value, cursor: undefined }));
     }
+    function resetFilters() {
+        setCursorHistory([null]);
+        setFilters({ arrangement: "all", source: "all", sync: "all", status: "active", sort: "updated", creatorIds: [], sharerIds: [], search: "", cursor: undefined });
+    }
     function openDetail(book: LearningBookDto) {
         void run(`detail:${book.id}`, async () => {
             const loaded = await getLearningBook(learnerId, book.id);
@@ -165,6 +184,17 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
     }
     const disabled = Boolean(busy);
     const draftHasUnsavedChanges = Boolean(detail && (editName !== detail.name || editMode !== detail.checkMode || replaceQuestions));
+    const activeFilterCount = [
+        Boolean(filters.search?.trim()),
+        filters.arrangement !== "all",
+        filters.source !== "all",
+        filters.status !== "active",
+        filters.sync !== "all",
+        filters.sort !== "updated",
+        Boolean(filters.creatorIds?.length),
+        Boolean(filters.sharerIds?.length),
+    ].filter(Boolean).length;
+    const filterContentId = "learning-book-filter-content";
 
     return <div className="learning-book-workspace">
         <Card className="workspace-card learning-book-card border-border/80 shadow-sm">
@@ -177,36 +207,51 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
         {!canCreatePlans && <p className="learning-book-message">目前具有檢視權限；建立、排程及建立副本需由學習者管理者開啟權限。</p>}
         {migration && !migrationCompleted && <div className="learning-book-message"><span>偵測到這個學習者在此瀏覽器的舊資料，請先預覽後匯入。</span><Button appearance="outline" size="sm" onClick={() => setMigrationOpen(true)}>預覽本機資料</Button></div>}
         {notificationsOpen && <section className="learning-book-notifications" aria-label="站內通知"><h2>站內通知</h2>{!notifications.length && <p>目前沒有通知。</p>}{notifications.map((item) => <div key={item.id}><span>{notificationLabels[item.kind] ?? "學習本狀態更新"}</span><small>{displayDate(item.createdAt)}</small>{!item.readAt && <Button size="sm" appearance="ghost" disabled={disabled} onClick={() => void run(`read:${item.id}`, async () => { await learningBookMutation("/notifications", { learnerId, ids: [item.id] }, "PATCH"); })}>標為已讀</Button>}</div>)}</section>}
-        <section className="learning-book-filters" aria-label="學習本篩選">
-            <FormField label="搜尋學習本"><Input placeholder="搜尋名稱" maxLength={140} value={filters.search} onChange={(event) => changeFilter("search", event.target.value)} /></FormField>
-            <FormField label="安排狀態"><select className="learning-book-select" value={filters.arrangement} onChange={(event) => changeFilter("arrangement", event.target.value as LearningBookListQuery["arrangement"])}><option value="all">全部</option><option value="unscheduled">未安排</option><option value="scheduled">已安排</option></select></FormField>
-            <FormField label="來源"><select className="learning-book-select" value={filters.source} onChange={(event) => changeFilter("source", event.target.value as LearningBookListQuery["source"])}><option value="all">全部</option><option value="mine">我建立的</option><option value="shared">分享給我的</option></select></FormField>
-            <FormField label="同步狀態"><select className="learning-book-select" value={filters.sync} onChange={(event) => changeFilter("sync", event.target.value as LearningBookListQuery["sync"])}><option value="all">全部</option><option value="synced">已同步</option><option value="updated">有新版</option><option value="revoked">已停止分享</option></select></FormField>
-            <FormField label="學習本狀態"><select className="learning-book-select" value={filters.status} onChange={(event) => changeFilter("status", event.target.value as LearningBookListQuery["status"])}><option value="active">使用中</option><option value="archived">已封存</option><option value="all">全部</option></select></FormField>
-            <FormField label="排序"><select className="learning-book-select" value={filters.sort} onChange={(event) => changeFilter("sort", event.target.value as LearningBookListQuery["sort"])}><option value="updated">最近更新</option><option value="created">最近建立</option><option value="scheduled">最近安排</option><option value="name">名稱</option></select></FormField>
-            <PeopleFilter label="建立者" people={result?.facets.creators ?? []} values={filters.creatorIds ?? []} onChange={(values) => changeFilter("creatorIds", values)} />
-            <PeopleFilter label="分享者" people={result?.facets.sharers ?? []} values={filters.sharerIds ?? []} onChange={(values) => changeFilter("sharerIds", values)} />
+        <section className="learning-book-filter-panel" aria-labelledby="learning-book-filter-title">
+            <div className="learning-book-filter-heading">
+                <h2 id="learning-book-filter-title">篩選學習本</h2>
+                <div className="learning-book-filter-heading-actions">
+                    {activeFilterCount > 0 && <span>{activeFilterCount} 個條件</span>}
+                    <Button appearance="ghost" tone="muted" size="sm" onClick={resetFilters}><RotateCcw />清除篩選</Button>
+                    <Button appearance="outline" tone="muted" size="sm" aria-controls={filterContentId} aria-expanded={filtersExpanded} onClick={() => setFiltersExpanded((value) => !value)}>
+                        {filtersExpanded ? <ChevronUp /> : <ChevronDown />}{filtersExpanded ? "收合篩選" : "展開篩選"}
+                    </Button>
+                </div>
+            </div>
+            <div className="learning-book-filter-grid learning-book-filter-core">
+                <FormField className="learning-book-search-field" label="搜尋">
+                    <div className="learning-book-search"><Search aria-hidden="true" /><Input aria-label="搜尋學習本名稱" placeholder="搜尋學習本名稱" maxLength={140} value={filters.search} onChange={(event) => changeFilter("search", event.target.value)} /></div>
+                </FormField>
+                <FormField label="安排狀態"><NativeSelect options={[{ value: "all", label: "全部" }, { value: "unscheduled", label: "未安排" }, { value: "scheduled", label: "已安排" }]} value={filters.arrangement} onChange={(event) => changeFilter("arrangement", event.target.value as LearningBookListQuery["arrangement"])} /></FormField>
+                <FormField label="來源"><NativeSelect options={[{ value: "all", label: "全部" }, { value: "mine", label: "我建立的" }, { value: "shared", label: "分享給我的" }]} value={filters.source} onChange={(event) => changeFilter("source", event.target.value as LearningBookListQuery["source"])} /></FormField>
+                <FormField label="學習本狀態"><NativeSelect options={[{ value: "active", label: "使用中" }, { value: "archived", label: "已封存" }, { value: "all", label: "全部" }]} value={filters.status} onChange={(event) => changeFilter("status", event.target.value as LearningBookListQuery["status"])} /></FormField>
+            </div>
+            {filtersExpanded && <div className="learning-book-filter-grid" id={filterContentId}>
+                <FormField label="同步狀態"><NativeSelect options={[{ value: "all", label: "全部" }, { value: "synced", label: "已同步" }, { value: "updated", label: "有新版" }, { value: "revoked", label: "已停止分享" }]} value={filters.sync} onChange={(event) => changeFilter("sync", event.target.value as LearningBookListQuery["sync"])} /></FormField>
+                <FormField label="排序"><NativeSelect options={[{ value: "updated", label: "最近更新" }, { value: "created", label: "最近建立" }, { value: "scheduled", label: "最近安排" }, { value: "name", label: "名稱" }]} value={filters.sort} onChange={(event) => changeFilter("sort", event.target.value as LearningBookListQuery["sort"])} /></FormField>
+                <PeopleFilter id="learning-book-creator" label="建立者" people={result?.facets.creators ?? []} values={filters.creatorIds ?? []} onChange={(values) => changeFilter("creatorIds", values)} />
+                <PeopleFilter id="learning-book-sharer" label="分享者" people={result?.facets.sharers ?? []} values={filters.sharerIds ?? []} onChange={(values) => changeFilter("sharerIds", values)} />
+            </div>}
         </section>
-        <div className="learning-book-list-heading"><span aria-live="polite">{loading ? "讀取中…" : `共 ${result?.total ?? 0} 本`}</span><Button size="sm" appearance="ghost" disabled={loading || disabled} onClick={() => setReload((value) => value + 1)}><RefreshCw />重新整理</Button></div>
-        <ul className="learning-book-list" aria-busy={loading}>
-            {result?.books.map((book) => <li className="learning-book-item" key={book.id}>
-                <div className="learning-book-tags">
-                    <Badge tone="primary">{book.source === "mine" ? "我的學習本" : "收到分享"}</Badge>
-                    <Badge>{book.activeScheduleCount ? `已安排 ${book.activeScheduleCount} 次` : "未安排"}</Badge>
-                    {book.source === "shared" && <Badge>{syncLabels[book.syncStatus]}</Badge>}
-                    {book.hasDraft && <Badge>{book.status === "draft" ? "草稿" : "有未發布草稿"}</Badge>}
-                    {book.status === "archived" && <Badge>已封存</Badge>}
-                </div>
-                <h2>{book.name}</h2>
-                <p>{book.questions.length ? `${book.hasDraft ? "草稿 " : ""}${book.questions.length} 題` : "原篩選設定 · 待確認題目"} · {book.publishedRevisionNumber ? `已發布第 ${book.publishedRevisionNumber} 版` : "尚未發布"}</p>
-                <dl><div><dt>建立者</dt><dd>{book.creator.displayName}</dd></div><div><dt>分享者</dt><dd>{book.sharer?.displayName ?? "—"}</dd></div></dl>
-                <div className="learning-book-actions">
-                    <Button appearance="outline" disabled={disabled} onClick={() => openDetail(book)}>查看與管理</Button>
-                    <Button disabled={disabled || !book.questions.length || book.status !== "active" || book.syncStatus === "revoked" || !book.publishedRevisionNumber} onClick={() => start(book)}>開始練習<ArrowRight /></Button>
-                </div>
-            </li>)}
-            {!loading && result && !result.books.length && <li className="learning-book-empty"><BookOpen /><h2>沒有符合的學習本</h2><p>可調整篩選，或回到練習頁選擇內容後建立。</p></li>}
-        </ul>
+        <section className="learning-book-list-section" aria-labelledby="learning-book-list-title">
+            <div className="learning-book-list-heading"><div><h2 id="learning-book-list-title">學習本清單</h2><span aria-live="polite">{loading ? "讀取中…" : `共 ${result?.total ?? 0} 本`}</span></div><Button size="sm" appearance="ghost" disabled={loading || disabled} onClick={() => setReload((value) => value + 1)}><RefreshCw />重新整理</Button></div>
+            <div className="learning-book-table-wrap" aria-busy={loading}>
+                <table className="learning-book-table">
+                    <thead><tr><th scope="col">名稱與狀態</th><th scope="col">內容與版本</th><th scope="col">來源</th><th scope="col">安排</th><th scope="col">相關人員</th><th scope="col">操作</th></tr></thead>
+                    <tbody>
+                        {result?.books.map((book) => <tr key={book.id}>
+                            <td className="learning-book-name-cell" data-label="名稱與狀態"><strong>{book.name}</strong><div className="learning-book-tags">{book.status === "archived" && <Badge>已封存</Badge>}{book.hasDraft && <Badge>{book.status === "draft" ? "草稿" : "有未發布草稿"}</Badge>}{book.source === "shared" && <Badge>{syncLabels[book.syncStatus]}</Badge>}</div></td>
+                            <td data-label="內容與版本"><strong>{book.questions.length ? `${book.questions.length} 題` : "待確認題目"}</strong><small>{book.publishedRevisionNumber ? `已發布第 ${book.publishedRevisionNumber} 版` : "尚未發布"}{book.hasDraft && book.questions.length ? " · 含草稿" : ""}</small></td>
+                            <td data-label="來源"><Badge tone="primary">{book.source === "mine" ? "我的學習本" : "收到分享"}</Badge></td>
+                            <td data-label="安排"><Badge>{book.activeScheduleCount ? `已安排 ${book.activeScheduleCount} 次` : "未安排"}</Badge></td>
+                            <td data-label="相關人員"><span>建立者 {book.creator.displayName}</span><small>分享者 {book.sharer?.displayName ?? "—"}</small></td>
+                            <td className="learning-book-table-actions" data-label="操作"><Button size="sm" appearance="outline" disabled={disabled} onClick={() => openDetail(book)}>查看與管理</Button><Button size="sm" disabled={disabled || !book.questions.length || book.status !== "active" || book.syncStatus === "revoked" || !book.publishedRevisionNumber} onClick={() => start(book)}>開始練習<ArrowRight /></Button></td>
+                        </tr>)}
+                        {!loading && result && !result.books.length && <tr><td className="learning-book-empty" colSpan={6}><BookOpen /><strong>沒有符合的學習本</strong><p>可調整篩選，或回到練習頁選擇內容後建立。</p></td></tr>}
+                    </tbody>
+                </table>
+            </div>
+        </section>
         <nav className="learning-book-pagination" aria-label="學習本分頁">
             <Button appearance="outline" disabled={cursorHistory.length < 2 || loading} onClick={() => {
                 const previous = cursorHistory.slice(0, -1);
@@ -229,7 +274,7 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
                 <legend>編輯草稿</legend>
                 {!detail.questions.length && <p>原篩選設定已完整保留。請先回練習頁確認範圍，再明確勾選取代草稿；儲存並發布後即可安排與分享。</p>}
                 <FormField label="名稱"><Input maxLength={140} value={editName} onChange={(event) => setEditName(event.target.value)} /></FormField>
-                <FormField label="檢核方式"><select className="learning-book-select" value={editMode} onChange={(event) => setEditMode(event.target.value as LearningBookContent["checkMode"])}><option value="instant">每題即時檢核</option><option value="complete">全部完成後檢核</option><option value="score">人工批改</option></select></FormField>
+                <FormField label="檢核方式"><NativeSelect options={[{ value: "instant", label: "每題即時檢核" }, { value: "complete", label: "全部完成後檢核" }, { value: "score", label: "人工批改" }]} value={editMode} onChange={(event) => setEditMode(event.target.value as LearningBookContent["checkMode"])} /></FormField>
                 <label className="learning-book-checkbox"><input type="checkbox" checked={replaceQuestions} disabled={!currentContent} onChange={(event) => setReplaceQuestions(event.target.checked)} />以練習頁目前選取的 {currentContent?.questions.length ?? 0} 題取代草稿內容</label>
                 {draftHasUnsavedChanges && <p>請先儲存草稿，再發布更新。</p>}
                 <div className="learning-book-actions"><Button appearance="outline" disabled={!editName.trim() || (!detail.questions.length && !replaceQuestions)} onClick={saveDraft}>儲存草稿</Button><Button disabled={!detail.hasDraft || !detail.questions.length || draftHasUnsavedChanges} onClick={() => void run(`publish:${detail.id}`, async (key) => { await learningBookMutation(`/${detail.id}`, { action: "publish", learnerId, lockVersion: detail.lockVersion, idempotencyKey: key }, "PATCH"); await reloadDetail(detail.id); setNotice("新版已發布。"); })}>發布更新</Button></div>
