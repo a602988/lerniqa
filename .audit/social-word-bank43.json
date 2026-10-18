@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "fileName": "43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "questionNumber": "05014903",
+      "sourcePage": 4,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05014902\n難易度:易\n出處:試題\n認知向度:高層次批判思考\n知識向度:公權力協助家庭發揮職能\n 行政院推出試管嬰兒補助額度的政策如附表,補助額度為實支實付制,即表示補助金額未達補助上限者,以實支金額補助之,若超過補助金額僅以補助上限為限。此項政策主要是希望減緩家庭的何種問題?\n\u0001\n(A)養兒育女的觀念改變 (B)家庭開支過高 (C)教育機構取代家庭功能 (D)家人間的親密程度降低。\n答案:(B)\n解析:政府的補助是希望減輕家庭的經濟負擔,故選(B)。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

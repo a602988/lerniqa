@@ -2,16 +2,74 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+    formatNumberedReferenceAnswers,
     getRepeatedNumberedPartLabel,
-    normalizeLegacyMathSymbols,
+    normalizeQuestionDisplayText,
     reflowNumberedExplanation,
     tokenizeInlineQuestionText,
+    tokenizePromptBlanks,
 } from "../app/lib/question-presentation.ts";
+
+test("multi-part reference answers retain their visible part numbers", () => {
+    assert.equal(
+        formatNumberedReferenceAnswers([
+            { answerKeys: [], acceptedValues: ["東北方；"], options: [] },
+            { answerKeys: [], acceptedValues: ["東南方；"], options: [] },
+            { answerKeys: [], acceptedValues: ["西南方；"], options: [] },
+            { answerKeys: [], acceptedValues: ["西北方"], options: [] },
+        ]),
+        "(1)東北方；(2)東南方；(3)西南方；(4)西北方",
+    );
+});
+
+test("single-part reference answers do not gain a synthetic part number", () => {
+    assert.equal(
+        formatNumberedReferenceAnswers([
+            { answerKeys: ["B"], acceptedValues: [], options: [{ key: "B", label: "乙" }] },
+        ]),
+        "乙",
+    );
+});
+
+test("numbered English cloze blanks retain their number on an underline", () => {
+    assert.deepEqual(tokenizePromptBlanks("Alan: I’m Alan. 　(1)　 your name?"), [
+        { kind: "text", value: "Alan: I’m Alan." },
+        { kind: "blank", label: "(1)", widthEm: 5 },
+        { kind: "text", value: "your name?" },
+    ]);
+    assert.deepEqual(tokenizePromptBlanks("請填　　答案"), [
+        { kind: "text", value: "請填" },
+        { kind: "blank", widthEm: 3 },
+        { kind: "text", value: "答案" },
+    ]);
+    assert.deepEqual(tokenizePromptBlanks("一般的 (1) 小題編號"), [
+        { kind: "text", value: "一般的 (1) 小題編號" },
+    ]);
+    assert.deepEqual(tokenizePromptBlanks("George: My name is George. 　(1)"), [
+        { kind: "text", value: "George: My name is George." },
+        { kind: "blank", label: "(1)", widthEm: 4 },
+    ]);
+    assert.deepEqual(tokenizePromptBlanks("George: My name is George. 　(１)\nSusan: Hi."), [
+        { kind: "text", value: "George: My name is George." },
+        { kind: "blank", label: "(1)", widthEm: 4 },
+        { kind: "text", value: "\nSusan: Hi." },
+    ]);
+    assert.deepEqual(tokenizePromptBlanks("一般的　(1) 小題編號"), [
+        { kind: "text", value: "一般的　(1) 小題編號" },
+    ]);
+});
 
 test("legacy Symbol implication marks become standard double arrows", () => {
     assert.equal(
-        normalizeLegacyMathSymbols("432□6為倍數\n□＝9"),
+        normalizeQuestionDisplayText("432□6為倍數\n□＝9"),
         "432□6為倍數\n⇒□＝9",
+    );
+});
+
+test("reason symbols become readable Chinese words on screen", () => {
+    assert.equal(
+        normalizeQuestionDisplayText("∵甲成立，∴乙成立"),
+        "因為甲成立，所以乙成立",
     );
 });
 

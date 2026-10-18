@@ -1,0 +1,34 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/07_01_1-3_3-1_地形如何被形塑.doc",
+      "fileName": "07_01_1-3_3-1_地形如何被形塑.doc",
+      "questionNumber": "05015705",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010011\n難易度:易\n出處:練習本\n認知向度:具備基本知識\n知識向度:五大地形類型\n 下列兩張照片皆為外營力所造成,何者的作用力以堆積為主? (A) / (B) /。\n答案:(B)\n解析:(A)岩石中有許多凹洞,應為岩石被河川長時間磨損形成的侵蝕地形,這種地形多見於河床落差較大的河川中、上游。(B)此地形應位於河川下游地區,泥沙堆積在坡度平緩的河床上。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 2,
+      "optionVisuals": [
+        "A",
+        "B"
+      ]
+    }
+  ]
+}

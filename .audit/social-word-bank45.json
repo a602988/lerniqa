@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "questionNumber": "05015174",
+      "sourcePage": 13,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05015173\n難易度:中\n出處:試題\n認知向度:高層次批判思考\n知識向度:班會\n 以下是某班級開班會的情形。根據會議規則判斷,下列針對圖中內容的說明,何者正確?\n  某班級為了決定校外教學的參觀地點,(甲)班長阿均在會議前提案參觀水族館,(乙)經附署後,在會議中進行討論,(丙)此時有蜜蜂飛進教室,引起班上一陣騷動,(丁)風紀股長小琪舉手向主席提出動議,請主席先停止會議。\n(A)班長原則上不參與提案及表決,此已違反規定 (B)會議前的提案,至少要經過兩人以上的附署 (C)蜜蜂飛進教室屬於緊急事件,已影響成員權利 (D)風紀股長提出動議以解決騷動,應是秩序問題。\n答案:(C)\n解析:(A)應改為主席(B)一人以上附署(C)(D)蜜蜂飛進教室的事故,屬於影響全體的緊急事件,與會成員可以提出權宜問題。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

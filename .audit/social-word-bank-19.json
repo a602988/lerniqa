@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-source-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/19_01_1-6_6-2_水系與流域.doc",
+      "fileName": "19_01_1-6_6-2_水系與流域.doc",
+      "questionNumber": "05011968",
+      "sourcePage": 12,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05011967\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:河川的水系與流域\n 流域的分布可以反映出當地地形與氣候特性。附圖為某地區的河川流域分布圖,而圖中甲、乙、丙、丁四個地點的海拔高度,較符合表中的哪一項資訊?\n/\n\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007甲\n\u0007650m\n\u0007110m\n\u000750m\n\u0007980m\n\u0007\n\u0007乙\n\u0007490m\n\u00071,050m\n\u0007800m\n\u0007720m\n\u0007\n\u0007丙\n\u0007380m\n\u00071,500m\n\u00071,240m\n\u0007654m\n\u0007\n\u0007丁\n\u0007610m\n\u0007482m\n\u00071,590m\n\u0007440m\n\u0007\n\u0007答案:(B)\n解析:圖中丙點為兩條河川的分水嶺,因此高度最高。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    }
+  ]
+}

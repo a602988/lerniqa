@@ -1,0 +1,36 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/13_01_1-5_5-1_天氣.doc",
+      "fileName": "13_01_1-5_5-1_天氣.doc",
+      "questionNumber": "05012327",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": " 第一篇_臺灣的環境(上) 第5章_天氣與氣候 5-1_天氣\f單題\n 附圖是某一假想島嶼圖。下列何者最能顯示出其山地的降水特色?[90.第一次基測]\n/\n(A)/ (B)/ (C)/ (D)/\n答案:(A)\n解析:降水受地形因素的影響,迎風坡雨量較多,而背風坡雨量較少。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 5,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

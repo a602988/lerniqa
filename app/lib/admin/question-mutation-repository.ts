@@ -628,6 +628,7 @@ export async function insertDraftRevisionClone(
             stable_key,
             position,
             answer_mode,
+            answer_field_count,
             grading_policy,
             is_independently_gradable
         )
@@ -638,6 +639,7 @@ export async function insertDraftRevisionClone(
             source.stable_key,
             source.position,
             source.answer_mode,
+            source.answer_field_count,
             source.grading_policy,
             source.is_independently_gradable
         FROM question_parts AS source

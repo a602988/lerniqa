@@ -1,6 +1,4 @@
 import {
-    LOCAL_PRACTICE_CATALOG_TARGETS,
-    LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE,
     type LocalPracticeAnswerInput,
     type LocalPracticeHandwritingInput,
     type LocalPracticeAttempt,
@@ -269,6 +267,7 @@ function sanitizePracticePreferences(value: unknown): PracticePreferences | null
 /** UI settings are local to this browser; answers and grading remain in PostgreSQL. */
 export function readPracticePreferences(learnerId: string): PracticePreferences | null {
     try {
+        preserveLegacyPracticePreferences(learnerId);
         const currentKey = preferenceKey(learnerId);
         const currentRaw = window.localStorage.getItem(currentKey);
         const current = sanitizePracticePreferences(JSON.parse(currentRaw ?? "null"));
@@ -278,7 +277,6 @@ export function readPracticePreferences(learnerId: string): PracticePreferences 
                 try { window.localStorage.setItem(currentKey, canonical); }
                 catch { /* 儲存空間已滿時仍使用已成功讀取的設定。 */ }
             }
-            window.localStorage.removeItem(legacyPreferenceKey(learnerId));
             return current;
         }
         const legacy = JSON.parse(window.localStorage.getItem(legacyPreferenceKey(learnerId)) ?? "null") as unknown;
@@ -293,17 +291,41 @@ export function readPracticePreferences(learnerId: string): PracticePreferences 
         });
         if (!migrated) return null;
         window.localStorage.setItem(preferenceKey(learnerId), JSON.stringify(migrated));
-        window.localStorage.removeItem(legacyPreferenceKey(learnerId));
         return migrated;
     }
     catch { return null; }
 }
 
 export function writePracticePreferences(learnerId: string, value: PracticePreferences): void {
+    preserveLegacyPracticePreferences(learnerId);
     const sanitized = sanitizePracticePreferences(value);
     if (!sanitized) throw new Error("練習偏好格式不正確。");
     window.localStorage.setItem(preferenceKey(learnerId), JSON.stringify(sanitized));
-    window.localStorage.removeItem(legacyPreferenceKey(learnerId));
+}
+
+/** Freeze the original browser data before UI preference writes can replace it. */
+export function preserveLegacyPracticePreferences(learnerId: string): void {
+    const key = `lerniqa-learning-book-backup-v1:${learnerId}`;
+    if (window.localStorage.getItem(key) !== null) return;
+    const current = window.localStorage.getItem(preferenceKey(learnerId));
+    const legacy = window.localStorage.getItem(legacyPreferenceKey(learnerId));
+    window.localStorage.setItem(key, JSON.stringify({ capturedAt: new Date().toISOString(), current, legacy }));
+}
+
+/** Only migration previews read the retained browser plan/schedules. */
+export function readLegacyPracticePreferences(learnerId: string): PracticePreferences | null {
+    preserveLegacyPracticePreferences(learnerId);
+    const raw = window.localStorage.getItem(`lerniqa-learning-book-backup-v1:${learnerId}`);
+    if (!raw) return null;
+    const backup = JSON.parse(raw) as { current?: string; legacy?: string };
+    if (backup.current) return sanitizePracticePreferences(JSON.parse(backup.current));
+    if (!backup.legacy) return null;
+    const legacy = JSON.parse(backup.legacy) as Record<string, unknown>;
+    const legacyLearner = isRecord(legacy.learner) ? legacy.learner : {};
+    return sanitizePracticePreferences({
+        plan: legacy.plan, schedules: legacy.schedules, collections: legacy.collections,
+        questionLimitOptions: legacyLearner.questionLimitOptions, defaultQuestionLimit: legacyLearner.defaultQuestionLimit,
+    });
 }
 
 /** Reads the only browser-persisted session state: an opaque server session UUID. */
@@ -410,6 +432,7 @@ export interface PracticeAccountLearner {
     }>;
     availableSubjects: Array<{ code: string; name: string }>;
     accessRole: PracticeAccountRole;
+    canCreatePlans: boolean;
     canManageSettings: boolean;
     isSelf: boolean;
 }
@@ -657,40 +680,8 @@ export function enablePracticeLearnerSubject(input: {
     });
 }
 
-export async function loadPersistedPractice() {
-    const { account } = await practiceApi<{ account: PracticeAccount }>("/api/v1/auth/me");
-    if (!account.learner) return {
-        account,
-        questions: [],
-        attempts: [],
-        sessions: [],
-        wrongReviewQueue: { pendingCount: 0, items: [] },
-    };
-    const catalogPageSize = LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE;
-    const getPage = async (target: typeof LOCAL_PRACTICE_CATALOG_TARGETS[number], page: number) => {
-        const filters = new URLSearchParams({
-            ...target,
-            limit: String(catalogPageSize),
-        });
-        const response = await fetch(`/api/v1/local-practice/questions?${filters}&page=${page}`, { cache: "no-store" });
-        return readPracticeApiEnvelope<{ data: { questions: LocalPracticeQuestion[] }; meta: { total: number } }>(response, "目前無法讀取題庫。");
-    };
-    const loadCatalogTarget = async (target: typeof LOCAL_PRACTICE_CATALOG_TARGETS[number]) => {
-            const first = await getPage(target, 1);
-            const remaining = await Promise.all(Array.from(
-                { length: Math.max(0, Math.ceil(first.meta.total / catalogPageSize) - 1) },
-                (_, index) => getPage(target, index + 2),
-            ));
-            return [first, ...remaining];
-    };
-    const historyPromise = practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100");
-    const catalogs = [];
-    for (let index = 0; index < LOCAL_PRACTICE_CATALOG_TARGETS.length; index += 4) {
-        catalogs.push(...await Promise.all(
-            LOCAL_PRACTICE_CATALOG_TARGETS.slice(index, index + 4).map(loadCatalogTarget),
-        ));
-    }
-    const history = await historyPromise;
+export async function loadPersistedPracticeHistory() {
+    const history = await practiceApi<LocalPracticeHistory>("/api/v1/local-practice/history?limit=100");
     // Attempts, score-only summaries, and pending wrong-review sources paginate independently.
     const attempts = [...history.attempts];
     const sessions = [...history.sessions];
@@ -715,14 +706,32 @@ export async function loadPersistedPractice() {
         );
     }
     return {
-        account,
-        questions: catalogs.flat().flatMap((page) => page.data.questions),
         attempts: [...new Map(attempts.map((attempt) => [attempt.id, attempt])).values()],
         sessions: [...new Map(sessions.map((session) => [session.id, session])).values()],
         wrongReviewQueue: {
             pendingCount: wrongReviewPendingCount,
             items: [...new Map(wrongReviewQueueItems.map((item) => [item.id, item])).values()],
         },
+    };
+}
+
+export async function loadPersistedPractice() {
+    const { account } = await practiceApi<{ account: PracticeAccount }>("/api/v1/auth/me");
+    if (!account.learner) return {
+        account,
+        questions: [],
+        attempts: [],
+        sessions: [],
+        wrongReviewQueue: { pendingCount: 0, items: [] },
+    };
+    const [catalog, history] = await Promise.all([
+        practiceApi<{ questions: LocalPracticeQuestion[] }>("/api/v1/local-practice/questions"),
+        loadPersistedPracticeHistory(),
+    ]);
+    return {
+        account,
+        questions: catalog.questions,
+        ...history,
     };
 }
 
@@ -768,8 +777,8 @@ export function startPersistedPractice(
     });
 }
 
-export function getPersistedPracticeSession(sessionId: string) {
-    return practiceApi<LocalPracticeSessionRead>(`/api/v1/local-practice/sessions?id=${encodeURIComponent(sessionId)}`);
+export function getPersistedPracticeSession(sessionId: string, includeQuestions = false) {
+    return practiceApi<LocalPracticeSessionRead & { questions?: LocalPracticeQuestion[] }>(`/api/v1/local-practice/sessions?id=${encodeURIComponent(sessionId)}${includeQuestions ? "&includeQuestions=true" : ""}`);
 }
 
 export function getPersistedQuestionReferenceAnswers(questionId: string, revisionId: string) {

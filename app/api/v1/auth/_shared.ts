@@ -81,6 +81,7 @@ export interface PublicLearnerProfile {
     semesterCode: string | null;
     semesterName: string | null;
     accessRole: AuthenticatedAccount["learner"]["accessRole"];
+    canCreatePlans: boolean;
     canManageSettings: boolean;
     isSelf: boolean;
     preferences: {
@@ -139,6 +140,7 @@ function publicLearnerProfile(
         semesterCode: learner.semesterCode,
         semesterName: learner.semesterName,
         accessRole: learner.accessRole,
+        canCreatePlans: learner.canCreatePlans,
         canManageSettings: learner.canManageSettings,
         isSelf: learner.isSelf,
         preferences: learner.preferences === null

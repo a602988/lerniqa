@@ -1,0 +1,36 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/33_03_3-3_3-2_家庭型態與生活模式.doc",
+      "fileName": "33_03_3-3_3-2_家庭型態與生活模式.doc",
+      "questionNumber": "05015522",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": " 第三篇_公民身分及社群 第3章_家庭生活 3-2_家庭型態與生活模式\f單題\n 近年內政部統計,臺灣小家庭愈來愈多,3 人以下的小家庭占總戶數 7 成。各大超商紛紛推出小量調理包,還有部分超商有自己的冷凍庫物流,就是看準冷凍調理食品一年 237 億的巨大年產值。下列何人的家庭型態屬於小家庭? (A) / (B) / (C) / (D) /\n答案:(A)\n解析:小家庭是由一對夫妻及其未婚子女所組成。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 4,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

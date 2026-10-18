@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/30_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "fileName": "30_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "questionNumber": "05015590",
+      "sourcePage": 1,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05015587\n難易度:中\n出處:練習本\n認知向度:具備基本知識\n知識向度:宗教信仰與宗族組織\n 附表為清代臺灣地區科舉人數統計表。由此表可看出,嘉慶、道光時期臺灣通過科舉取得功名的人數增多。之所以會出現這樣的轉變,主要原因應該是下列何者?\n EMBED Word.Document.8 \n(A)臺灣已無械鬥與民變,社會安定 (B)清廷實施渡臺禁令,女眷無法來臺 (C)工商業者廣設「郊」,帶動了讀書風氣 (D)文教機構陸續增設,人民受教育的機會增多。\n答案:(D)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

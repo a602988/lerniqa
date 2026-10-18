@@ -1,0 +1,2953 @@
+{
+  "generatedAt": "2026-10-18T11:16:12.471Z",
+  "expectedTableCount": 164,
+  "passedTableCount": 164,
+  "failedTableCount": 0,
+  "uniqueQuestionCount": 163,
+  "results": [
+    {
+      "questionNumber": "05010064",
+      "fileName": "01_01_1-1_1-1_如何表示位置.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5d25c06e7590-01_01_1-1_1-1_如何表示位置.pdf",
+      "pdfPages": [
+        12,
+        13
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "97ca9d9c-1df7-584f-8dfb-04a168461f6c",
+      "revisionId": "a09c8fba-e3ed-53ed-aba5-0b5b4281ef25",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010097",
+      "fileName": "02_01_1-1_1-2_經緯線網格.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e6ec670419fd-02_01_1-1_1-2_經緯線網格.pdf",
+      "pdfPages": [
+        7,
+        8
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b2a3865f-a4f0-5560-a68c-ea367b8c5d12",
+      "revisionId": "631d0a90-7c66-5542-8870-58efb8c8c919",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010637",
+      "fileName": "02_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ae1f6c0a9810-02_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "d291abf0-2baa-523e-80fc-cc2805702ea9",
+      "revisionId": "ce126d9e-b860-566d-ac00-26d5baf3e6a6",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010638",
+      "fileName": "02_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ae1f6c0a9810-02_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c7b87d15-f74f-50f4-a89a-e189ffe2dc8a",
+      "revisionId": "fa82b4d7-b9b0-5a2f-b3e4-6f7787dd39da",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010638",
+      "fileName": "02_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ae1f6c0a9810-02_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c7b87d15-f74f-50f4-a89a-e189ffe2dc8a",
+      "revisionId": "fa82b4d7-b9b0-5a2f-b3e4-6f7787dd39da",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010275",
+      "fileName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5787d12939bd-03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        8,
+        9
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "cb943743-7658-50b3-959d-c54e3906d69b",
+      "revisionId": "48d9eefa-281a-51b3-aaa3-afc393f46754",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010173",
+      "fileName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5787d12939bd-03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "0fb5e49e-61e9-5475-b3e0-1d3126345c1b",
+      "revisionId": "2ed7b782-e738-5143-b3bd-17295f39f54b",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010186",
+      "fileName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5787d12939bd-03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        20,
+        21
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ab284660-88b2-5acf-aa58-40db0812a7fb",
+      "revisionId": "237d7b1c-57e0-5bbc-9424-0910693220a6",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010192",
+      "fileName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5787d12939bd-03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        22,
+        23
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "93d19366-91e2-587d-90fe-f13c35fd418f",
+      "revisionId": "b1918108-fbed-514b-b38c-fc14df408cb2",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010260",
+      "fileName": "03_01_1-1_1-3_位置與生活的關聯.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5787d12939bd-03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "pdfPages": [
+        43,
+        44
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5fa7c54b-3dca-5cf1-9ce7-9f579f930e86",
+      "revisionId": "e1c6a9ce-9df1-51a2-bb38-cc0de19ffeab",
+      "revisionNumber": 5,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010326",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2be98787d2dc-04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "pdfPages": [
+        13,
+        14
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b3ca1d1a-ed2f-59bc-ab9f-18dfc6a0dffd",
+      "revisionId": "028cf96c-d959-523f-8d82-791cedc33781",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010355",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2be98787d2dc-04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "pdfPages": [
+        21,
+        22
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "800aae3f-7ae9-5279-a0fe-9e0546991f08",
+      "revisionId": "e1cc264e-1231-516c-9a2f-ae85f0aaf240",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010356",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2be98787d2dc-04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "pdfPages": [
+        21,
+        22
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f207ab05-b033-56ef-8472-c6d1cbd24d68",
+      "revisionId": "0ed2cbdb-e5ee-54a0-bd72-ff82e864dbaa",
+      "revisionNumber": 1,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010656",
+      "fileName": "04_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/bc688cba6d6d-04_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6c639669-726b-5299-801b-717091bd11fa",
+      "revisionId": "1f90b9f0-0fa6-5335-97e5-7d6c8cd3c7c1",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010655",
+      "fileName": "05_01_1-2_2-3_臺灣地區的範圍.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6c1d72c76431-05_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "198cd61c-b91c-50e2-880a-fba3be7f01dc",
+      "revisionId": "4d38cd88-65f5-5013-ac83-7dc95562fdc8",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010505",
+      "fileName": "06_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5058986684a1-06_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "pdfPages": [
+        13,
+        14
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "71938884-3b62-5fef-8f82-e868738253d6",
+      "revisionId": "ad1ed78e-581f-55d4-a781-97eb9a18ca10",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010672",
+      "fileName": "08_01_1-3_3-1_地形如何被形塑.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e6e06f195eaa-08_01_1-3_3-1_地形如何被形塑.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ca5bdbca-eb88-5fe2-b86a-91fcd6486ebf",
+      "revisionId": "fc00fe1c-b584-54bf-8ee8-2a940b51efb5",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010688",
+      "fileName": "08_01_1-3_3-1_地形如何被形塑.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e6e06f195eaa-08_01_1-3_3-1_地形如何被形塑.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "39616e57-daa8-5f54-9f92-10b5c444584e",
+      "revisionId": "852bf6b2-8870-5930-82d2-958bbf2d435d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010715",
+      "fileName": "08_01_1-3_3-1_地形如何被形塑.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e6e06f195eaa-08_01_1-3_3-1_地形如何被形塑.pdf",
+      "pdfPages": [
+        17,
+        18
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "29d6c1c6-c9bb-5231-ad91-28af04f456be",
+      "revisionId": "20384f7a-de6c-508a-9f93-752c6bc6de5c",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012324",
+      "fileName": "09_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/3de754a9c542-09_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "4f566db4-05b0-5f79-8f6e-640e79e027ef",
+      "revisionId": "0aa5dcc5-b83b-508e-8bd3-dd70175adbdc",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010869",
+      "fileName": "10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/29547f492f0f-10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "pdfPages": [
+        6,
+        7
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e7bb337d-f95b-527b-bcdd-e14f5e991c81",
+      "revisionId": "b3703e1f-bb2d-58d1-85b8-b84ea3520a82",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05010897",
+      "fileName": "10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/29547f492f0f-10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "pdfPages": [
+        16,
+        17
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "8a05e81f-cf1b-5552-9bb2-f5b3d7c02cd6",
+      "revisionId": "7cb3790d-312c-562e-a98f-d9a670d824de",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011026",
+      "fileName": "10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/29547f492f0f-10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "pdfPages": [
+        62,
+        63
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c312b194-1281-5192-ae10-802a2b3ae54f",
+      "revisionId": "903ec908-595d-5c0e-aa82-fadc82734d86",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012285",
+      "fileName": "10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/42ce8eb9ef23-10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "cd428886-af3f-584e-be11-f9245b722c86",
+      "revisionId": "4b6d6fd5-070f-5bac-9acf-1cca28c2366d",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011086",
+      "fileName": "11_01_1-4_4-1_海岸的類型與特色.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/69b5846c8dcd-11_01_1-4_4-1_海岸的類型與特色.pdf",
+      "pdfPages": [
+        11,
+        12
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "3d389c0d-3c80-5277-8bf3-d938be4b6570",
+      "revisionId": "673f0c07-0d8b-5d9c-ac18-6795e5e8befe",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011092",
+      "fileName": "11_01_1-4_4-1_海岸的類型與特色.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/69b5846c8dcd-11_01_1-4_4-1_海岸的類型與特色.pdf",
+      "pdfPages": [
+        13,
+        14
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "457bd181-0876-5a3c-b279-b549d8d899b6",
+      "revisionId": "406ddb58-8d5a-5aeb-aaed-ab3c3b2c688b",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011117",
+      "fileName": "11_01_1-4_4-1_海岸的類型與特色.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/69b5846c8dcd-11_01_1-4_4-1_海岸的類型與特色.pdf",
+      "pdfPages": [
+        20,
+        21
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c8444e4e-dda2-5e1c-b1ef-b89537a454b0",
+      "revisionId": "9f68da66-3784-5849-96c0-8aa2de8f7e6d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012309",
+      "fileName": "11_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/113faffb8238-11_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "62ef9fec-a388-515e-b778-46428ea8d54e",
+      "revisionId": "05f0401f-5179-57e7-8c1c-5090214f13e1",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011254",
+      "fileName": "12_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7530269da41c-12_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "pdfPages": [
+        37,
+        38
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f31213a3-180f-528d-9160-85db6d7e66e0",
+      "revisionId": "f87e13d2-a7f2-57dc-9d64-fd5a42a09f3c",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012314",
+      "fileName": "12_01_1-4_4-3_臺灣離島的成因.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6cbe3dd58ba2-12_01_1-4_4-3_臺灣離島的成因.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9352a15a-5fe4-517c-9f05-fe5af2c8d18a",
+      "revisionId": "55779dde-7012-54e1-837b-a7f70f75df70",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012319",
+      "fileName": "12_01_1-4_4-3_臺灣離島的成因.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6cbe3dd58ba2-12_01_1-4_4-3_臺灣離島的成因.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f6886478-a12e-5168-8363-98ccd1728f2a",
+      "revisionId": "dc07f8de-6515-5635-8696-2696be2e989c",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012357",
+      "fileName": "12_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/d46b11917cd9-12_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "8fdb6a2f-125e-55bc-9188-54defc93fa20",
+      "revisionId": "1c024b55-3825-5549-81fc-5d4676e165d6",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011337",
+      "fileName": "13_01_1-4_4-3_臺灣離島的成因.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/75ebdb6367be-13_01_1-4_4-3_臺灣離島的成因.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5c8d29d1-57d4-5d63-b332-3f4dfad52767",
+      "revisionId": "a702412f-8ac0-50c3-a950-6243df56270b",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011343",
+      "fileName": "13_01_1-4_4-3_臺灣離島的成因.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/75ebdb6367be-13_01_1-4_4-3_臺灣離島的成因.pdf",
+      "pdfPages": [
+        5,
+        6
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5f2525e2-197d-5523-9964-8597e24113d0",
+      "revisionId": "81309910-9e7b-576c-8e20-10875cf57afd",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011393",
+      "fileName": "13_01_1-4_4-3_臺灣離島的成因.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/75ebdb6367be-13_01_1-4_4-3_臺灣離島的成因.pdf",
+      "pdfPages": [
+        20,
+        21
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "88ffd595-37b5-55fa-be0d-c12887578bc7",
+      "revisionId": "ecd681f1-10f5-56d8-af8d-80e6d712630a",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011463",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2dd7b3a5-cdbb-5763-a237-2b6bf4be4fca",
+      "revisionId": "585ae04e-108a-51dd-a16b-fad6334f5f5a",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011482",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ed9505ed-db64-5380-bb60-a83f10980c83",
+      "revisionId": "4882826f-9203-504f-9c07-85a810e0ced1",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011495",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        14,
+        15
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "19fbbb75-ec0f-54c9-9124-b193f86e5577",
+      "revisionId": "8d1f7029-5c85-51fc-b30c-c3c423701a90",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011508",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        19,
+        20
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "bb5db7ef-5f4b-53fc-ba8a-6d26ded938f7",
+      "revisionId": "33620bb5-cc16-53d9-b6c2-d0677c59c98e",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011548",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        30,
+        31
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "a82f8ed6-92d3-539e-bb37-5a8eef732475",
+      "revisionId": "128bf320-6bd2-5a60-a918-73de134ad8b5",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011563",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 7,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        34,
+        35
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "0d9a05c3-c238-5276-8f29-f533fa37388d",
+      "revisionId": "4985d83c-185d-52d6-93b3-aaeca05559e5",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011576",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 8,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        39,
+        40
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "be090006-65e4-55de-b607-3e3fa3f63d30",
+      "revisionId": "e0c9e968-5921-539f-b893-c7f7a00eaf96",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011584",
+      "fileName": "14_01_1-5_5-1_天氣.doc",
+      "nativeTableIndex": 9,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f8d7460091d3-14_01_1-5_5-1_天氣.pdf",
+      "pdfPages": [
+        44,
+        45
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "0ac67e16-f97f-5a93-aea5-cf86e70147d2",
+      "revisionId": "26ace287-d955-52a8-a6e4-571ee765781c",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012331",
+      "fileName": "14_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e103457e9185-14_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e1cace23-a670-50d2-8e65-7ee947091558",
+      "revisionId": "679d8f28-7c90-559e-8b58-050fe8fa78a7",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011603",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/1a92f79efe9b-15_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f926c358-6ec3-5899-87df-08f10f3afe28",
+      "revisionId": "71205540-49c6-5842-ba09-238e88d2b92a",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011609",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/1a92f79efe9b-15_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        6,
+        7
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "4be4f523-48e9-5470-a90d-62b464c5cff0",
+      "revisionId": "ad1e1b86-a675-51b6-bb3b-bcbcc38ceafd",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011612",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/1a92f79efe9b-15_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        7,
+        8
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "97e4dfcc-5c15-51aa-ac53-a0164b9ec9a6",
+      "revisionId": "8961c572-7853-5a8e-b08a-c93ec71f1274",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011613",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/1a92f79efe9b-15_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        8,
+        9
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e309cce3-b919-5cbf-a778-5add94fdaaff",
+      "revisionId": "1600baf5-d652-5435-a369-a49602d20a10",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011619",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/1a92f79efe9b-15_01_1-5_5-2_氣候.pdf",
+      "pdfPages": [
+        10,
+        11
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "22fd8c48-5b61-59d2-8108-328057a05f43",
+      "revisionId": "9e5a6402-5150-5899-b2cf-59cb4700d4d3",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012882",
+      "fileName": "15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f73af816586f-15_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b4368056-ecc6-5bc7-8b54-8e4e1ddf1ac0",
+      "revisionId": "d0b375b3-c890-59a5-8424-d9166598d42e",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012884",
+      "fileName": "15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f73af816586f-15_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "eb828ea4-95e0-5370-bd5f-197740803f8f",
+      "revisionId": "dac56682-43b6-56d4-af74-26870e17a6f6",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011669",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "19405cb7-4a54-54ce-961b-455920f975ba",
+      "revisionId": "c612314c-b44d-5fb3-8dda-49162b13d46d",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011707",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        28,
+        29
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9c39f5c8-c643-5c7f-8e39-e09ee9bf5b69",
+      "revisionId": "3956b3b7-db27-5159-8ece-74a6ea8f6e2c",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011710",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        29,
+        30
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b73d09aa-5071-59a3-98ec-6d36ac2e7a3b",
+      "revisionId": "5aef1d88-abe6-5cfd-9a67-6159cbb87c5e",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011711",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        29,
+        30
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9528543a-2360-553e-bb01-7904400d7450",
+      "revisionId": "a94c2785-704a-5d1d-93bb-d54ddaa41da1",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011746",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        40,
+        41
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6272d0c4-3c28-5deb-8c55-42c8bb45e832",
+      "revisionId": "5ccdc8d0-1f85-5e2e-95f9-aca41b077084",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011761",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 7,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        45,
+        46
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "75e5dbdd-d805-5384-b21e-7c9f208a8978",
+      "revisionId": "b07e7d0b-4a49-5acb-bf94-1aabf60ce380",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011765",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 8,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        48,
+        49
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c3daa7b5-31b3-5a47-aed4-4002cad5ad83",
+      "revisionId": "cc2b760e-5f9e-5b78-be13-9e0319bc533f",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011773",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 9,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        54,
+        55
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9c6e544d-cc01-520a-91af-cd422d1e840f",
+      "revisionId": "391d00de-5939-548a-93e6-c4835e82bd63",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011783",
+      "fileName": "16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "nativeTableIndex": 10,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d2cbb251bd-16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "pdfPages": [
+        60,
+        61
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f232e7e2-1c0e-5176-88cd-ade9462b4f95",
+      "revisionId": "68f2683f-cd91-5389-abb3-428300697bd5",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015456",
+      "fileName": "16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/55ad7022f64c-16_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ba8164f6-0e76-5029-b38c-4d1feb8acd5a",
+      "revisionId": "e18eb1d3-307a-54b7-9a36-531c899b2a0d",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012856",
+      "fileName": "16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/dc1d365ec485-16_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e50fb6e2-2523-5275-b7ce-b753bccf5cad",
+      "revisionId": "34baf2cf-233a-5183-b898-d92fb532f2a7",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012861",
+      "fileName": "16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/dc1d365ec485-16_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f14f5818-fcdc-546e-b4b7-be432db8be03",
+      "revisionId": "d8ad1037-309c-56b3-b0d6-0941149351a1",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011866",
+      "fileName": "17_01_1-5_5-4_臺灣的氣象災害.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/c17043408549-17_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "pdfPages": [
+        25,
+        26
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2c9c8570-b849-56bb-99eb-14a00ae2e141",
+      "revisionId": "f2a400ea-ccac-539a-b527-5c5abbe0629a",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011871",
+      "fileName": "17_01_1-5_5-4_臺灣的氣象災害.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/c17043408549-17_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "pdfPages": [
+        28,
+        29
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "300426ca-1110-52c6-9492-4a0a1d7ca6f7",
+      "revisionId": "6f9e35ba-bef9-5c5e-aab3-cb449cd30546",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05011968",
+      "fileName": "19_01_1-6_6-2_水系與流域.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/bdddf49cbeb5-19_01_1-6_6-2_水系與流域.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b5be8e91-12b3-59d8-972f-d2d91973c91b",
+      "revisionId": "89fcd0d4-cd8e-5172-b2a2-7e517cd25840",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015472",
+      "fileName": "19_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/884036456f31-19_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9a7b050b-e60f-5ed8-9411-8b255b4e1c62",
+      "revisionId": "b094b4f8-b08e-5630-b1d2-529e0dd2c622",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015474",
+      "fileName": "19_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/884036456f31-19_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c8d25ede-f633-53be-ba4c-1aaf49779548",
+      "revisionId": "94c498b3-0168-54a1-978f-d39f4b8c95a4",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012018",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        11,
+        12
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6c7ac60d-34ea-57c5-aabd-6e8825ab97dd",
+      "revisionId": "c3c398c6-d329-5463-aea7-aa1d82ad7510",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012033",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        17,
+        18
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "34b96883-823b-5676-99e8-fd118acef9f0",
+      "revisionId": "a9733990-b9cc-50d6-8cad-e081da20e6d4",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012036",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        18,
+        19
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c0a70fb7-9a91-5a0e-8fed-12d28659ea33",
+      "revisionId": "c4125e4a-9317-565d-8480-c2dad9d4b8ae",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012068",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        28,
+        29
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "002ad885-9dfe-51a2-bc29-4c374cb5c71a",
+      "revisionId": "9e306aa4-dca2-56fd-9b71-990ae03bbe3e",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012092",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        37,
+        38
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9bd702dc-f6fc-517d-a2c4-ba10529a9f92",
+      "revisionId": "92abfc4b-acca-575b-b15d-1e641a0b1c87",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012103",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 8,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        40,
+        41
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c7c4b5d0-26ce-5277-9141-b091ed21fdda",
+      "revisionId": "19ed44e0-742a-58c2-b6db-d2ee1599f8c8",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012115",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 9,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        44,
+        45
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9db52b8e-f8f8-5137-b1ae-0c1773f06f4f",
+      "revisionId": "e0a5b9a3-e196-5e4d-8be0-465447a37d45",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012121",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 10,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        46,
+        47
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "3ac5b6fd-98ee-5f86-be49-882da3a7fa70",
+      "revisionId": "80ec1b3f-428c-57d5-97b0-b1cce402050b",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012123",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "nativeTableIndex": 11,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/80d16c35ff2b-20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "pdfPages": [
+        48,
+        49
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "66bcd17b-9d20-52bb-a32d-f06706269fd2",
+      "revisionId": "12e90f31-ccd6-530b-8c4a-d64d30d8f18d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015481",
+      "fileName": "20_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0c692fa7e47d-20_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5dcfc4fa-c4f6-5dd5-b3e2-a5e0156a75e8",
+      "revisionId": "c7bb2010-25f6-5085-a1f1-09dff5faef17",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012190",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        12,
+        13
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "941505d7-ae76-5f33-a962-101391e05410",
+      "revisionId": "e51530f5-6b74-5fef-b478-f1bdea25ceee",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012230",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        24,
+        25
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "cbe34051-0a02-5580-92b7-61244240f941",
+      "revisionId": "12e0d5e6-a62e-5359-a453-996e40c1164e",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012238",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        27,
+        28
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "be8f4cb6-0308-5b48-8851-b216026467e6",
+      "revisionId": "218bd975-5d47-5f00-9150-2def2c898210",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012239",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        28,
+        29
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "d38d8cbb-c3ab-54fa-836c-27d005dfb284",
+      "revisionId": "a28beffa-0d56-5bbc-9ab6-fabf3cfdca31",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012248",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        30,
+        31
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "7407bc18-a6f8-5593-9911-691dd0adf6b8",
+      "revisionId": "057deaca-6237-5266-b99a-89697d2ee7db",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012251",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        35,
+        36
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "98abe530-e471-5b9c-89a0-3bca4c52dd98",
+      "revisionId": "ddf914bc-6efe-5abd-aa7e-c8b6c821b838",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012261",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "nativeTableIndex": 7,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a714290ca525-21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "pdfPages": [
+        43,
+        44
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9087aa66-39c1-572a-b5d4-7ed1712418da",
+      "revisionId": "210628ea-0989-59ec-9589-642dbf4d51c7",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012381",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b81b60753c0d-23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b94a14c6-afee-5f7f-82a4-0e85d23a9cca",
+      "revisionId": "f14f9b2d-6ee8-5498-a388-6319d7e7d807",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012400",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b81b60753c0d-23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        8,
+        9
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "aea05eee-b797-5c1f-9497-86a380f389b4",
+      "revisionId": "8ced535c-3a3a-5d4b-9e5a-b4dca9876067",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012418",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b81b60753c0d-23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        14,
+        15
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "605ce988-89ce-58c1-b0ab-7c146abec066",
+      "revisionId": "f2bb7ce6-3076-5c89-9ad1-4b7092ad06e4",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012419",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b81b60753c0d-23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        14,
+        15
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "f8882c32-f36a-532f-81da-0be0d5edbeac",
+      "revisionId": "186739e6-ead8-53f1-8081-57a0ffce7ba9",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012420",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b81b60753c0d-23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e17f78f5-f89d-5da7-adc3-9f4517c4c0d0",
+      "revisionId": "2f633148-7a97-5ae9-9133-c340a4044495",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012519",
+      "fileName": "24_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/090b420599f8-24_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "e5df441b-c302-5104-8fc4-cbbab60d97e5",
+      "revisionId": "07fd4eff-e7e2-572a-887b-fdd1a87979d2",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015692",
+      "fileName": "24_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/e99126e3b986-24_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2884934f-5069-5317-adf3-c906689dba07",
+      "revisionId": "31402a02-ae60-566a-ba7b-bc70880fda11",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012622",
+      "fileName": "26_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6fbfd5e3562b-26_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "8036b577-f519-53a8-9b9a-3a987e46a748",
+      "revisionId": "69389786-7293-5468-af59-55531ed4f6b2",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012682",
+      "fileName": "26_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6fbfd5e3562b-26_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "pdfPages": [
+        20,
+        21
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "d3f6bd47-ed2c-5a35-81c7-8c2349c7710e",
+      "revisionId": "7fc8763f-508d-5a0d-bcc3-2b3bec8fb9d8",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012910",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "1cffaf76-8e75-54b5-b3eb-5b1b7e3c68d7",
+      "revisionId": "b9d10f7a-9a85-52aa-a97a-d48739d3f45f",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012924",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        8,
+        9
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ba33151b-9e5c-56b8-a51a-11d1f8f1e765",
+      "revisionId": "18b9027f-ab64-541c-bada-8c96ad2c13dd",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012938",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        13,
+        14
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "97e723b5-4f92-52ce-bea2-1d20fe5c8bc9",
+      "revisionId": "410c228e-6fcb-56a2-a037-515d6c5eb9ae",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012939",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        13,
+        14
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b1f2afb2-d46d-557b-8fd6-1de9b488b833",
+      "revisionId": "709c897f-02eb-5dc2-9198-be1c2f222319",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012947",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        16,
+        17
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "316d0fca-b50f-5ab4-8c5f-6695f950e83c",
+      "revisionId": "c6215d34-939c-5984-b5cc-9dd04c66c033",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05012996",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/91cc95bf4eb9-27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "pdfPages": [
+        31,
+        32
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b6664fa7-0fc4-53c1-b851-5e9be2078cd3",
+      "revisionId": "f0b9bf59-72f9-57c3-9640-d369e56261ad",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013077",
+      "fileName": "29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a98f16470723-29_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "0004405f-5d22-5473-851f-709497ba6d21",
+      "revisionId": "e15f0209-a4cd-5500-85da-2a89952a60c1",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013216",
+      "fileName": "29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/a98f16470723-29_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "pdfPages": [
+        50,
+        51
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "8e9b6235-de5c-5517-b9a9-78351c88c620",
+      "revisionId": "e8d0522e-40f3-59bd-ac70-87dcf2e6f039",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013229",
+      "fileName": "30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b1c8d76a0e27-30_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "1f7de583-8c0f-52ad-97e7-1d3c9555af40",
+      "revisionId": "707ea426-2977-5a89-881d-f3d82e967db8",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013242",
+      "fileName": "30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b1c8d76a0e27-30_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "pdfPages": [
+        6,
+        7
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5737bd79-9b27-5d82-9e6a-7123c3d359d7",
+      "revisionId": "dbdea5c1-7716-50f2-9aae-dc5326c513f0",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013266",
+      "fileName": "30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b1c8d76a0e27-30_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "pdfPages": [
+        14,
+        15
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "ef4d367b-7f97-576d-a9ac-f83f138d8c0a",
+      "revisionId": "60f9cde7-2356-5b00-b386-a03fe049521f",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013267",
+      "fileName": "30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b1c8d76a0e27-30_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "57557c74-897c-522d-892f-76f520cbd1e5",
+      "revisionId": "f8d5f152-919b-580c-864f-92658669b25d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013418",
+      "fileName": "31_02_2-5_5-1_農業發展.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6c3f892321a8-31_02_2-5_5-1_農業發展.pdf",
+      "pdfPages": [
+        6,
+        7
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "643cb6d8-a975-5d3f-af67-fb2a6e8ddf69",
+      "revisionId": "a36ccb4c-16e6-5df6-ae95-47dede1f3e9f",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013456",
+      "fileName": "31_02_2-5_5-1_農業發展.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/6c3f892321a8-31_02_2-5_5-1_農業發展.pdf",
+      "pdfPages": [
+        18,
+        19
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "80810eb6-3e9e-5292-b5f8-3009c24467cb",
+      "revisionId": "9ef50cab-526a-591d-9347-a4fcafded35a",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015432",
+      "fileName": "31_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/bac9e33b8d7b-31_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5b576b8b-8c5f-5cb2-9acd-8bdafa7c16ea",
+      "revisionId": "c5f11ca6-3967-5892-966a-a7d71f72efed",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013479",
+      "fileName": "32_02_2-5_5-2_商業活動.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/58cd99a10171-32_02_2-5_5-2_商業活動.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "599f5f48-747d-58c6-8803-b3a7c189649d",
+      "revisionId": "0135d57d-ce3e-5889-992c-156ead197bb1",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013492",
+      "fileName": "32_02_2-5_5-2_商業活動.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/58cd99a10171-32_02_2-5_5-2_商業活動.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "4bd35245-22cc-585d-ac0b-a6686d4a27d2",
+      "revisionId": "c32a2003-72df-5a2a-83c4-b1d50a93e8bd",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013494",
+      "fileName": "32_02_2-5_5-2_商業活動.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/58cd99a10171-32_02_2-5_5-2_商業活動.pdf",
+      "pdfPages": [
+        10,
+        11
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "391ebb06-3153-57e3-aac3-2e7656eb3e7d",
+      "revisionId": "937e1b3b-e1d0-5567-b432-6a403e356b3c",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013497",
+      "fileName": "32_02_2-5_5-2_商業活動.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/58cd99a10171-32_02_2-5_5-2_商業活動.pdf",
+      "pdfPages": [
+        11,
+        12
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "de219d97-87b3-5076-8908-8b4c98f14e5c",
+      "revisionId": "55ec95b0-5f20-52b6-b2bb-8ffab9f170b7",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013603",
+      "fileName": "32_02_2-5_5-2_商業活動.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/58cd99a10171-32_02_2-5_5-2_商業活動.pdf",
+      "pdfPages": [
+        42,
+        43
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "9baa23ba-4ee8-57bf-a04c-0308daac454d",
+      "revisionId": "539121e2-2eed-588c-ad40-cc9794e3f86e",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015627",
+      "fileName": "32_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/da7824313b42-32_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "65601f38-4ac3-52fd-ae16-bea8916f2ce9",
+      "revisionId": "79e8701c-7772-5c13-832f-a382d26e08af",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015630",
+      "fileName": "32_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/da7824313b42-32_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c4807077-542b-59eb-bfcd-0bcfd9d579ff",
+      "revisionId": "aed16566-fdf8-5534-a5c1-39bc95bbada8",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015445",
+      "fileName": "32_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/b5cedfafc580-32_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "69cef0ae-9a06-596c-8cbe-9190e12a63f1",
+      "revisionId": "fd58d6b6-7b26-5811-8822-ef52791a4299",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013655",
+      "fileName": "33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/9aed01a19d56-33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2e39984d-2fcd-5ba3-aebb-4d7fb555c848",
+      "revisionId": "4d887300-1b2b-547a-971f-34a3c078006d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013657",
+      "fileName": "33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/9aed01a19d56-33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "391bd1f0-db6d-5022-bb14-47a532362056",
+      "revisionId": "bd255dae-9d00-5138-b9d8-edffbb2819be",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013671",
+      "fileName": "33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/9aed01a19d56-33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "382a24f0-c8fd-5b49-83b8-d3320facb38f",
+      "revisionId": "1ea415e5-930b-5369-8aab-78536dd190b7",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013681",
+      "fileName": "33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/9aed01a19d56-33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "pdfPages": [
+        12,
+        13
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "48bcbad0-ef93-58f6-82ad-38c898ced137",
+      "revisionId": "10ab2f92-691d-58f5-b7b1-fda57ae794c7",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013743",
+      "fileName": "33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/9aed01a19d56-33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "pdfPages": [
+        28,
+        29
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "40151aa4-850b-5465-9165-f605ccfbca0a",
+      "revisionId": "4b81e6b0-ee5e-5b43-ba4c-13489dce0c11",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015442",
+      "fileName": "33_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/741d42eecd0a-33_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "c6a2b508-887e-57a9-96ae-45cecc33224d",
+      "revisionId": "fecdb903-36c9-520f-842a-5620bb47b5a4",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015444",
+      "fileName": "33_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/741d42eecd0a-33_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "3d79162c-7e89-513d-b32e-956f2ff9a98e",
+      "revisionId": "7c06e5c0-79fe-582d-9c0f-09dd9f530f27",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013849",
+      "fileName": "34_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/abf0d9e83cd7-34_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "eb377b59-2cc6-51b6-bf79-c0ede644dfd6",
+      "revisionId": "fc19be37-4a2d-5bc8-a0b6-a58ca280fbed",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013860",
+      "fileName": "34_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/abf0d9e83cd7-34_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "8fe755dc-97bb-5058-9841-8844f2dc2f01",
+      "revisionId": "af2e9882-4270-53fc-beeb-8ba7d76b48ce",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05013972",
+      "fileName": "35_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2a72867b325b-35_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        1
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "75c1c724-75b2-5a8d-a09e-543b7afa5e6d",
+      "revisionId": "ff491ddf-6a4b-58ac-9133-8962ef08782b",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014015",
+      "fileName": "35_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2a72867b325b-35_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "16180597-9e29-5a36-beac-a3cbd0dd4e0c",
+      "revisionId": "644521f6-c212-58bf-978b-cf6a947b5b1e",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014024",
+      "fileName": "35_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2a72867b325b-35_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        19,
+        20
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "07cd42b5-a9dd-5f88-9eb3-2b89a2beff18",
+      "revisionId": "81b89bb9-7733-5517-8fa5-60aa369e13e5",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014045",
+      "fileName": "35_03_3-1_1-1_什麼是公民？.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2a72867b325b-35_03_3-1_1-1_什麼是公民？.pdf",
+      "pdfPages": [
+        26,
+        27
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "50f8dc7a-004f-51b8-afa6-3fd696eed4df",
+      "revisionId": "e139032f-68dd-5d92-a6aa-5cee7f6b304c",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014284",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "bce34df6-67f2-5b48-8088-bff8d6434c20",
+      "revisionId": "296d079b-aa27-50b2-886d-a1f6ff83975d",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014297",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "649920d1-cce4-5b00-8544-db89efda33f9",
+      "revisionId": "f03e45cf-4ad6-517e-8ba9-68280b570e36",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014333",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        21,
+        22
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "d8d3fd1e-ef1a-559f-a753-c5ca4f2d35ab",
+      "revisionId": "a63b02e2-53f5-5813-b420-228dbd42094b",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014334",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        22,
+        23
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "588f9ed8-67fc-5edc-970f-09a50053cf3d",
+      "revisionId": "d662dc8b-1fad-5353-8aef-aad507358c61",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014348",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        27,
+        28
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "315da064-632f-5a78-b30e-7817f3a72e56",
+      "revisionId": "3967939c-534e-58fc-8122-dfc9ead3362f",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014407",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 9,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        47,
+        48
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "d5971e5b-e5f1-5232-8e84-2824a2fd576e",
+      "revisionId": "c75cf426-2c45-5122-86c5-f3e78ce5fbdb",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014432",
+      "fileName": "38_03_3-2_2-2_ 人權保障的落實.doc",
+      "nativeTableIndex": 10,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0e58554031ba-38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "pdfPages": [
+        59,
+        60
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "cb7e41f5-1d6f-5893-aee2-56e2c4931f25",
+      "revisionId": "6187dff5-135c-514c-8701-ba197deb7792",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015541",
+      "fileName": "38_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/5aa14d572b26-38_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "22bf24e9-c940-5b66-b014-91806a1764a9",
+      "revisionId": "2510635f-788a-5d76-9a51-e06715e3b2a0",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014492",
+      "fileName": "39_03_3-3_3-1_家庭中的親屬關係.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2bdb4ae7df31-39_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "pdfPages": [
+        9,
+        10
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5690e47f-8972-5258-a208-5012897e569d",
+      "revisionId": "a7f04906-acb8-5e50-b66a-3237b4723619",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014532",
+      "fileName": "39_03_3-3_3-1_家庭中的親屬關係.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/2bdb4ae7df31-39_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "pdfPages": [
+        21,
+        22
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "a8b1ebda-165a-55d1-a04f-2b8d233c9691",
+      "revisionId": "49b1d72a-570b-5949-86c3-4a829de0d3a3",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014599",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        3,
+        4
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "41259d18-821b-5b4e-9062-4e78066aa673",
+      "revisionId": "72477a13-57c8-5b09-af06-2c2ee460be0c",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014600",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2a36d441-9ba9-5f28-8ad1-b1e1ac5a6172",
+      "revisionId": "0455f375-aeef-53ba-b133-a31a44976faf",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014601",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        4,
+        5
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "0174d277-9643-55af-830a-25a189545c20",
+      "revisionId": "11acca64-9fb2-5d06-b4b7-59e26d09d6b4",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014633",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 6,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        16,
+        17
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "dbc6f150-4597-5b6c-88c3-dd43c6cf9d5a",
+      "revisionId": "5e4957cb-4ae7-58a1-b111-151e8e4057f4",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014634",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 7,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        16,
+        17
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "7531345e-8ce8-57c6-a6a1-f83eacc6d54f",
+      "revisionId": "904d9bbc-17d1-554a-86a1-6a8f3607bc4c",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014656",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 10,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        25,
+        26
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5375c33c-41d8-50b6-8242-55d19a8c716e",
+      "revisionId": "b634c9e0-bc3b-5d6f-b1e1-3a92941ee0ff",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014662",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "nativeTableIndex": 11,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/0370b3710124-40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "pdfPages": [
+        27,
+        28
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "a5533c2a-bef0-566e-9f57-4467e9531795",
+      "revisionId": "19aef12a-4692-52c5-9635-60df2394003b",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014696",
+      "fileName": "41_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/355737566944-41_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "972c48ce-11e4-5967-943c-f9e70df95a98",
+      "revisionId": "10b5d7a7-4650-5205-8c85-9ec8eacd4e40",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014738",
+      "fileName": "41_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/355737566944-41_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "pdfPages": [
+        18,
+        19
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "02d90a11-8218-5df3-8a3f-ccbc16c0667c",
+      "revisionId": "1cede3e6-0ebe-5c20-a638-845df1f100f1",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014886",
+      "fileName": "43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7afb6c58d251-43_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        1,
+        2
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "7f513e7d-b974-574b-9505-9f23973df754",
+      "revisionId": "8d9c662c-58a4-5960-8e83-e9027eca71f1",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014985",
+      "fileName": "43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 10,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7afb6c58d251-43_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        35,
+        36
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "cdfe4cae-dea3-58b5-89c4-2d9f5c89924f",
+      "revisionId": "5a8bcd71-5681-5d7f-b4c3-bb4521a19d6d",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05014988",
+      "fileName": "43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 11,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7afb6c58d251-43_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        36,
+        37
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "afb3decc-7000-5cfa-9a76-34e245ca1b43",
+      "revisionId": "2823475a-5d3b-5332-8491-130d43eef4a6",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015002",
+      "fileName": "43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "nativeTableIndex": 12,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7afb6c58d251-43_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "pdfPages": [
+        44,
+        45
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "addfd0a6-7538-5583-91b4-e3c00958a613",
+      "revisionId": "20535ce4-2491-5eb8-93e5-960e5e32e28e",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015096",
+      "fileName": "44_03_3-5_5-1_校園中的權利與維護.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f261bc0c298b-44_03_3-5_5-1_校園中的權利與維護.pdf",
+      "pdfPages": [
+        25,
+        26
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "2715be9f-985e-520d-adc1-e3fc8ccc408c",
+      "revisionId": "b6ab09bc-0486-5bd0-86fd-f3f8addaf481",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015106",
+      "fileName": "44_03_3-5_5-1_校園中的權利與維護.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f261bc0c298b-44_03_3-5_5-1_校園中的權利與維護.pdf",
+      "pdfPages": [
+        31,
+        32
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "af6c6660-86d9-5432-8e4e-c155f831d448",
+      "revisionId": "dac981d4-6901-5a87-87bb-5951293544fc",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015109",
+      "fileName": "44_03_3-5_5-1_校園中的權利與維護.doc",
+      "nativeTableIndex": 5,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/f261bc0c298b-44_03_3-5_5-1_校園中的權利與維護.pdf",
+      "pdfPages": [
+        33,
+        34
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6ba87969-fb0e-5b08-8ba4-ce2bbf3215cc",
+      "revisionId": "0868d49e-eddc-543a-9779-43af327ab7ae",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015126",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        2,
+        3
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6ee332ac-7ca6-597d-b326-a22ec6da0c87",
+      "revisionId": "38e010a6-af5e-5076-b3ae-a8bb5aa5090c",
+      "revisionNumber": 4,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015134",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        5,
+        6
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "6e2a522c-80c6-522f-9387-c5d6691e738b",
+      "revisionId": "abb19df4-4213-58e0-8ec3-0308efabb11e",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015165",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 3,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        16,
+        17
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "922b46f7-2723-5878-b9bd-70e8425e9043",
+      "revisionId": "e246e66b-c00d-5381-aa82-ea63b60d148f",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015176",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 4,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        21,
+        22
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "beb32096-8a21-58ab-9bb6-88e70f904e44",
+      "revisionId": "7648a386-181d-5032-a21c-b338d856e5c6",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015220",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 7,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        35,
+        36
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "5833fe39-361a-51ba-9ff1-a91876fedd05",
+      "revisionId": "739a08dd-e4cc-55f4-9f3c-ea47a57392f5",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015221",
+      "fileName": "45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "nativeTableIndex": 8,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/ddd19a5eddcd-45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "pdfPages": [
+        36,
+        37
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "78883d02-a381-51df-8141-3c454e43fa71",
+      "revisionId": "565300c9-54fb-5277-8c40-2b7f9477eb5a",
+      "revisionNumber": 3,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015280",
+      "fileName": "46_03_3-6_6-1_部落的意義與重要性.doc",
+      "nativeTableIndex": 1,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7cc591e591dc-46_03_3-6_6-1_部落的意義與重要性.pdf",
+      "pdfPages": [
+        7,
+        8
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "114696df-98eb-5591-9246-b187120c800f",
+      "revisionId": "d0f44aae-7145-5d61-98bd-0915110c4e2f",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    },
+    {
+      "questionNumber": "05015303",
+      "fileName": "46_03_3-6_6-1_部落的意義與重要性.doc",
+      "nativeTableIndex": 2,
+      "pdfPath": "/private/tmp/lerniqa-social-table-word-pdfs/7cc591e591dc-46_03_3-6_6-1_部落的意義與重要性.pdf",
+      "pdfPages": [
+        15,
+        16
+      ],
+      "expectedAuditStatus": "word-pdf-exact-text-match",
+      "matchedPublishedRevisionCount": 1,
+      "questionId": "b0e5a142-2661-5125-9f16-1c8ca43be373",
+      "revisionId": "9b39b235-7bb1-50de-bf3d-dd9d0aa39956",
+      "revisionNumber": 2,
+      "exactTableTextMatch": true,
+      "tableFlattenedIntoPrompt": false,
+      "passed": true
+    }
+  ]
+}

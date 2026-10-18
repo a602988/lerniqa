@@ -376,6 +376,7 @@ export function filterQuestions(
         .filter((question) => !keyword || [
             getQuestionDisplayNumber(question),
             question.prompt,
+            question.searchText,
             question.knowledge,
             question.topic,
             question.source,

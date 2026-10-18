@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0015` 共十五個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar、十二年國教年級目錄，以及可審核的題目模板與正式關鍵字關聯。`0015` 不新增資料表，只補強 AI／規則關鍵字目錄的待審、方法版本、證據與審核者限制。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0018` 共十八個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar、十二年國教年級目錄、可審核的題目關聯、出版社版本與冊次分離、學習本版本及分享，以及經來源核准的文字答案欄位數。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -26,7 +26,7 @@
 
 題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。辨識方式由 `question_revisions.original_question_type_label` 的正式細題型契約決定：「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式；未設定的細題型不進入 worker。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
 
-十五個 migration 合計 110 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者；目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入資料庫。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。`accountRole` 是主要身分，能力由 `activeRole` 及其有效授權決定；因此 `accountRole=learner` 的帳號若仍有 parent／tutor 授權，切到相應 `activeRole` 後仍可管理學習者。切入受管 learner mode 時不能使用帳號層系統設定，但仍可依 `can_manage_settings` 使用目前學習者設定。瀏覽器只保存非識別性 UI 設定，以及尚未切換資料庫的計畫、排程與收藏；舊 JSON HTTP 端點固定回 `410`。第四課 parser v2 已發布 279 題，全部目前版本均為 revision 2，沿既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」使用。`/local-practice` 僅供內部診斷與相容。
+十八個 migration 合計 117 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。瀏覽器只保存非識別性 UI 設定、尚未切換資料庫的收藏，以及明確搬移後保留的舊學習本原始備份；舊 JSON HTTP 端點固定回 `410`。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -539,7 +539,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `exam_program_level_id` | `uuid` | 選填 | 考試級別或類別 | 外鍵至 `exam_program_levels.id` |
 | `difficulty_level_id` | `uuid` | 選填 | 難易度 | 外鍵至 `difficulty_levels.id` |
 | `source_category_id` | `uuid` | 選填 | 題目來源 | 外鍵至 `source_categories.id` |
-| `search_text` | `text` | 必填；空字串 | 搜尋用衍生文字 | 由內容區塊重建，不是題目內容來源 |
+| `search_text` | `text` | 必填；空字串 | 搜尋用衍生文字 | 由內容區塊重建；公式同時收錄 canonical TeX 與可讀別名，不是題目內容來源 |
 | `status` | `varchar(20)` | 必填；`draft` | 版本狀態 | `draft`、`published`、`superseded`、`rejected` |
 | `change_note` | `varchar(500)` | 選填 | 修改原因 | 系統題目在 `revision_number > 1` 時必填，去除前後空白後不得為空；由 `0005` 在資料庫層強制 |
 | `created_by_type` | `varchar(30)` | 必填 | 建立者類型 | `user`、`bootstrap_admin`、`system_job`、`migration` |
@@ -581,10 +581,15 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `stable_key` | `varchar(80)` | 必填 | 版本內穩定鍵值 | 同一版本內唯一 |
 | `position` | `smallint` | 必填 | 顯示與作答順序 | — |
 | `answer_mode` | `varchar(30)` | 必填 | 作答方式 | 首版為 `single_choice`、`multiple_choice`、`boolean`、`text` |
+| `answer_field_count` | `smallint` | 必填；`1` | 同一小題的文字答案欄位數 | `1` 至 `8`；大於 `1` 時只允許 `text` 與 `manual_review` |
 | `grading_policy` | `varchar(30)` | 必填 | 判分政策 | `automatic`、`manual_review`、`ai_assisted_review` |
 | `is_independently_gradable` | `boolean` | 必填；`true` | 是否可獨立判分 | 為真時可只複習此小題 |
 
-一般單題仍建立一筆根小題，讓所有答案與作答都使用同一條路徑，避免整題與小題出現兩套平行實作。`grading_policy` 表示題目設定的判分方式；`answer_attempts.grading_source` 記錄送出時採用的初始判分方式，`answer_part_results.grading_source` 則記錄目前有效判定的來源，合法人工審核改判時可連同 `current_result` 一併更新。三個欄位共用同一組值，不做額外字串對照。
+一般單題仍建立一筆根小題，讓所有答案與作答都使用同一條路徑，避免整題與小題出現兩套平行實作。多個輸入框不代表多個可獨立判分的小題；同一來源小題需要數個有順序的答案時，以 `answer_field_count` 保存欄位數，作答值依原順序以全形逗號組成單一文字值。欄位數必須來自原始文件中已人工核對的空格結構或同等可追溯證據，並綁定來源 SHA-256、題號與 `stable_key`；不得由參考答案的逗號數、題幹空白或瀏覽器畫面推測。作答前 API 可揭露欄位數，但不得揭露 `question_answers`。送出時伺服器要求欄位數完全相符且每欄非空白，多欄文字題維持 `manual_review`。作答介面依 `question_parts.position` 在每列輸入欄位前顯示 `(1)`、`(2)` 等可見編號，不另存一份顯示編號，也不從題幹文字推測順序。
+
+顯示層不得把文字小題只轉成沒有列號的空白欄位。題幹已有足量空格且同頁顯示多個文字小題時，即使每個 `answer_field_count` 都是 `1`，每列仍依 `question_parts.position` 顯示來源小題編號。`answer_field_count > 1` 的小題使用相同規則。每列編號必須是一般可見文字，桌面與手機實測字級不得低於 `1.125rem`；無障礙 `legend` 與 `aria-label` 仍保留，但不能取代畫面上的編號。
+
+`grading_policy` 表示題目設定的判分方式；`answer_attempts.grading_source` 記錄送出時採用的初始判分方式，`answer_part_results.grading_source` 則記錄目前有效判定的來源，合法人工審核改判時可連同 `current_result` 一併更新。三個欄位共用同一組值，不做額外字串對照。
 
 ### `question_options` 選項
 
@@ -606,12 +611,24 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `parent_block_id` | `uuid` | 選填 | 所屬內容區塊 | 錄音稿連到對應音訊；外鍵至同表 `id` |
 | `placement` | `varchar(20)` | 必填 | 顯示位置 | `prompt`、`option`、`answer`、`explanation`、`transcript` |
 | `content_type` | `varchar(20)` | 必填 | 內容格式 | `text`、`image`、`audio`、`transcript`、`formula`、`table`、`page_crop` |
+
+`table` block 的 `text_content` 使用 tab 分隔欄、換行分隔列；空字串儲存格仍須保留，顯示層依此契約產生真正的 table、row 與 cell 結構。題目總覽與正式練習共用同一個表格 renderer，顯示格線並在窄螢幕限制水平捲動於表格容器內，不得把 `table` block 放進 `pre` 當成純文字。舊版 Word 原生表格匯入時，核准契約必須包含來源檔 SHA-256、題號、來源頁碼、表格順序、原始表格 XML SHA-256、標準化逐格文字 SHA-256 與逐格文字；匯入器以來源 SHA、表格順序及逐格文字 checksum 驗證可重現內容，原 XML checksum 供稽核而不依賴轉檔器的揮發性屬性。驗證後再移除題幹中由轉檔產生的同一組逐行文字，避免表格與扁平文字重複。若轉檔只留下部分儲存格，只能移除與核准儲存格完整相等的獨立行；來源漂移、模糊吻合或缺少 Word PDF 畫面證據時，該題維持待檢，不得猜測欄列關係。
+
+若選項本身以原生表格的欄或列呈現，選項修復契約還必須綁定該表格的原始物件 checksum；執行時只有同一來源 SHA、題號與核准表格同時匹配才可建立「表格中的（A）欄／列」等作答選項。這類修復不得只憑答案代號建立選項，也不得放寬一般選項解析器。
 | `position` | `smallint` | 必填 | 同一位置中的順序 | — |
 | `text_content` | `text` | 選填 | 文字、公式或表格內容 | 與 `asset_id` 依格式至少擇一 |
 | `asset_id` | `uuid` | 選填 | 圖片、音訊或原頁裁切圖 | 外鍵至 `assets.id` |
 | `alt_text` | `varchar(300)` | 選填 | 替代文字 | 圖片發布前必填；音訊以錄音稿提供等價內容 |
 
 填空位置需在文字內容中使用經驗證的結構化標記，例如 `{{blank:part-1}}`，顯示時轉成底線或答案欄，不以連續空白推測。`audio` 必須使用 `asset_id`；錄音稿建立 `transcript` 區塊並以 `parent_block_id` 連到音訊區塊。發布英聽題前必須有錄音稿，除非正式無障礙政策核准其他等價方式。
+
+多小題來源圖片以 `partStableKey` 對應 `question_parts.stable_key`，writer 再把內容區塊的 `question_part_id` 寫成實際小題 ID。同一題可能在 Word 中重複使用完全相同的圖片 bytes，因此 checksum 與 `asset_id` 只代表資產身分，不代表來源中的單一出現位置。匯入 registry 使用以 1 起算的 `sourceOccurrence` 區分同一正規化題號與 checksum 的多次出現；同組序號必須完整、不重複並連續為 `1..N`。匯入器依來源出現順序選擇 mapping，不依 registry 陣列順序。相同 `asset_id` 可以產生數個內容區塊，但每個區塊必須保留各自的 `question_part_id`、placement 與 position。單一 checksum 的既有 mapping 可以省略 `sourceOccurrence`。
+
+若 Word 題目或小題的提示完全由圖片構成，已通過來源 checksum 與 `partStableKey` 驗證的 prompt 圖片本身就是可發布題幹；writer 不得要求另造空泛文字題幹。沒有文字且也沒有已驗證 prompt 圖片的紀錄仍須拒絕發布。
+
+`formula` 的 `text_content` 保存 canonical TeX，`asset_id` 必須為空；顯示端以共用 KaTeX 元件呈現，並禁用可建立 URL 或 HTML 的信任模式。`\\phantom` 是公式內容的一部分，用來保存來源題目的作答空格，不代表資料缺漏，也不得由答案補值。純文字答案或解析中的明確 `\\frac{分子}{分母}` 標記使用共同行內分數元件；分數線需和相鄰運算符號對齊。匯入器只有在固定來源 SHA-256、題號與原始公式資產 checksum 皆命中人工覆核 registry 時，才能把舊公式圖轉成 `formula`。未核准或無法唯一判讀的來源維持 `image`，不得以 OCR 或前端推測轉換。搜尋索引要同時包含 canonical TeX 與可讀別名，例如 `\\frac{6}{8}` 另加入 `6/8`；別名只供搜尋，不得取代內容來源。
+
+純文字內容中的 `∵` 與 `∴` 是可追溯來源字元，資料庫與搜尋文字保持原值。學習者畫面的共用文字元件分別顯示「因為」與「所以」；管理與來源審核畫面顯示原始字元，避免審核者誤認來源已被改寫。
 
 ### `question_revision_units` 題目版本教材單元歸檔
 
@@ -1475,7 +1492,7 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 
 - 不建立獨立錯題表。`instant` 與 `complete` 的錯題由 `answer_part_results` 的最新已檢核結果與可重建統計取得，避免改判後錯題表不同步；`score` 不保存逐題結果，因此不產生錯題明細。
 - 不建立永久名次表。排行榜依日期範圍及篩選條件從每日統計計算。
-- 不建立平行的題組內容表。同一大題的共用內容放在 `question_revisions` 的內容區塊，各小題放在 `question_parts`；切換小題時可保留共用內容。
+- 不建立平行的題組內容表。同一大題的共用內容放在 `question_revisions` 的內容區塊，各小題放在 `question_parts`。兩個以上可獨立作答的小題依 `position` 逐題切換，共用內容保持可見，答案仍以 `question_part_id` 分別保存。只有題幹已有足量空格且每個文字小題各對應一個空格時，輸入欄位同行顯示，不使用逐小題切換。
 - 不把來源路徑、重複來源類型或重複知識點再存成可見條件。原始證據留在來源文件與匯入草稿；可驗證的正式課綱代碼另存到 `curriculum_codes`，不能因畫面不顯示「學習內容」就丟棄代碼。
 
 ```text
@@ -1703,6 +1720,14 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 每一階段都有 up 與 down migration。down 只用於空白或只含合成資料、可直接丟棄的本機資料庫，以驗證物件移除順序與再次前進；正式資料庫開始承載耐久資料後，不執行這些 down migration，改用保留資料的 forward fix migration，並以停止寫入、切回上一版服務或關閉功能等營運方式回復服務。`0008` 的教材分類修正是 forward-only，down 不把 `native/document` 改回舊分類；`0009` down 只移除新增的 trigger、函式與 migration 紀錄，不修改題目、選項或答案；`0010` down 不反向猜測 migration 修正前的 self learner 名稱或設定權限；`0011` down 不虛構已刪除的 `score` 明細，也不取消只屬於舊 `score` 資產的邏輯刪除，但會移除 job table 與 migration 產生的清理稽核。有 pending 工作的環境須先完成或受控移交工作並另留操作稽核，不能用 DDL down 當營運回滾。接近正式資料量的驗證也必須使用隔離副本，不得把 down 當成正式資料的復原方案。
 
 舊 JSON HTTP 寫入已停止。若要搬移仍需保留的歷史 JSON，先凍結來源、完成一次性搬移及數量核對，再開放對應的 PostgreSQL API；不能恢復雙寫。若 fixture 系統題第一版要使用直接發布例外，部署順序固定為 `0001` 至 `0004`、受控 fixture 搬移、`0005`；否則另寫專用的一次性受控 migration。一般搬移工具在 `0005` 之後不得繞過 `draft`、審核與稽核限制。
+
+## 學習工作區題庫讀取契約
+
+- `GET /api/v1/local-practice/questions` 不帶題庫分類與分頁參數時，表示讀取目前 session 學習者的完整可用題庫。範圍由有效 `learner_access`、active `question_banks`、`question_bank_learners`、`question_bank_items`、學習者年級與 enabled `learner_subject_settings` 決定；科目設定有 `book_version_id` 時只包含該版本。前端不得保存可用課次清單或在空集合時自行補資料。
+- 帶分類時必須同時提供年級、科目、出版社、冊次及課次，並可帶 page／limit；只提供部分分類或只對未篩選查詢提供分頁參數時回傳 `400`。兩種查詢都只選 `questions.current_revision_id` 指向的 published revision，並以 active 目錄與題庫成員關係授權。
+- 一次可用題庫讀取先做一個 base selection，再以 revision ID 集合讀取小題、選項、題幹／選項內容、metadata 與知識點。公開題庫路徑不可讀取 `question_answers` 或 explanation placement。session 恢復另沿 `practice_session_items.question_revision_id` 讀取固定版本，不受目前版本與目前設定變更影響。
+- 工作區初次載入只呼叫一次可用題庫查詢；作答完成後只更新 history／wrong-review 摘要。這個合併讀取仍會一次傳輸完整可用題庫，若五次實測中位數未低於三秒，下一階段必須改為路由範圍摘要與分頁載入，不得以提高併發或持久瀏覽器快取掩蓋問題。
+- 完整可用題庫回應在客戶端接受時使用 gzip 傳輸，保留 `private, no-store` 與 `Vary: Accept-Encoding`；壓縮不得改變 JSON envelope、答案不外洩規則或授權範圍。客戶端明確拒絕 gzip 時仍須回傳同一份未壓縮 JSON。
 
 ## 正式切換前仍需確認
 

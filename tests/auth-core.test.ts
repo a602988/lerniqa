@@ -176,6 +176,7 @@ test("loads all active accepted learners with profiles and stable relationship m
     assert.match(learnerReader, /available_book\.grade_id IS NULL\s+OR available_book\.grade_id = learner\.grade_id/u);
     assert.match(learnerReader, /available_book\.origin = 'system'\s+OR available_book\.owner_user_id = \$1/u);
     assert.match(learnerReader, /bool_or\(access\.can_manage_settings\) AS can_manage_settings/u);
+    assert.match(learnerReader, /bool_or\(access\.can_create_plans\) AS can_create_plans/u);
     assert.match(learnerReader, /bool_or\(access\.access_role = 'learner'\) AS is_self/u);
     assert.match(learnerReader, /ORDER BY effective_access\.first_accepted_at, learner\.created_at, learner\.id/u);
 });
@@ -229,6 +230,7 @@ test("publishes only the learner profile display contract", () => {
         "bookVersion",
         "publisher",
         "accessRole",
+        "canCreatePlans",
         "canManageSettings",
         "isSelf",
     ]) {

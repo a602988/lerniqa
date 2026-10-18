@@ -1,0 +1,95 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 5,
+      "byWordStatus": {
+        "word-confirms-source-visual": 2,
+        "word-has-no-inline-visual": 3
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 2,
+        "choice-parse-failed": 3
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010296",
+      "sourcePage": 2,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010295\n難易度:易\n出處:試題\n認知向度:具備基本知識\n知識向度:地圖要素\n 文彬對地圖繪製很感興趣,以下是文彬在地理課時,統整有關比例尺的筆記內容。下列哪項筆記內容有誤? (A)比例尺的計算方式為圖上距離/實際距離 (B)比例尺的表示方法有數字、文字或圖示等表示法 (C)大比例尺的地圖內容簡略,小比例尺的地圖內容詳盡 (D)大比例尺地圖的涵蓋範圍小,小比例尺的地圖涵蓋範圍大。\n答案:(C)\n解析:大比例尺地圖涵蓋範圍小,內容詳細;小比例尺地圖涵蓋範圍大,內容簡略,故選(C)。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010344",
+      "sourcePage": 13,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010343\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:地圖要素\n 下列哪些情況應選用大比例尺地圖?(甲)繪製亞洲民族分布圖(乙)繪製嘉義市商店街土地利用圖(丙)欲以步行從事一日地理實察(丁)所繪範圍涵蓋十分廣大時 (A)甲乙 (B)甲丙 (C)乙丙 (D)甲丁。\n答案:(C)\n解析:小比例尺圖所涵蓋的地區較大,內容須精簡。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010355",
+      "sourcePage": 15,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010354\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:地圖要素\n 航海時期,哥倫布使用的平面地圖,以及太空時代,麥可所使用的電子地圖比較,如附表所示。請問:下列何者正確?\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007傳統地圖\n\u0007更新較快\n\u0007資料較多\n\u0007資料搜索較慢\n\u0007範圍較大\n\u0007\n\u0007電子地圖\n\u0007更新較慢\n\u0007資料較少\n\u0007資料搜索較快\n\u0007範圍較小\n\u0007\n\u0007答案:(C)\n解析:電子地圖利用電腦整理相關資料,故搜索較快。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010356",
+      "sourcePage": 15,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010355\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:地圖種類\n 下列有關大小比例尺的特色敘述中,在同樣大小的紙張上,下列敘述何者錯誤?\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007大比例尺\n\u0007\u0001\n\u0007詳細\n\u0007可畫範圍小\n\u0007臺灣地圖\n\u0007\n\u0007小比例尺\n\u0007\u0001\n\u0007簡略\n\u0007可畫範圍大\n\u0007臺南市地圖\n\u0007\n\u0007答案:(D)\n解析:大比例尺的縮小程度較少,故利於小範圍地圖的繪製。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010363",
+      "sourcePage": 17,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010362\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:地圖要素\n 師大地理系學生完成野外實察,學生在整理資料準備繪製考察地圖時,教授特別提醒要注意繪圖時所使用的比例尺標示,以避免在放大或縮小時出現誤差。請問:為避免上述情形發生,應使用下列哪一種比例尺標示法? (A) 1/10000 (B) 1:10000 (C)一萬分之一 (D) /\n答案:(D)\n解析:使用其他標示法在放大或縮小時,會造成圖中距離變化而比例尺不變,因此容易出現誤差。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 2,
+      "optionVisuals": [
+        "D"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "completed": [
+    {
+      "sourceSha256": "f8d7460091d3a117b175f3f349abe4c46eef7d43fd78645784e77758094b72b7",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/14_01_1-5_5-1_天氣.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":139,\"published\":138,\"pendingReview\":1,\"failed\":0,\"questionAssets\":98,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":139,\"published\":138,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"14_01_1-5_5-1_天氣.doc\",\"questionNumber\":\"05011508\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 01_試題/14_01_1-5_5-1_天氣.doc: 138/139, 待檢 1, 圖片 98"
+    },
+    {
+      "sourceSha256": "1a92f79efe9bcea3ec1323dc802777e88494868b754518330d55210f6d3d92e2",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/15_01_1-5_5-2_氣候.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":37,\"published\":37,\"pendingReview\":0,\"failed\":0,\"questionAssets\":28,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":37,\"published\":37,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/15_01_1-5_5-2_氣候.doc: 37/37, 待檢 0, 圖片 28"
+    },
+    {
+      "sourceSha256": "80d2cbb251bd63ff7cb999d509b34844dd0c2b1fb60c7706a616a12127d8e082",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":171,\"published\":171,\"pendingReview\":0,\"failed\":0,\"questionAssets\":132,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":171,\"published\":171,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/16_01_1-5_5-3_臺灣的氣候特徵.doc: 171/171, 待檢 0, 圖片 132"
+    },
+    {
+      "sourceSha256": "c170434085492d917a8405642a4b622ab224adb79fb2be19c2137b756260ef50",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/17_01_1-5_5-4_臺灣的氣象災害.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":82,\"published\":82,\"pendingReview\":0,\"failed\":0,\"questionAssets\":58,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":82,\"published\":82,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/17_01_1-5_5-4_臺灣的氣象災害.doc: 82/82, 待檢 0, 圖片 58"
+    },
+    {
+      "sourceSha256": "bdddf49cbeb57f7ca1d0559d94ca5dce265b974767563dab2770ee52efdc3f10",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/19_01_1-6_6-2_水系與流域.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":55,\"published\":55,\"pendingReview\":0,\"failed\":0,\"questionAssets\":55,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":55,\"published\":55,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/19_01_1-6_6-2_水系與流域.doc: 55/55, 待檢 0, 圖片 55"
+    },
+    {
+      "sourceSha256": "80d16c35ff2bbca2e50e1a612eb0f1a8341c88b8972a4abbdf11c9ad05862685",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":168,\"published\":164,\"pendingReview\":4,\"failed\":0,\"questionAssets\":91,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":168,\"published\":164,\"pendingReview\":4}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"20_01_1-6_6-3_臺灣河川的特色.doc\",\"questionNumber\":\"05012100\",\"pendingReasons\":[\"visual-reference-without-image\"],\"images\":[]}\n{\"fileName\":\"20_01_1-6_6-3_臺灣河川的特色.doc\",\"questionNumber\":\"05012120\",\"pendingReasons\":[\"visual-reference-without-image\"],\"images\":[]}\n{\"fileName\":\"20_01_1-6_6-3_臺灣河川的特色.doc\",\"questionNumber\":\"05012121\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n{\"fileName\":\"20_01_1-6_6-3_臺灣河川的特色.doc\",\"questionNumber\":\"05012131\",\"pendingReasons\":[\"visual-reference-without-image\"],\"images\":[]}\n匯入 01_試題/20_01_1-6_6-3_臺灣河川的特色.doc: 164/168, 待檢 4, 圖片 91"
+    },
+    {
+      "sourceSha256": "a714290ca525cce3b6d84e0e439b1e79ed8dbdf1b227ff622ccf43b880f4639b",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":120,\"published\":119,\"pendingReview\":1,\"failed\":0,\"questionAssets\":74,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":120,\"published\":119,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"21_01_1-6_6-4_臺灣水資源利用與保育.doc\",\"questionNumber\":\"05012248\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.doc: 119/120, 待檢 1, 圖片 74"
+    },
+    {
+      "sourceSha256": "b81b60753c0d2e1fb09a721ebdba578c71f75a8e70ff34eaa1c77ed6e93138da",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":135,\"published\":134,\"pendingReview\":1,\"failed\":0,\"questionAssets\":42,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":135,\"published\":134,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"23_02_2-1_1-1_考古發掘與史前文化.doc\",\"questionNumber\":\"05012487\",\"pendingReasons\":[\"visual-reference-without-image\"],\"images\":[]}\n匯入 01_試題/23_02_2-1_1-1_考古發掘與史前文化.doc: 134/135, 待檢 1, 圖片 42"
+    },
+    {
+      "sourceSha256": "090b420599f8da9d9eaf0dd1e92c93e35d59e2872835ba89e88406b5377d12c1",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/24_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":57,\"published\":57,\"pendingReview\":0,\"failed\":0,\"questionAssets\":13,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":57,\"published\":57,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/24_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc: 57/57, 待檢 0, 圖片 13"
+    },
+    {
+      "sourceSha256": "6fbfd5e3562b9d0b0480387a8f769bca1a1f57c449a9e5573364097149e81a7b",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/26_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":229,\"published\":229,\"pendingReview\":0,\"failed\":0,\"questionAssets\":50,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":229,\"published\":229,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/26_02_2-2_2-2_各方勢力在臺灣的競逐.doc: 229/229, 待檢 0, 圖片 50"
+    },
+    {
+      "sourceSha256": "91cc95bf4eb99f85bf6bb37fb5936cb4c95de3d7a147f71f23690544cca5abc7",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/27_02_2-3_3-1_歐洲人與原住民.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":118,\"published\":118,\"pendingReview\":0,\"failed\":0,\"questionAssets\":17,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":118,\"published\":118,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/27_02_2-3_3-1_歐洲人與原住民.doc: 118/118, 待檢 0, 圖片 17"
+    },
+    {
+      "sourceSha256": "a98f16470723a96fae700d1843f159e86bf5cc70771b310eaabc456ada6206aa",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":176,\"published\":176,\"pendingReview\":0,\"failed\":0,\"questionAssets\":37,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":176,\"published\":176,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/29_02_2-4_4-1_清初治臺政策與措施.doc: 176/176, 待檢 0, 圖片 37"
+    },
+    {
+      "sourceSha256": "b1c8d76a0e277becd711880f72751fcc21db5aa90d833d1b85f519e8a192a668",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":171,\"published\":171,\"pendingReview\":0,\"failed\":0,\"questionAssets\":35,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":171,\"published\":171,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/30_02_2-4_4-2_外力入侵與現代化建設.doc: 171/171, 待檢 0, 圖片 35"
+    },
+    {
+      "sourceSha256": "6c3f892321a81a2e54165e478da3d2317d8c4417e2c23a8a5c6332d89a288e45",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/31_02_2-5_5-1_農業發展.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":71,\"published\":71,\"pendingReview\":0,\"failed\":0,\"questionAssets\":10,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":71,\"published\":71,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/31_02_2-5_5-1_農業發展.doc: 71/71, 待檢 0, 圖片 10"
+    },
+    {
+      "sourceSha256": "58cd99a10171f01b55e2f44389c9519ca95695df9ac44240dc7afe87b23eee6a",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/32_02_2-5_5-2_商業活動.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":178,\"published\":178,\"pendingReview\":0,\"failed\":0,\"questionAssets\":43,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":178,\"published\":178,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/32_02_2-5_5-2_商業活動.doc: 178/178, 待檢 0, 圖片 43"
+    },
+    {
+      "sourceSha256": "9aed01a19d561c5be86e6cd43304d543e59d0e54c9ec5ad5d9bd00922e2bb548",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":201,\"published\":201,\"pendingReview\":0,\"failed\":0,\"questionAssets\":20,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":201,\"published\":201,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/33_02_2-6_6-1_漢人社會與文教的發展.doc: 201/201, 待檢 0, 圖片 20"
+    },
+    {
+      "sourceSha256": "abf0d9e83cd7a72f248c2667d30746b25111ff89f5ddf7dba8ec9c33525335ab",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/34_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":33,\"published\":33,\"pendingReview\":0,\"failed\":0,\"questionAssets\":4,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":33,\"published\":33,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/34_02_2-6_6-2_原住民的社會文化變遷.doc: 33/33, 待檢 0, 圖片 4"
+    },
+    {
+      "sourceSha256": "2a72867b325b0d03e6fa7d2ead763e5fe018db0be13d314d3e7ccbdf3795c9b4",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/35_03_3-1_1-1_什麼是公民？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":94,\"published\":93,\"pendingReview\":1,\"failed\":0,\"questionAssets\":19,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":94,\"published\":93,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"35_03_3-1_1-1_什麼是公民？.doc\",\"questionNumber\":\"05014016\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 01_試題/35_03_3-1_1-1_什麼是公民？.doc: 93/94, 待檢 1, 圖片 19"
+    },
+    {
+      "sourceSha256": "0e58554031ba9f9bb7ef9c4e1397b3b0e6368c541fc30ad3f4df0c54ea7d8793",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/38_03_3-2_2-2_ 人權保障的落實.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":181,\"published\":181,\"pendingReview\":0,\"failed\":0,\"questionAssets\":61,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":181,\"published\":181,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/38_03_3-2_2-2_ 人權保障的落實.doc: 181/181, 待檢 0, 圖片 61"
+    },
+    {
+      "sourceSha256": "2bdb4ae7df31baf7e75b420065202569b79176e8156b97ff9070ffb01e2dad32",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/39_03_3-3_3-1_家庭中的親屬關係.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":124,\"published\":124,\"pendingReview\":0,\"failed\":0,\"questionAssets\":27,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":124,\"published\":124,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/39_03_3-3_3-1_家庭中的親屬關係.doc: 124/124, 待檢 0, 圖片 27"
+    },
+    {
+      "sourceSha256": "0370b3710124ef18fd0fba664177d0e930af9183fdebce813d633de8cd716ec4",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":100,\"published\":99,\"pendingReview\":1,\"failed\":0,\"questionAssets\":26,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":100,\"published\":99,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"40_03_3-3_3-2_家庭型態與生活模式.doc\",\"questionNumber\":\"05014614\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 01_試題/40_03_3-3_3-2_家庭型態與生活模式.doc: 99/100, 待檢 1, 圖片 26"
+    },
+    {
+      "sourceSha256": "355737566944cdbbf821c1dd6b892bc08d95e1e50316e51bf5cf45dc8c20bba1",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/41_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":77,\"published\":77,\"pendingReview\":0,\"failed\":0,\"questionAssets\":23,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":77,\"published\":77,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/41_03_3-3_3-3_家庭成員的權利與義務.doc: 77/77, 待檢 0, 圖片 23"
+    },
+    {
+      "sourceSha256": "7afb6c58d251a0181042bbeee7a935058eb70eb12a18085ccac6afbb7bc781fa",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":137,\"published\":137,\"pendingReview\":0,\"failed\":0,\"questionAssets\":48,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":137,\"published\":137,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc: 137/137, 待檢 0, 圖片 48"
+    },
+    {
+      "sourceSha256": "f261bc0c298b1222a6475b31a45d764ba3d599a178c793fca4a05ff1c578b305",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/44_03_3-5_5-1_校園中的權利與維護.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":99,\"published\":99,\"pendingReview\":0,\"failed\":0,\"questionAssets\":17,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":99,\"published\":99,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/44_03_3-5_5-1_校園中的權利與維護.doc: 99/99, 待檢 0, 圖片 17"
+    },
+    {
+      "sourceSha256": "ddd19a5eddcd08e2289b98c06400d2321648d628acfe9eb74b028ecd225fb89b",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":141,\"published\":141,\"pendingReview\":0,\"failed\":0,\"questionAssets\":58,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":141,\"published\":141,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/45_03_3-5_5-2_如何參與校園公共事務？.doc: 141/141, 待檢 0, 圖片 58"
+    },
+    {
+      "sourceSha256": "7cc591e591dc9982655fe83cace3954b41f171a663f337977cd2e858ef422a8d",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/46_03_3-6_6-1_部落的意義與重要性.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":92,\"published\":92,\"pendingReview\":0,\"failed\":0,\"questionAssets\":19,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":92,\"published\":92,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 01_試題/46_03_3-6_6-1_部落的意義與重要性.doc: 92/92, 待檢 0, 圖片 19"
+    },
+    {
+      "sourceSha256": "55ad7022f64c10798d691c034d17155491476fe0a00e10246f5b8adf0a19ccce",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":6,\"published\":5,\"pendingReview\":1,\"failed\":0,\"questionAssets\":1,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":6,\"published\":5,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"16_02_2-1_1-1_考古發掘與史前文化.doc\",\"questionNumber\":\"05015455\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 02_素養題/16_02_2-1_1-1_考古發掘與史前文化.doc: 5/6, 待檢 1, 圖片 1"
+    },
+    {
+      "sourceSha256": "884036456f313eaff9d6a2d0152d02653220afe07607b5a793a18d9edd8bddf1",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/19_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0,\"failed\":0,\"questionAssets\":0,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 02_素養題/19_02_2-2_2-2_各方勢力在臺灣的競逐.doc: 9/9, 待檢 0, 圖片 0"
+    },
+    {
+      "sourceSha256": "0c692fa7e47d2cd2c55867b6a340828aa62f5615eb32fb2cb2bdf363a88ca57b",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/20_02_2-3_3-1_歐洲人與原住民.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0,\"failed\":0,\"questionAssets\":0,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 02_素養題/20_02_2-3_3-1_歐洲人與原住民.doc: 6/6, 待檢 0, 圖片 0"
+    },
+    {
+      "sourceSha256": "5aa14d572b263735ff357cb4013471eaedb5591497c529dbdf5f34516ce5badd",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/38_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":5,\"published\":5,\"pendingReview\":0,\"failed\":0,\"questionAssets\":6,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":5,\"published\":5,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 02_素養題/38_03_3-5_5-2_如何參與校園公共事務？.doc: 5/5, 待檢 0, 圖片 6"
+    },
+    {
+      "sourceSha256": "e99126e3b9868623416f06ec282e645b6537af79d1eb0370be378de2837ea869",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/24_02_2-3_3-1_歐洲人與原住民.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0,\"failed\":0,\"questionAssets\":1,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 04_練習本/24_02_2-3_3-1_歐洲人與原住民.doc: 6/6, 待檢 0, 圖片 1"
+    },
+    {
+      "sourceSha256": "da7824313b42dc657d1fb792bfb67311ebdd5b7df047261d064f1b8bd7024e49",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/32_03_3-1_1-1_什麼是公民？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":5,\"published\":4,\"pendingReview\":1,\"failed\":0,\"questionAssets\":1,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":5,\"published\":4,\"pendingReview\":1}},\"dryRun\":false}",
+      "stderr": "{\"fileName\":\"32_03_3-1_1-1_什麼是公民？.doc\",\"questionNumber\":\"05015630\",\"pendingReasons\":[\"choice-parse-failed\"],\"images\":[]}\n匯入 04_練習本/32_03_3-1_1-1_什麼是公民？.doc: 4/5, 待檢 1, 圖片 1"
+    },
+    {
+      "sourceSha256": "42ce8eb9ef237d29d5bb0b9f441e9a5c78ac1050a45ef2a1840661454296ad66",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0,\"failed\":0,\"questionAssets\":3,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/10_01_1-3_3-3_臺灣地形的特徵與分布.doc: 9/9, 待檢 0, 圖片 3"
+    },
+    {
+      "sourceSha256": "113faffb8238db081bd7f36be200cf23d4444c65e61602e22a8fb2003a7e5ce8",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/11_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0,\"failed\":0,\"questionAssets\":13,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":9,\"published\":9,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/11_01_1-4_4-2_臺灣的海岸與利用.doc: 9/9, 待檢 0, 圖片 13"
+    },
+    {
+      "sourceSha256": "6cbe3dd58ba23ff8be2b82d1769a0ea3e6c0959859da7a4bfd2305e11ee6d710",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/12_01_1-4_4-3_臺灣離島的成因.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0,\"failed\":0,\"questionAssets\":4,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/12_01_1-4_4-3_臺灣離島的成因.doc: 6/6, 待檢 0, 圖片 4"
+    },
+    {
+      "sourceSha256": "e103457e91850537d4f21daf1cb0cc034af7ee95c8ad4ea1740551e6907fe8d7",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/14_01_1-5_5-2_氣候.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0,\"failed\":0,\"questionAssets\":5,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/14_01_1-5_5-2_氣候.doc: 2/2, 待檢 0, 圖片 5"
+    },
+    {
+      "sourceSha256": "dc1d365ec485fed2b7eee12adb9b56df5d2d187570011f9732a3c68ff227aa80",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":13,\"published\":13,\"pendingReview\":0,\"failed\":0,\"questionAssets\":4,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":13,\"published\":13,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/16_02_2-1_1-1_考古發掘與史前文化.doc: 13/13, 待檢 0, 圖片 4"
+    },
+    {
+      "sourceSha256": "bac9e33b8d7bdebc69124e98816e1815773c0f9fe1293bef2d174b35395f8d5e",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/31_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0,\"failed\":0,\"questionAssets\":1,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":6,\"published\":6,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/31_03_3-4_4-2_政府如何協助家庭發揮功能？.doc: 6/6, 待檢 0, 圖片 1"
+    },
+    {
+      "sourceSha256": "b5cedfafc58016b7139499c081ded40ec31741f482fb9e95bd27200bc7ddb403",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/32_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":1,\"published\":1,\"pendingReview\":0,\"failed\":0,\"questionAssets\":0,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":1,\"published\":1,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 05_各章節基測試題/32_03_3-5_5-2_如何參與校園公共事務？.doc: 1/1, 待檢 0, 圖片 0"
+    },
+    {
+      "sourceSha256": "ae1f6c0a9810a69148de9f4b854b813e8a1d461397df09765bb52d2dea81a624",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/02_01_1-1_1-3_位置與生活的關聯.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0,\"failed\":0,\"questionAssets\":0,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/02_01_1-1_1-3_位置與生活的關聯.doc: 2/2, 待檢 0, 圖片 0"
+    },
+    {
+      "sourceSha256": "bc688cba6d6dd838a35622195d5ed18820a56de2220dc47a0869e0105ef53b3d",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/04_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0,\"failed\":0,\"questionAssets\":0,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":2,\"published\":2,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/04_01_1-2_2-2_臺灣的位置及其影響.doc: 2/2, 待檢 0, 圖片 0"
+    },
+    {
+      "sourceSha256": "6c1d72c764319b904a76d85703b0ffcc773f96860a5c3c1c90a2bfdc56bc3976",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/05_01_1-2_2-3_臺灣地區的範圍.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":4,\"published\":4,\"pendingReview\":0,\"failed\":0,\"questionAssets\":2,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":4,\"published\":4,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/05_01_1-2_2-3_臺灣地區的範圍.doc: 4/4, 待檢 0, 圖片 2"
+    },
+    {
+      "sourceSha256": "3de754a9c54224d04711a9d05cace85ff3c2ae93d7f0b814e50632f24c4a05ef",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/09_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":4,\"published\":4,\"pendingReview\":0,\"failed\":0,\"questionAssets\":2,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":4,\"published\":4,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/09_01_1-4_4-2_臺灣的海岸與利用.doc: 4/4, 待檢 0, 圖片 2"
+    },
+    {
+      "sourceSha256": "d46b11917cd93fd7ef6c6e2607bd48960bcd25f5fad61a0331cb68d76d1204be",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/12_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":10,\"published\":10,\"pendingReview\":0,\"failed\":0,\"questionAssets\":9,\"bySubject\":{\"地理\":{\"files\":1,\"parsed\":10,\"published\":10,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/12_01_1-5_5-3_臺灣的氣候特徵.doc: 10/10, 待檢 0, 圖片 9"
+    },
+    {
+      "sourceSha256": "f73af816586fa1038c95b5ff93c5cca7f120051283318f2e6e1ee6f9a033aa97",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":8,\"published\":8,\"pendingReview\":0,\"failed\":0,\"questionAssets\":11,\"bySubject\":{\"歷史\":{\"files\":1,\"parsed\":8,\"published\":8,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/15_02_2-1_1-1_考古發掘與史前文化.doc: 8/8, 待檢 0, 圖片 11"
+    },
+    {
+      "sourceSha256": "741d42eecd0acd01f01d17c52d5e5f7893696b2e0ac34292dc00190121a1d967",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/33_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "exitCode": 0,
+      "stdout": "{\"files\":1,\"parsed\":10,\"published\":10,\"pendingReview\":0,\"failed\":0,\"questionAssets\":4,\"bySubject\":{\"公民\":{\"files\":1,\"parsed\":10,\"published\":10,\"pendingReview\":0}},\"dryRun\":false}",
+      "stderr": "匯入 06_各章節會考試題/33_03_3-4_4-2_政府如何協助家庭發揮功能？.doc: 10/10, 待檢 0, 圖片 4"
+    }
+  ],
+  "failed": []
+}

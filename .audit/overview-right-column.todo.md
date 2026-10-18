@@ -1,0 +1,24 @@
+# Overview right column
+
+- [x] 1. `how` over the affected subsystem.
+  - Existing JSX and responsive grid inspected directly. The two cards were in the main workspace's nested second column, not the outer summary rail.
+- [x] 2. `architect` for parallel design exploration.
+  - n/a: the requested destination is exact and the existing summary rail already owns the responsive right-side behavior.
+- [x] 3. Write the throughput checkpoint as four todo items.
+  - [x] **Blocking first steps.** Confirm the outer shell breakpoints and summary rail behavior before editing.
+  - [x] **Independent workstreams.** n/a: one JSX owner and one file; parallel writers would conflict in the same render function.
+  - [x] **Shared mutable state.** Keep the existing derived question and attempt state. Move presentation only.
+  - [x] **Smallest safe decomposition.** One surgical render change because no new state, API, or CSS contract is needed.
+- [x] 4. Delegate code-writing to a subagent using your configured feature model.
+  - n/a: the checkout contains substantial uncommitted shared work and this runtime cannot isolate a delegate with those changes. The primary agent owns the one-file surgical edit and its review.
+- [x] 5. Verify on the matching surface. "Inconclusive" or wrong-surface is not a pass. Flag it.
+  - Desktop `/overview`: both cards render in the outer right summary rail, after the main overview content.
+  - Mobile 390×844: both cards remain available inside the expandable `練習摘要` panel.
+  - `npx tsc --noEmit`, the production build, and `git diff --check` passed. The build retained the existing optional Keel document-preview dependency warnings.
+  - Product spec, delivery plan, and dashboard visual plan record the desktop and mobile placement contract.
+- [x] 6. Rebase into small, ordered commits. Stack follow-ups.
+  - skip: no commit was requested and the working tree contains unrelated user changes.
+- [x] 7. If the design is contested, `interrogate` before shipping.
+  - n/a: the user specified the destination and the existing right rail provides the established pattern.
+- [x] 8. Run **Opening a PR**.
+  - skip: no PR was requested.

@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-source-visual": 1
+      },
+      "byPendingReason": {
+        "multi-part-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/08_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "08_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05015709",
+      "sourcePage": 2,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "multi-part-parse-failed"
+      ],
+      "wordBlock": "編號:05015706\n難易度:難\n出處:練習本\n認知向度:明瞭知識內涵能力\n知識向度:分層設色圖\n   臺灣每年平均可偵測到 3 萬多起地震,有感地震達 700~2,000 多次。其中,接近一半的地震發生在東部區域,僅管臺灣西部區域發生地震的比例較東部低,但西部地震深度普遍較淺又是人口稠密區,若發生強震的災害損失也相對更為嚴重。請依據地圖回答下列問題。\n/\n▲全臺未來強震發生機率分布圖\n( )(1)地震所屬的營力與下列何者相同? (A)土石流 (B)沖積扇 (C)火山爆發 (D)河川堆積。\n( )(2)臺灣東部發生地震的比例較西部高的原因可能為何? (A)地處板塊交界帶 (B)多為火山分布區 (C)地勢普遍較高聳 (D)山地主要分布區。\n( )(3)在地震頻繁的東部地區,何種地形最需預防因地震造成土石崩落的災害?\n/\n答案:(1)(C);(2)(A);(3)(B)\n解析:(1)地震為地球內部的力量,與火山活動皆為內營力。(A)(B)(D)為外營力。\n(2)臺灣東部為菲律賓海板塊與歐亞板塊的交界處,因此發生地震的比例明顯較高。\n(3)山區較容易在地震時發生山崩等災害。(A)為盆地;(B)為山地;(C)為高原;(D)平原。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 2,
+      "optionVisuals": []
+    }
+  ]
+}

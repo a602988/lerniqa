@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-source-visual": 1
+      },
+      "byPendingReason": {
+        "multi-part-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/31_02_2-5_5-1_農業發展.doc",
+      "fileName": "31_02_2-5_5-1_農業發展.doc",
+      "questionNumber": "05013464",
+      "sourcePage": 14,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "multi-part-parse-failed"
+      ],
+      "wordBlock": "編號:05013463\n難易度:易\n出處:試題\n認知向度:具備基本知識\n知識向度:水利設施\n 附圖是清代在臺灣所興築的水利設施,請將水圳與圖中代號相配合。\n/\n(1)瑠公圳:【    】。\n(2)八堡圳:【    】。\n(3)曹公圳:【    】。\n(4)貓霧捒圳:【    】。\n答案:(1)甲;(2)丙;(3)丁;(4)乙\n解析:由北至南,水圳的位置:臺北地區為瑠公圳,臺中地區為貓霧捒圳,濁水溪沿岸為八堡圳,鳳山、打狗一帶為曹公圳。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    }
+  ]
+}

@@ -75,6 +75,7 @@ export interface AuthenticatedLearnerProfile {
     semesterCode: string | null;
     semesterName: string | null;
     accessRole: AccountRole;
+    canCreatePlans: boolean;
     canManageSettings: boolean;
     isSelf: boolean;
     preferences: AuthenticatedLearnerPreferences | null;
@@ -135,6 +136,7 @@ interface AccessibleLearnerRow extends QueryResultRow {
     semester_code: string | null;
     semester_name: string | null;
     access_role: AccountRole;
+    can_create_plans: boolean;
     can_manage_settings: boolean;
     is_self: boolean;
     learner_preferences: AuthenticatedLearnerPreferences | null;
@@ -226,6 +228,7 @@ function toLearnerProfile(row: AccessibleLearnerRow): AuthenticatedLearnerProfil
         semesterCode: row.semester_code,
         semesterName: row.semester_name,
         accessRole: row.access_role,
+        canCreatePlans: row.can_create_plans,
         canManageSettings: row.can_manage_settings,
         isSelf: row.is_self,
         preferences: row.learner_preferences,
@@ -731,6 +734,7 @@ async function readAccessibleLearners(
             semester.code AS semester_code,
             semester.name AS semester_name,
             effective_access.access_role,
+            effective_access.can_create_plans,
             effective_access.can_manage_settings,
             effective_access.is_self,
             CASE
@@ -751,6 +755,7 @@ async function readAccessibleLearners(
                     WHEN bool_or(access.access_role = 'parent') THEN 'parent'
                     ELSE 'tutor'
                 END AS access_role,
+                bool_or(access.can_create_plans) AS can_create_plans,
                 bool_or(access.can_manage_settings) AS can_manage_settings,
                 bool_or(access.access_role = 'learner') AS is_self,
                 min(access.accepted_at) AS first_accepted_at

@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Client } from "pg";
+import { formulaSearchProjection } from "./verified-math-formulas.mjs";
 
 import {
     AUTHORIZED_HANLIN_LESSON_IMPORTS,
@@ -34,6 +35,9 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0014", "question_relation_profiles"],
     ["0015", "relation_keyword_review"],
     ["0016", "book_version_volume_boundary"],
+    ["0017", "learning_book_plans"],
+    ["0018", "question_answer_field_count"],
+    ["0019", "question_identifier_question_lookup"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -298,6 +302,18 @@ function assertStructuredQuestion(structured, label) {
         if (!["automatic", "manual_review", "ai_assisted_review"].includes(part.gradingPolicy)) {
             fail("INVALID_IMPORT_PLAN", `${label}.parts[${partIndex}].gradingPolicy 不受支援。`);
         }
+        if (!Number.isInteger(part.answerFieldCount ?? 1)
+            || (part.answerFieldCount ?? 1) < 1
+            || (part.answerFieldCount ?? 1) > 8
+            || (part.answerMode !== "text" && (part.answerFieldCount ?? 1) !== 1)
+            || ((part.answerFieldCount ?? 1) > 1 && part.gradingPolicy !== "manual_review")) {
+            fail("INVALID_IMPORT_PLAN", `${label}.parts[${partIndex}].answerFieldCount 不受支援。`);
+        }
+        if ((part.answerFieldCount ?? 1) > 1
+            && (part.answer?.acceptedValue?.split("，").length !== part.answerFieldCount
+                || !part.answer.acceptedValue.split("，").every((slot) => slot.trim()))) {
+            fail("INVALID_IMPORT_PLAN", `${label}.parts[${partIndex}] 多欄答案與核准欄位數不符。`);
+        }
         assertArray(part.options, `${label}.parts[${partIndex}].options`);
         for (const [optionIndex, option] of part.options.entries()) {
             assertObject(option, `${label}.parts[${partIndex}].options[${optionIndex}]`);
@@ -325,18 +341,22 @@ function assertStructuredQuestion(structured, label) {
 
 function assertPublishableRecord(record, label) {
     const structured = record.structured;
+    const hasPromptImage = record.images.some((image) =>
+        (image.placement ?? "prompt") === "prompt"
+        && (image.partStableKey === null
+            || structured.parts.some((part) => part.stableKey === image.partStableKey)));
     if (record.sourcePage === null
         || !record.normalizedQuestionNumber
         || structured.difficultyCode === null
         || structured.parts.length === 0
-        || (!structured.prompt && structured.parts.every((part) => !part.prompt))) {
+        || (!structured.prompt && structured.parts.every((part) => !part.prompt) && !hasPromptImage)) {
         fail("UNRELIABLE_PUBLISHABLE_GROUP", `${label} 缺少可發布所需的頁碼、題號、難度或題幹。`);
     }
     for (const [partIndex, part] of structured.parts.entries()) {
         if (part.answer === null) {
             fail("UNRELIABLE_PUBLISHABLE_GROUP", `${label} 第 ${partIndex + 1} 小題沒有標準答案。`);
         }
-        if (part.answerMode === "single_choice") {
+        if (part.answerMode === "single_choice" || part.answerMode === "boolean") {
             const answerKey = part.answer.answerKey;
             if (part.gradingPolicy !== "automatic"
                 || part.options.length < 2
@@ -357,7 +377,7 @@ export function validateHanlinPostgresPlan(plan) {
     assertString(plan.parserVersion, "plan.parserVersion", 80);
     const authorizedParserVersion = ["geography", "history", "civics"].includes(plan.target?.subjectCode)
         && plan.target?.publisherCode === "hanlin"
-        ? "hanlin-social-v2"
+        ? "hanlin-social-v9"
         : AUTHORIZED_HANLIN_LESSON_IMPORTS
             .find((entry) => entry.target.key === plan.target.key)?.parserVersion ?? PARSER_VERSION;
     if (plan.parserVersion !== authorizedParserVersion) {
@@ -375,6 +395,10 @@ export function validateHanlinPostgresPlan(plan) {
         assertObject(correction, "plan.correction");
         assertString(correction.questionNumber, "plan.correction.questionNumber", 120);
         assertString(correction.version, "plan.correction.version", 80);
+        if (Object.hasOwn(correction, "expectedCurrentRevisionId")
+            && correction.expectedCurrentRevisionId !== null) {
+            assertUuid(correction.expectedCurrentRevisionId, "plan.correction.expectedCurrentRevisionId");
+        }
         if (documents.length !== 1 || groups.length !== 1) {
             fail("INVALID_IMPORT_PLAN", "單題來源修訂只能包含一份文件與一個題目群組。 ");
         }
@@ -412,7 +436,7 @@ export function validateHanlinPostgresPlan(plan) {
         assertUuid(document.assetId, `documents[${documentOffset}].assetId`);
         assertUuid(document.sourceDocumentId, `documents[${documentOffset}].sourceDocumentId`);
         if (document.originalStorageKey !== `quarantine/source-documents/${document.originalSha256}.doc`
-            || document.storageKey !== `sanitized-source-documents/${document.originalSha256}.docx`
+            || document.storageKey !== `sanitized-source-documents/${SANITIZER_VERSION}/${document.originalSha256}.docx`
             || document.originalAssetId !== deterministicUuid(`asset:quarantine-source-document:${document.originalSha256}`)
             || document.assetId !== deterministicUuid(`asset:sanitized-source-document:${SANITIZER_VERSION}:${document.originalSha256}`)
             || document.sourceDocumentId !== deterministicUuid(`source-document:sanitized-docx:${SANITIZER_VERSION}:${document.originalSha256}`)) {
@@ -450,6 +474,15 @@ export function validateHanlinPostgresPlan(plan) {
             assertArray(record.pendingReasons, `${document.fileName}.records[${recordOffset}].pendingReasons`);
             for (const reason of record.pendingReasons) assertString(reason, `${document.fileName}.pendingReasons[]`, 120);
             assertSha256(record.contentFingerprint, `${document.fileName}.contentFingerprint`);
+            assertArray(record.tables, `${document.fileName}.records[${recordOffset}].tables`);
+            for (const [tableOffset, table] of record.tables.entries()) {
+                assertObject(table, `${document.fileName}.tables[${tableOffset}]`);
+                assertString(table.text, `${document.fileName}.tables[${tableOffset}].text`, null);
+                assertSha256(table.sourceObjectSha256, `${document.fileName}.tables[${tableOffset}].sourceObjectSha256`);
+                if (!["prompt", "explanation"].includes(table.placement)) {
+                    fail("INVALID_IMPORT_PLAN", `${document.fileName} 的表格 placement 不合法。`, document.fileName);
+                }
+            }
             assertArray(record.images, `${document.fileName}.records[${recordOffset}].images`);
             for (const [imageOffset, image] of record.images.entries()) {
                 assertObject(image, `${document.fileName}.images[${imageOffset}]`);
@@ -461,16 +494,30 @@ export function validateHanlinPostgresPlan(plan) {
                 if (image.width !== null) assertPositiveInteger(image.width, `${document.fileName}.images[${imageOffset}].width`);
                 if (image.height !== null) assertPositiveInteger(image.height, `${document.fileName}.images[${imageOffset}].height`);
                 const optionKey = image.optionKey ?? null;
+                const partStableKey = image.partStableKey ?? null;
                 const placement = image.placement ?? "prompt";
                 const altText = image.altText ?? null;
                 if (image.inlineFormula !== undefined && image.inlineFormula !== true) {
                     fail("INVALID_IMPORT_PLAN", `${document.fileName} 的行內公式圖標記不合法。`, document.fileName);
+                }
+                if (image.formula !== null && image.formula !== undefined) {
+                    assertString(image.formula, `${document.fileName}.images[${imageOffset}].formula`, 1000);
+                    if (image.inlineFormula !== true) {
+                        fail("INVALID_IMPORT_PLAN", `${document.fileName} 的公式文字沒有行內公式來源。`, document.fileName);
+                    }
                 }
                 if (optionKey !== null) {
                     assertString(optionKey, `${document.fileName}.images[${imageOffset}].optionKey`, 30);
                     const optionKeys = record.structured.parts.flatMap((part) => part.options.map((option) => option.key));
                     if (!optionKeys.includes(optionKey)) {
                         fail("INVALID_IMPORT_PLAN", `${document.fileName} 的選項圖片沒有對應選項。`, document.fileName);
+                    }
+                }
+                if (partStableKey !== null) {
+                    assertString(partStableKey, `${document.fileName}.images[${imageOffset}].partStableKey`, 120);
+                    if (optionKey !== null || placement !== "prompt"
+                        || !record.structured.parts.some((part) => part.stableKey === partStableKey)) {
+                        fail("INVALID_IMPORT_PLAN", `${document.fileName} 的小題圖片歸屬不合法。`, document.fileName);
                     }
                 }
                 if (altText !== null) {
@@ -486,6 +533,10 @@ export function validateHanlinPostgresPlan(plan) {
             assertUnique(
                 record.images.filter((image) => (image.optionKey ?? null) !== null).map((image) => image.optionKey),
                 `${document.fileName} 的選項圖片 key`,
+            );
+            assertUnique(
+                record.images.filter((image) => (image.partStableKey ?? null) !== null).map((image) => image.partStableKey),
+                `${document.fileName} 的小題圖片 stable key`,
             );
             const key = `${document.sourceDocumentId}:${record.recordIndex}`;
             if (recordsByKey.has(key)) fail("INVALID_IMPORT_PLAN", "題目 occurrence 識別重複。", document.fileName);
@@ -745,7 +796,7 @@ async function assertSchema(client) {
     if (JSON.stringify(actual) !== JSON.stringify(EXPECTED_MIGRATIONS)) {
         fail(
             "SCHEMA_VERSION_MISMATCH",
-            `本機資料庫 migration 必須精確為 0001–0016；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
+            `本機資料庫 migration 必須精確為 0001–0019；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
         );
     }
 }
@@ -1358,6 +1409,31 @@ async function insertImportItem(client, plan, document, record, link = null) {
             row.source_order,
         ]);
     }
+    else {
+        await client.query(`
+            UPDATE import_items
+            SET source_page = $2,
+                source_question_number = $3,
+                draft_payload = $4
+            WHERE id = $1
+              AND import_batch_id = $5
+              AND source_document_id = $6
+              AND source_order = $7
+              AND review_status = 'pending'
+              AND question_id IS NULL
+              AND question_revision_id IS NULL
+              AND reviewed_by_user_id IS NULL
+              AND reviewed_at IS NULL
+        `, [
+            row.id,
+            row.source_page,
+            row.source_question_number,
+            row.draft_payload,
+            row.import_batch_id,
+            row.source_document_id,
+            row.source_order,
+        ]);
+    }
     await client.query(`
         INSERT INTO import_items (${columns.map(quoteIdentifier).join(", ")}, reviewed_at)
         VALUES (${columns.map((_, index) => `$${index + 1}`).join(", ")}, ${approved ? "transaction_timestamp()" : "NULL"})
@@ -1447,10 +1523,30 @@ async function ensureQuestion(client, plan, group, questionId) {
         || question.created_by_user_id !== HANLIN_IMPORT_PRINCIPAL.userId) {
         fail("QUESTION_IDENTITY_CONFLICT", "既有題目不是此匯入服務可安全延續的系統題目。 ");
     }
+    if (plan.correction && Object.hasOwn(plan.correction, "expectedCurrentRevisionId")
+        && question.current_revision_id !== plan.correction.expectedCurrentRevisionId) {
+        fail("REVISION_STATE_CONFLICT", "題目的目前版本已不同於單題修訂開始時的版本；未覆寫較新的修訂。 ");
+    }
     if (question.status === "archived") {
         const approvedReactivation = group.occurrences.every(({ record }) =>
-            isApprovedMissingMultiplicationFalsePositive(record.sourceQuestionNumber));
-        if (!approvedReactivation || question.archived_at === null) {
+            record.approvedForReactivation === true
+            || isApprovedMissingMultiplicationFalsePositive(record.sourceQuestionNumber));
+        const parserWithdrawal = await client.query(`
+            SELECT 1
+            FROM import_items item
+            JOIN import_batches batch ON batch.id = item.import_batch_id
+            WHERE item.review_status = 'pending'
+              AND item.source_document_id = ANY($1::uuid[])
+              AND item.source_question_number = ANY($2::varchar[])
+              AND batch.created_at = $3
+              AND batch.recognizer_version LIKE 'kangxuan-math-doc-%'
+            LIMIT 1
+        `, [
+            group.occurrences.map(({ document }) => document.sourceDocumentId),
+            group.occurrences.map(({ record }) => record.sourceQuestionNumber),
+            question.archived_at,
+        ]);
+        if ((!approvedReactivation && parserWithdrawal.rowCount !== 1) || question.archived_at === null) {
             fail("QUESTION_IDENTITY_CONFLICT", "封存題目未列入逐題核准的重新發布範圍。 ");
         }
         const restored = await client.query(`
@@ -1470,6 +1566,41 @@ async function ensureQuestion(client, plan, group, questionId) {
         fail("QUESTION_IDENTITY_CONFLICT", "既有題目的狀態與封存時間不一致。 ");
     }
     return question;
+}
+
+async function withdrawPublishedQuestionForPendingGroup(client, plan, group) {
+    const questionId = await resolveQuestionId(client, plan, group);
+    const result = await client.query(`
+        SELECT id, origin, created_method, created_by_user_id, status, archived_at
+        FROM questions
+        WHERE id = $1
+        FOR UPDATE
+    `, [questionId]);
+    if (result.rowCount === 0) return false;
+    const question = result.rows[0];
+    if (question.origin !== HANLIN_REAL_DATA_OWNERSHIP.origin
+        || question.created_method !== "import"
+        || question.created_by_user_id !== HANLIN_IMPORT_PRINCIPAL.userId) {
+        fail("QUESTION_IDENTITY_CONFLICT", "待審題目連到非此匯入服務管理的既有題目。 ");
+    }
+    if (question.status === "archived" && question.archived_at !== null) return false;
+    if (question.status === "draft" && question.archived_at === null) return false;
+    if (question.status !== "published" || question.archived_at !== null) {
+        fail("QUESTION_IDENTITY_CONFLICT", "待審題目的既有發布狀態無法安全撤回。 ");
+    }
+    const withdrawn = await client.query(`
+        UPDATE questions
+        SET status = 'archived',
+            archived_at = (SELECT created_at FROM import_batches WHERE id = $2)
+        WHERE id = $1
+          AND status = 'published'
+          AND archived_at IS NULL
+        RETURNING id
+    `, [questionId, plan.batchId]);
+    if (withdrawn.rowCount !== 1) {
+        fail("QUESTION_IDENTITY_CONFLICT", "待審題目的既有發布版本無法安全撤回。 ");
+    }
+    return true;
 }
 
 async function insertQuestionIdentifiers(client, plan, group, questionId) {
@@ -1499,11 +1630,18 @@ async function insertQuestionIdentifiers(client, plan, group, questionId) {
 
 function buildSearchText(group) {
     const { record } = group.canonical;
+    const formulas = new Map(record.images
+        .filter((image) => image.inlineFormula === true && image.formula)
+        .map((image) => [image.checksum, image.formula]));
+    const searchable = (value) => String(value ?? "").replace(
+        /⟦未解析公式圖:([a-f0-9]{64})⟧/gu,
+        (marker, checksum) => formulas.has(checksum) ? formulaSearchProjection(formulas.get(checksum)) : marker,
+    );
     return [
-        record.structured.prompt,
+        searchable(record.structured.prompt),
         ...record.structured.parts.flatMap((part) => [
-            part.prompt,
-            ...part.options.map((option) => option.text),
+            searchable(part.prompt),
+            ...part.options.map((option) => searchable(option.text)),
         ]),
         record.originalCognitive,
         record.originalKnowledge,
@@ -1624,6 +1762,24 @@ export async function recordHanlinSystemRevisionTransition(client, plan, revisio
     }, ["id"]);
 }
 
+export function buildPartImageContentBlocks({ record, revisionId, part, partId, startPosition, fallbackAltText }) {
+    return record.images
+        .filter((image) => image.partStableKey === part.stableKey)
+        .map((image, imageIndex) => ({
+            id: deterministicUuid(`content:${revisionId}:part:${part.stableKey}:image:${image.checksum}:${imageIndex}`),
+            question_revision_id: revisionId,
+            question_part_id: partId,
+            question_option_id: null,
+            parent_block_id: null,
+            placement: "prompt",
+            content_type: "image",
+            position: startPosition + imageIndex,
+            text_content: null,
+            asset_id: image.assetId,
+            alt_text: image.altText ?? fallbackAltText,
+        }));
+}
+
 async function insertRevisionContent(client, plan, group, questionId, revisionId) {
     const { document, record } = group.canonical;
     const inlineFormulaImages = new Map(record.images
@@ -1636,7 +1792,8 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
         let offset = 0;
         for (const match of String(text ?? "").matchAll(markerPattern)) {
             if ((match.index ?? 0) > offset) segments.push({ type: "text", value: text.slice(offset, match.index) });
-            segments.push({ type: "image", checksum: match[1] });
+            const image = inlineFormulaImages.get(match[1]);
+            segments.push({ type: image?.formula ? "formula" : "image", checksum: match[1], value: image?.formula ?? null });
             offset = (match.index ?? 0) + match[0].length;
         }
         if (offset < String(text ?? "").length) segments.push({ type: "text", value: text.slice(offset) });
@@ -1645,8 +1802,8 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
         let position = startPosition;
         for (const [segmentIndex, segment] of segments.entries()) {
             if (segment.type === "text" && !segment.value) continue;
-            const image = segment.type === "image" ? inlineFormulaImages.get(segment.checksum) : null;
-            if (segment.type === "image" && !image) {
+            const image = segment.type === "image" || segment.type === "formula" ? inlineFormulaImages.get(segment.checksum) : null;
+            if ((segment.type === "image" || segment.type === "formula") && !image) {
                 fail("INVALID_IMPORT_PLAN", `${document.fileName} 的行內公式圖缺少對應資產。`, document.fileName);
             }
             await ensureRow(client, "question_content_blocks", {
@@ -1658,9 +1815,9 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
                 placement,
                 content_type: segment.type,
                 position,
-                text_content: segment.type === "text" ? segment.value : null,
-                asset_id: image?.assetId ?? null,
-                alt_text: image?.altText ?? null,
+                text_content: segment.type === "text" || segment.type === "formula" ? segment.value : null,
+                asset_id: segment.type === "image" ? image?.assetId ?? null : null,
+                alt_text: segment.type === "image" ? image?.altText ?? null : null,
             }, ["id"]);
             position += 1;
         }
@@ -1672,7 +1829,24 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
         placement: "prompt",
         idPrefix: "prompt",
     });
+    for (const [tableIndex, table] of record.tables.filter((entry) => entry.placement === "prompt").entries()) {
+        await ensureRow(client, "question_content_blocks", {
+            id: deterministicUuid(`content:${revisionId}:prompt:table:${table.sourceObjectSha256}:${tableIndex}`),
+            question_revision_id: revisionId,
+            question_part_id: null,
+            question_option_id: null,
+            parent_block_id: null,
+            placement: "prompt",
+            content_type: "table",
+            position: blockPosition,
+            text_content: table.text,
+            asset_id: null,
+            alt_text: null,
+        }, ["id"]);
+        blockPosition += 1;
+    }
     const promptImages = record.images.filter((image) => (image.optionKey ?? null) === null
+        && (image.partStableKey ?? null) === null
         && image.inlineFormula !== true
         && (image.placement ?? "prompt") === "prompt");
     for (const [imageIndex, image] of promptImages.entries()) {
@@ -1701,15 +1875,26 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
             stable_key: part.stableKey,
             position: partIndex,
             answer_mode: part.answerMode,
+            answer_field_count: part.answerFieldCount ?? 1,
             grading_policy: part.gradingPolicy,
             is_independently_gradable: true,
         }, ["id"]);
-        await insertOrderedContent({
+        const nextPartPosition = await insertOrderedContent({
             text: part.prompt,
             placement: "prompt",
             partId,
             idPrefix: `part:${part.stableKey}:prompt`,
         });
+        for (const block of buildPartImageContentBlocks({
+            record,
+            revisionId,
+            part,
+            partId,
+            startPosition: nextPartPosition,
+            fallbackAltText: `${document.originalTitle} 小題 ${part.stableKey} 附圖`,
+        })) {
+            await ensureRow(client, "question_content_blocks", block, ["id"]);
+        }
         for (const [optionIndex, option] of part.options.entries()) {
             const optionId = deterministicUuid(`question-option:${partId}:${option.key}`);
             await ensureRow(client, "question_options", {
@@ -1757,6 +1942,23 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
         placement: "explanation",
         idPrefix: "explanation",
     });
+    let nextExplanationPosition = explanationPosition;
+    for (const [tableIndex, table] of record.tables.filter((entry) => entry.placement === "explanation").entries()) {
+        await ensureRow(client, "question_content_blocks", {
+            id: deterministicUuid(`content:${revisionId}:explanation:table:${table.sourceObjectSha256}:${tableIndex}`),
+            question_revision_id: revisionId,
+            question_part_id: null,
+            question_option_id: null,
+            parent_block_id: null,
+            placement: "explanation",
+            content_type: "table",
+            position: nextExplanationPosition,
+            text_content: table.text,
+            asset_id: null,
+            alt_text: null,
+        }, ["id"]);
+        nextExplanationPosition += 1;
+    }
     const explanationImages = record.images.filter((image) => (image.optionKey ?? null) === null
         && image.inlineFormula !== true
         && image.placement === "explanation");
@@ -1769,7 +1971,7 @@ async function insertRevisionContent(client, plan, group, questionId, revisionId
             parent_block_id: null,
             placement: "explanation",
             content_type: "image",
-            position: explanationPosition + imageIndex,
+            position: nextExplanationPosition + imageIndex,
             text_content: null,
             asset_id: image.assetId,
             alt_text: image.altText ?? `${document.originalTitle} 解析附圖`,
@@ -1853,6 +2055,7 @@ async function writeQuestionGroup(client, plan, group) {
         for (const { document, record } of group.occurrences) {
             await insertImportItem(client, plan, document, record, null);
         }
+        await withdrawPublishedQuestionForPendingGroup(client, plan, group);
         return { published: false, reclassified: false };
     }
 

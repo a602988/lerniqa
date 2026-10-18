@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "fileName": "40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "questionNumber": "05014614",
+      "sourcePage": 6,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05014613\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:家庭的型態與模式\n 哲榮在網路上搜尋「單親家庭形成原因」的相關資料,下列哪一則報導符合他的需求? (A) \u0001 (B) \u0001 (C) \u0001 (D) \u0001\n答案:(A)\n解析:離婚是形成單親家庭的因素之一。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

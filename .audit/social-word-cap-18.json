@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/18_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "fileName": "18_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "questionNumber": "05012895",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05012894\n難易度:中\n出處:各章節會考試題\n認知向度:明瞭知識內涵能力\n知識向度:鄭氏政權取代荷蘭\n 附表是某一組織的重要事件整理,根據內容判斷,下列何者最適合放入表中的「?」處?〔105.會考〕\n\u0001\n(A)從印度輸出大量瓷器販賣至中國 (B)以白銀吸引中國商人至馬尼拉交易 (C)以澳門為據點,推動亞洲傳教事業 (D)設亞洲總部於巴達維亞,統籌經營。\n答案:(D)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "fileName": "23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "questionNumber": "05012487",
+      "sourcePage": 23,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05012486\n難易度:中\n出處:試題\n認知向度:高層次批判思考\n知識向度:臺灣的金屬器時代\n 附圖是一個史前時代文化層,因為不同時期的人類很可能在同一地區活動,所以留下不同的層位遺跡。我們可以在甲層中找到哪一種物品?\n甲\n乙\n丙\n(A)用來埋葬死者的石板棺 (B)散落一地的鐵渣 (C)規模龐大的貝殼堆積貝塚 (D)裂痕粗劣的石頭工具。\n答案:(B)\n解析:甲、乙、丙分別為金屬器時代、新石器時代、舊石器時代。(A)卑南文化;(B)十三行文化;(C)圓山文化;(D)長濱文化。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

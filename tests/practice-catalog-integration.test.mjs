@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { gunzipSync } from "node:zlib";
 import ts from "typescript";
 
 // Load the same TypeScript modules as the browser without needing Next's path resolver.
@@ -17,6 +18,42 @@ async function loadModule(relativePath) {
 }
 async function moduleUrl(url) {
     return loadModule(url.href);
+}
+
+function inlineModule(source) {
+    return `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+}
+
+async function loadSharedTransportModule() {
+    const typescript = await readFile(new URL("../app/api/v1/local-practice/_shared.ts", import.meta.url), "utf8");
+    let source = ts.transpileModule(typescript, {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const nextServer = inlineModule(`
+        export class NextResponse extends Response {
+            static json(body, init = {}) {
+                const headers = new Headers(init.headers);
+                if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+                return new Response(JSON.stringify(body), { ...init, headers });
+            }
+        }
+    `);
+    const authService = inlineModule(`
+        export class AuthServiceError extends Error {}
+        export async function getAuthenticatedAccount() { throw new Error("unused"); }
+    `);
+    const postgres = inlineModule("export class LocalPostgresUnavailableError extends Error {}");
+    const store = inlineModule("export class LocalPracticeRequestError extends Error {}");
+    const types = inlineModule(`export const LOCAL_PRACTICE_DEFAULT_FILTERS = {
+        grade: "國一", subject: "國語", publisher: "翰林", volume: "第一冊", lesson: "第一課",
+    };`);
+    source = source
+        .replace('from "next/server"', `from "${nextServer}"`)
+        .replace('from "@/app/lib/auth-service"', `from "${authService}"`)
+        .replace('from "@/app/lib/local-postgres"', `from "${postgres}"`)
+        .replace('from "@/app/lib/local-practice-store"', `from "${store}"`)
+        .replace('from "@/app/lib/local-practice-types"', `from "${types}"`);
+    return import(inlineModule(source));
 }
 
 const adapter = await import(await loadModule("../app/lib/practice-catalog-adapter.ts"));
@@ -110,7 +147,7 @@ test("answer adapter preserves option keys and free text; it never guesses gradi
     assert.equal(result.partResults[0].correct, false);
 });
 
-test("catalog uses the UI's 500-item ceiling while history and wrong-review sources paginate beyond 100", async () => {
+test("bootstrap loads one database-driven accessible catalog while history paginates beyond 100", async () => {
     const originalFetch = globalThis.fetch;
     const seen = [];
     globalThis.fetch = async (input) => {
@@ -119,26 +156,9 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
         let data;
         let meta;
         if (url === "/api/v1/auth/me") data = { account: { learner: { id: "authenticated-learner" } } };
-        else if (url.includes("/questions?")) {
-            const parsed = new URL(url, "http://localhost");
-            const page = Number(parsed.searchParams.get("page"));
-            const limit = Number(parsed.searchParams.get("limit"));
-            const lesson = parsed.searchParams.get("lesson");
-            const lessonCounts = new Map([
-                ["第四課", 279],
-                ["第五課", 280],
-                ["第六課", 258],
-                ["語文常識（二）", 75],
-                ["2-1 因數與倍數", 0],
-                ["2-2 最大公因數與最小公倍數", 0],
-                ["2-3 分數的四則運算", 0],
-                ["2-4 指數律", 0],
-            ]);
-            const count = lessonCounts.get(lesson);
-            assert.equal(limit, 500);
-            assert.notEqual(count, undefined);
-            data = { questions: Array.from({ length: count }, (_, index) => ({ ...question, id: `${lesson}-q${(page - 1) * limit + index}` })) };
-            meta = { total: count };
+        else if (url === "/api/v1/local-practice/questions") {
+            data = { questions: Array.from({ length: 892 }, (_, index) => ({ ...question, id: `q${index}` })) };
+            meta = { scope: "accessible", total: 892 };
         }
         else {
             const page = Number(new URL(url, "http://localhost").searchParams.get("page") ?? "1");
@@ -164,13 +184,78 @@ test("catalog uses the UI's 500-item ceiling while history and wrong-review sour
         assert.equal(loaded.wrongReviewQueue.items.length, 101);
         assert.equal(loaded.account.learner.id, "authenticated-learner");
         assert.ok(seen.some((url) => url.includes("history?limit=100&page=2")));
-        assert.equal(seen.filter((url) => url.includes("/questions?")).length, 8);
-        assert.equal(seen.length, 11);
+        assert.deepEqual(seen.filter((url) => url.includes("/questions")), ["/api/v1/local-practice/questions"]);
+        assert.equal(seen.length, 4);
     }
     finally { globalThis.fetch = originalFetch; }
 });
 
-test("authorized catalog accepts 500-item pages while the answer-bearing legacy route stays closed", async () => {
+test("accessible catalog empty and failure states are not replaced by client defaults", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+        const url = String(input);
+        if (url === "/api/v1/auth/me") {
+            return new Response(JSON.stringify({ data: { account: { learner: { id: "authenticated-learner" } } } }), { status: 200 });
+        }
+        if (url === "/api/v1/local-practice/questions") {
+            return new Response(JSON.stringify({ data: { questions: [] }, meta: { scope: "accessible", total: 0 } }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ data: { attempts: [], sessions: [], wrongReviewQueue: { pendingCount: 0, items: [] } } }), { status: 200 });
+    };
+    try {
+        assert.deepEqual((await client.loadPersistedPractice()).questions, []);
+        globalThis.fetch = async (input) => {
+            const url = String(input);
+            if (url === "/api/v1/auth/me") {
+                return new Response(JSON.stringify({ data: { account: { learner: { id: "authenticated-learner" } } } }), { status: 200 });
+            }
+            if (url === "/api/v1/local-practice/questions") {
+                return new Response(JSON.stringify({ error: { code: "CATALOG_FAILED", message: "題庫讀取失敗" } }), { status: 503 });
+            }
+            return new Response(JSON.stringify({ data: { attempts: [], sessions: [], wrongReviewQueue: { pendingCount: 0, items: [] } } }), { status: 200 });
+        };
+        await assert.rejects(client.loadPersistedPractice(), /題庫讀取失敗/u);
+    }
+    finally { globalThis.fetch = originalFetch; }
+});
+
+test("large accessible catalog negotiates gzip without changing its private JSON envelope", async () => {
+    const { localPracticeLargeJsonResponse } = await loadSharedTransportModule();
+    const envelope = {
+        data: { questions: [{ id: "q1", prompt: "臺灣與 English text" }] },
+        meta: { persistence: "local-postgresql", identityMode: "authenticated", scope: "accessible", total: 1 },
+    };
+    const expected = JSON.stringify(envelope);
+
+    const compressed = await localPracticeLargeJsonResponse(
+        new Request("http://localhost/api/v1/local-practice/questions", {
+            headers: { "Accept-Encoding": "br, gzip, deflate" },
+        }),
+        envelope,
+    );
+    assert.equal(compressed.status, 200);
+    assert.equal(compressed.headers.get("content-encoding"), "gzip");
+    assert.equal(compressed.headers.get("content-type"), "application/json");
+    assert.equal(compressed.headers.get("cache-control"), "private, no-store");
+    assert.equal(compressed.headers.get("vary"), "Accept-Encoding");
+    assert.equal(
+        gunzipSync(Buffer.from(await compressed.arrayBuffer())).toString("utf8"),
+        expected,
+    );
+
+    const ordinary = await localPracticeLargeJsonResponse(
+        new Request("http://localhost/api/v1/local-practice/questions", {
+            headers: { "Accept-Encoding": "br, gzip;q=0" },
+        }),
+        envelope,
+    );
+    assert.equal(ordinary.headers.get("content-encoding"), null);
+    assert.equal(ordinary.headers.get("cache-control"), "private, no-store");
+    assert.equal(ordinary.headers.get("vary"), "Accept-Encoding");
+    assert.equal(await ordinary.text(), expected);
+});
+
+test("catalog supports accessible and complete-filter scopes while the answer-bearing legacy route stays closed", async () => {
     const [localRoute, legacyRoute, sharedRoute, store] = await Promise.all([
         readFile(new URL("../app/api/v1/local-practice/questions/route.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/api/v1/questions/route.ts", import.meta.url), "utf8"),
@@ -178,10 +263,20 @@ test("authorized catalog accepts 500-item pages while the answer-bearing legacy 
         readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8"),
     ]);
     assert.match(localRoute, /LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE/u);
+    assert.match(localRoute, /suppliedFilterCount !== 0 && suppliedFilterCount !== filterNames\.length/u);
+    assert.match(localRoute, /kind: "accessible"/u);
+    assert.match(localRoute, /kind: "filtered"/u);
+    assert.match(localRoute, /query\.kind === "accessible"[\s\S]*localPracticeLargeJsonResponse\(request, body\)/u);
     assert.match(legacyRoute, /legacyFixtureApiGone\(\)/u);
     assert.doesNotMatch(legacyRoute, /readDatabase|answer|explanation/u);
     assert.match(sharedRoute, /value\.normalize\("NFC"\)/u);
-    assert.match(store, /question\.created_at,[\s\S]*question\.id[\s\S]*LIMIT \$7 OFFSET \$8/u);
+    assert.match(store, /question\.created_at,[\s\S]*question\.id[\s\S]*paginationSql/u);
+    assert.match(store, /subject_setting\.enabled = true/u);
+    assert.match(store, /subject_setting\.book_version_id IS NULL[\s\S]*subject_setting\.book_version_id = revision\.book_version_id/u);
+    assert.match(store, /catalog_learner\.grade_id IS NULL[\s\S]*catalog_learner\.grade_id = revision\.grade_id/u);
+    assert.match(store, /bank_learner\.learner_id = \$1/u);
+    assert.match(store, /question\.current_revision_id = revision\.id/u);
+    assert.doesNotMatch(store, /LOCAL_PRACTICE_CATALOG_TARGETS|LOCAL_PRACTICE_CATALOG_LESSONS/u);
 });
 
 test("main practice sends sessions/attempts to server and guards deep links", async () => {
@@ -201,6 +296,11 @@ test("main practice sends sessions/attempts to server and guards deep links", as
     assert.doesNotMatch(source, /JSON 模擬 API|模擬 API/u);
     assert.match(source, /setLearners\(accessibleLearners\)/u);
     assert.match(source, /setRoleAccess\(roleAccessFromPracticeAccount\(persisted\.account\)\)/u);
+    assert.match(source, /session\?\.phase !== "complete"[\s\S]*loadPersistedPracticeHistory\(\)/u);
+    assert.doesNotMatch(
+        source.slice(source.indexOf('if (session?.phase !== "complete"'), source.indexOf("function renderSession")),
+        /loadPersistedPractice\(\)/u,
+    );
     assert.doesNotMatch(source, /setAttemptsByLearner\(\{ \.\.\.state\.attemptsByLearner, \[learner\.id\]/u);
 });
 
@@ -228,10 +328,22 @@ test("review/check modes reach the session API without claiming a database sched
         assert.match(store, /practice-session:\$\{requestedSessionId\}/u);
         assert.match(store, /QUESTION_REVISION_STALE/u);
         assert.match(store, /SESSION_IDEMPOTENCY_CONFLICT/u);
+        assert.match(store, /SESSION_TARGET_QUESTION_FROM_SQL/u);
+        assert.match(store, /bank_learner\.learner_id = \$1/u);
+        assert.doesNotMatch(store, /SESSION_TARGET_QUESTION_FROM_SQL[\s\S]{0,3000}LOCAL_PRACTICE_DEFAULT_FILTERS/u);
         assert.match(store, /created_by_user_id = \$3/u);
         assert.match(store, /settings\.mode, settings\.checkMode/u);
     }
     finally { globalThis.fetch = originalFetch; }
+});
+
+test("question detail exposes start failures and clears stale messages while navigating", async () => {
+    const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+    assert.match(source, /serviceError\?: string/u);
+    assert.match(source, /serviceError && <p[^>]+role="alert"/u);
+    assert.match(source, /serviceError=\{practiceServiceError\}/u);
+    assert.match(source, /function openQuestionDetail[\s\S]*setPracticeServiceError\(""\)/u);
+    assert.match(source, /function navigateOverviewQuestion[\s\S]*setPracticeServiceError\(""\)/u);
 });
 
 test("recommendation preview and start send only durable wrong-queue source ids", async () => {
@@ -355,7 +467,7 @@ test("browser preferences migrate to v2 without learner identity or profile data
             questionLimitOptions: [5, 10],
             defaultQuestionLimit: 5,
         });
-        assert.equal(storage.has("lerniqa-practice-preferences-v1:learner-b"), false);
+        assert.equal(storage.has("lerniqa-practice-preferences-v1:learner-b"), true, "original browser data is retained for explicit learning-book migration");
         const migrated = storage.get("lerniqa-practice-preferences-v2:learner-b");
         assert.doesNotMatch(migrated, /兒童姓名|真實學校|private|displayName|bookVersions|avatar/iu);
         const sessionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

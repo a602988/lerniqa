@@ -1,0 +1,47 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 2,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 2
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1,
+        "multi-part-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/47_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "fileName": "47_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "questionNumber": "05015383",
+      "sourcePage": 7,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05015382\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:部落面臨的挑戰與公民參與\n 身為原住民的郭老師意識到自身傳統文化恐面臨消失的危機,毅然決然地回到家鄉開設課程來教育下一代,希望部落文化得以延續下去。關於他開設課程的介紹,最可能是下列何者? (A)\u0001 (B)\u0001 (C)\u0001 (D)\u0001 \n答案:(C)\n解析:只有(C)與原住民族傳統文化相關。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/47_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "fileName": "47_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "questionNumber": "05015411",
+      "sourcePage": 14,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "multi-part-parse-failed"
+      ],
+      "wordBlock": "編號:05015410\n難易度:難\n出處:試題\n認知向度:具備基本知識\n知識向度:部落面臨的挑戰與公民參與\n配合題\n 下列是部落在社會變遷下所面臨的挑戰,請根據各小題的相關敘述填入正確的答案代號。\n(A)傳統文化的斷層\n(B)部落經濟的停滯\n(C)傳統領域的爭議\n(D)文化與法律的衝突\n( )(1)原住民獵人因狩獵傳統持有獵槍而遭移送法辦。\n( )(2)族人在部落推動母語歌謠教唱及祭典文化活動。\n( )(3)協助部落小農農產品銷售及提供網路銷售平臺。\n( )(4)政府開發案破壞部落生活區域,侵犯其自治權。\n答案:(1)(D);(2)(A);(3)(B);(4)(C)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

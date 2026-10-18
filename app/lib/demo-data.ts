@@ -1,4 +1,5 @@
 import type { LocalPracticeReferenceAnswer, LocalPracticeScoreSummary } from "./local-practice-types";
+import type { PracticeReturnTarget } from "./practice-return-navigation";
 
 export type Section = "overview" | "practice" | "questions" | "bank" | "mistakes" | "results" | "settings" | "system-settings";
 export type CheckMode = "complete" | "instant" | "score";
@@ -205,6 +206,16 @@ export interface PracticePlan {
 }
 
 export interface ScheduledPractice {
+    /** 正式排程由資料庫及固定版本內容驅動。 */
+    serverBacked?: boolean;
+    planId?: string;
+    subscriptionId?: string;
+    revisionId?: string;
+    /** 已開始的正式排程 session；存在時按鈕應恢復而不是重建。 */
+    sessionId?: string;
+    lockVersion?: number;
+    canStart?: boolean;
+    serverStatus?: string;
     /** 排程識別碼。 */
     id: string;
     /** 建立排程的角色。 */
@@ -282,6 +293,8 @@ export interface Question {
     group?: QuestionGroup;
     /** 題幹。 */
     prompt: string;
+    /** 題幹與公式的搜尋投影，不直接顯示於介面。 */
+    searchText?: string;
     /** 選項式題目的答案選項。 */
     options?: string[];
     /** 配合題、選詞測驗與題組中的多個選擇小題。 */
@@ -357,7 +370,9 @@ export interface PracticeSession {
     learnerId: string;
     /** 本輪用途。 */
     mode: SessionMode;
-    /** 從練習計劃開始時對應的排程識別碼。 */
+    /** 離開練習後應返回的原始工作位置。 */
+    returnTarget?: PracticeReturnTarget;
+    /** 從學習本計畫開始時對應的排程識別碼。 */
     scheduleId?: string;
     /** 作答檢核方式。 */
     checkMode: CheckMode;
@@ -390,9 +405,9 @@ export interface StoredState {
     activeLearnerId: string;
     /** 各學習者的作答紀錄。 */
     attemptsByLearner: Record<string, Attempt[]>;
-    /** 各學習者自己的練習計畫。 */
+    /** 各學習者自己的學習本計畫。 */
     plansByLearner: Record<string, PracticePlan>;
-    /** 各學習者依日期安排的練習計劃。 */
+    /** 各學習者依日期安排的學習本計畫。 */
     schedulesByLearner: Record<string, ScheduledPractice[]>;
     /** 已加入後續練習的相近題。 */
     queuedSimilarByLearner: Record<string, number[]>;

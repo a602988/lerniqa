@@ -8,81 +8,6 @@ export const LOCAL_PRACTICE_DEFAULT_FILTERS = {
     lesson: "第四課",
 } as const;
 
-export const LOCAL_PRACTICE_CATALOG_LESSONS = ["第四課", "第五課", "第六課", "語文常識（二）"] as const;
-
-export const LOCAL_PRACTICE_CATALOG_TARGETS = [
-    ...LOCAL_PRACTICE_CATALOG_LESSONS.map((lesson) => ({
-        ...LOCAL_PRACTICE_DEFAULT_FILTERS,
-        lesson,
-    })),
-    ...[
-        "2-1 因數與倍數",
-        "2-2 最大公因數與最小公倍數",
-        "2-3 分數的四則運算",
-        "2-4 指數律",
-    ].map((lesson) => ({
-        grade: "國一",
-        subject: "數學",
-        publisher: "康軒",
-        volume: "第一冊",
-        lesson,
-    })),
-    ...[
-        "2-1 食物中的養分",
-        "2-2 酵素",
-        "2-3 植物如何獲得養分",
-        "2-4 動物如何獲得養分",
-        "3-1 植物的運輸構造",
-        "3-2 植物體內物質的運輸",
-        "3-3 人體內物質的運輸",
-        "3-4 人體的防禦作用",
-    ].map((lesson) => ({
-        grade: "國一",
-        subject: "生物",
-        publisher: "康軒",
-        volume: "第一冊",
-        lesson,
-    })),
-    ...[
-        "Starter Unit",
-        "Unit 1 Who's That Handsome Boy?",
-        "Unit 2 Where Are My Pencils?",
-        "Unit 3 Open the Magic Door",
-        "Unit 4 What Time Is the Concert?",
-        "Unit 5 What's the Date?",
-        "Unit 6 There Are Some Elephants Over There",
-        "Review 1",
-        "Review 2",
-        "Review 3",
-    ].map((lesson) => ({
-        grade: "國一",
-        subject: "英文",
-        publisher: "翰林",
-        volume: "第一冊",
-        lesson,
-    })),
-    ...[
-        "1-1 如何表示位置", "1-2 經緯線網格", "1-3 位置與生活的關聯", "1-4 如何閱讀地圖",
-        "2-1 全球海陸分布", "2-2 臺灣的位置及其影響", "2-3 臺灣地區的範圍",
-        "3-1 地形如何被形塑", "3-2 常見的地形表示方法", "3-3 臺灣地形的特徵與分布",
-        "4-1 海岸的類型與特色", "4-2 臺灣的海岸與利用", "4-3 臺灣離島的成因",
-        "5-1 天氣", "5-2 氣候", "5-3 臺灣的氣候特徵", "5-4 臺灣的氣象災害",
-        "6-1 水循環", "6-2 水系與流域", "6-3 臺灣河川的特色", "6-4 臺灣水資源利用與保育",
-    ].map((lesson) => ({ grade: "國一", subject: "地理", publisher: "翰林", volume: "第一冊", lesson })),
-    ...[
-        "導言 歷史的基礎觀念", "1-1 考古發掘與史前文化", "1-2 臺灣原住民的遷徙與傳說",
-        "2-1 大航海時代的到來", "2-2 各方勢力在臺灣的競逐", "3-1 歐洲人與原住民",
-        "3-2 鄭氏政權與原住民", "4-1 清初治臺政策與措施", "4-2 外力入侵與現代化建設",
-        "5-1 農業發展", "5-2 商業活動", "6-1 漢人社會與文教的發展", "6-2 原住民的社會文化變遷",
-    ].map((lesson) => ({ grade: "國一", subject: "歷史", publisher: "翰林", volume: "第一冊", lesson })),
-    ...[
-        "1-1 什麼是公民？", "1-2 現代公民應具備的基本德性", "2-1 人性尊嚴與人權", "2-2 人權保障的落實",
-        "3-1 家庭中的親屬關係", "3-2 家庭型態與生活模式", "3-3 家庭成員的權利與義務",
-        "4-1 家庭的功能與轉變", "4-2 政府如何協助家庭發揮功能？", "5-1 校園中的權利與維護",
-        "5-2 如何參與校園公共事務？", "6-1 部落的意義與重要性", "6-2 部落的挑戰與公民參與",
-    ].map((lesson) => ({ grade: "國一", subject: "公民", publisher: "翰林", volume: "第一冊", lesson })),
-] as const;
-
 export const LOCAL_PRACTICE_MAX_QUESTIONS = 500;
 /** Matches the largest catalog range the existing practice UI can request. */
 export const LOCAL_PRACTICE_MAX_CATALOG_PAGE_SIZE = 500;
@@ -122,6 +47,15 @@ export interface LocalPracticeFilters {
     lesson: string;
 }
 
+export type LocalPracticeCatalogQuery =
+    | { kind: "accessible" }
+    | { kind: "filtered"; filters: LocalPracticeFilters; page: number; limit: number };
+
+export interface LocalPracticeCatalogResult {
+    questions: LocalPracticeQuestion[];
+    total: number;
+}
+
 export interface LocalPracticeContentBlock {
     id: string;
     contentType: "text" | "image" | "audio" | "transcript" | "formula" | "table" | "page_crop";
@@ -150,6 +84,7 @@ export interface LocalPracticeQuestionPart {
     stableKey: string;
     position: number;
     answerMode: LocalPracticeAnswerMode;
+    answerFieldCount: number;
     gradingPolicy: LocalPracticeGradingSource;
     isIndependentlyGradable: boolean;
     prompt: string;

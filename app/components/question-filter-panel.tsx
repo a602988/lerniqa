@@ -2,7 +2,7 @@ import {
     Button, FormField, Input, MultiSelect, NativeSelect,
 } from "@keel-design/ui";
 import { ChevronDown, ChevronUp, Library, RotateCcw, Search } from "lucide-react";
-import { ReactNode, useMemo } from "react";
+import { KeyboardEvent, ReactNode, useEffect, useMemo, useRef } from "react";
 import { ALL_UNITS, Question, QuestionCollection, Subject } from "../lib/demo-data";
 import {
     ALL_QUESTION_FILTERS, getPreferredQuestionSemester, getQuestionFilterOptions, normalizeQuestionFilterSelection,
@@ -72,12 +72,69 @@ interface MultiSelectFilterProps {
     onChange: (value: string[]) => void;
 }
 
+interface MultiSelectMenuPlacement {
+    side: "top" | "bottom";
+    maxHeight: number;
+}
+
+const MULTI_SELECT_VIEWPORT_PADDING = 16;
+const MULTI_SELECT_MENU_GAP = 4;
+
+function getMultiSelectMenuPlacement(trigger: HTMLElement, content: HTMLElement): MultiSelectMenuPlacement {
+    const triggerRect = trigger.getBoundingClientRect();
+    const spaceAbove = Math.max(0, triggerRect.top - MULTI_SELECT_VIEWPORT_PADDING - MULTI_SELECT_MENU_GAP);
+    const spaceBelow = Math.max(0, window.innerHeight - triggerRect.bottom - MULTI_SELECT_VIEWPORT_PADDING - MULTI_SELECT_MENU_GAP);
+    const preferredHeight = content.scrollHeight;
+    const side = spaceBelow >= preferredHeight || spaceBelow >= spaceAbove ? "bottom" : "top";
+
+    return {
+        side,
+        maxHeight: Math.max(0, side === "bottom" ? spaceBelow : spaceAbove),
+    };
+}
+
 /** 以 KEEL MultiSelect 顯示可搜尋、全選與清除的複選條件。 */
 function MultiSelectFilter({ id, label, options, value, disabled = false, onChange }: MultiSelectFilterProps) {
     const selected = normalizeQuestionFilterSelection(value);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    function fitMenuToViewport() {
+        const container = containerRef.current;
+        const trigger = container?.querySelector<HTMLElement>("[data-slot='multi-select'] > button");
+        const content = container?.querySelector<HTMLElement>("[data-slot='multi-select-content']");
+        if (!trigger || !content) return;
+
+        const placement = getMultiSelectMenuPlacement(trigger, content);
+        content.dataset.side = placement.side;
+        content.style.setProperty("--question-filter-menu-max-height", `${placement.maxHeight}px`);
+    }
+
+    function scheduleMenuFit() {
+        requestAnimationFrame(fitMenuToViewport);
+    }
+
+    function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+        if (["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) scheduleMenuFit();
+    }
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new MutationObserver(fitMenuToViewport);
+        observer.observe(container, { childList: true, subtree: true });
+        window.addEventListener("resize", fitMenuToViewport);
+        window.addEventListener("scroll", fitMenuToViewport, true);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", fitMenuToViewport);
+            window.removeEventListener("scroll", fitMenuToViewport, true);
+        };
+    }, []);
 
     return (
-        <div className="grid content-start gap-2">
+        <div className="question-filter-multi-select grid content-start gap-2" ref={containerRef} onClickCapture={scheduleMenuFit} onKeyDownCapture={handleKeyDownCapture}>
             <p className="text-sm font-semibold" id={`${id}-label`}>{label}</p>
             <MultiSelect
                 aria-labelledby={`${id}-label`}

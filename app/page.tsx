@@ -17,9 +17,14 @@ import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
+import { hasCompleteAnswerSlots } from "./lib/answer-slots";
 import { BopomofoText } from "./components/bopomofo-text";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
+import { MathFormula } from "./components/math-formula";
 import { QuestionFilterPanel } from "./components/question-filter-panel";
+import { LearningBookWorkspace } from "./components/learning-book-workspace";
+import { createLearningBook, learningBookMutation, listLearningBookSchedules } from "./lib/learning-book-client";
+import type { LearningBookContent, LearningBookDto } from "./lib/learning-book-contract";
 import {
     ACCEPTED_FILE_TYPES, AccountRole, ALL_KNOWLEDGE, ALL_UNITS, ASSESSMENT_OPTIONS, AssessmentRange, Attempt, BOOK_OPTIONS, BOOK_SETTING_OPTIONS, CheckMode,
     DEFAULT_QUESTION_LIMIT_OPTIONS,
@@ -33,7 +38,9 @@ import {
     isSupplementalQuestionMetadata, normalizeQuestionSourceCategory, QUESTION_SOURCE_CATEGORIES, QuestionFilters, questionUsesTextbookVersion,
 } from "./lib/question-filters";
 import { normalizeSubjectLabel } from "./lib/subject-labels";
-import { reflowNumberedExplanation } from "./lib/question-presentation";
+import { getSubjectUnitProgress } from "./lib/subject-progress";
+import { resolvePracticeReturnDestination, type PracticeReturnTarget } from "./lib/practice-return-navigation";
+import { formatNumberedReferenceAnswers, reflowNumberedExplanation, tokenizePromptBlanks } from "./lib/question-presentation";
 import {
     findEducationStage,
     type EducationCatalog,
@@ -60,9 +67,11 @@ import {
     isPracticeSessionExpired,
     loadEducationCatalog,
     loadPersistedPractice,
+    loadPersistedPracticeHistory,
     mapPracticeAccountLearner,
     normalizeLoadedPracticePlan,
     PracticeApiError,
+    practiceApi,
     PRACTICE_AUTH_EXPIRED_EVENT,
     type PracticeAccount,
     type PracticeAccountLearner,
@@ -183,6 +192,8 @@ interface QuestionReviewProps {
     headerActions?: ReactNode;
     /** 以目前題目開始正式練習。 */
     onStartPractice?: () => void;
+    /** 題目詳情操作失敗時顯示的服務訊息。 */
+    serviceError?: string;
     /** 返回來源頁。 */
     onBack: () => void;
     /** 切換到上一題。 */
@@ -1001,19 +1012,21 @@ function ContentImages({ blocks, placement }: { blocks?: QuestionBlock[]; placem
     return <div className="mt-4 grid gap-3">{images.map((block) => <ContentImage block={block} key={block.id} />)}</div>;
 }
 
+function ContentFormula({ block }: { block: QuestionBlock }) {
+    return block.text ? <MathFormula expression={block.text} /> : null;
+}
+
 /** 將題目來源中的連續空白轉成可辨識的填答底線。 */
 function PromptText({ text }: { text: string }) {
-    const segments = text.split(/( {4,}|　{2,})/g);
-
-    return <>{segments.map((segment, index) => {
-        const isBlank = /^(?: {4,}|　{2,})$/.test(segment);
-        if (!isBlank) return <Fragment key={`${index}-${segment}`}><BopomofoText text={segment} /></Fragment>;
-
-        const blankWidth = [...segment].reduce((width, character) => width + (character === "　" ? 1 : 0.5), 0);
-        const width = `${Math.min(Math.max(blankWidth, 3), 8)}em`;
+    return <>{tokenizePromptBlanks(text).map((token, index) => {
+        if (token.kind === "text") return <Fragment key={`${index}-${token.value}`}><BopomofoText text={token.value} /></Fragment>;
         return <Fragment key={`blank-${index}`}>
-            <span aria-hidden="true" className="question-prompt-blank" style={{ width }} />
-            <span className="sr-only">填答處</span>
+            <span
+                aria-hidden={token.label ? undefined : "true"}
+                className={`question-prompt-blank${token.label ? " question-prompt-numbered-blank" : ""}`}
+                style={{ width: `${token.widthEm}em` }}
+            >{token.label}</span>
+            {!token.label && <span className="sr-only">填答處</span>}
         </Fragment>;
     })}</>;
 }
@@ -1033,7 +1046,7 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
     const promptClassName = [className, titleSize].filter(Boolean).join(" ");
     const blocks = question.blocks?.filter((block) => block.placement === "prompt")
         .sort((first, second) => first.order - second.order) ?? [];
-    const hasInlineFormula = blocks.some((block) => block.type === "image" && block.asset?.alt === "來源數學公式");
+    const hasInlineFormula = blocks.some((block) => block.type === "formula" || (block.type === "image" && block.asset?.alt === "來源數學公式"));
     const hasInterleavedContent = blocks.filter((block) => block.type === "text" && block.text).length > 1;
     if (!hasInterleavedContent && !hasInlineFormula) {
         return <>{title
@@ -1045,6 +1058,7 @@ function QuestionPrompt({ question, className, id, title = false }: { question: 
         return <div className={`flex flex-wrap items-center gap-x-1 gap-y-2 ${promptClassName}`} id={id} role={title ? "heading" : undefined}>
             {blocks.map((block) => {
                 if (block.type === "image" && block.asset) return <ContentImage block={block} key={block.id} />;
+                if (block.type === "formula") return <ContentFormula block={block} key={block.id} />;
                 if (block.type !== "text" || !block.text) return null;
                 return <span className="whitespace-pre-wrap" key={block.id}><PromptText text={block.text} /></span>;
             })}
@@ -1110,8 +1124,8 @@ function MultiChoiceAnswerFields({ question, answer, partIds, disabled = false, 
         <div className="multi-choice-step-header">
             <p aria-live="polite">{isPartReview ? <>第 <strong>{sourceIndex + 1}</strong> 小題 · 複習 {currentIndex + 1}／{parts.length}</> : <>小題 <strong>{currentIndex + 1}</strong>／{parts.length}</>}</p>
             {parts.length > 1 && <div className="multi-choice-step-actions">
-                <Button appearance="outline" size="sm" disabled={currentIndex <= 0} onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}><ArrowLeft />上一小題</Button>
-                <Button appearance="outline" size="sm" disabled={currentIndex >= parts.length - 1} onClick={() => setActiveIndex((index) => Math.min(index + 1, parts.length - 1))}>下一小題<ArrowRight /></Button>
+                <Button type="button" appearance="outline" size="sm" disabled={currentIndex <= 0} onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}><ArrowLeft />上一小題</Button>
+                <Button type="button" appearance="outline" size="sm" disabled={currentIndex >= parts.length - 1} onClick={() => setActiveIndex((index) => Math.min(index + 1, parts.length - 1))}>下一小題<ArrowRight /></Button>
             </div>}
         </div>
         <fieldset className={`answer-grid answer-grid-${answerColumnCount}`} data-answer-columns={answerColumnCount} disabled={disabled}>
@@ -1151,6 +1165,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
                             : isNamedPoint ? undefined : <PromptText text={part.prompt} />}
                     >
                         <Input
+                            className="practice-answer-control"
                             value={sourceIndex >= 0 ? selectedAnswers[sourceIndex] ?? "" : ""}
                             disabled={disabled}
                             placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : "輸入答案"}
@@ -1174,7 +1189,7 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
             ? CORRECTION_ANSWER_HINT
             : "可以直接手寫；送出後由本機 AI 逐字辨識手寫內容，不會判斷答案正誤。";
         return <div className="practice-answer-field practice-answer-input w-full">
-            <Input aria-label="文字答案" value={answer} disabled={disabled} placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : "也可以只使用右側手寫板作答"} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
+            <Input aria-label="文字答案" className="practice-answer-control" value={answer} disabled={disabled} placeholder={needsCorrectionDelimiter ? CORRECTION_ANSWER_PLACEHOLDER : "也可以只使用右側手寫板作答"} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onChange={(event) => onAnswer(event.target.value)} />
             <p className="practice-answer-hint">{answerHint}</p>
         </div>;
     }
@@ -1189,18 +1204,6 @@ function QuestionAnswerFields({ question, answer, partIds, disabled = false, onA
     </fieldset>;
 }
 
-/** 將伺服器解鎖的固定版本答案轉成人類可讀文字。 */
-function formatReferenceAnswers(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
-    return referenceAnswers.map((reference, index) => {
-        const optionLabels = new Map(reference.options.map((option) => [option.key, option.label]));
-        const values = reference.acceptedValues.length
-            ? reference.acceptedValues
-            : reference.answerKeys.map((key) => optionLabels.get(key) ?? key);
-        const value = values.length ? values.join("、") : "需人工批改";
-        return referenceAnswers.length > 1 ? `第 ${index + 1} 小題：${value}` : value;
-    }).join("；");
-}
-
 /** 將伺服器解鎖的固定版本解析去重後轉成人類可讀文字。 */
 function formatReferenceExplanations(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
     return reflowNumberedExplanation([...new Set(referenceAnswers
@@ -1210,7 +1213,7 @@ function formatReferenceExplanations(referenceAnswers: readonly LocalPracticeRef
 }
 
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
-function QuestionReview({ question, serverQuestion, index, total, title, headerActions, onStartPractice, onBack, onPrevious, onNext }: QuestionReviewProps) {
+function QuestionReview({ question, serverQuestion, index, total, title, headerActions, onStartPractice, serviceError, onBack, onPrevious, onNext }: QuestionReviewProps) {
     const [referenceAnswers, setReferenceAnswers] = useState<LocalPracticeReferenceAnswer[]>([]);
     const [referenceAnswerStatus, setReferenceAnswerStatus] = useState("");
     const questionNumber = index >= 0 ? index + 1 : 1;
@@ -1256,19 +1259,21 @@ function QuestionReview({ question, serverQuestion, index, total, title, headerA
                 <Progress className="practice-focus-progress" aria-label={`題目進度：第 ${questionNumber} 題，共 ${total} 題`} value={progress} />
             </header>
             <section className="practice-focus-content">
+                {serviceError && <p className="mb-4 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{serviceError}</p>}
                 <Card className="practice-question-card overflow-hidden border-border/80 shadow-sm">
                     <CardContent className="question-review-layout bg-white p-4">
                         <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                             <div className="practice-prompt">
                                 <QuestionTypeLabel question={question} />
-                                <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
-                                {serverQuestion && <PersistedQuestionPromptContent question={serverQuestion} />}
+                                {serverQuestion
+                                    ? <PersistedQuestionPromptContent question={serverQuestion} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />
+                                    : <QuestionPrompt question={question} id={`question-${question.id}-title`} className="question-review-prompt whitespace-pre-line" title />}
                             </div>
                             {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer="" disabled hidePromptContent onAnswer={() => {}} /> : <QuestionAnswerFields question={question} answer="" disabled onAnswer={() => {}} />}
                             <div className="question-review-solution">
                                 <p className="question-detail-label">解答</p>
                                 <strong><BopomofoText text={serverQuestion
-                                    ? referenceAnswers.length ? formatReferenceAnswers(referenceAnswers) : referenceAnswerStatus
+                                    ? referenceAnswers.length ? formatNumberedReferenceAnswers(referenceAnswers) : referenceAnswerStatus
                                     : formatAnswer(question, question.sourceAnswer ?? question.answer)} /></strong>
                                 {serverQuestion && referenceExplanation && <div className="question-review-explanation">
                                     <p className="question-detail-label">解析</p>
@@ -1381,19 +1386,24 @@ function QuestionFlow(props: QuestionFlowProps) {
     const enteredParts = new Map(parsePracticeAnswers(answer).map((entry) => [entry.partId, entry.value]));
     const serverTargetParts = serverQuestion?.parts.filter((part) => !partIds?.length || partIds.includes(part.id)) ?? [];
     const handwritingTextParts = serverTargetParts.filter((part) => part.answerMode === "text");
-    const handwritingPart = handwritingTextParts.length === 1 ? handwritingTextParts[0] : undefined;
+    const handwritingPart = handwritingTextParts.length === 1 && handwritingTextParts[0].answerFieldCount === 1
+        ? handwritingTextParts[0]
+        : undefined;
     const hasCompleteServerAnswers = serverTargetParts.length > 0 && serverTargetParts.every((part) => {
         const value = enteredParts.get(part.id);
-        return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
+        return Array.isArray(value) ? value.length > 0 : hasCompleteAnswerSlots(value ?? "", part.answerFieldCount ?? 1);
     });
     const missingServerParts = serverTargetParts.filter((part) => {
         const value = enteredParts.get(part.id);
-        return Array.isArray(value) ? value.length === 0 : !value?.trim();
+        return Array.isArray(value) ? value.length === 0 : !hasCompleteAnswerSlots(value ?? "", part.answerFieldCount ?? 1);
     });
     const canUseServerHandwriting = checkMode !== "score"
         && Boolean(handwriting)
         && missingServerParts.length > 0
-        && missingServerParts.every((part) => part.answerMode === "text");
+        && missingServerParts.every((part) => {
+            const value = enteredParts.get(part.id);
+            return part.answerMode === "text" && (value === undefined || (typeof value === "string" && !value.trim()));
+        });
     const canSubmit = serverQuestion ? hasCompleteServerAnswers || canUseServerHandwriting : question.kind === "written"
         ? needsHandwritingRecognition
             ? Boolean(handwriting)
@@ -1541,7 +1551,7 @@ function QuestionFlow(props: QuestionFlowProps) {
         : "";
     const feedbackAnswer = feedback
         ? serverQuestion
-            ? feedback.referenceAnswers?.length ? formatReferenceAnswers(feedback.referenceAnswers) : ""
+            ? feedback.referenceAnswers?.length ? formatNumberedReferenceAnswers(feedback.referenceAnswers) : ""
             : feedback.correct === false ? formatAnswer(question, question.answer) : ""
         : "";
 
@@ -1552,8 +1562,9 @@ function QuestionFlow(props: QuestionFlowProps) {
                     <section className="practice-question-pane" aria-labelledby={`question-${question.id}-title`}>
                         <div className="practice-prompt">
                             <QuestionTypeLabel question={question} />
-                            <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
-                            {serverQuestion && <PersistedQuestionPromptContent question={serverQuestion} />}
+                            {serverQuestion
+                                ? <PersistedQuestionPromptContent question={serverQuestion} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />
+                                : <QuestionPrompt question={question} id={`question-${question.id}-title`} className="whitespace-pre-line leading-relaxed" title />}
                         </div>
                         {serverQuestion ? <PersistedQuestionFields question={serverQuestion} answer={answer} handwritingOnly={needsHandwritingRecognition} submitted={submitted} recognizedAnswers={feedback?.recognizedAnswers ?? handwritingAnalysis.recognizedAnswers} partIds={partIds} disabled={submitted || Boolean(feedback) || props.busy || props.answerLocked} hidePromptContent onAnswer={props.onAnswer} /> : <QuestionAnswerFields question={question} answer={answer} partIds={partIds} disabled={submitted || Boolean(feedback)} onAnswer={props.onAnswer} />}
                     </section>
@@ -1602,6 +1613,9 @@ export default function Home() {
     const [practiceSessionsByLearner, setPracticeSessionsByLearner] = useState<Record<string, LocalPracticeSessionHistory[]>>({});
     const [plansByLearner, setPlansByLearner] = useState<Record<string, PracticePlan>>({});
     const [schedulesByLearner, setSchedulesByLearner] = useState<Record<string, ScheduledPractice[]>>({});
+    const [learningBookReload, setLearningBookReload] = useState(0);
+    const [learningBookBusy, setLearningBookBusy] = useState(false);
+    const learningBookSaveRef = useRef<{ fingerprint: string; key: string; book?: LearningBookDto } | undefined>(undefined);
     const [wrongReviewQueue, setWrongReviewQueue] = useState<LocalPracticeWrongQueueItem[]>([]);
     const [recommendationQueueRefreshing, setRecommendationQueueRefreshing] = useState(false);
     const [recommendationPreviews, setRecommendationPreviews] = useState<Record<number, RecommendationPreviewState>>({});
@@ -1610,6 +1624,7 @@ export default function Home() {
     const [roleAccess, setRoleAccess] = useState<RoleAccess>(DEFAULT_ROLE_ACCESS);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [persistedQuestions, setPersistedQuestions] = useState<Map<number, LocalPracticeQuestion>>(new Map());
+    const [sessionPinnedQuestions, setSessionPinnedQuestions] = useState<Map<number, LocalPracticeQuestion>>(new Map());
     const [persistedLearnerId, setPersistedLearnerId] = useState("");
     const [practiceAccount, setPracticeAccount] = useState<PracticeAccount>();
     const [educationCatalog, setEducationCatalog] = useState<EducationCatalog>();
@@ -1679,7 +1694,7 @@ export default function Home() {
     const [selectedImportId, setSelectedImportId] = useState("");
     const [importReviewQuestionId, setImportReviewQuestionId] = useState<number>();
     const [advancedPlanOpen, setAdvancedPlanOpen] = useState(false);
-    const [scheduleDate, setScheduleDate] = useState(getTaipeiDate);
+    const [scheduleDate, setScheduleDate] = useState("");
     const [scheduleTime, setScheduleTime] = useState("");
     const [scheduleWeekOffset, setScheduleWeekOffset] = useState(0);
     const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
@@ -1736,6 +1751,7 @@ export default function Home() {
         // A 401 from any operation must purge all of them before redirecting a shared-device tab.
         setPracticeAccount(undefined);
         setPersistedQuestions(new Map());
+        setSessionPinnedQuestions(new Map());
         setPersistedLearnerId("");
         setLearners([]);
         setActiveLearnerId("");
@@ -2110,6 +2126,10 @@ export default function Home() {
             .filter((question): question is Question => Boolean(question))
             .sort((left, right) => (wrongCounts.get(right.id) ?? 0) - (wrongCounts.get(left.id) ?? 0));
     }, [activeAttempts, latestAttempts, questions, recommendationQueueIdsByQuestion]);
+    const overviewWeakUnits = useMemo(
+        () => [...new Set(mistakeQuestions.map((question) => question.unit))],
+        [mistakeQuestions],
+    );
     const recommendableMistakeIds = mistakeQuestions
         .map((question) => question.id)
         .filter((questionId) => recommendationQueueIdsByQuestion.has(questionId));
@@ -2159,12 +2179,17 @@ export default function Home() {
     const historyAttemptedCount = activeAttempts.length
         + practiceRecords.reduce((total, record) => total + (record.scoreSummary ? record.attemptedItemCount : 0), 0);
     const accuracy = reviewedCount ? Math.round((totalCorrectCount / reviewedCount) * 100) : 0;
-    const currentQuestion = session ? questions.find((question) => question.id === session.questionIds[session.index]) : undefined;
+    const sessionDisplayQuestions = useMemo(() => {
+        const displayed = new Map(questions.map((question) => [question.id, question]));
+        for (const [id, question] of sessionPinnedQuestions) displayed.set(id, adaptPracticeQuestion(question));
+        return [...displayed.values()];
+    }, [questions, sessionPinnedQuestions]);
+    const currentQuestion = session ? sessionDisplayQuestions.find((question) => question.id === session.questionIds[session.index]) : undefined;
     const currentPersistedItem = session?.persistedItems?.[session.index];
     const currentTargetPartIds = currentPersistedItem?.partId
         ? [currentPersistedItem.partId]
         : currentQuestion ? session?.partIdsByQuestion?.[currentQuestion.id] : undefined;
-    const sessionQuestionLabel = getSessionQuestionLabel(currentQuestion, session, questions);
+    const sessionQuestionLabel = getSessionQuestionLabel(currentQuestion, session, sessionDisplayQuestions);
     const currentAttempt = currentQuestion
         ? session?.attempts.find((attempt) => currentPersistedItem
             ? attempt.sessionItemId === currentPersistedItem.id
@@ -2188,6 +2213,7 @@ export default function Home() {
             try {
                 const persisted = await loadPersistedPractice();
                 if (!active) return;
+                setSessionPinnedQuestions(new Map());
                 const mapped = new Map(persisted.questions.map((question) => [practiceRouteId(question.id), question]));
                 if (mapped.size !== persisted.questions.length) throw new Error("題目路徑識別碼重複，請聯絡管理者。");
                 const accountLearner = persisted.account.learner;
@@ -2250,7 +2276,7 @@ export default function Home() {
                 setAttemptsByLearner({ [learner.id]: adaptedAttempts });
                 setPracticeSessionsByLearner({ [learner.id]: persisted.sessions });
                 setPlansByLearner({ [learner.id]: normalizedPlan });
-                setSchedulesByLearner({ [learner.id]: preferences?.schedules ?? [] });
+                setSchedulesByLearner({ [learner.id]: [] });
                 setQuestionCollectionsByLearner({ [learner.id]: collections });
                 setWrongReviewQueue(persisted.wrongReviewQueue.items);
                 setRecommendationQueueRefreshing(false);
@@ -2264,15 +2290,20 @@ export default function Home() {
                 const resumeSessionId = readPracticeSessionHint(learner.id);
                 if (resumeSessionId) {
                     try {
-                        const restoredResult = await getPersistedPracticeSession(resumeSessionId);
+                        const restoredResult = await getPersistedPracticeSession(resumeSessionId, true);
                         const restored = restoredResult.session;
                         const restorable = restored.status === "active" || restored.status === "paused";
                         const restoredItems = "items" in restored ? restored.items : [];
                         const restoredQuestionIds = restoredItems.map((item) => practiceRouteId(item.questionId));
+                        const pinnedQuestions = "questions" in restoredResult && Array.isArray(restoredResult.questions)
+                            ? restoredResult.questions as LocalPracticeQuestion[] : [];
+                        const restoredMap = new Map(mapped);
+                        for (const question of pinnedQuestions) restoredMap.set(practiceRouteId(question.id), question);
                         const currentRevisionsMatch = restoredItems.every((item, index) => (
-                            mapped.get(restoredQuestionIds[index]!)?.revisionId === item.revisionId
+                            restoredMap.get(restoredQuestionIds[index]!)?.revisionId === item.revisionId
                         ));
                         if (restorable && restoredQuestionIds.length && currentRevisionsMatch) {
+                            setSessionPinnedQuestions(new Map(pinnedQuestions.map((question) => [practiceRouteId(question.id), question])));
                             const disclosedAttempts = restoredResult.disclosure === "detailed"
                                 ? restoredResult.attempts.map((attempt) => adaptPracticeAttempt(attempt))
                                 : adaptedAttempts.filter((attempt) => attempt.sessionId === restored.id);
@@ -2314,8 +2345,12 @@ export default function Home() {
                                     attempts: restoredAttempts,
                                     questionStartedAt: Date.now(),
                                 });
-                                setSessionPaused(true);
-                                if (restored.status === "active") {
+                                const openingSession = window.location.pathname === SESSION_PATH || getSessionQuestionId(window.location.pathname) !== undefined;
+                                setSessionPaused(!openingSession);
+                                if (openingSession && restored.status === "paused") {
+                                    await updatePersistedPracticeSessionStatus(restored.id, "active");
+                                }
+                                else if (!openingSession && restored.status === "active") {
                                     await updatePersistedPracticeSessionStatus(restored.id, "paused");
                                 }
                             }
@@ -2323,9 +2358,7 @@ export default function Home() {
                         }
                         else if (!restorable) clearPracticeSessionHint(learner.id);
                         else {
-                            await updatePersistedPracticeSessionStatus(restored.id, "abandoned");
-                            clearPracticeSessionHint(learner.id);
-                            setPracticeServiceError("這次練習使用的題目版本已更新；舊練習已安全關閉，請重新建立練習。");
+                            setPracticeServiceError("無法確認這次練習固定版本的題目；已保留練習與恢復識別碼，請稍後重新載入。");
                         }
                     }
                     catch {
@@ -2396,7 +2429,9 @@ export default function Home() {
             try {
                 writePracticePreferences(persistedLearnerId, {
                     plan: plansByLearner[persistedLearnerId] ?? null,
-                    schedules: schedulesByLearner[persistedLearnerId] ?? [],
+                    // Server schedules never become browser authority. The original legacy
+                    // snapshot is retained separately for explicit migration.
+                    schedules: [],
                     collections: questionCollectionsByLearner[persistedLearnerId] ?? [],
                     questionLimitOptions: learner.questionLimitOptions,
                     defaultQuestionLimit: learner.defaultQuestionLimit,
@@ -2406,6 +2441,28 @@ export default function Home() {
             catch { setStorageError("此瀏覽器目前無法保存練習設定；已送出的作答仍保存在資料庫。"); }
         }
     }, [isHydrated, learners, persistedLearnerId, plansByLearner, questionCollectionsByLearner, schedulesByLearner]);
+
+    useEffect(() => {
+        if (!persistedLearnerId) return;
+        let active = true;
+        listLearningBookSchedules(persistedLearnerId).then(({ schedules }) => {
+            if (!active) return;
+            setSchedulesByLearner({ [persistedLearnerId]: schedules.filter((schedule) => !["cancelled", "missed"].includes(schedule.status)).map((schedule) => {
+                const local = new Date(new Date(schedule.scheduledFor).getTime() + TAIPEI_OFFSET_MS).toISOString();
+                return {
+                    id: schedule.id, serverBacked: true, planId: schedule.planId ?? undefined,
+                    subscriptionId: schedule.subscriptionId ?? undefined, revisionId: schedule.revisionId,
+                    sessionId: schedule.sessionId ?? undefined,
+                    lockVersion: schedule.lockVersion, canStart: schedule.canStart, serverStatus: schedule.status,
+                    creatorRole: roleAccess.activeRole, date: local.slice(0, 10), time: local.slice(11, 16),
+                    subjectLabel: schedule.name, scopeLabel: `${schedule.questions.length} 題 · 固定版本`,
+                    checkMode: schedule.checkMode, questionIds: schedule.questions.map((question) => practiceRouteId(question.questionId)),
+                    createdAt: schedule.scheduledFor,
+                };
+            }) });
+        }).catch((failure: unknown) => { if (active) setPracticeServiceError(failure instanceof Error ? failure.message : "無法讀取學習本排程。"); });
+        return () => { active = false; };
+    }, [persistedLearnerId, learningBookReload, roleAccess.activeRole]);
 
     useEffect(() => {
         setImportGrade(activeLearner.grade);
@@ -2513,7 +2570,13 @@ export default function Home() {
             router.replace(SECTION_PATHS.questions);
             return;
         }
-        if (!learners.length || !questions.length) return;
+        if (!learners.length) return;
+        if (browserPath === PRACTICE_SCHEDULES_PATH) {
+            setSection("practice");
+            if (session?.phase === "answering") setSessionPaused(true);
+            return;
+        }
+        if (!sessionDisplayQuestions.length) return;
         const routeQuestionId = getSessionQuestionId(browserPath);
         const overviewQuestionId = getOverviewQuestionId(browserPath);
         if (browserPath === "/") {
@@ -2539,20 +2602,20 @@ export default function Home() {
                 router.replace(SECTION_PATHS.practice);
                 return;
             }
-            const routeQuestion = questions.find((question) => question.id === routeQuestionId);
+            const routeQuestion = sessionDisplayQuestions.find((question) => question.id === routeQuestionId);
             if (!routeQuestion) {
                 router.replace(SECTION_PATHS.practice);
                 return;
             }
-            const routeQuestionIds = getQuestionGroupIds(routeQuestion, questions);
+            const routeQuestionIds = getQuestionGroupIds(routeQuestion, sessionDisplayQuestions);
             const routeQuestionIndex = routeQuestionIds.indexOf(routeQuestionId);
-            const hasCompleteSessionGroup = routeQuestionIds.every((questionId) => session?.questionIds.includes(questionId));
+            const hasCompleteSessionGroup = Boolean(session?.persistedItems?.length) || routeQuestionIds.every((questionId) => session?.questionIds.includes(questionId));
             const reusesCurrentSession = Boolean(session
                 && session.questionIds.includes(routeQuestionId)
                 && (session.mode !== "practice" || hasCompleteSessionGroup));
             setSection("practice");
             setSession((current) => {
-                const hasCompleteGroup = routeQuestionIds.every((questionId) => current?.questionIds.includes(questionId));
+                const hasCompleteGroup = Boolean(current?.persistedItems?.length) || routeQuestionIds.every((questionId) => current?.questionIds.includes(questionId));
                 const requiresCompleteGroup = !current || current.mode === "practice";
                 if (!current || !current.questionIds.includes(routeQuestionId) || (requiresCompleteGroup && !hasCompleteGroup)) {
                     const startedAt = new Date().toISOString();
@@ -2584,7 +2647,7 @@ export default function Home() {
         }
         setSection(getSectionFromPath(browserPath));
         if (session?.phase === "answering") setSessionPaused(browserPath !== SESSION_PATH);
-    }, [activeLearnerId, canAccessLearnerSettings, canAccessSystemSettings, isHydrated, learnerQuestions, learners.length, pathname, questions, router]);
+    }, [activeLearnerId, canAccessLearnerSettings, canAccessSystemSettings, isHydrated, learnerQuestions, learners.length, pathname, questions, sessionDisplayQuestions, router]);
     useEffect(() => {
         if (pathname !== SECTION_PATHS.questions || !shouldRestoreQuestionScrollRef.current) return;
         shouldRestoreQuestionScrollRef.current = false;
@@ -2685,7 +2748,7 @@ export default function Home() {
     }
 
     /**
-     * 前往完整練習計劃頁並關閉暫時顯示的安排介面。
+     * 前往完整學習本計畫頁並關閉暫時顯示的安排介面。
      * @returns 無回傳值。
      */
     async function openScheduleList() {
@@ -2695,6 +2758,7 @@ export default function Home() {
         setScheduleDialogOpen(false);
         setSchedulePanelOpen(false);
         setMobileNavigationOpen(false);
+        setSection("practice");
         router.push(PRACTICE_SCHEDULES_PATH);
     }
 
@@ -3089,7 +3153,7 @@ export default function Home() {
         }
     }
 
-    /** 更新目前學習者的練習計畫。 */
+    /** 更新目前學習者的學習本計畫。 */
     function updatePlan<K extends keyof PracticePlan>(field: K, value: PracticePlan[K]) {
         const dependentReset = field === "subject"
             ? {
@@ -3125,33 +3189,60 @@ export default function Home() {
             ?? "全部單元";
     }
 
-    /** 將目前出題設定保存為指定學習者的預約練習。 */
-    function addScheduledPractice() {
-        if (!scheduleDate || !plannedQuestions.length || !difficultyMixValid) return;
-        const scheduledPractice: ScheduledPractice = {
-            id: `schedule-${crypto.randomUUID()}`,
-            creatorRole: roleAccess.activeRole,
-            date: scheduleDate,
-            ...(scheduleTime ? { time: scheduleTime } : {}),
-            subjectLabel: planSubjectLabel,
-            scopeLabel: getCurrentPlanScopeLabel(),
-            checkMode: activePlan.checkMode,
-            questionIds: plannedQuestions.map((question) => question.id),
-            createdAt: new Date().toISOString(),
+    function getLearningBookContent(ids: number[], name: string): LearningBookContent | null {
+        const formalQuestions = ids.map((id) => persistedQuestions.get(id));
+        if (!ids.length || formalQuestions.some((question) => !question)) return null;
+        return {
+            name, checkMode: activePlan.checkMode,
+            questions: formalQuestions.map((question) => ({ questionId: question!.id, revisionId: question!.revisionId })),
+            filterSnapshot: { ...activePlan },
         };
-        setSchedulesByLearner((current) => ({
-            ...current,
-            [activeLearnerId]: [...(current[activeLearnerId] ?? []), scheduledPractice],
-        }));
+    }
+
+    async function saveLearningBook(ids: number[], name: string, date: string, time: string) {
+        if (learningBookBusy || !persistedLearnerId || !practiceAccount?.learner?.canCreatePlans) return false;
+        const content = getLearningBookContent(ids, name);
+        if (!content) { setPracticeServiceError("部分題目無法確認正式版本，請重新載入後再建立學習本。"); return false; }
+        const fingerprint = JSON.stringify({ learnerId: persistedLearnerId, content, date, time });
+        const pending = learningBookSaveRef.current?.fingerprint === fingerprint
+            ? learningBookSaveRef.current : { fingerprint, key: crypto.randomUUID(), book: undefined };
+        learningBookSaveRef.current = pending;
+        setLearningBookBusy(true); setPracticeServiceError("");
+        try {
+            const book = pending.book ?? await createLearningBook(persistedLearnerId, content, true, pending.key);
+            pending.book = book;
+            if (date) await learningBookMutation("/schedules", {
+                learnerId: persistedLearnerId, bookId: book.id,
+                scheduledFor: `${date}T${time || "00:00"}:00+08:00`, idempotencyKey: pending.key,
+            });
+            learningBookSaveRef.current = undefined;
+            setLearningBookReload((value) => value + 1);
+            setQuestionActionStatus(date ? "學習本與排程已保存在資料庫。" : "學習本已保存在資料庫，可稍後安排時間。");
+            return true;
+        }
+        catch (failure) {
+            if (isDeterministicPracticeApiError(failure)) learningBookSaveRef.current = undefined;
+            setPracticeServiceError(failure instanceof Error ? failure.message : "學習本尚未儲存完成，請重試。");
+            return false;
+        }
+        finally { setLearningBookBusy(false); }
+    }
+
+    /** 日期留白時只建立學習本；日期存在時另建固定版本排程。 */
+    async function addScheduledPractice() {
+        if (!plannedQuestions.length || !difficultyMixValid) return;
+        await saveLearningBook(plannedQuestions.map((question) => question.id), `${planSubjectLabel} · ${getCurrentPlanScopeLabel()}`, scheduleDate, scheduleTime);
     }
 
     /** 判斷目前角色能否變更指定排程。 */
     function isScheduledPracticeLocked(schedule: ScheduledPractice) {
+        if (schedule.serverBacked) return !practiceAccount?.learner?.canCreatePlans;
         return roleAccess.activeRole === "學習者" && schedule.creatorRole !== "學習者";
     }
 
     /** 以目前出題設定更新既有排程，並保留日期與建立者。 */
     function replaceScheduledPractice(schedule: ScheduledPractice) {
+        if (schedule.serverBacked) { setPracticeServiceError("排程固定原版本；請到學習本發布更新，再取消舊排程並重新安排。"); return; }
         if (isScheduledPracticeLocked(schedule) || !plannedQuestions.length || !difficultyMixValid) return;
         setSchedulesByLearner((current) => ({
             ...current,
@@ -3166,8 +3257,9 @@ export default function Home() {
         }));
     }
 
-    /** 開啟尚未完成且目前角色有權管理的練習計劃編輯器。 */
+    /** 開啟尚未完成且目前角色有權管理的學習本計畫編輯器。 */
     function openScheduleEditor(schedule: ScheduledPractice) {
+        if (schedule.serverBacked) { openScheduleList(); return; }
         if (schedule.result || isScheduledPracticeLocked(schedule)) return;
         setEditingScheduleId(schedule.id);
         setEditingScheduleDate(schedule.date);
@@ -3175,7 +3267,7 @@ export default function Home() {
         setEditingScheduleCheckMode(schedule.checkMode);
     }
 
-    /** 保存練習計劃的日期、時間與練習方式。 */
+    /** 保存學習本計畫的日期、時間與練習方式。 */
     function saveScheduledPracticeEdits() {
         if (!editingScheduleId || !editingScheduleDate) return;
         setSchedulesByLearner((current) => ({
@@ -3194,8 +3286,16 @@ export default function Home() {
     }
 
     /** 刪除目前角色有權管理的排程。 */
-    function removeScheduledPractice(schedule: ScheduledPractice) {
+    async function removeScheduledPractice(schedule: ScheduledPractice) {
         if (isScheduledPracticeLocked(schedule)) return;
+        if (schedule.serverBacked) {
+            try {
+                await learningBookMutation("/schedules", { learnerId: persistedLearnerId, scheduleId: schedule.id, status: "cancelled", lockVersion: schedule.lockVersion }, "PATCH");
+                setLearningBookReload((value) => value + 1);
+            }
+            catch (failure) { setPracticeServiceError(failure instanceof Error ? failure.message : "無法取消排程。"); }
+            return;
+        }
         setSchedulesByLearner((current) => ({
             ...current,
             [activeLearnerId]: (current[activeLearnerId] ?? []).filter((item) => item.id !== schedule.id),
@@ -3203,7 +3303,27 @@ export default function Home() {
     }
 
     /** 以排程保存的原始題目順序開始練習。 */
-    function startScheduledPractice(schedule: ScheduledPractice) {
+    async function startScheduledPractice(schedule: ScheduledPractice) {
+        if (schedule.serverBacked) {
+            const canResume = schedule.serverStatus === "in_progress" && Boolean(schedule.sessionId);
+            if ((!canResume && schedule.canStart === false) || practiceBusy) return;
+            setPracticeBusy(true);
+            try {
+                if (canResume && schedule.sessionId) {
+                    if (!writePracticeSessionHint(persistedLearnerId, schedule.sessionId)) throw new Error("無法保存練習恢復識別碼。");
+                    setScheduleDialogOpen(false); setSchedulePanelOpen(false);
+                    router.push(SESSION_PATH); setPracticeReloadToken((value) => value + 1);
+                    return;
+                }
+                const { session: started } = await practiceApi<{ session: { id: string } }>("/api/v1/local-practice/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ practiceScheduleId: schedule.id, sessionId: crypto.randomUUID() }) });
+                if (!writePracticeSessionHint(persistedLearnerId, started.id)) throw new Error("無法保存練習恢復識別碼。");
+                setScheduleDialogOpen(false); setSchedulePanelOpen(false);
+                router.push(SESSION_PATH); setPracticeReloadToken((value) => value + 1);
+            }
+            catch (failure) { setPracticeServiceError(failure instanceof Error ? failure.message : "無法開始排程。"); }
+            finally { setPracticeBusy(false); }
+            return;
+        }
         const validQuestionIds = schedule.questionIds.filter((id) => questions.some((question) => question.id === id));
         if (!validQuestionIds.length) return;
         setScheduleDialogOpen(false);
@@ -3289,7 +3409,7 @@ export default function Home() {
         updatePlan("difficultyMix", { ...activeDifficultyMix, [field]: percentage });
     }
 
-    /** 將共用篩選元件的值保存至目前練習計畫。 */
+    /** 將共用篩選元件的值保存至目前學習本計畫。 */
     function updatePracticeFilters(filters: QuestionFilters) {
         const singleValue = (value: string | string[]) => normalizeQuestionFilterSelection(value)[0] ?? ALL_QUESTION_FILTERS;
         const metadataFilters = Object.fromEntries(Object.entries(filters.metadata)
@@ -3433,6 +3553,7 @@ export default function Home() {
     /** 開啟題目總覽的獨立詳情頁。 */
     function openQuestionDetail(questionId: number) {
         questionOverviewScrollRef.current = window.scrollY;
+        setPracticeServiceError("");
         setSelectedQuestionId(questionId);
         router.push(getOverviewQuestionPath(questionId));
     }
@@ -3440,6 +3561,7 @@ export default function Home() {
     /** 返回題目清單並回到開啟詳情前的位置。 */
     function closeQuestionDetail() {
         shouldRestoreQuestionScrollRef.current = true;
+        setPracticeServiceError("");
         setSelectedQuestionId(undefined);
         router.push(SECTION_PATHS.questions, { scroll: false });
     }
@@ -3448,58 +3570,47 @@ export default function Home() {
     function navigateOverviewQuestion(index: number) {
         const question = detailOverviewQuestions[index];
         if (!question) return;
+        setPracticeServiceError("");
         setSelectedQuestionId(question.id);
         router.push(getOverviewQuestionPath(question.id));
     }
 
-    /** 以指定題目開啟共用的建立練習計劃介面。 */
+    /** 以指定題目開啟共用的建立學習本計畫介面。 */
     function openQuestionPlan(questionIds: number[], source: "題目總覽" | "錯題") {
         if (!questionIds.length) return;
         setPendingQuestionIds([...questionIds]);
         setQuestionPlanSource(source);
-        setQuestionPlanDate(getTaipeiDate());
+        setQuestionPlanDate("");
         setQuestionPlanTime("");
         setQuestionPlanDialogOpen(true);
     }
 
-    /** 將題目總覽目前的批次範圍固定為一筆練習計劃。 */
-    function createQuestionPlan() {
-        if (!questionPlanDate || !pendingQuestionIds.length) return;
+    /** 將題目總覽目前的批次範圍固定為一筆學習本計畫。 */
+    async function createQuestionPlan() {
+        if (!pendingQuestionIds.length) return;
         const actionQuestions = pendingQuestionIds
             .map((id) => questions.find((question) => question.id === id))
             .filter((question): question is Question => Boolean(question));
         const subjects = [...new Set(actionQuestions.map((question) => question.subject))];
         const subjectLabel = subjects.length === 1 ? `${subjects[0]} · 精選題目` : `${subjects.length} 科精選題目`;
-        const schedule: ScheduledPractice = {
-            id: `schedule-${crypto.randomUUID()}`,
-            creatorRole: roleAccess.activeRole,
-            date: questionPlanDate,
-            ...(questionPlanTime ? { time: questionPlanTime } : {}),
-            subjectLabel,
-            scopeLabel: `${questionPlanSource} · ${actionQuestions.length} 題`,
-            checkMode: activePlan.checkMode,
-            questionIds: actionQuestions.map((question) => question.id),
-            createdAt: new Date().toISOString(),
-        };
-        setSchedulesByLearner((current) => ({
-            ...current,
-            [activeLearnerId]: [...(current[activeLearnerId] ?? []), schedule],
-        }));
+        const saved = await saveLearningBook(actionQuestions.map((question) => question.id), `${subjectLabel} · ${questionPlanSource}`, questionPlanDate, questionPlanTime);
+        if (!saved) return;
         if (questionPlanSource === "錯題") setSelectedMistakes([]);
         else setSelectedQuestionIds([]);
         setPendingQuestionIds([]);
         setQuestionPlanDialogOpen(false);
-        setQuestionActionStatus(`已建立 ${actionQuestions.length} 題的練習計劃。`);
+        setQuestionActionStatus(`已建立 ${actionQuestions.length} 題的學習本計畫。`);
     }
 
     /** 開始指定題目的練習。 */
-    async function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string, partIdsByQuestion?: Record<number, string[]>) {
+    async function beginSession(mode: PracticeSession["mode"], ids: number[], checkMode: CheckMode = activePlan.checkMode, scheduleId?: string, partIdsByQuestion?: Record<number, string[]>, returnTarget?: PracticeReturnTarget) {
         if (!ids.length || practiceRequestRef.current) return;
         if (session?.phase === "answering" && sessionPaused) {
             await resumeSession();
             return;
         }
         setPracticeServiceError("");
+        setSessionPinnedQuestions(new Map());
         let sessionId = `session-${crypto.randomUUID()}`;
         let startedAt = new Date().toISOString();
         let effectiveQuestionIds = [...ids];
@@ -3581,13 +3692,17 @@ export default function Home() {
         attemptRequestRef.current = undefined;
         sessionResponsesRef.current.clear();
         setRecommendationSessionKind(null);
-        setSession({ id: sessionId, startedAt, learnerId: activeLearnerId, mode, ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: effectiveQuestionIds, ...(persistedItems ? { persistedItems } : {}), ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
+        setSession({ id: sessionId, startedAt, learnerId: activeLearnerId, mode, ...(returnTarget ? { returnTarget } : {}), ...(scheduleId ? { scheduleId } : {}), checkMode, phase: "answering", questionIds: effectiveQuestionIds, ...(persistedItems ? { persistedItems } : {}), ...(Object.keys(validPartIdsByQuestion).length ? { partIdsByQuestion: validPartIdsByQuestion } : {}), index: 0, attempts: [], questionStartedAt: Date.now() });
         setSessionPaused(false); setSessionExitOpen(false); setAnswer(""); setHandwriting(""); setSection(mode === "practice" ? "practice" : "mistakes");
         router.push(getSessionQuestionPath(effectiveQuestionIds[0]));
     }
 
-    /** 將完整作答結果保存到原始練習計劃。 */
+    /** 將完整作答結果保存到原始學習本計畫。 */
     function saveScheduledPracticeResult(currentSession: PracticeSession, attempts: Attempt[]) {
+        if (currentSession.scheduleId && PRACTICE_SESSION_UUID_PATTERN.test(currentSession.scheduleId)) {
+            setLearningBookReload((value) => value + 1);
+            return;
+        }
         if (!currentSession.scheduleId || attempts.length !== currentSession.questionIds.length) return;
         const wrongQuestions = currentSession.scoreSummary?.wrong
             ?? attempts.filter((attempt) => attempt.correct === false).length;
@@ -3628,11 +3743,12 @@ export default function Home() {
             }
             finally { setPracticeBusy(false); }
         }
+        const destination = resolvePracticeReturnDestination(session.returnTarget, session.mode);
         setSessionPaused(true);
         setSessionExitOpen(false);
         shouldFocusSectionRef.current = true;
-        setSection("overview");
-        router.push(SECTION_PATHS.overview);
+        setSection(destination.section);
+        router.push(destination.path);
     }
 
     /** 返回尚未完成的專注練習。 */
@@ -3668,10 +3784,10 @@ export default function Home() {
         setAnswer("");
         setHandwriting("");
         if (!session.attempts.length) {
-            const nextSection = session.mode === "practice" ? "practice" : "mistakes";
+            const destination = resolvePracticeReturnDestination(session.returnTarget, session.mode);
             clearSession();
-            setSection(nextSection);
-            router.push(SECTION_PATHS[nextSection]);
+            setSection(destination.section);
+            router.push(destination.path);
             return;
         }
         saveScheduledPracticeResult(session, session.attempts);
@@ -3681,17 +3797,17 @@ export default function Home() {
 
     /** 關閉結果並回到這一輪原本的工作區。 */
     function leaveSession() {
-        const nextSection = session?.mode === "practice" ? "practice" : "mistakes";
+        const destination = resolvePracticeReturnDestination(session?.returnTarget, session?.mode ?? "practice");
         if (session && PRACTICE_SESSION_UUID_PATTERN.test(session.id)) clearPracticeSessionHint(session.learnerId);
         clearSession();
-        setSection(nextSection);
-        router.push(SECTION_PATHS[nextSection]);
+        setSection(destination.section);
+        router.push(destination.path);
     }
 
     /** 保存目前答案並依模式前進。 */
     async function submitAnswer() {
         if (!currentQuestion || !session || practiceRequestRef.current) return;
-        const serverQuestion = persistedQuestions.get(currentQuestion.id);
+        const serverQuestion = sessionPinnedQuestions.get(currentQuestion.id) ?? persistedQuestions.get(currentQuestion.id);
         if (serverQuestion && session.attempts.some((attempt) => currentPersistedItem
             ? attempt.sessionItemId === currentPersistedItem.id
             : attempt.questionId === currentQuestion.id)) return;
@@ -3709,12 +3825,15 @@ export default function Home() {
             ));
             const incompleteParts = targetParts.filter((part) => {
                 const value = values.get(part.id);
-                return Array.isArray(value) ? value.length === 0 : !value?.trim();
+                return Array.isArray(value) ? value.length === 0 : !hasCompleteAnswerSlots(value ?? "", part.answerFieldCount ?? 1);
             });
             const handwritingCompletesMissingText = session.checkMode !== "score"
                 && Boolean(handwriting)
                 && incompleteParts.length > 0
-                && incompleteParts.every((part) => part.answerMode === "text");
+                && incompleteParts.every((part) => {
+                    const value = values.get(part.id);
+                    return part.answerMode === "text" && (value === undefined || (typeof value === "string" && !value.trim()));
+                });
             if (!targetParts.length || (incompleteParts.length > 0 && !handwritingCompletesMissingText)) return;
         }
         else {
@@ -3886,8 +4005,8 @@ export default function Home() {
             : attempt.questionId === nextQuestionId) : undefined;
         const nextQuestion = nextQuestionId === undefined
             ? undefined
-            : questions.find((question) => question.id === nextQuestionId);
-        setAnswer(storedResponse?.answer ?? (nextQuestion && !persistedQuestions.has(nextQuestion.id) ? nextAttempt?.answer ?? "" : ""));
+            : sessionDisplayQuestions.find((question) => question.id === nextQuestionId);
+        setAnswer(storedResponse?.answer ?? (nextQuestion && !persistedQuestions.has(nextQuestion.id) && !sessionPinnedQuestions.has(nextQuestion.id) ? nextAttempt?.answer ?? "" : ""));
         setHandwriting(storedResponse?.handwriting ?? nextAttempt?.handwriting ?? "");
         setSession((current) => !current ? current : completesSession
             ? { ...current, phase: "complete" }
@@ -4428,9 +4547,9 @@ export default function Home() {
             return;
         }
         setRecommendationQueueRefreshing(true);
-        loadPersistedPractice().then((persisted) => {
-            if (!active || persisted.account.learner?.id !== persistedLearnerId) return;
-            setWrongReviewQueue(persisted.wrongReviewQueue.items);
+        loadPersistedPracticeHistory().then((history) => {
+            if (!active) return;
+            setWrongReviewQueue(history.wrongReviewQueue.items);
         }).catch((error) => {
             if (active) setRecommendationNotice(error instanceof Error ? error.message : "目前無法更新錯題延伸來源。");
         }).finally(() => {
@@ -4462,7 +4581,7 @@ export default function Home() {
                 {practiceServiceError && <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm" role="alert">{practiceServiceError}</p>}
                 <QuestionFlow
                     question={currentQuestion}
-                    serverQuestion={persistedQuestions.get(currentQuestion.id)}
+                    serverQuestion={sessionPinnedQuestions.get(currentQuestion.id) ?? persistedQuestions.get(currentQuestion.id)}
                     busy={practiceBusy}
                     answerLocked={Boolean(attemptRequestRef.current)}
                     index={session.index}
@@ -4514,7 +4633,7 @@ export default function Home() {
                     {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
                     {scoreOnly && <div className="workspace-surface rounded-2xl p-5 text-center"><p className="text-lg font-bold">{session.scoreSummary ? `本輪答對 ${session.scoreSummary.correct} 題、答錯 ${sessionWrong} 題` : "本輪未產生成績"}</p><p className="mt-1 text-sm text-muted-foreground">為保留測驗效果，本模式只顯示整體統計，不顯示逐題結果、答案或解析。</p></div>}
                     {!scoreOnly && session.attempts.map((attempt, index) => {
-                        const question = questions.find((item) => item.id === attempt.questionId);
+                        const question = sessionDisplayQuestions.find((item) => item.id === attempt.questionId);
                         const wrongPartLabels = question ? getWrongPartLabels(question, attempt) : [];
                         return question ? (
                             <div className={`workspace-surface grid gap-4 rounded-xl p-4 ${attempt.handwriting ? "md:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]" : ""}`} key={attempt.sessionItemId ?? `${attempt.questionId}-${index}`}>
@@ -4524,8 +4643,8 @@ export default function Home() {
                                         <QuestionPrompt question={question} className="whitespace-pre-line font-semibold" />
                                         <p className="mt-1 text-sm text-muted-foreground">你的答案：<BopomofoText text={formatAnswer(question, attempt.answer)} /></p>
                                         {wrongPartLabels.length > 0 && <p className="text-sm text-rose-700">答錯小題：{wrongPartLabels.join("、")}</p>}
-                                        <p className="text-sm text-muted-foreground"><BopomofoText text={persistedQuestions.has(question.id)
-                                            ? attempt.referenceAnswers?.length ? `參考答案：${formatReferenceAnswers(attempt.referenceAnswers)}` : "這個題目版本尚無可顯示的參考答案。"
+                                        <p className="text-sm text-muted-foreground"><BopomofoText text={(persistedQuestions.has(question.id) || sessionPinnedQuestions.has(question.id))
+                                            ? attempt.referenceAnswers?.length ? `參考答案：${formatNumberedReferenceAnswers(attempt.referenceAnswers)}` : "這個題目版本尚無可顯示的參考答案。"
                                             : `參考答案：${formatAnswer(question, question.answer)}`} /></p><ContentImages blocks={question.blocks} placement="answer" />
                                     </div>
                                     <Badge className="shrink-0" tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "待加強" : "待檢視"}</Badge>
@@ -4562,19 +4681,8 @@ export default function Home() {
 
     /** 顯示考前總覽。 */
     function renderOverview() {
-        const weakUnits = [...new Set(mistakeQuestions.map((question) => question.unit))];
-        const unitProgress = [...new Set(learnerQuestions.map((question) => question.unit))].map((unit) => {
-            const unitQuestions = learnerQuestions.filter((question) => question.unit === unit);
-            const questionIds = new Set(unitQuestions.map((question) => question.id));
-            const attempts = latestAttempts.filter((attempt) => questionIds.has(attempt.questionId));
-            return {
-                unit,
-                answered: attempts.length,
-                correct: attempts.filter((attempt) => attempt.correct === true).length,
-                total: unitQuestions.length,
-                value: unitQuestions.length ? Math.round(attempts.length / unitQuestions.length * 100) : 0,
-            };
-        });
+        const subjectProgress = getSubjectUnitProgress(learnerQuestions, latestAttempts);
+        const subjectProgressKey = subjectProgress.map(({ subject }) => subject).join(":");
         return (
             <div className="grid gap-5">
                 <section className="learning-hero rounded-3xl bg-white p-6 sm:p-8">
@@ -4596,32 +4704,23 @@ export default function Home() {
                         <LearningScene />
                     </div>
                 </section>
-                <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-                    <Card className="workspace-card border-border/80 shadow-sm">
-                        <CardHeader><WorkspaceHeading icon={BarChart3} title="題庫作答進度" description="依目前年級題庫與每題最新一次作答整理。" /></CardHeader>
-                        <CardContent className="grid gap-5">
-                            {unitProgress.map(({ unit, answered, correct, total, value }) => (
-                                <div key={unit}>
+                <Card className="workspace-card border-border/80 shadow-sm">
+                    <CardHeader><WorkspaceHeading icon={BarChart3} title="題庫作答進度" description="切換科目查看各單元進度，每題只採用最新一次作答。" /></CardHeader>
+                    <CardContent>
+                        {!subjectProgress.length && <p className="text-sm text-muted-foreground" role="status">目前沒有可統計的題庫科目。</p>}
+                        {subjectProgress.length > 0 && <Tabs key={`${activeLearnerId}:${subjectProgressKey}`} appearance="segmented" defaultValue={subjectProgress[0].subject}>
+                            <TabsList className="w-full justify-start overflow-x-auto" aria-label="切換題庫作答進度科目">
+                                {subjectProgress.map(({ subject }) => <TabsTrigger value={subject} key={subject}>{subject}</TabsTrigger>)}
+                            </TabsList>
+                            {subjectProgress.map(({ subject, units }) => <TabsContent className="mt-5 grid gap-5" value={subject} key={subject}>
+                                {units.map(({ unit, answered, correct, total, value }) => <div key={unit}>
                                     <div className="mb-2 flex justify-between gap-3 text-sm"><span className="font-semibold">{getUnitLabel(unit)}</span><span className="text-muted-foreground">已做 {answered}/{total} · 答對 {correct}</span></div>
-                                    <Progress aria-label={`${unit}作答進度 ${value}%`} value={value} />
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                    <div className="grid gap-5">
-                        <Card className="workspace-card border-border/80 shadow-sm"><CardHeader><WorkspaceHeading icon={Target} title="目前弱點" description="依錯題紀錄整理需要加強的單元。" /></CardHeader><CardContent className="flex flex-wrap gap-2">{weakUnits.length ? weakUnits.map((unit) => <Badge key={unit} tone="danger">{getUnitLabel(unit)}</Badge>) : <p className="text-sm text-muted-foreground">目前沒有待加強單元。</p>}</CardContent></Card>
-                        <Card className="workspace-card border-border/80 shadow-sm">
-                            <CardHeader><WorkspaceHeading icon={Clock3} title="最近練習" description="查看最近三筆作答狀態。" /></CardHeader>
-                            <CardContent className="grid gap-3">
-                                {!activeAttempts.length && <p className="text-sm text-muted-foreground">尚未有作答紀錄。</p>}
-                                {activeAttempts.slice(-3).reverse().map((attempt, index) => {
-                                    const question = questions.find((item) => item.id === attempt.questionId);
-                                    return <div className="workspace-surface flex items-center justify-between rounded-xl p-3" key={`${attempt.questionId}-${index}`}><div><p className="text-sm font-semibold">{question?.knowledge ?? "練習題"}</p><p className="text-xs text-muted-foreground">{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</p></div><Badge tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "錯題" : "待檢視"}</Badge></div>;
-                                })}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
+                                    <Progress aria-label={`${subject}${getUnitLabel(unit)}作答進度：已作答 ${answered} 題，共 ${total} 題，完成 ${value}%`} value={value} />
+                                </div>)}
+                            </TabsContent>)}
+                        </Tabs>}
+                    </CardContent>
+                </Card>
                 {renderLearningHistory()}
             </div>
         );
@@ -4662,7 +4761,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="grid gap-8 p-5 sm:p-7">
                     {practiceServiceError && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{practiceServiceError}</p>}
-                    {persistedLearnerId && <p className="text-sm text-muted-foreground">作答與錯題紀錄保存在資料庫；篩選、練習計劃與個人顯示設定保存在目前瀏覽器。</p>}
+                    {persistedLearnerId && <p className="text-sm text-muted-foreground">學習本、排程、作答與錯題紀錄保存在資料庫；篩選與個人顯示設定保存在目前瀏覽器。</p>}
                     {learnerFilterSetupNotice && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status"><span>{learnerFilterSetupNotice}</span>{canAccessLearnerSettings && <Button appearance="outline" size="sm" onClick={() => navigateToSection("settings")}>前往學習者設定</Button>}</div>}
                     <div className="practice-plan-editor contents">
                     <QuestionFilterPanel
@@ -4754,7 +4853,7 @@ export default function Home() {
     }
 
     /**
-     * 顯示練習安排、單週行事曆與練習計劃。
+     * 顯示練習安排、單週行事曆與學習本計畫。
      * @param idPrefix 區塊標題識別碼前綴。
      * @param options 控制建立表單、完整清單入口與關閉按鈕。
      * @returns 練習安排相關區塊。
@@ -4769,8 +4868,8 @@ export default function Home() {
         const upcomingSchedules = activeSchedules.filter((schedule) => schedule.date > today);
         const previousSchedules = activeSchedules.filter((schedule) => schedule.date < today).reverse();
         const compactSchedules = todaySchedules.length ? todaySchedules : [...upcomingSchedules, ...previousSchedules].slice(0, 2);
-        const pendingSchedules = activeSchedules.filter((schedule) => !schedule.result);
-        const completedSchedules = activeSchedules.filter((schedule) => Boolean(schedule.result));
+        const pendingSchedules = activeSchedules.filter((schedule) => !schedule.result && schedule.serverStatus !== "completed");
+        const completedSchedules = activeSchedules.filter((schedule) => Boolean(schedule.result) || schedule.serverStatus === "completed");
         const visibleSchedules = compactList
             ? compactSchedules
             : scheduleStatus === "completed" ? completedSchedules : pendingSchedules;
@@ -4788,10 +4887,10 @@ export default function Home() {
                     </div>
                 </div>
                 <div className="practice-schedule-form">
-                    <p>把左側目前設定加入清單。日期必填，時間可留白。</p>
-                    <FormField label="練習日期"><Input min={getTaipeiDate()} type="date" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} /></FormField>
+                    <p>把目前內容儲存為學習本。日期可留白，之後再安排練習。</p>
+                    <FormField label="練習日期（選填）"><Input min={getTaipeiDate()} type="date" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} /></FormField>
                     <FormField label="時間（選填）"><Input type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} /></FormField>
-                    <Button className="w-full" disabled={!scheduleDate || !plannedQuestions.length || !difficultyMixValid} onClick={addScheduledPractice}><CalendarDays />加入練習計劃</Button>
+                    <Button className="w-full" disabled={learningBookBusy || !practiceAccount?.learner?.canCreatePlans || !plannedQuestions.length || !difficultyMixValid} onClick={addScheduledPractice}><BookOpen />{learningBookBusy ? "儲存中…" : scheduleDate ? "儲存學習本並安排" : "儲存學習本"}</Button>
                 </div>
             </section>}
             <section className="summary-card" aria-labelledby={calendarTitleId}>
@@ -4824,7 +4923,7 @@ export default function Home() {
             </section>
             <section className="summary-card" aria-labelledby={listTitleId}>
                 <div className="summary-card-heading">
-                    <div className="flex items-center gap-2"><ClipboardCheck size={18} /><h2 id={listTitleId}>練習計劃</h2></div>
+                    <div className="flex items-center gap-2"><ClipboardCheck size={18} /><h2 id={listTitleId}>學習本計畫</h2></div>
                     <div className="practice-schedule-heading-actions">
                         <Badge tone="primary">{compactList && todaySchedules.length ? `今天 ${visibleSchedules.length} 筆` : compactList && visibleSchedules.length ? `近期 ${visibleSchedules.length} 筆` : `${visibleSchedules.length} 筆`}</Badge>
                         {showListLink && <Button appearance="ghost" size="sm" onClick={openScheduleList}>查看全部<ArrowRight /></Button>}
@@ -4840,6 +4939,8 @@ export default function Home() {
                     {visibleSchedules.map((schedule) => {
                         const locked = isScheduledPracticeLocked(schedule);
                         const expanded = expandedScheduleId === schedule.id;
+                        const completed = Boolean(schedule.result) || schedule.serverStatus === "completed";
+                        const creatorLabel = schedule.serverBacked ? "資料庫排程" : `${schedule.creatorRole}安排`;
                         if (compactList) {
                             return <article className="practice-schedule-item practice-schedule-item-compact" key={schedule.id}>
                                 <div className="practice-schedule-compact-row">
@@ -4854,20 +4955,20 @@ export default function Home() {
                                         <span className="practice-schedule-copy"><strong>{schedule.subjectLabel}</strong><small>{schedule.scopeLabel}</small></span>
                                         <ChevronDown className={expanded ? "rotate-180" : ""} aria-hidden="true" />
                                     </button>
-                                    <Button appearance="outline" size="sm" aria-label={`開始 ${schedule.subjectLabel} 練習`} onClick={() => startScheduledPractice(schedule)}>開始<ArrowRight /></Button>
+                                    <Button appearance="outline" size="sm" disabled={schedule.canStart === false && !(schedule.serverStatus === "in_progress" && schedule.sessionId)} aria-label={`${schedule.serverStatus === "in_progress" ? "繼續" : "開始"} ${schedule.subjectLabel} 練習`} onClick={() => startScheduledPractice(schedule)}>{schedule.serverStatus === "in_progress" ? "繼續" : completed ? "已完成" : "開始"}<ArrowRight /></Button>
                                 </div>
                                 {expanded && <div id={`${idPrefix}-${schedule.id}-detail`} className="practice-schedule-compact-detail">
                                     <p>{schedule.result
                                         ? `已練習過 · 總題數 ${schedule.result.totalQuestions} · 錯題 ${schedule.result.wrongQuestions} · 答對率 ${schedule.result.accuracy}%`
-                                        : `尚未練習 · ${schedule.questionIds.length} 題 · ${getCheckModeLabel(schedule.checkMode)}`}</p>
+                                        : `${completed ? "已完成" : schedule.serverStatus === "in_progress" ? "進行中" : "尚未練習"} · ${schedule.questionIds.length} 題 · ${getCheckModeLabel(schedule.checkMode)}`}</p>
                                     <div className="practice-schedule-meta">
-                                        <Badge className="practice-schedule-role" tone="primary">{schedule.creatorRole}安排</Badge>
+                                        <Badge className="practice-schedule-role" tone="primary">{creatorLabel}</Badge>
                                         {locked
-                                            ? <span className="practice-schedule-locked">內容由{schedule.creatorRole}鎖定</span>
+                                            ? <span className="practice-schedule-locked">{schedule.serverBacked ? "目前沒有排程管理權限" : `內容由${schedule.creatorRole}鎖定`}</span>
                                             : <div className="practice-schedule-actions">
-                                                {!schedule.result && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />編輯</Button>}
-                                                <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
-                                                <Button appearance="ghost" tone="danger" size="sm" aria-label={`刪除 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>
+                                                {!completed && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />{schedule.serverBacked ? "管理" : "編輯"}</Button>}
+                                                {!schedule.serverBacked && <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>}
+                                                {!completed && schedule.serverStatus !== "in_progress" && <Button appearance="ghost" tone="danger" size="sm" aria-label={`取消 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>}
                                             </div>}
                                     </div>
                                 </div>}
@@ -4888,21 +4989,21 @@ export default function Home() {
                             {expanded && <div id={`${idPrefix}-${schedule.id}-detail`} className="practice-schedule-detail">
                                 <div className="practice-schedule-detail-summary">
                                     <div className="practice-schedule-badges">
-                                        <Badge className="practice-schedule-status" tone={schedule.result ? "success" : "muted"}>{schedule.result ? "已練習過" : "尚未練習"}</Badge>
-                                        <Badge className="practice-schedule-role" tone="primary">{schedule.creatorRole}安排</Badge>
+                                        <Badge className="practice-schedule-status" tone={completed ? "success" : "muted"}>{completed ? "已練習過" : schedule.serverStatus === "in_progress" ? "進行中" : "尚未練習"}</Badge>
+                                        <Badge className="practice-schedule-role" tone="primary">{creatorLabel}</Badge>
                                     </div>
                                     <p>{schedule.result
                                         ? `總題數 ${schedule.result.totalQuestions} · 錯題 ${schedule.result.wrongQuestions} · 答對率 ${schedule.result.accuracy}% · ${getCheckModeLabel(schedule.checkMode)}`
                                         : `${schedule.questionIds.length} 題 · ${getCheckModeLabel(schedule.checkMode)}`}</p>
                                 </div>
                                 <div className="practice-schedule-detail-actions">
-                                    <Button appearance="outline" size="sm" onClick={() => startScheduledPractice(schedule)}>開始練習<ArrowRight /></Button>
+                                    <Button appearance="outline" size="sm" disabled={schedule.canStart === false && !(schedule.serverStatus === "in_progress" && schedule.sessionId)} onClick={() => startScheduledPractice(schedule)}>{schedule.serverStatus === "in_progress" ? "繼續練習" : completed ? "已完成" : "開始練習"}<ArrowRight /></Button>
                                     {locked
-                                        ? <span className="practice-schedule-locked">內容由{schedule.creatorRole}鎖定</span>
+                                        ? <span className="practice-schedule-locked">{schedule.serverBacked ? "目前沒有排程管理權限" : `內容由${schedule.creatorRole}鎖定`}</span>
                                         : <div className="practice-schedule-actions">
-                                        {!schedule.result && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />編輯</Button>}
-                                        <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>
-                                        <Button appearance="ghost" tone="danger" size="sm" aria-label={`刪除 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>
+                                        {!completed && <Button appearance="outline" size="sm" onClick={() => openScheduleEditor(schedule)}><Pencil />{schedule.serverBacked ? "管理" : "編輯"}</Button>}
+                                        {!schedule.serverBacked && <Button appearance="ghost" tone="muted" size="sm" aria-label={`套用目前設定到 ${schedule.subjectLabel}`} disabled={!plannedQuestions.length || !difficultyMixValid} onClick={() => replaceScheduledPractice(schedule)}>套用</Button>}
+                                        {!completed && schedule.serverStatus !== "in_progress" && <Button appearance="ghost" tone="danger" size="sm" aria-label={`取消 ${schedule.subjectLabel} 排程`} onClick={() => removeScheduledPractice(schedule)}><Trash2 /></Button>}
                                         </div>}
                                 </div>
                             </div>}
@@ -4914,14 +5015,25 @@ export default function Home() {
     }
 
     /**
-     * 顯示可直接進入的完整練習計劃頁。
+     * 顯示可直接進入的完整學習本計畫頁。
      * @returns 練習行事曆與全部安排清單。
      */
     function renderPracticeScheduleListPage() {
+        if (persistedLearnerId) return <LearningBookWorkspace
+            key={persistedLearnerId}
+            learnerId={persistedLearnerId}
+            canCreatePlans={Boolean(practiceAccount?.learner?.canCreatePlans)}
+            currentContent={getLearningBookContent(plannedQuestions.map((question) => question.id), `${planSubjectLabel} · ${getCurrentPlanScopeLabel()}`)}
+            catalog={persistedQuestions}
+            refreshToken={learningBookReload}
+            onChanged={() => setLearningBookReload((value) => value + 1)}
+            onStarted={() => { router.push(SESSION_PATH); setPracticeReloadToken((value) => value + 1); }}
+            onBack={() => router.push(SECTION_PATHS.practice)}
+        />;
         return (
             <Card className="workspace-card practice-schedule-page border-border/80 shadow-sm">
                 <CardHeader className="practice-card-header">
-                    <WorkspaceHeading icon={ClipboardCheck} title="練習計劃" description="依日期排列全部練習，可直接選擇一筆開始。" />
+                    <WorkspaceHeading icon={ClipboardCheck} title="學習本計畫" description="依日期排列全部練習，可直接選擇一筆開始。" />
                     <div className="practice-header-actions">
                         <Button appearance="outline" onClick={() => router.push(SECTION_PATHS.practice)}><ArrowLeft />返回</Button>
                         <Button onClick={() => navigateToSection("practice")}><CalendarDays />安排練習</Button>
@@ -4940,7 +5052,7 @@ export default function Home() {
         );
     }
 
-    /** 顯示可篩選、批次整理與建立練習計劃的題目總覽。 */
+    /** 顯示可篩選、批次整理與建立學習本計畫的題目總覽。 */
     function renderQuestionOverview() {
         const targetOptions = activeQuestionCollections.length
             ? activeQuestionCollections.map((collection) => ({ value: collection.id, label: collection.name }))
@@ -4964,7 +5076,7 @@ export default function Home() {
 
         return (
             <Card className="workspace-card question-overview-card border-border/80 shadow-sm">
-                <CardHeader><WorkspaceHeading icon={ListChecks} title="題目總覽" description="篩選全部題目、整理收藏清單，或將目前結果建立為練習計劃。" /></CardHeader>
+                <CardHeader><WorkspaceHeading icon={ListChecks} title="題目總覽" description="篩選全部題目、整理收藏清單，或將目前結果建立為學習本計畫。" /></CardHeader>
                 <CardContent className="question-overview-content">
                     {learnerFilterSetupNotice && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status"><span>{learnerFilterSetupNotice}</span>{canAccessLearnerSettings && <Button appearance="outline" size="sm" onClick={() => navigateToSection("settings")}>前往學習者設定</Button>}</div>}
                     <QuestionFilterPanel
@@ -5033,7 +5145,7 @@ export default function Home() {
                         <DialogBody>
                             <div className="question-batch-dialog-grid">
                                 <FormField label="處理範圍"><NativeSelect options={actionScopeOptions} value={questionBatchScope} onChange={(event) => setQuestionBatchScope(event.target.value as "selected" | "filtered")} /></FormField>
-                                <Button appearance="outline" disabled={!questionActionIds.length} onClick={() => { setQuestionBatchOpen(false); openQuestionPlan(questionActionIds, "題目總覽"); }}><CalendarDays />建立練習計劃</Button>
+                                <Button appearance="outline" disabled={!questionActionIds.length} onClick={() => { setQuestionBatchOpen(false); openQuestionPlan(questionActionIds, "題目總覽"); }}><CalendarDays />建立學習本計畫</Button>
                                 <FormField label="收藏異動"><NativeSelect options={[{ value: "add", label: "加入收藏" }, { value: "move", label: "移動收藏" }]} value={questionCollectionAction} onChange={(event) => setQuestionCollectionAction(event.target.value as "add" | "move")} /></FormField>
                                 <FormField label="目標收藏清單"><NativeSelect disabled={!activeQuestionCollections.length} options={targetOptions} value={activeTargetCollectionId} onChange={(event) => setTargetCollectionId(event.target.value)} /></FormField>
                                 <Button disabled={!questionActionIds.length || !activeTargetCollectionId} onClick={() => updateQuestionCollection(questionActionIds)}><FolderInput />套用收藏異動</Button>
@@ -5082,12 +5194,13 @@ export default function Home() {
             index={selectedOverviewIndex}
             question={selectedOverviewQuestion}
             serverQuestion={persistedQuestions.get(selectedOverviewQuestion.id)}
+            serviceError={practiceServiceError}
             title="題目總覽"
             total={detailOverviewQuestions.length}
             onBack={closeQuestionDetail}
             onNext={() => navigateOverviewQuestion(selectedOverviewIndex + 1)}
             onPrevious={() => navigateOverviewQuestion(selectedOverviewIndex - 1)}
-            onStartPractice={() => void beginSession("practice", [selectedOverviewQuestion.id])}
+            onStartPractice={() => void beginSession("practice", [selectedOverviewQuestion.id], activePlan.checkMode, undefined, undefined, { kind: "question", questionId: selectedOverviewQuestion.id })}
         />;
     }
 
@@ -5836,7 +5949,7 @@ export default function Home() {
                     </div>}
                 </div>
                 <div className="result-wrong-answer"><p><span>你的答案</span><BopomofoText text={formatAnswer(question, attempt.answer)} /></p><p><span>參考答案</span><BopomofoText text={persistedQuestions.has(question.id)
-                    ? attempt.referenceAnswers?.length ? formatReferenceAnswers(attempt.referenceAnswers) : "這個題目版本尚無可顯示的參考答案。"
+                    ? attempt.referenceAnswers?.length ? formatNumberedReferenceAnswers(attempt.referenceAnswers) : "這個題目版本尚無可顯示的參考答案。"
                     : formatAnswer(question, question.answer)} /></p></div>
             </article>;
         }
@@ -5991,15 +6104,15 @@ export default function Home() {
             </DialogContent>
         </Dialog>
         <Dialog open={questionPlanDialogOpen} onOpenChange={setQuestionPlanDialogOpen}>
-            <DialogContent closeLabel="關閉建立練習計劃">
-                <DialogHeader><DialogTitle>建立練習計劃</DialogTitle><DialogDescription>將已選的 {pendingQuestionIds.length} 題固定為一筆練習計劃。</DialogDescription></DialogHeader>
-                <DialogBody><div className="grid gap-4 sm:grid-cols-2"><FormField label="練習日期"><Input type="date" value={questionPlanDate} onChange={(event) => setQuestionPlanDate(event.target.value)} /></FormField><FormField label="時間（選填）"><Input type="time" value={questionPlanTime} onChange={(event) => setQuestionPlanTime(event.target.value)} /></FormField></div></DialogBody>
-                <DialogFooter><DialogClose asChild><Button appearance="outline">取消</Button></DialogClose><Button disabled={!questionPlanDate || !pendingQuestionIds.length} onClick={createQuestionPlan}>加入練習計劃</Button></DialogFooter>
+            <DialogContent closeLabel="關閉建立學習本計畫">
+                <DialogHeader><DialogTitle>建立學習本計畫</DialogTitle><DialogDescription>將已選的 {pendingQuestionIds.length} 題固定為一筆學習本計畫。</DialogDescription></DialogHeader>
+                <DialogBody><div className="grid gap-4 sm:grid-cols-2"><FormField label="練習日期（選填）"><Input type="date" value={questionPlanDate} onChange={(event) => setQuestionPlanDate(event.target.value)} /></FormField><FormField label="時間（選填）"><Input type="time" value={questionPlanTime} onChange={(event) => setQuestionPlanTime(event.target.value)} /></FormField></div></DialogBody>
+                <DialogFooter><DialogClose asChild><Button appearance="outline">取消</Button></DialogClose><Button disabled={learningBookBusy || !practiceAccount?.learner?.canCreatePlans || !pendingQuestionIds.length} onClick={createQuestionPlan}>{learningBookBusy ? "儲存中…" : questionPlanDate ? "儲存學習本並安排" : "儲存學習本"}</Button></DialogFooter>
             </DialogContent>
         </Dialog>
         <Dialog open={Boolean(editingScheduleId)} onOpenChange={(open) => { if (!open) setEditingScheduleId(""); }}>
-            <DialogContent closeLabel="關閉編輯練習計劃">
-                <DialogHeader><DialogTitle>編輯練習計劃</DialogTitle><DialogDescription>調整日期、時間與練習方式；題目內容請使用「套用」。</DialogDescription></DialogHeader>
+            <DialogContent closeLabel="關閉編輯學習本計畫">
+                <DialogHeader><DialogTitle>編輯學習本計畫</DialogTitle><DialogDescription>調整日期、時間與練習方式；題目內容請使用「套用」。</DialogDescription></DialogHeader>
                 <DialogBody><div className="grid gap-4 sm:grid-cols-2">
                     <FormField label="練習日期"><Input type="date" value={editingScheduleDate} onChange={(event) => setEditingScheduleDate(event.target.value)} /></FormField>
                     <FormField label="時間（選填）"><Input type="time" value={editingScheduleTime} onChange={(event) => setEditingScheduleTime(event.target.value)} /></FormField>
@@ -6072,7 +6185,7 @@ export default function Home() {
             <div className="sidebar-action-scroll" tabIndex={0} aria-label="主要功能選單，可左右捲動">
                 <Button className="sidebar-practice-button mt-6 w-full" data-section="practice" aria-current={section === "practice" && !isScheduleListPage ? "page" : undefined} onClick={sessionPaused ? resumeSession : () => navigateToSection("practice")}><BookOpen />{sessionPaused ? "繼續練習" : "開始練習"}</Button>
                 <nav className="sidebar-nav mt-4 grid gap-1" aria-label="主要導覽">
-                    <Button data-section="practice-schedules" appearance="ghost" tone="muted" aria-current={isScheduleListPage ? "page" : undefined} onClick={openScheduleList}><span className="sidebar-nav-icon sidebar-nav-icon-schedules"><ClipboardCheck /></span>練習計劃</Button>
+                    <Button data-section="practice-schedules" appearance="ghost" tone="muted" aria-current={isScheduleListPage ? "page" : undefined} onClick={openScheduleList}><span className="sidebar-nav-icon sidebar-nav-icon-schedules"><ClipboardCheck /></span>學習本計畫</Button>
                     {NAV_ITEMS.filter((item) => item.id !== "practice" && item.id !== "settings" && item.id !== "system-settings").map((item) => {
                         const Icon = item.icon;
                         const sidebarLabel = item.id === "overview" ? "學習總覽" : item.id === "questions" ? "題目總覽" : item.id === "mistakes" ? "錯題英雄榜" : "學習成果";
@@ -6099,11 +6212,33 @@ export default function Home() {
                 }}
             >
                 {section === "practice" ? <CalendarDays /> : <BarChart3 />}
-                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "練習計劃與日曆" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : `${historyAttemptedCount} 題 · 正確率 ${reviewedCount ? `${accuracy}%` : "—"}`}</small></span>
+                <span className="mobile-panel-toggle-copy"><strong>{section === "practice" ? "學習本計畫與日曆" : "練習摘要"}</strong><small>{section === "practice" ? `${activeSchedules.length} 筆已安排練習` : `${historyAttemptedCount} 題 · 正確率 ${reviewedCount ? `${accuracy}%` : "—"}`}</small></span>
                 <ChevronDown className="mobile-panel-chevron" />
             </Button>
             <div id="mobile-summary-panel" className={`summary-panel-content sticky top-6 grid gap-5 ${section === "practice" ? "practice-schedule-panel" : ""}`}>
                 {section === "practice" ? renderPracticeSchedules("summary", { compactList: true, showCreate: schedulePanelOpen, showListLink: true, showClose: true }) : <>
+                {section === "overview" && <>
+                    <section className="summary-card" aria-labelledby="overview-weaknesses-title">
+                        <div className="summary-card-heading">
+                            <div className="flex items-center gap-2"><Target size={18} /><h2 id="overview-weaknesses-title">目前弱點</h2></div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 p-5">
+                            {overviewWeakUnits.length ? overviewWeakUnits.map((unit) => <Badge key={unit} tone="danger">{getUnitLabel(unit)}</Badge>) : <p className="text-sm text-muted-foreground">目前沒有待加強單元。</p>}
+                        </div>
+                    </section>
+                    <section className="summary-card" aria-labelledby="overview-recent-practice-title">
+                        <div className="summary-card-heading">
+                            <div className="flex items-center gap-2"><Clock3 size={18} /><h2 id="overview-recent-practice-title">最近練習</h2></div>
+                        </div>
+                        <div className="grid gap-3 p-5">
+                            {!activeAttempts.length && <p className="text-sm text-muted-foreground">尚未有作答紀錄。</p>}
+                            {activeAttempts.slice(-3).reverse().map((attempt, index) => {
+                                const question = questions.find((item) => item.id === attempt.questionId);
+                                return <div className="workspace-surface flex items-center justify-between rounded-xl p-3" key={`${attempt.questionId}-${index}`}><div><p className="text-sm font-semibold">{question?.knowledge ?? "練習題"}</p><p className="text-xs text-muted-foreground">{formatAttemptDate(attempt.date)} · {formatDuration(attempt.durationSeconds)}</p></div><Badge tone={attempt.correct === true ? "success" : attempt.correct === false ? "danger" : "warning"}>{attempt.correct === true ? "答對" : attempt.correct === false ? "錯題" : "待檢視"}</Badge></div>;
+                            })}
+                        </div>
+                    </section>
+                </>}
                 <section className="summary-card" aria-labelledby="summary-title">
                     <div className="summary-card-heading">
                         <div className="flex items-center gap-2"><BarChart3 size={18} /><h2 id="summary-title">練習摘要</h2></div>
@@ -6141,7 +6276,7 @@ export default function Home() {
                 <div className="summary-note">
                     <div className="flex items-center gap-2 font-semibold text-foreground"><UserCheck size={16} />資料說明</div>
                     <p>{persistedLearnerId
-                        ? "帳號、正式匯入題庫、作答與錯題已連接本機 PostgreSQL；OCR、AI 題目生成與跨帳號分享仍未開放。"
+                        ? "帳號、正式匯入題庫、學習本、排程、分享與作答紀錄已連接 PostgreSQL；OCR 與 AI 題目生成尚未開放。"
                         : "登入後可讀取正式匯入題庫並保存作答；OCR、AI 題目生成與跨帳號分享仍未開放。"}</p>
                     <div className="flex items-center gap-2"><Clock3 size={15} />{persistedLearnerId ? "作答紀錄保存於 PostgreSQL" : "登入後可讀取正式題庫與作答紀錄"}</div>
                 </div>

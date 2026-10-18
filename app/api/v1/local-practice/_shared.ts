@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { promisify } from "node:util";
+import { constants, gzip } from "node:zlib";
 import {
     AuthServiceError,
     getAuthenticatedAccount,
@@ -25,6 +27,39 @@ export function localPracticeJsonResponse(body: unknown, init: ResponseInit = {}
     const headers = new Headers(init.headers);
     headers.set("Cache-Control", "private, no-store");
     return NextResponse.json(body, { ...init, headers });
+}
+
+const gzipAsync = promisify(gzip);
+
+function acceptsGzip(request: Request): boolean {
+    return (request.headers.get("accept-encoding") ?? "")
+        .split(",")
+        .some((entry) => {
+            const [coding, ...parameters] = entry.trim().toLowerCase().split(";");
+            if (coding !== "gzip") return false;
+            const quality = parameters
+                .map((parameter) => parameter.trim())
+                .find((parameter) => parameter.startsWith("q="));
+            return quality === undefined || Number(quality.slice(2)) > 0;
+        });
+}
+
+/** Compresses only the large authenticated catalog while preserving its JSON contract. */
+export async function localPracticeLargeJsonResponse(request: Request, body: unknown): Promise<Response> {
+    const headers = new Headers({ Vary: "Accept-Encoding" });
+    if (!acceptsGzip(request)) {
+        return localPracticeJsonResponse(body, { headers });
+    }
+
+    const compressed = await gzipAsync(Buffer.from(JSON.stringify(body)), {
+        level: constants.Z_BEST_SPEED,
+    });
+    const encodedBody = Uint8Array.from(compressed);
+    headers.set("Cache-Control", "private, no-store");
+    headers.set("Content-Encoding", "gzip");
+    headers.set("Content-Length", String(encodedBody.byteLength));
+    headers.set("Content-Type", "application/json");
+    return new Response(encodedBody, { headers });
 }
 
 export async function requireLocalPracticeAccount(request: Request): Promise<AuthenticatedAccount> {

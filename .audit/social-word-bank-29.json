@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "fileName": "29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "questionNumber": "05013122",
+      "sourcePage": 14,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05013121\n難易度:易\n出處:試題\n認知向度:具備基本知識\n知識向度:行政區劃的演變\n 佳琪在收集臺灣史料時,發現一幅清帝國時臺灣的古地圖,從圖中看到臺灣府及三縣的建置,由此可知這是始於下列哪一個時期的地圖? (A)康熙年間 (B)雍正年間 (C)乾隆年間 (D)嘉慶年間。\n答案:(A)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

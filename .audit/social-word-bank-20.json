@@ -1,0 +1,52 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 2,
+      "byWordStatus": {
+        "word-confirms-source-visual": 1,
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 2
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012068",
+      "sourcePage": 20,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05012067\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 河川的平均流量變化主要受到降水時間及空間的因素影響,對於沿岸居民的生活影響相當大。附圖為臺灣某河川的平均流量變化,圖中流量最高點及最低點的成因最可能為附表中何者?\n/\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007流量最高點\n\u0007颱風\n\u0007雷陣雨\n\u0007颱風\n\u0007梅雨\n\u0007\n\u0007流量最低點\n\u0007背風坡\n\u0007氣溫高\n\u0007低氣壓籠罩\n\u0007滯留鋒面\n\u0007\n\u0007答案:(A)\n解析:颱風帶來的降水量多且強度大,而冬季位於東北季風的背風坡,因此氣候乾早少雨。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012092",
+      "sourcePage": 26,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05012091\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 臺灣河川水量的季節變化情形,從下列哪一張圖中可以觀察出來? \n(A)\n/\n\u0007(B)\n/\n\u0007\n\u0007年降水量圖\n\u0007衛星雲圖\n\u0007\n\u0007(C)\n/\n\u0007(D)\n/\n\u0007\n\u0007月均溫圖\n\u0007地面天氣圖\n\u0007\n\u0007答案:(A)\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 4,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

@@ -250,7 +250,7 @@ export function parseAnswerLetters(sourceAnswer)
 }
 
 /** 將配合題、克漏字與題組拆成可逐小題作答的結構。 */
-export function parseParts(body, sourceAnswer)
+export function parseParts(body, sourceAnswer, { commonOptions = null } = {})
 {
     const lines = body.split("\n").map((line) => line.trim()).filter(Boolean);
     const partPattern = /^(?:[（(]\s*[）)]\s*)?[（(]([0-9０-９]+)[）)]/;
@@ -276,7 +276,7 @@ export function parseParts(body, sourceAnswer)
         .split(/[　\s]+/)
         .filter(Boolean)
         .map((value, index) => ({ label: String(index + 1), value }));
-    const common = labeledCommon.length ? labeledCommon : unlabeledCommon;
+    const common = commonOptions ?? (labeledCommon.length ? labeledCommon : unlabeledCommon);
     const prompt = introLines.slice(0, commonLineIndex >= 0 ? commonLineIndex : introLines.length).join("\n").trim();
     const answerLetters = parseAnswerLetters(sourceAnswer);
     const answerChineseLabels = [...sourceAnswer.matchAll(/[（(]([甲乙丙丁戊己庚辛壬癸])[）)]/g)]

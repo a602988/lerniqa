@@ -1,0 +1,124 @@
+{
+  "complete": true,
+  "scope": {
+    "publisherCode": "hanlin",
+    "subjectCode": "english",
+    "questionStatus": "published",
+    "revisionStatus": "published"
+  },
+  "summary": {
+    "questionCount": 318,
+    "imageBlockCount": 592,
+    "distinctAssetCount": 547,
+    "findingCount": 3,
+    "flagCounts": {
+      "effectively-blank": 1,
+      "offset-clipping-candidate": 2
+    }
+  },
+  "findings": [
+    {
+      "assetId": "4dcf79a2-7aa2-51be-997f-71d3bb7e8a51",
+      "checksum": "f2fb0ea63e2af9ef06462316a32d9a2dd2c2c5444a6f5e09e6e1802c0314b63e",
+      "storageKey": "questions/f2fb0ea63e2af9ef06462316a32d9a2dd2c2c5444a6f5e09e6e1802c0314b63e.gif",
+      "mimeType": "image/gif",
+      "databaseDimensions": {
+        "width": 305,
+        "height": 76
+      },
+      "uses": [
+        {
+          "questionId": "cb361095-dd50-57df-a7c6-bfd7e17f1f0d",
+          "revisionId": "de6baf56-d828-50d6-85ab-0069c0005d31",
+          "sourceQuestionNumber": "05011443",
+          "originalFileName": "05_Unit 4 What Time Is the Concert_.doc",
+          "blockId": "b88fac7c-bac3-596d-a087-d3a3d3fc00ea",
+          "placement": "prompt",
+          "position": 1
+        }
+      ],
+      "physicalPath": "/Users/chianlin/Documents/GitHub/lerniqa/local-data/assets/questions/f2fb0ea63e2af9ef06462316a32d9a2dd2c2c5444a6f5e09e6e1802c0314b63e.gif",
+      "inspection": {
+        "bounds": null,
+        "width": 305,
+        "height": 76,
+        "likelyOffsetClipped": false
+      },
+      "flags": [
+        "effectively-blank"
+      ]
+    },
+    {
+      "assetId": "416a820b-a716-55cf-baae-c736fa4a5ecb",
+      "checksum": "98a152c64681bfb02dd508852cae537333bd4c35fc8585f4b6625b271b96dda2",
+      "storageKey": "questions/98a152c64681bfb02dd508852cae537333bd4c35fc8585f4b6625b271b96dda2.png",
+      "mimeType": "image/png",
+      "databaseDimensions": {
+        "width": 417,
+        "height": 313
+      },
+      "uses": [
+        {
+          "questionId": "8e9c4129-9ab6-5aa9-b0a2-a04f52f6d1f5",
+          "revisionId": "d74619fe-fd90-5cad-9e42-2ea743198aeb",
+          "sourceQuestionNumber": "05012461",
+          "originalFileName": "05_Unit 4 What Time Is the Concert_.doc",
+          "blockId": "0a83e6f5-03b0-544d-953c-47c8989ad577",
+          "placement": "prompt",
+          "position": 3
+        }
+      ],
+      "physicalPath": "/Users/chianlin/Documents/GitHub/lerniqa/local-data/assets/questions/98a152c64681bfb02dd508852cae537333bd4c35fc8585f4b6625b271b96dda2.png",
+      "inspection": {
+        "bounds": {
+          "left": 107,
+          "top": 0,
+          "right": 417,
+          "bottom": 310
+        },
+        "width": 417,
+        "height": 313,
+        "likelyOffsetClipped": true
+      },
+      "flags": [
+        "offset-clipping-candidate"
+      ]
+    },
+    {
+      "assetId": "f97b5b87-b582-5fee-ab71-e0018669fed9",
+      "checksum": "a1091ebb1600c85a06c4b25fd78a9d9569d9778a6b6491e546911a46b42e3507",
+      "storageKey": "questions/a1091ebb1600c85a06c4b25fd78a9d9569d9778a6b6491e546911a46b42e3507.gif",
+      "mimeType": "image/gif",
+      "databaseDimensions": {
+        "width": 303,
+        "height": 362
+      },
+      "uses": [
+        {
+          "questionId": "2916ca9a-0990-57c5-b3c4-90b2b44058b6",
+          "revisionId": "10a7b08e-001d-554f-9e1a-c523b62fccc1",
+          "sourceQuestionNumber": "05011780",
+          "originalFileName": "06_Unit 5 What's the Date_.doc",
+          "blockId": "8a5b3c22-62c6-5b5a-acbe-9a7d4bc815c6",
+          "placement": "prompt",
+          "position": 1
+        }
+      ],
+      "physicalPath": "/Users/chianlin/Documents/GitHub/lerniqa/local-data/assets/questions/a1091ebb1600c85a06c4b25fd78a9d9569d9778a6b6491e546911a46b42e3507.gif",
+      "inspection": {
+        "bounds": {
+          "left": 74,
+          "top": 96,
+          "right": 303,
+          "bottom": 362
+        },
+        "width": 303,
+        "height": 362,
+        "likelyOffsetClipped": true
+      },
+      "flags": [
+        "offset-clipping-candidate"
+      ]
+    }
+  ]
+}

@@ -86,7 +86,7 @@ npm run db:import:hanlin -- \
 | `POST /api/v1/auth/role-pin-reset`、`POST /api/v1/auth/role-pin-reset/confirm` | 登入後為仍有效的 parent／tutor 角色申請與確認 PIN 設定／重設；要求單一有效且已驗證的電子郵件，成功後只撤銷該目標角色的 session。此 PIN 尚不參與角色切換。 |
 | `PATCH /api/v1/auth/role` | 只把目前 session 切換至同一帳號已有、未撤銷的角色；不建立角色、不改寫 `learner_access`，也不是帳號角色管理 API。 |
 | `GET /api/v1/local-practice/questions` | 只回傳目前分類中已發布題目的題幹、小題、選項與正式知識點，不回傳參考答案或解析；單頁上限為 500 題。 |
-| `POST /api/v1/local-practice/sessions` | 以登入 session 可存取的學習者建立練習，並固定當時的題目版本與順序。呼叫端提供 session UUID；完全相同的重送會重用同一筆，不同帳號、設定或題目不能占用同一 UUID。 |
+| `POST /api/v1/local-practice/sessions` | 以登入 session 可存取的學習者建立練習，並固定當時的題目版本與順序。建立資格依呼叫端指定的題目、目前已發布版本、可獨立作答小題及有效題庫授權判定，不套用題庫清單的預設年級、科目、版本、冊次或課次篩選。呼叫端提供 session UUID；完全相同的重送會重用同一筆，不同帳號、設定或題目不能占用同一 UUID。 |
 | `GET /api/v1/local-practice/sessions?id=...` | 讀取同一帳號與學習者可存取的練習、固定題目版本及各題是否已送出；答案明細依 `check_mode` 與完成狀態揭露。 |
 | `PATCH /api/v1/local-practice/sessions` | 將自己的 session 切換為 `active`、`paused` 或 `abandoned`；不能修改其他帳號的 session。 |
 | `POST /api/v1/local-practice/attempts` | 由伺服器讀取標準答案並判分。`instant`／`complete` 在單一交易內寫入作答、逐小題結果、允許的錯題佇列與 `analytics_outbox`，並可儲存通過驗證的 private 手寫 PNG；`score` 只累加 session aggregate 並寫入不含答案／判定的冪等收據，手寫與其他逐題附件一律拒絕。 |
@@ -97,6 +97,8 @@ npm run db:import:hanlin -- \
 伺服器只會對「判分政策為自動判分，且標準答案完整」的小題判定對錯。沒有作答、要求人工檢視或要求 AI 輔助後確認的小題都保持 `pending`。本機整合不生成虛構答案，也不把未核對的內容當成標準答案。相同 idempotency key 只可重播完全相同的提交；同一 session 題目改用新 key 再送，或沿用 key 改變答案，都會回傳衝突，不會建立第二筆作答。
 
 既有 `/practice` 使用上述 API。使用者選擇「全部作答後檢核」、「逐題檢核」或「只顯示成績」時，都會建立 PostgreSQL session；保存內容依模式分開：
+
+題目總覽的單題詳情若建立 session 失敗，必須在目前詳情頁以可讀警示顯示 API 錯誤；切換、離開或重新開啟另一題時清除舊訊息，避免把上一題的失敗誤認為目前題目的狀態。
 
 - `instant` 在每次送出後回傳逐題結果。
 - `complete` 在 session 完成前只標記已送出，不回傳逐題判定；完成後才回傳詳細結果。
@@ -113,6 +115,16 @@ npm run db:import:hanlin -- \
 歷程與錯題佇列套用同一規則，不能讓 `complete` 的進行中 session 或任何 `score` session 藉由其他端點看出逐題結果。只有允許揭露且已判定為錯誤的小題，才會出現在可見的待複習摘要。重新整理進行中的練習時，瀏覽器只用 learner-keyed session UUID 從資料庫恢復已送出的進度，並先切成暫停；尚未送出的文字答案與手寫內容不保存。固定 revision 與可用內容不一致時，舊 session 會標記為 `abandoned`。新推薦 session 已把實際模板、共同關鍵字數量、規則版本與證據寫入 `practice_session_item_origins`；關聯分析、人工審核與核准寫入流程仍待完成。
 
 主導覽「系統設定」已從 PostgreSQL 建立、選取與編輯有權存取的學習者；每次操作都使用目前 session 的帳號、有效角色與 `learner_access` 授權。一般帳號的 `accountRole`、session 的 `activeRole`／目前學習者，以及 `system_admin` 授權分開處理；每個帳號只保留一位名稱同步的 self learner。parent／tutor 在旗下學習者的 learner mode 看不到「系統設定」，直接呼叫設定 API 也會收到 `403`；只有 self learner 能力的帳號可以查看自己的帳號設定，但不能建立受管學習者。登出、session 到期、角色或目前學習者改變時會同步其他已開分頁；頁面重新取得焦點或恢復可見時也會重新查詢 `auth/me`。`system_admin` 管理、邀請及跨帳號分享仍未完成。
+
+## 學習資料啟動載入
+
+- `/practice` 先讀取 `auth/me`，有目前學習者時並行讀取一次 `GET /api/v1/local-practice/questions` 與分頁 history。題庫請求不帶分類參數，伺服器依有效帳號／學習者存取、active 題庫成員關係、學習者年級、enabled 科目與該科已選書籍版本決定內容；空結果保持空結果。
+- 不帶分類的完整可用題庫回應依 `Accept-Encoding` 協商 gzip，並固定保留 `private, no-store` 與 `Vary: Accept-Encoding`。壓縮與未壓縮回應的 JSON envelope 必須完全相同，且都不得包含答案或解析。
+- 題目總覽的完整分類查詢仍必須同時提供 `grade`、`subject`、`publisher`、`volume`、`lesson`，並以 `page`／`limit` 分頁。部分分類或對未篩選請求單獨帶分頁參數會回傳 `400`。
+- 公開題庫讀取只包含目前發布 revision 的題幹、小題、選項、metadata 與知識點。標準答案與解析不進入此路徑；恢復中的 session 仍讀取 session item 固定的 revision。
+- 練習完成後只重新讀取 history 與 wrong-review 摘要。若要驗證沒有退回舊 fan-out，在瀏覽器 Network 應只看到一筆初始 `/api/v1/local-practice/questions`，且不應出現逐課次的 questions 請求。
+
+效能驗收固定以相同登入帳號、相同本機 route 連續重載五次，記錄載入畫面消失時間、API 數、傳輸量與失敗數。合併題庫階段的通過門檻為中位數低於三秒且零失敗；若主要時間落在完整題庫的序列化、傳輸、JSON 解析或前端轉換，停止調高併發或加入持久快取，另案改成路由範圍摘要及分頁載入。
 
 ## 隔離自動化驗證
 

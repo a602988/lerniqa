@@ -2,6 +2,7 @@ import type { Attempt, Question } from "./demo-data";
 import type { LocalPracticeAnswerInput, LocalPracticeAttempt, LocalPracticeQuestion } from "./local-practice-types";
 import { normalizeQuestionSourceCategory } from "./question-filters";
 import { normalizeSubjectLabel } from "./subject-labels";
+import { mathFormulaSearchText } from "./math-formula";
 
 /** Stable, safe numeric route key; the UUID remains the server's authoritative ID. */
 export function practiceRouteId(id: string): number {
@@ -26,6 +27,15 @@ export function adaptPracticeQuestion(question: LocalPracticeQuestion): Question
     const sourceCategory = normalizeQuestionSourceCategory(
         question.sourceCategory?.name ?? sourceMetadata?.rawValue ?? "題庫題目",
     );
+    const formulaSearchText = [
+        ...question.promptBlocks,
+        ...question.parts.flatMap((part) => [
+            ...part.promptBlocks,
+            ...part.options.flatMap((option) => option.contentBlocks),
+        ]),
+    ].flatMap((block) => block.contentType === "formula" && block.text
+        ? [mathFormulaSearchText(block.text)]
+        : []).join(" ");
     return {
         id: practiceRouteId(question.id),
         code: publisherQuestionNumber(question.code),
@@ -40,6 +50,7 @@ export function adaptPracticeQuestion(question: LocalPracticeQuestion): Question
         kind: question.parts.length > 1 || mode === "multiple_choice" ? "multi-choice" : mode === "text" ? "written" : mode === "boolean" ? "boolean" : "choice",
         typeLabel: question.originalTypeLabel?.trim() || question.type.name,
         prompt: question.prompt,
+        searchText: formulaSearchText,
         options: question.parts.length === 1 ? question.parts[0].options.map((option) => option.label) : undefined,
         parts: question.parts.map((part) => ({ id: part.id, prompt: part.prompt, options: part.options.map((option) => option.label), answer: "" })),
         answer: "",

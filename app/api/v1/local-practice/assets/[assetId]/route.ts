@@ -4,6 +4,7 @@ import path from "node:path";
 import {
     findLocalPracticeAnswerAsset,
     findLocalPracticeAsset,
+    findLocalPracticeSessionAsset,
 } from "@/app/lib/local-practice-store";
 import {
     errorResponse,
@@ -61,7 +62,7 @@ async function readSafeAsset(storageKey: string, expectedSize: number, expectedC
     }
 }
 
-/** Serves only clean media referenced by the current published local-practice target. */
+/** Serves clean media referenced by an authorized current target or session-pinned revision. */
 export async function GET(
     request: Request,
     context: { params: Promise<{ assetId: string }> },
@@ -72,9 +73,15 @@ export async function GET(
         if (!UUID_PATTERN.test(assetId)) return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
         const searchParams = new URL(request.url).searchParams;
         const kind = searchParams.get("kind");
+        const sessionId = searchParams.get("sessionId");
+        if (sessionId !== null && (!UUID_PATTERN.test(sessionId) || kind !== null)) {
+            return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
+        }
         const actor = { userId: account.userId, learnerId: account.learner.id };
         const asset = kind === "answer"
             ? await findLocalPracticeAnswerAsset(assetId, actor)
+            : sessionId !== null
+                ? await findLocalPracticeSessionAsset(assetId.toLowerCase(), sessionId.toLowerCase(), actor)
             : kind === null
                 ? await (async () => {
                     const filters = parseLocalPracticeFilters(searchParams);

@@ -29,7 +29,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasCompleteAnswerSlots, setAnswerSlot, splitAnswerSlots } from "../lib/answer-slots";
+import { BopomofoText } from "../components/bopomofo-text";
 import { LerniqaMark } from "../components/lerniqa-mark";
+import { MathFormula } from "../components/math-formula";
+import { QuestionTable } from "../components/question-table";
 import {
     LOCAL_PRACTICE_DEFAULT_FILTERS,
     LOCAL_PRACTICE_MAX_QUESTIONS,
@@ -161,8 +165,8 @@ function shortId(value: string): string {
     return value.slice(0, 8);
 }
 
-function hasAnswer(value: LocalPracticeAnswerValue | undefined): boolean {
-    return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
+function hasAnswer(value: LocalPracticeAnswerValue | undefined, part: LocalPracticeQuestionPart): boolean {
+    return Array.isArray(value) ? value.length > 0 : hasCompleteAnswerSlots(value ?? "", part.answerFieldCount ?? 1);
 }
 
 function resultIcon(result: LocalPracticeResult) {
@@ -194,19 +198,23 @@ function MediaFallback({ block }: { block: LocalPracticeContentBlock }) {
 }
 
 function ContentBlocks({ blocks, duplicateText }: { blocks: LocalPracticeContentBlock[]; duplicateText?: string }) {
-    const hasInlineFormula = blocks.some((block) => block.contentType === "image" && block.altText === "來源數學公式");
+    const hasInlineFormula = blocks.some((block) => block.contentType === "formula" || (block.contentType === "image" && block.altText === "來源數學公式"));
     return (
         <div className={`${styles.contentBlocks} ${hasInlineFormula ? styles.inlineFormulaSequence : ""}`}>
             {blocks.map((block) => {
                 if (block.contentType === "text" || block.contentType === "transcript") {
                     if (!block.text || block.text.trim() === duplicateText?.trim()) return null;
-                    return <p key={block.id}>{block.text}</p>;
+                    return hasInlineFormula
+                        ? <span key={block.id}><BopomofoText text={block.text} /></span>
+                        : <p key={block.id}><BopomofoText text={block.text} /></p>;
                 }
                 if (block.contentType === "formula") {
-                    return <code className={styles.formula} key={block.id}>{block.text || "（公式內容缺漏）"}</code>;
+                    return block.text
+                        ? <MathFormula className={styles.formula} expression={block.text} key={block.id} />
+                        : <span className={styles.formula} key={block.id}>（公式內容缺漏）</span>;
                 }
                 if (block.contentType === "table") {
-                    return <pre className={styles.tableBlock} key={block.id}>{block.text || "（表格內容缺漏）"}</pre>;
+                    return <QuestionTable key={block.id} text={block.text} />;
                 }
 
                 const asset = block.asset;
@@ -270,6 +278,7 @@ function PartAnswer({
     onChange: (value: LocalPracticeAnswerValue) => void;
 }) {
     const fieldName = `part-${part.id}`;
+    const usesDedicatedAnswerSlots = part.answerMode === "text" && part.answerFieldCount > 1;
     const choiceOptions = part.options.length
         ? part.options
         : part.answerMode === "boolean"
@@ -282,11 +291,11 @@ function PartAnswer({
 
     return (
         <fieldset className={styles.answerPart} disabled={disabled}>
-            <legend>
-                <span className={styles.partNumber}>{displayIndex + 1}</span>
-                <span>{hidePrompt ? "作答" : part.prompt || `第 ${displayIndex + 1} 小題`}</span>
+            <legend className={usesDedicatedAnswerSlots ? styles.visuallyHidden : undefined}>
+                {!usesDedicatedAnswerSlots && <span className={styles.partNumber}>{displayIndex + 1}</span>}
+                <span><BopomofoText text={usesDedicatedAnswerSlots ? `第 ${displayIndex + 1} 小題` : hidePrompt ? "作答" : part.prompt || `第 ${displayIndex + 1} 小題`} /></span>
             </legend>
-            {!hidePrompt && <ContentBlocks blocks={part.promptBlocks} duplicateText={part.prompt} />}
+            {!hidePrompt && !usesDedicatedAnswerSlots && <ContentBlocks blocks={part.promptBlocks} duplicateText={part.prompt} />}
 
             {(part.answerMode === "single_choice" || part.answerMode === "boolean") && (
                 <div className={styles.choiceGrid}>
@@ -301,7 +310,7 @@ function PartAnswer({
                             />
                             <span className={styles.choiceKey}>{option.key}</span>
                             <span className={styles.choiceBody}>
-                                {option.label || option.key}
+                                <BopomofoText text={option.label || option.key} />
                                 <ContentBlocks blocks={option.contentBlocks.filter((block) => block.contentType !== "text")} />
                             </span>
                         </label>
@@ -327,7 +336,7 @@ function PartAnswer({
                                 />
                                 <span className={styles.choiceKey}>{option.key}</span>
                                 <span className={styles.choiceBody}>
-                                    {option.label || option.key}
+                                    <BopomofoText text={option.label || option.key} />
                                     <ContentBlocks blocks={option.contentBlocks.filter((block) => block.contentType !== "text")} />
                                 </span>
                             </label>
@@ -336,7 +345,24 @@ function PartAnswer({
                 </div>
             )}
 
-            {part.answerMode === "text" && (
+            {part.answerMode === "text" && part.answerFieldCount > 1 && (
+                <div className={styles.answerSlotsRow}>
+                    <span aria-hidden="true" className={styles.answerSlotsNumber}>({displayIndex + 1})</span>
+                    <div className={styles.answerSlots}>
+                        {splitAnswerSlots(typeof value === "string" ? value : "", part.answerFieldCount).map((slot, index) => (
+                            <input
+                                aria-label={`第 ${displayIndex + 1} 小題第 ${index + 1} 個答案`}
+                                key={index}
+                                maxLength={4_000}
+                                onChange={(event) => onChange(setAnswerSlot(typeof value === "string" ? value : "", part.answerFieldCount, index, event.target.value))}
+                                type="text"
+                                value={slot}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+            {part.answerMode === "text" && !(part.answerFieldCount > 1) && (
                 <textarea
                     aria-label={`${part.prompt || `第 ${displayIndex + 1} 小題`}答案`}
                     className={styles.textAnswer}
@@ -543,7 +569,7 @@ export default function LocalPracticePage() {
                 : `請依序完成以下 ${activeQuestion.parts.length} 小題`
         : "";
     const currentAnswers = activeQuestion ? answers[activeQuestion.id] ?? {} : {};
-    const answeredPartCount = activeQuestion?.parts.filter((part) => hasAnswer(currentAnswers[part.id])).length ?? 0;
+    const answeredPartCount = activeQuestion?.parts.filter((part) => hasAnswer(currentAnswers[part.id], part)).length ?? 0;
     const completedCount = Object.keys(attempts).length;
 
     useEffect(() => {
@@ -857,7 +883,7 @@ export default function LocalPracticePage() {
                                 <div className={styles.questionHeadingRow}>
                                     <div>
                                         <span className={styles.questionCode}>{activeQuestion.code || `題目 ${activeIndex + 1}`}</span>
-                                        <h2 ref={questionHeadingRef} tabIndex={-1}>{activeQuestionHeading || "請依題目媒體作答"}</h2>
+                                        <h2 ref={questionHeadingRef} tabIndex={-1}><BopomofoText text={activeQuestionHeading || "請依題目媒體作答"} /></h2>
                                     </div>
                                     {activeAttempt && <ResultPill result={activeAttempt.overallResult} />}
                                 </div>
@@ -903,7 +929,7 @@ export default function LocalPracticePage() {
                                             ) : (
                                                 <>
                                                     <Button appearance="ghost" tone="muted" disabled={actionLoading} onClick={() => void submitActiveQuestion(true)}><SkipForward aria-hidden="true" />略過，記為待處理</Button>
-                                                    <Button disabled={!answeredPartCount || actionLoading} onClick={() => void submitActiveQuestion(false)}>
+                                                    <Button disabled={answeredPartCount !== activeQuestion.parts.length || actionLoading} onClick={() => void submitActiveQuestion(false)}>
                                                         {actionLoading ? <LoaderCircle className={styles.spin} aria-hidden="true" /> : <Check aria-hidden="true" />}
                                                         {actionLoading ? "正在保存…" : `送出本題（${answeredPartCount}/${activeQuestion.parts.length}）`}
                                                     </Button>

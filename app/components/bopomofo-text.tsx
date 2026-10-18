@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { normalizeLegacyMathSymbols, tokenizeInlineQuestionText } from "../lib/question-presentation";
+import { normalizeQuestionDisplayText, tokenizeInlineQuestionText } from "../lib/question-presentation";
 
 const INLINE_TEXT_SEQUENCE = /([\u3105-\u312f\u31a0-\u31bf]+[ˊˇˋ˙]?|□+)/gu;
 const BOPOMOFO_TONES = new Set(["ˊ", "ˇ", "ˋ", "˙"]);
@@ -41,8 +41,8 @@ function BopomofoSyllable({ value }: { value: string }) {
 
 function InlineFraction({ numerator, denominator }: { numerator: string; denominator: string }) {
     return <span className="question-inline-fraction" role="math" aria-label={`${denominator} 分之 ${numerator}`}>
-        <span aria-hidden="true" className="question-inline-fraction-numerator">{normalizeLegacyMathSymbols(numerator)}</span>
-        <span aria-hidden="true" className="question-inline-fraction-denominator">{normalizeLegacyMathSymbols(denominator)}</span>
+        <span aria-hidden="true" className="question-inline-fraction-numerator">{normalizeQuestionDisplayText(numerator)}</span>
+        <span aria-hidden="true" className="question-inline-fraction-denominator">{normalizeQuestionDisplayText(denominator)}</span>
     </span>;
 }
 
@@ -57,7 +57,7 @@ function InlinePlainText({ text }: { text: string }) {
                         {[...segment].map((_, placeholderIndex) => <span className="question-placeholder-box" key={placeholderIndex} />)}
                     </span>
                 </span>
-                : <Fragment key={`${segment}-${index}`}>{normalizeLegacyMathSymbols(segment)}</Fragment>
+                : <Fragment key={`${segment}-${index}`}>{normalizeQuestionDisplayText(segment)}</Fragment>
     ))}</>;
 }
 

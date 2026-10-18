@@ -17,7 +17,7 @@
 - 信箱驗證、密碼重設及角色 PIN 設定／重設都使用 `verification_challenges` 與一次性確認頁；token 只保存雜湊，過期、重寄失效、重播、單一有效 email identity 與申請頻率限制已有不連網測試。角色 PIN 只允許透過已驗證的電子郵件為仍有效的目標角色設定，成功後只撤銷該角色的 session。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與切換。ERP 的非機密 SMTP host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 handshake；不得讀取或複製 ERP secret 來當作完成。目前申請流程同步嘗試寄信，已知與未知帳號仍可能產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋，不屬於 `0012`
 - 正式主流程不再從 fixture 或 runtime JSON 還原帳號範圍資料。舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 端點固定回傳 HTTP `410`；`/questions` 是目前題目入口，舊 `/bank` 只會轉址到此頁。正式 PostgreSQL 匯入 API／介面尚未交付；Hanlin CLI 與隔離匯入測試不等於可操作的產品匯入流程
 - 題目可保存版本、章節、單元、主題、難易度、來源，以及題幹與答案中的圖片區塊
-- PostgreSQL 欄位、關聯與限制由 `0001` 至 `0015` 共十五個原生 SQL migration 建立，合計 110 張業務資料表。`0014` 新增可審核的題目模板、模板成員、正式關鍵字與題目版本關鍵字關聯，並擴充推薦來源證據；`0015` 不新增資料表，只把 AI／規則產生的關鍵字目錄也納入 pending、reviewer 與 evidence 契約
+- PostgreSQL 欄位、關聯與限制由 `0001` 至 `0018` 共十八個原生 SQL migration 建立，合計 117 張業務資料表。`0016` 分開出版社版本與冊次；`0017` 新增學習本不可變版本、分享訂閱、通知、稽核與冪等收據；`0018` 為文字小題保存經來源核准的答案欄位數，不新增資料表
 - `0012` 已整合帳號復原 identity binding、同題型來源值域、題庫補全建議及手寫 AI sidecar，並通過 migration 與隔離的作答佇列 E2E。手寫 worker 仍需由受控的本機程序啟動，不會由網站程序自動下載或替換模型
 - 題庫補全命令已建立可重跑的 dry-run／checkpoint 程式與針對性測試，但目前的 279 題尚未寫入補全結果。即使 `0012` 整合後，程式也只能先建立 `pending` 建議，不會直接改寫已發布題目；只有通過品質抽檢與人工核准後才可另行 apply
 - `/practice` 已從本機 PostgreSQL 載入已發布題庫並保存練習 session。`instant` 與 `complete` 保存已送出的作答、歷程、錯題佇列與 outbox；`score` 只保存 session 整體統計，以及不含答案與逐題判定的冪等收據，不寫入 `answer_attempts`、逐小題結果、錯題／相近題佇列或 `analytics_outbox`。重新整理進行中的練習時，畫面會用伺服器 session UUID 恢復可安全恢復的進度並暫停；尚未送出的文字與手寫內容不會保存
@@ -28,7 +28,7 @@
 - `/system-settings` 以 PostgreSQL 讀寫帳號身分與學習者關係。`accountRole` 表示帳號主要身分，`activeRole` 表示目前 session 能使用的能力；只要仍有有效的 parent／tutor 授權，包含 `accountRole=learner` 的帳號，切到相應 `activeRole` 後都可建立、選取及管理學習者。切入受管學習者的 learner 模式後不再顯示此頁，相關帳號層 API 也回傳 `403`；只具 self learner 身分的帳號可查看自己的帳號設定，但不能新增受管學習者。`/settings` 獨立保留，供目前學習者查看或依 `can_manage_settings` 修改自己的資料
 - 歷程只顯示建立練習時固定的題目版本。舊 revision 沒有可安全顯示的快照時，畫面只保留結果與時間並說明題目內容無法安全顯示，不以目前題目冒充；恢復中的 session 若發現 revision 不符，會把舊 session 標記為 `abandoned` 並要求重新建立練習。從任意題直接作答時會尋找下一道尚未送出的題目，因此直接作答最後一題也不會誤把仍有未作答題目的 session 標成完成
 - 本輪也會把成果內容合併到總覽，移除獨立成果導覽；舊 `/results` 完成後只負責轉到總覽。這項導覽調整尚待實作驗證
-- `localStorage` 只保存非識別性的練習 UI 設定，以及尚未切換 PostgreSQL 的計畫、排程與收藏。清除瀏覽器資料會失去這些項目，但不會刪除伺服器上的帳號、學習者、題目、練習或作答
+- 學習本與排程已切換至 PostgreSQL；`localStorage` 只保存非識別性的練習 UI 設定、尚未切換 PostgreSQL 的收藏，以及明確搬移後保留的舊學習本原始備份。清除瀏覽器資料不會刪除伺服器上的帳號、學習者、題目、學習本、排程、練習或作答
 
 已匯入資料不是 fixture，不得以 seed、reset、測試 cleanup 或還原初始 JSON 覆蓋。`data/fixtures` 只供隔離的合成測試；帳號、角色、學習者與已送出作答也適用持久資料保護。
 

@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "multi-part-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/27_02_2-3_3-1_歐洲人與原住民.doc",
+      "fileName": "27_02_2-3_3-1_歐洲人與原住民.doc",
+      "questionNumber": "05013010",
+      "sourcePage": 23,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "multi-part-parse-failed"
+      ],
+      "wordBlock": "編號:05013009\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:歐洲人與原住民\n配合題\n 請將下列荷蘭與西班牙的治臺措施相配合。\n(甲)積極傳播天主教\n(乙)積極傳播基督教\n(丙)用羅馬字母拼寫原住民語言\n(丁)招募漢人開墾土地\n(戊)促進臺灣北部的開發\n(1)荷蘭人:【    】。\n(2)西班牙人:【    】。\n答案:(1)(乙)(丙)(丁);(2)(甲)(戊)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/15_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "fileName": "15_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "questionNumber": "05012340",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05012339\n難易度:易\n出處:各章節基測試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣的氣候特徵-降雨特徵\n 附圖是澎湖部分風力發電機組的發電量。政府計畫在該地擴大推動風力發電以取代火力發電,但受限於風力的季節性差異,需在澎湖與雲林間架設海底電纜,發電量高的季節可將多餘電力輸往臺灣本島,而發電量低的季節則依賴臺灣本島支援。若以 / 表示輸電方向,以 / 表示盛行風風向,則下列何者為上述現象的正確示意圖?[102.基測]\n/\n(A) / (B) / (C) / (D) /。\n答案:(C)\n解析:澎湖冬季受東北季風影響,風勢強勁,有助於風力發電,故在冬季時可將多餘的電力輸往臺灣本島。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 7,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

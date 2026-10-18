@@ -1,0 +1,7521 @@
+{
+  "5d25c06e75904d93a3db9a5b2438a6e10ee4b604febaef028333c65d52c1d0dd": [
+    {
+      "questionNumber": "05010064",
+      "sourcePage": 13,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "e5c0fd8877d17fe1475b5b80a7dbb1a38bf3fdc9f6446dd24ec13b93d6fc37ff",
+      "nativeTableTextSha256": "ea106655bf7a4974c6e6a39edd9c26cd184b9be5b4fe41e4696dcab1fd600365",
+      "placement": "prompt",
+      "rows": [
+        [
+          "德華",
+          "若瑄",
+          "協志"
+        ],
+        [
+          "王菲",
+          "黎明",
+          "杰倫"
+        ],
+        [
+          "曼玉",
+          "依林",
+          "心凌"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 13,
+        "evidencePages": [
+          12,
+          13
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "e6ec670419fda344971e67707832cded2b728560f44ade937c40b98540af4986": [
+    {
+      "questionNumber": "05010097",
+      "sourcePage": 7,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "5fb425b61be3cfef3e77972fc3a4c652105f18ad5a3a1d07cab57ef03a354811",
+      "nativeTableTextSha256": "66a04cff7b54f22aebb13a9e267c92d4313e2093f2d70e1e0392ba7f2c0f8dad",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "緯線",
+          "經線"
+        ],
+        [
+          "(甲)定義",
+          "與赤道平行的圓圈",
+          "皆交會於南北極點"
+        ],
+        [
+          "(乙)方向",
+          "東西向",
+          "南北向"
+        ],
+        [
+          "(丙)長度",
+          "向兩極逐漸縮短",
+          "等長"
+        ],
+        [
+          "(丁)度數",
+          "南、北緯各有 180 度",
+          "東、西經各有 90 度"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 7,
+        "evidencePages": [
+          7,
+          8
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "ae1f6c0a9810a69148de9f4b854b813e8a1d461397df09765bb52d2dea81a624": [
+    {
+      "questionNumber": "05010637",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "b090ea27c72f5b11792480633fd54ed5f88a7ffa88d574c6ce4135ebc4bb7328",
+      "nativeTableTextSha256": "5af87522ec33f247c64a371f4e7b80041b5de2f494df72d928af88f339f88b24",
+      "placement": "prompt",
+      "rows": [
+        [
+          "港口",
+          "經度",
+          "緯度"
+        ],
+        [
+          "甲",
+          "120.27°E",
+          "22.62°N"
+        ],
+        [
+          "乙",
+          "120.15°E",
+          "22.99°N"
+        ],
+        [
+          "丙",
+          "120.52°E",
+          "24.26°N"
+        ],
+        [
+          "丁",
+          "121.74°E",
+          "25.13°N"
+        ],
+        [
+          "戊",
+          "121.86°E",
+          "24.60°N"
+        ],
+        [
+          "己",
+          "121.62°E",
+          "23.98°N"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010638",
+      "sourcePage": 1,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "910b30e8eb24e435c73f6d81fead9878c2cd08678fc11160060b001c2e8982cd",
+      "nativeTableTextSha256": "e8c8a0bbe4c0be105a3085146977fc9368bf3a7d2f52b1f2cd1761b63f1af0de",
+      "placement": "prompt",
+      "rows": [
+        [
+          "都市",
+          "經緯度",
+          "飛行時間"
+        ],
+        [
+          "甲",
+          "36.8°S，174.7°E",
+          "3 小時 10 分"
+        ],
+        [
+          "乙",
+          "21.2°S，159.8°W",
+          "6 小時 10 分"
+        ],
+        [
+          "丙",
+          "35.7°N，139.7°E",
+          "9 小時 35 分"
+        ],
+        [
+          "丁",
+          "26.2°S，28.0°E",
+          "14 小時 0 分"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010638",
+      "sourcePage": 2,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "84cc187c752bf68f804401aad3909db0500fdf15e1e5ba79ae64c4528c62896d",
+      "nativeTableTextSha256": "66b0e53a1e52e1e40cb412dc1a75e44c19ceca199d347f799c49a2715088ce0f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "都市",
+          "所屬時區經度",
+          "飛行時間",
+          "與雪梨時差"
+        ],
+        [
+          "甲",
+          "東經 180 度",
+          "3 小時 10 分",
+          "比雪梨早 2 小時"
+        ],
+        [
+          "乙",
+          "西經 165 度",
+          "6 小時 10 分",
+          "比雪梨晚 21 小時"
+        ],
+        [
+          "丙",
+          "東經 135 度",
+          "9 小時 35 分",
+          "比雪梨晚 1 小時"
+        ],
+        [
+          "丁",
+          "東經 30 度",
+          "14 小時 0 分",
+          "比雪梨晚 8 小時"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "5787d12939bd17799b7c6b62a5dd94b5cee2fb0c0ad43aaf699792bd711342f2": [
+    {
+      "questionNumber": "05010275",
+      "sourcePage": 9,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "5ff12c0d0057015372bf2ea305367f2c24a6d2e0753ceecef0d7538ee9916708",
+      "nativeTableTextSha256": "9ebd728f22b0164b6eba51de6ce7ad94c32e0efae06fb849e9b4d683c42eb742",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "4～10 月",
+          "157,370",
+          "162,440",
+          "143,870",
+          "32,950"
+        ],
+        [
+          "11～3 月",
+          "157,370",
+          "70,070",
+          "166,550",
+          "146,100"
+        ],
+        [
+          "單位：卡∕cm2"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          8,
+          9
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010173",
+      "sourcePage": 16,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "9a5bee47947098c1fca93b52a5842c006fc0fc57791a682516aaca81fc120e39",
+      "nativeTableTextSha256": "095d1c776c8295db69a7571bc224c3c9854516e963c34e4bf2c8c5c6d01470dc",
+      "placement": "prompt",
+      "rows": [
+        [
+          "國家",
+          "經度",
+          "緯度"
+        ],
+        [
+          "甲",
+          "73°E～135°E",
+          "18°N～53°N"
+        ],
+        [
+          "乙",
+          "95°E～141°E",
+          "6°N～11°S"
+        ],
+        [
+          "丙",
+          "74°W～130°W",
+          "23°N～54°N"
+        ],
+        [
+          "丁",
+          "30°E～170°W",
+          "50°N～75°N"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010186",
+      "sourcePage": 21,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "3de1e48d473504b6ee224206e9b75d139430d62a242e2d5e11ff4690921b8e63",
+      "nativeTableTextSha256": "1eb85f3a0127c308fdbafde8e1b36ad5ac56901213d072f3af0f0e58fb3cf649",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地點",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "經度",
+          "75°W",
+          "70°E",
+          "85°W",
+          "10°E"
+        ],
+        [
+          "緯度",
+          "50°N",
+          "20°S",
+          "40°N",
+          "67°S"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 21,
+        "evidencePages": [
+          20,
+          21
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010192",
+      "sourcePage": 23,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "92d1f90b9e11e676bba0e032d7587cf13686b164bca86dd14b9ae3b8daaa592f",
+      "nativeTableTextSha256": "caea14d57d60871129d56a41aef4c198cf04bb85bdb35c95b4c4c019e1c748ee",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地點",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "經度",
+          "20°W",
+          "142°E",
+          "176°E",
+          "120°W"
+        ],
+        [
+          "緯度",
+          "40°S",
+          "40°N",
+          "40°S",
+          "40°N"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 23,
+        "evidencePages": [
+          22,
+          23
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010260",
+      "sourcePage": 44,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "02168de4a876c3f02c488577bcc67623680e455538e5d5194c22819de9f5a149",
+      "nativeTableTextSha256": "94d2bca870c37219187f41a2b9e55eb037a92521169490c952512311b649ab8d",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "6 月 21 日",
+          "9 月 21 日",
+          "12 月 21 日",
+          "3 月 21 日"
+        ],
+        [
+          "地點",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 44,
+        "evidencePages": [
+          43,
+          44
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "2be98787d2dc39b95e6f3f718355f3738467181ff3e5d80311af28f9bc61a5b6": [
+    {
+      "questionNumber": "05010326",
+      "sourcePage": 14,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "fc269042c6d5e2d76d9e28943a553ac5bae4b0894b5a1fac6fb93b1d23e24a81",
+      "nativeTableTextSha256": "5e2ff12f7c9150837a22085687058fa862b7783c0986ba9a9260b9e0a3c729d2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "繪製範圍",
+          "繪製內容",
+          "比例尺大小",
+          "更新速度"
+        ],
+        [
+          "傳統地圖",
+          "大",
+          "少",
+          "大比例尺",
+          "慢"
+        ],
+        [
+          "數位地圖",
+          "小",
+          "多",
+          "小比例尺",
+          "快"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 14,
+        "evidencePages": [
+          13,
+          14
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010355",
+      "sourcePage": 22,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "adde2c8b87250e73045d8cd14a10083e21a2fd10411a35d3997578fed6dfa2ea",
+      "nativeTableTextSha256": "45b710dae05f3c11b79c3dfa33bb3389c0733a92fb812ff6c550959b9ec34bfe",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "傳統地圖",
+          "更新較快",
+          "資料較多",
+          "資料搜索較慢",
+          "範圍較大"
+        ],
+        [
+          "電子地圖",
+          "更新較慢",
+          "資料較少",
+          "資料搜索較快",
+          "範圍較小"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 22,
+        "evidencePages": [
+          21,
+          22
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010356",
+      "sourcePage": 22,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "5fbbd7cc91c85e62580bb8dbea4f056920bdb8e5626e0f2c268f6cec1fde63d1",
+      "nativeTableTextSha256": "9b10ae834196445081930c7524e18c2e1caccf36830cd900fc49611ae8fde533",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "大比例尺",
+          "",
+          "詳細",
+          "可畫範圍小",
+          "臺灣地圖"
+        ],
+        [
+          "小比例尺",
+          "",
+          "簡略",
+          "可畫範圍大",
+          "臺南市地圖"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 22,
+        "evidencePages": [
+          21,
+          22
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "bc688cba6d6dd838a35622195d5ed18820a56de2220dc47a0869e0105ef53b3d": [
+    {
+      "questionNumber": "05010656",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "381bb4dda324eba49c675e58805158106b8073ddd8b74020fb7dc58db402acad",
+      "nativeTableTextSha256": "f09885cdbc09d41c6c916ac8839daef5baed35e789ba150edd0972ea278bcebe",
+      "placement": "prompt",
+      "rows": [
+        [
+          "設置地點",
+          "經緯度"
+        ],
+        [
+          "甲",
+          "23.45°N , 121.50°E"
+        ],
+        [
+          "乙",
+          "23.45°N , 120.14°E"
+        ],
+        [
+          "丙",
+          "23.47°N , 121.36°E"
+        ],
+        [
+          "丁",
+          "23.48°N , 119.51°E"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "6c1d72c764319b904a76d85703b0ffcc773f96860a5c3c1c90a2bfdc56bc3976": [
+    {
+      "questionNumber": "05010655",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "0e28f88c3978711fe649881acd5036bee8650502f01bb87b13bb25365d425496",
+      "nativeTableTextSha256": "ca022a3fe89793bae49e551d63a03acd87a7b698a460fc9d8ba93bc11d8981d7",
+      "placement": "prompt",
+      "rows": [
+        [
+          "島嶼",
+          "緯度",
+          "經度"
+        ],
+        [
+          "甲",
+          "24.84°N",
+          "121.95°E"
+        ],
+        [
+          "乙",
+          "24.45°N",
+          "118.38°E"
+        ],
+        [
+          "丙",
+          "22.34°N",
+          "120.37°E"
+        ],
+        [
+          "丁",
+          "22.06°N",
+          "121.53°E"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "5058986684a155a9fed39f35b1f2872fa1a3b3d9644ce80158cc4d38d889240e": [
+    {
+      "questionNumber": "05010505",
+      "sourcePage": 14,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "f30f597dc867c64d8079b9fc62145ce631adf8863a5090823cdf5601485091e3",
+      "nativeTableTextSha256": "91de6eb2d9d5c626b80dc1ad11790ff740f108424ead26ebc7cd4aab299be49f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "排名",
+          "國家"
+        ],
+        [
+          "1",
+          "日本"
+        ],
+        [
+          "2",
+          "德國、新加坡"
+        ],
+        [
+          "3",
+          "法國、義大利、南韓、西班牙、瑞典、芬蘭"
+        ],
+        [
+          "4",
+          "澳洲、盧森堡、荷蘭、挪威、葡萄牙、英國、美國"
+        ],
+        [
+          "26",
+          "臺灣"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 14,
+        "evidencePages": [
+          13,
+          14
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "e6e06f195eaa1a9f4f77e7868f81c4ce19fc5e32a70341deb10af11a4e9aa269": [
+    {
+      "questionNumber": "05010672",
+      "sourcePage": 5,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "ad7f96f329fa298593336fafc80c7d8ec0ab452107ec48d0c49b96acacc71e1b",
+      "nativeTableTextSha256": "3d6cbaf2260e1ae8a7ff671dbdb6fd6518bd32d86a592e7c6194099e65703bfa",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "甲",
+          "侵蝕作用",
+          "侵蝕作用",
+          "堆積作用",
+          "堆積作用"
+        ],
+        [
+          "乙",
+          "侵蝕作用",
+          "堆積作用",
+          "侵蝕作用",
+          "堆積作用"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010688",
+      "sourcePage": 10,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "2e4f700156057626e0fa7d4fc78cdb6072b83bfcc6cd7ee46a9bceb704f7a21e",
+      "nativeTableTextSha256": "481763b1b7752e3f5e12fda7c6de6e36e3ddcada5e5ae86f1b33c3163e0fea4f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "地形景觀",
+          "成因",
+          "地形作用力"
+        ],
+        [
+          "甲",
+          "佳陽沖積扇",
+          "河流堆積",
+          "外營力"
+        ],
+        [
+          "乙",
+          "大屯火山群",
+          "火山活動",
+          "外營力"
+        ],
+        [
+          "丙",
+          "太魯閣峽谷",
+          "河流侵蝕",
+          "內營力"
+        ],
+        [
+          "丁",
+          "恆春風吹沙",
+          "風力侵蝕",
+          "內營力"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 10,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010715",
+      "sourcePage": 18,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "535c0232a34d6296d6236f2a38041f67827203593fd2a5c4140c93802324fb7c",
+      "nativeTableTextSha256": "001c75769f30fbcecd5e308b9b9950f7b651442b66eb0ecc3d322eacb3342db6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "海拔高度",
+          "地形坡度"
+        ],
+        [
+          "(Ａ)甲地",
+          "20 公尺",
+          "10％"
+        ],
+        [
+          "(Ｂ)乙地",
+          "1,500 公尺",
+          "27％"
+        ],
+        [
+          "(Ｃ)丙地",
+          "241 公尺",
+          "6％"
+        ],
+        [
+          "(Ｄ)丁地",
+          "3,500 公尺",
+          "5％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 18,
+        "evidencePages": [
+          17,
+          18
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "3de754a9c54224d04711a9d05cace85ff3c2ae93d7f0b814e50632f24c4a05ef": [
+    {
+      "questionNumber": "05012324",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "7b13ac188591db3a199303a44e178e193b66518027adf6ebad1c9e2e4c23a859",
+      "nativeTableTextSha256": "78c3bbef58fe46e2310246fa49bfc68bf0eed22a9deb5d0e9e667c53b6d7ceef",
+      "placement": "prompt",
+      "rows": [
+        [
+          "稅務官署別",
+          "面積(甲)",
+          "地租（円）"
+        ],
+        [
+          "臺南州稅務課",
+          "3,943",
+          "8,138"
+        ],
+        [
+          "嘉義稅務出張所",
+          "2,306",
+          "5,963"
+        ],
+        [
+          "高雄州稅務課",
+          "530",
+          "1,058"
+        ],
+        [
+          "彰化稅務出張所",
+          "275",
+          "247"
+        ],
+        [
+          "全臺灣合計",
+          "7,054",
+          "15,406"
+        ],
+        [
+          "円：日圓"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "29547f492f0fc65220ff84c105bb5dc0b798a3c926af628a04020d3f77d69656": [
+    {
+      "questionNumber": "05010869",
+      "sourcePage": 6,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "81783c236ad2a9ed6920390344b21c1422fc7d2b1e3f69c94ebe05132df91752",
+      "nativeTableTextSha256": "a6ab43273d6bcb88691240b26b54082bb9bf1fcb8f7a8fe91a498b18b1a4f1d1",
+      "placement": "prompt",
+      "rows": [
+        [
+          "苗栗銅鑼的黃金梯田",
+          "先人沿著等高線開墾的梯田，現在種滿了金黃色的杭菊，依山勢蜿蜒的梯田形成層層疊疊的壯麗景觀"
+        ],
+        [
+          "桃園八德埤塘自然生態公園",
+          "過去這區有許多埤塘，這些埤塘是由於過去先人在此地開墾時有感灌溉不易，因此開闢埤塘蓄水"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 6,
+        "evidencePages": [
+          6,
+          7
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05010897",
+      "sourcePage": 16,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "4e8ac28461c154aa284e34a9d4e0fb139bcfb9f856cbca02c3e532f0065dc30c",
+      "nativeTableTextSha256": "b592d767836a3ef62705c9afad348af89e7da72125f5cf7e426e8d1f7afc9498",
+      "placement": "prompt",
+      "rows": [
+        [
+          "種類",
+          "山地",
+          "丘陵、台地",
+          "平原、盆地"
+        ],
+        [
+          "比例",
+          "30％",
+          "40％",
+          "30％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          16,
+          17
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011026",
+      "sourcePage": 63,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "99494808d32493dec992b23bcf739ceb6d710001a7bb5ff67345ce6193331238",
+      "nativeTableTextSha256": "956bb156993262a9928bf86e136af87a9da4513cd56e50f8da4dd216a2459d66",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "ㄅ",
+          "雪山山脈",
+          "中央山脈",
+          "玉山山脈",
+          "阿里山山脈"
+        ],
+        [
+          "ㄆ",
+          "中央山脈",
+          "海岸山脈",
+          "中央山脈",
+          "海岸山脈"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 63,
+        "evidencePages": [
+          62,
+          63
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "42ce8eb9ef237d29d5bb0b9f441e9a5c78ac1050a45ef2a1840661454296ad66": [
+    {
+      "questionNumber": "05012285",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "25a752024ae8806564bc23e30d381f5ce162ec7be46ce9770a6e7c673b71a0cf",
+      "nativeTableTextSha256": "ef2e954f25d82a08ba46d87db0c5a5a90413daad2778b41e43f604925b127d25",
+      "placement": "prompt",
+      "rows": [
+        [
+          "國道編號",
+          "長度（公里）"
+        ],
+        [
+          "1",
+          "372.7"
+        ],
+        [
+          "2",
+          "20.4"
+        ],
+        [
+          "3",
+          "431.5"
+        ],
+        [
+          "4",
+          "17.1"
+        ],
+        [
+          "5",
+          "54.3"
+        ],
+        [
+          "6",
+          "37.6"
+        ],
+        [
+          "8",
+          "15.5"
+        ],
+        [
+          "10",
+          "33.8"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "69b5846c8dcda78ff723b9679f51890a5e530c2adaa740f2b79e8d2bf3f0a050": [
+    {
+      "questionNumber": "05011086",
+      "sourcePage": 12,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "fac973e82c4a41a9e08674f33ab61abd4394e27b25aa52ecd43e051caa6cfce8",
+      "nativeTableTextSha256": "20d240759354ba99944759dd253f3c0fa374089025e49f3e649cb0d6bd1cbe01",
+      "placement": "prompt",
+      "rows": [
+        [
+          "分類",
+          "型態"
+        ],
+        [
+          "甲",
+          "沙洲、潟湖、潮埔"
+        ],
+        [
+          "乙",
+          "岬角、海灣"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 12,
+        "evidencePages": [
+          11,
+          12
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011092",
+      "sourcePage": 14,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "3ec8201f748797424083bd475133bf7df4b477a2e2ffe87f188c6d88f823671f",
+      "nativeTableTextSha256": "a40f5258728b653f2a9ef7487d66870ca0b1b48829a85263c6bbd58735888f27",
+      "placement": "prompt",
+      "rows": [
+        [
+          "類型",
+          "(Ａ)營力",
+          "(Ｂ)海岸線",
+          "(Ｃ)海水深度",
+          "(Ｄ)產業發展"
+        ],
+        [
+          "沙岸",
+          "侵蝕作用",
+          "較平直",
+          "較淺",
+          "鹽業、養殖漁業"
+        ],
+        [
+          "岩岸",
+          "堆積作用",
+          "較曲折",
+          "較深",
+          "航運、漁業"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 14,
+        "evidencePages": [
+          13,
+          14
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011117",
+      "sourcePage": 21,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "e227cf2662c2b7dddb444d14faa2138abdce620368bb382c4c0ce9b8b533f3da",
+      "nativeTableTextSha256": "f7e05253c8efe6a210ae821e1cff2f384141d7589eda04dc3bfd2e9a9bb2ea43",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)沿海水深",
+          "(Ｂ)天然良港",
+          "(Ｃ)產業活動",
+          "(Ｄ)地形景觀"
+        ],
+        [
+          "沙岸",
+          "淺",
+          "多",
+          "養殖漁業、鹽業",
+          "沙洲、潟湖"
+        ],
+        [
+          "岩岸",
+          "深",
+          "少",
+          "漁業、航運",
+          "岬角、海灣"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 21,
+        "evidencePages": [
+          20,
+          21
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "113faffb8238db081bd7f36be200cf23d4444c65e61602e22a8fb2003a7e5ce8": [
+    {
+      "questionNumber": "05012309",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "67673d968fdd7d40fc0eb85e407446111389790c3a5ea290b2020741da23519b",
+      "nativeTableTextSha256": "6af4301f0495569e5f5810f4baf57d16bdf4f97d0b177a343e0b768152d099b8",
+      "placement": "prompt",
+      "rows": [
+        [
+          "自然條件"
+        ],
+        [
+          "優點",
+          "1. 形勢良好的灣澳。2. 少淤積的曲折岩岸。"
+        ],
+        [
+          "缺點",
+          "1. 丘陵環抱、平地狹小。2. 雨日較多，影響貨物裝卸。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "7530269da41c9b3c750979943eb89b3410246a851def3f7d9a4a91e3ddb01329": [
+    {
+      "questionNumber": "05011254",
+      "sourcePage": 38,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "b90fdb1288e0ecc471eebdeda22887c459f636afc8473034848ec136a06df500",
+      "nativeTableTextSha256": "dc03af43c226fdce0c8f13c33722236e304942a7600e3d6fe633982c27fedb93",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項 目",
+          "東 部",
+          "西 部"
+        ],
+        [
+          "(Ａ)類 型",
+          "沙岸",
+          "岩岸"
+        ],
+        [
+          "(Ｂ)海水深度",
+          "淺",
+          "深"
+        ],
+        [
+          "(Ｃ)海岸坡度",
+          "陡峭",
+          "平緩"
+        ],
+        [
+          "(Ｄ)地形景觀",
+          "沙灘、潟湖",
+          "斷崖"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 38,
+        "evidencePages": [
+          37,
+          38
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "6cbe3dd58ba23ff8be2b82d1769a0ea3e6c0959859da7a4bfd2305e11ee6d710": [
+    {
+      "questionNumber": "05012314",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "410b78110c27bba115ac02d5a48157cbab135708e2ed503ea1c9bf90e091f5a0",
+      "nativeTableTextSha256": "44033f6c2d9eeb2c9e5d497e41158bc63adb1b4fbfe553e797719c01ecb0aab1",
+      "placement": "prompt",
+      "rows": [
+        [
+          "8 月 11 日",
+          "……到達澎湖後，先到叔叔開的土產店拜訪。聽叔叔說他跟原料商有些契約上的金錢糾紛，叔叔擔心貨品不能依約定時間送到，會對生意造成很大的影響，我也跟著擔心起來。"
+        ],
+        [
+          "8 月 12 日",
+          "……石滬原是捕魚的陷阱，雖然現在這種捕魚方式已日漸沒落，但雙心石滬讓我們看到了它全新的價值，它不僅仍能為漁民帶來漁獲，還意外地為附近商家帶來觀光人潮。"
+        ],
+        [
+          "8 月 13 日",
+          "……旅程的最後一站，壯麗的玄武岩地形景觀讓人讚嘆不已，能將這天然藝術品的影像刻印在腦海中，更讓我有不虛此行的感覺。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012319",
+      "sourcePage": 4,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "45f6a7aa69d131cff1ab12f544e8a8216d150d60a1a92f5973d585160d0f16a8",
+      "nativeTableTextSha256": "45d1f24071b7c28bec368749c84cde4e8725d0afb010f511f0c58f1c77330528",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地理位置",
+          "臺灣島西方"
+        ],
+        [
+          "歷史概況",
+          "元代時設官治理，納入版圖。17 世紀時曾遭荷蘭入侵"
+        ],
+        [
+          "景觀特色",
+          "1. 自然：火山噴發所形成的柱狀玄武岩2. 人文：臺灣地區最古老的媽祖廟"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "d46b11917cd93fd7ef6c6e2607bd48960bcd25f5fad61a0331cb68d76d1204be": [
+    {
+      "questionNumber": "05012357",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "62c3588756f249fa6c22aae281f77d6c111c1fc049b5fbe5d67bc324848d94d9",
+      "nativeTableTextSha256": "02f4790a058b76c660d6a16db188c9331b108e5f2db90f451a26b9be74c0b410",
+      "placement": "prompt",
+      "rows": [
+        [
+          "測站",
+          "緯度",
+          "經度",
+          "高度（m）"
+        ],
+        [
+          "甲",
+          "23.98˚N",
+          "121.61˚E",
+          "16.0"
+        ],
+        [
+          "乙",
+          "25.13˚N",
+          "121.74˚E",
+          "26.7"
+        ],
+        [
+          "丙",
+          "22.99˚N",
+          "120.20˚E",
+          "40.8"
+        ],
+        [
+          "丁",
+          "23.95˚N",
+          "120.59˚E",
+          "34.0"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "75ebdb6367beab31dbe8b4e5b14ac8e7f644bb67ee9cb1c6385cc98120094970": [
+    {
+      "questionNumber": "05011337",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "5a114ff2efeba9825aedd85d46437ec244db26110d1cc8e7843ba56db8c6539c",
+      "nativeTableTextSha256": "39a02a4a0e1809cfd8b925467dcd14d1c98dec8ef1857d0f4ee4cc7bb34dd1ca",
+      "placement": "prompt",
+      "rows": [
+        [
+          "經緯度位置",
+          "東經 118 度、北緯 24 度"
+        ],
+        [
+          "地形",
+          "花崗岩構成的大陸島"
+        ],
+        [
+          "特色",
+          "設有國家公園，以戰地文物與閩南建築聞名"
+        ],
+        [
+          "產業",
+          "以生產的高粱酒聞名於世"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011343",
+      "sourcePage": 5,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "81a9b9c5819bee5f3d4fffffeaa2a26d33913568e323bff211905b1ef519c899",
+      "nativeTableTextSha256": "f007ce13663444635fe9c70b9e9200ee39996e093bd61fac4fff036539c7e4a6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "主題一：自然地景",
+          "柱狀玄武岩台地"
+        ],
+        [
+          "主題二：產業",
+          "移民史與海洋文化"
+        ],
+        [
+          "主題三：宗教",
+          "臺灣最古老的媽祖廟"
+        ],
+        [
+          "主題四：傳統建築",
+          "咾咕石建築"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          5,
+          6
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011393",
+      "sourcePage": 21,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "e89e05a097b0a81fe0418c4d489e42b8ca45255e1ba268047c498b96d498bc2e",
+      "nativeTableTextSha256": "457a72c767ccfb721b8866ada047aca1ad454137906535fd242210324b33d47c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "島嶼性質",
+          "分 布 地 區"
+        ],
+        [
+          "甲",
+          "澎湖群島、蘭嶼、綠島、釣魚臺列嶼、龜山島"
+        ],
+        [
+          "乙",
+          "琉球嶼、東沙島、太平島"
+        ],
+        [
+          "丙",
+          "金門列嶼、馬祖列嶼"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 21,
+        "evidencePages": [
+          20,
+          21
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "f8d7460091d3a117b175f3f349abe4c46eef7d43fd78645784e77758094b72b7": [
+    {
+      "questionNumber": "05011463",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "55142e75e50faf3b7b6ae28fd19c80f9b2fed2ddc92b21b39b1e5e68246d90e2",
+      "nativeTableTextSha256": "b8ca2f6c8465a9e7f4ddd7f0423593514868147004df621e831ca60bc86789f5",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "氣壓特性",
+          "氣溫高低",
+          "降水狀況",
+          "空氣狀況"
+        ],
+        [
+          "甲",
+          "低氣壓",
+          "暖空氣",
+          "晴朗",
+          "空氣膨脹"
+        ],
+        [
+          "乙",
+          "高氣壓",
+          "冷空氣",
+          "降水",
+          "空氣收縮"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011482",
+      "sourcePage": 10,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "fd5846454dac8a2ffc5323f4de10ed657a5e9fc8dbeb70e9aac127781ee723b2",
+      "nativeTableTextSha256": "0d88ff3ad509375ce28d5eda91311ec0a1742005a590e6c164862afdf45df4e8",
+      "placement": "prompt",
+      "rows": [
+        [
+          "星期五",
+          "星期六",
+          "星期日"
+        ],
+        [
+          "49 ℉～71 ℉",
+          "52 ℉～77 ℉",
+          "52 ℉～72 ℉"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 10,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011495",
+      "sourcePage": 15,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "384c2703969ed538401933d7e90e26f0d12abf24ffd82de17cf2f97ead8d39df",
+      "nativeTableTextSha256": "e851d568515415d8706d06b459d18dc35532a4a07de791450366febc27a38b8f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "天氣狀況"
+        ],
+        [
+          "10：30",
+          "豔陽高照"
+        ],
+        [
+          "14：30",
+          "傾盆大雨"
+        ],
+        [
+          "15：30",
+          "雨過天晴"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          14,
+          15
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011508",
+      "sourcePage": 20,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "250cfe584d329725a458d8d2bfaf5427b51ad56692cd052359defe5a889e7aa1",
+      "nativeTableTextSha256": "677a7dbc9f15f8c6dbf8f2f0fd012dd5dcb7d25d89edd26e553683ee3cd44425",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)代號",
+          "(Ｂ)形成原因",
+          "(Ｃ)氣流特徵",
+          "(Ｄ)地面天氣狀況"
+        ],
+        [
+          "低氣壓",
+          "H",
+          "空氣因高度或溫度不均造成氣壓差異",
+          "上升氣流",
+          "陰雨"
+        ],
+        [
+          "高氣壓",
+          "L",
+          "",
+          "下沉氣流",
+          "晴朗"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 20,
+        "evidencePages": [
+          19,
+          20
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011548",
+      "sourcePage": 31,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "f53e8bd2a7b329ce16e148b3a1578d05e96491c3ebe65e3bb36e002a0f3264f8",
+      "nativeTableTextSha256": "5577bb4425d4ea2d65e6a00be5e68ffb91337218d17ea4a2a213a9656c46e287",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲：年降水量圖",
+          "乙：衛星雲圖"
+        ],
+        [
+          "丙：月均溫圖",
+          "丁：地面天氣圖"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 31,
+        "evidencePages": [
+          30,
+          31
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011563",
+      "sourcePage": 35,
+      "nativeTableIndex": 7,
+      "nativeTableSha256": "de87d9b211e4802dcde46fa1797586a43fc9c31ff80b112c438458fa66f88037",
+      "nativeTableTextSha256": "524e6c824f132d203ed2938e397a4828c38a5651caf20aa44c18e913496eb909",
+      "placement": "prompt",
+      "rows": [
+        [
+          "星期一",
+          "星期二",
+          "星期三",
+          "星期四"
+        ],
+        [
+          "49 ℉～71 ℉",
+          "52 ℉～77 ℉",
+          "52 ℉～72 ℉",
+          "48 ℉～62 ℉"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 35,
+        "evidencePages": [
+          34,
+          35
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011576",
+      "sourcePage": 40,
+      "nativeTableIndex": 8,
+      "nativeTableSha256": "f11ec9be6ee508aa0cbd2e6ed76fa2f9bbc158eaf468c921862be9376d0e6fe8",
+      "nativeTableTextSha256": "ee365a160011257b58e0dc32b5db382f5e9c209a1ac6eabf73646d44d6c7378f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "季節",
+          "春季",
+          "夏季",
+          "秋季",
+          "冬季"
+        ],
+        [
+          "風速（km∕hr）",
+          "35",
+          "22",
+          "32",
+          "58"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 40,
+        "evidencePages": [
+          39,
+          40
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011584",
+      "sourcePage": 45,
+      "nativeTableIndex": 9,
+      "nativeTableSha256": "1beeda5976c69fb9118367e59761e0fdd5394228e8824d56d021e7c9c2e46368",
+      "nativeTableTextSha256": "428db8661f678a21f069f553409b79950ce4a2818a3240e77929ee4c18796a8f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "乙"
+        ],
+        [
+          "丙",
+          "丁"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 45,
+        "evidencePages": [
+          44,
+          45
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "e103457e91850537d4f21daf1cb0cc034af7ee95c8ad4ea1740551e6907fe8d7": [
+    {
+      "questionNumber": "05012331",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "37d9d7a0effd4d646d2d552b6ed3a7540bde87db42a62dc4098e54791f1355b7",
+      "nativeTableTextSha256": "a7afaa7b71a6b9249946c072cff7ef6bad99800d2ceb575e685796176de59f9b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "月分",
+          "一",
+          "二",
+          "三",
+          "四",
+          "五",
+          "六",
+          "七",
+          "八",
+          "九",
+          "十",
+          "十一",
+          "十二",
+          "甲"
+        ],
+        [
+          "氣溫（℃）",
+          "19",
+          "19",
+          "21",
+          "24",
+          "26",
+          "27",
+          "28",
+          "28",
+          "27",
+          "25",
+          "23",
+          "20",
+          "23.9"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "1a92f79efe9bcea3ec1323dc802777e88494868b754518330d55210f6d3d92e2": [
+    {
+      "questionNumber": "05011603",
+      "sourcePage": 5,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "c4d544c7861716d48f62eedda3d6cc97ae0c031b276a746405f0d2b079aeaa24",
+      "nativeTableTextSha256": "38370c062d82ef5fd612e1ce8a3206ba774540645ebe878af1b6fa89b746787c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "特徵"
+        ],
+        [
+          "甲",
+          "早上豔陽高照"
+        ],
+        [
+          "乙",
+          "下午傾盆大雨"
+        ],
+        [
+          "丙",
+          "晚上較涼爽舒適"
+        ],
+        [
+          "丁",
+          "夏雨冬乾的特徵"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011609",
+      "sourcePage": 7,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "9ff49fe3cabaef367b2d50e5d08a0e16aad91ee5564b598ab131c7cdbf4bc2db",
+      "nativeTableTextSha256": "293296cc2cdb55f3a559781b703442f050210111dd7cd36dba0bc8677a27301a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地點分項",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "一月月均溫（℃）",
+          "14",
+          "12",
+          "10",
+          "16"
+        ],
+        [
+          "七月月均溫（℃）",
+          "28",
+          "28",
+          "20",
+          "28"
+        ],
+        [
+          "年降水量（mm）",
+          "3,000",
+          "2,000",
+          "2,000",
+          "2,500"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 7,
+        "evidencePages": [
+          6,
+          7
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011612",
+      "sourcePage": 8,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "eb6960c8affd1a0e13747d01bd7efcb43121fa9806db20e805a0c44d72a15896",
+      "nativeTableTextSha256": "d274e52a9e07adf226d4a53e060269be459532fa6570982e52d1d29c4e755e1c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "月分",
+          "一",
+          "二",
+          "三",
+          "四",
+          "五",
+          "六",
+          "七",
+          "八",
+          "九",
+          "十",
+          "十一",
+          "十二",
+          "甲"
+        ],
+        [
+          "氣溫（℃）",
+          "19",
+          "19",
+          "21",
+          "24",
+          "26",
+          "27",
+          "28",
+          "28",
+          "27",
+          "25",
+          "23",
+          "20",
+          "9"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 8,
+        "evidencePages": [
+          7,
+          8
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011613",
+      "sourcePage": 8,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "dae5d049f66e4fae74c992b6c4ea6acc7f7a82fbd421afe5c98f774dcc9819cc",
+      "nativeTableTextSha256": "7e3936337097dbe254017c44fa1b2edca4d44cdfdb6534548115e986e74f3c61",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地點項目",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "一月平均氣溫",
+          "5.5",
+          "－3.3",
+          "19.8",
+          "12.4"
+        ],
+        [
+          "七月平均氣溫",
+          "27.6",
+          "20.0",
+          "30.8",
+          "25.1"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 8,
+        "evidencePages": [
+          8,
+          9
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011619",
+      "sourcePage": 11,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "6a187253a8f0c40f9c43f2ddf0a6e301572558471b8aa9754c7f35cd8591a923",
+      "nativeTableTextSha256": "fecabf60e726bb4b18945dbe5f8c60d9d8788d27416bc15f0eb50463e5ca23ff",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "平均溫度",
+          "最高溫度",
+          "最低溫度"
+        ],
+        [
+          "數據",
+          "29.5 ℃",
+          "35.9 ℃",
+          "24.2 ℃"
+        ],
+        [
+          "項目",
+          "降水量",
+          "相對溼度",
+          "氣壓"
+        ],
+        [
+          "數據",
+          "437 mm",
+          "76％",
+          "1009 hPa"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 11,
+        "evidencePages": [
+          10,
+          11
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "f73af816586fa1038c95b5ff93c5cca7f120051283318f2e6e1ee6f9a033aa97": [
+    {
+      "questionNumber": "05012882",
+      "sourcePage": 3,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "d3f0b3eaa31a0067ea1d2b101768ef0056eb17c14a9727528bced2927708f313",
+      "nativeTableTextSha256": "4bf82b9d5daaaa90e2a66d62b7dcd046c5656cf92ad4ceca25a3549bd6c44902",
+      "placement": "prompt",
+      "rows": [
+        [
+          "經濟活動"
+        ],
+        [
+          "甲",
+          "以採集、狩獵、漁撈方式維生"
+        ],
+        [
+          "乙",
+          "以鐵製工具用於狩獵、農耕、捕魚"
+        ],
+        [
+          "丙",
+          "以捕魚為主，已能種植農作物"
+        ],
+        [
+          "丁",
+          "大量栽培稻米，也從事狩獵、漁撈"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 3,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012884",
+      "sourcePage": 4,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "8591987b6933d035424aaa294fa469f9bf38074961327b25e0819eb1d5b01a20",
+      "nativeTableTextSha256": "10d524765812a81f6220883e81ffdd08ccde21da6ba29aa39a6a32242c547b57",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "種植根莖類作物→種植稻米"
+        ],
+        [
+          "乙",
+          "打製石器→磨製石器"
+        ],
+        [
+          "丙",
+          "燒製陶器→冶煉鐵器"
+        ],
+        [
+          "丁",
+          "不知用火→用火煮食"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "80d2cbb251bd63ff7cb999d509b34844dd0c2b1fb60c7706a616a12127d8e082": [
+    {
+      "questionNumber": "05011669",
+      "sourcePage": 16,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "baecace4b932b8979053af6270470ce4def32bc9491fee23abfe0436b94ecada",
+      "nativeTableTextSha256": "49e139fccecbc867dec287cf92cdba8afa3155fa99fd23ec71dcecd5868f58f2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "一月月均溫",
+          "七月月均溫"
+        ],
+        [
+          "甲",
+          "15.8 ℃",
+          "28.1 ℃"
+        ],
+        [
+          "乙",
+          "17.1 ℃",
+          "28.3 ℃"
+        ],
+        [
+          "丙",
+          "20.4 ℃",
+          "27.9 ℃"
+        ],
+        [
+          "丁",
+          "5.6 ℃",
+          "14.1 ℃"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011707",
+      "sourcePage": 29,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "23b459f2c1d2eb57b9d31e679ce64e303bbab336b8c73d66e27897dd7e6c5995",
+      "nativeTableTextSha256": "428db8661f678a21f069f553409b79950ce4a2818a3240e77929ee4c18796a8f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "乙"
+        ],
+        [
+          "丙",
+          "丁"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 29,
+        "evidencePages": [
+          28,
+          29
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011710",
+      "sourcePage": 29,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "13a6675cf411a30d0b03eeb386b84a2a8dfdfdaf2d655ded46ee004e81af7a3e",
+      "nativeTableTextSha256": "6663326e40c0c61e728ee5ba699d4dddc304724891602a613272d88bfbac1a7e",
+      "placement": "prompt",
+      "rows": [
+        [
+          "都市分項",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "一月月均溫（℃）",
+          "14",
+          "12",
+          "10",
+          "16"
+        ],
+        [
+          "七月月均溫（℃）",
+          "28",
+          "28",
+          "20",
+          "28"
+        ],
+        [
+          "年降水量（mm）",
+          "3,000",
+          "2,000",
+          "2,000",
+          "2,500"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 29,
+        "evidencePages": [
+          29,
+          30
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011711",
+      "sourcePage": 30,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "d0bf3ce53f9001784cf02a367212db20282da933a59f6691763eab7908cd5c81",
+      "nativeTableTextSha256": "a2d7d8af42f92fa97689f034dcc74f53f5bb12da02e1abc6846baded873546b7",
+      "placement": "prompt",
+      "rows": [
+        [
+          "測站",
+          "一月月均溫（℃）"
+        ],
+        [
+          "臺北",
+          "12"
+        ],
+        [
+          "宜蘭",
+          "11"
+        ],
+        [
+          "嘉義",
+          "17"
+        ],
+        [
+          "臺南",
+          "19"
+        ],
+        [
+          "高雄",
+          "21"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 30,
+        "evidencePages": [
+          29,
+          30
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011746",
+      "sourcePage": 41,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "7c7248aef8ffb94884aaa5054288c21e2fc270286653a517a05be20a940b1871",
+      "nativeTableTextSha256": "fd467361ff2f0be1067fe8ee2a5efa2c0992efb7a8526a58abb61016a32755dc",
+      "placement": "prompt",
+      "rows": [
+        [
+          "測站",
+          "溫度（℃）"
+        ],
+        [
+          "臺北",
+          "29.1"
+        ],
+        [
+          "宜蘭",
+          "28.4"
+        ],
+        [
+          "嘉義",
+          "28.0"
+        ],
+        [
+          "臺南",
+          "27.9"
+        ],
+        [
+          "高雄",
+          "28.3"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 41,
+        "evidencePages": [
+          40,
+          41
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011761",
+      "sourcePage": 46,
+      "nativeTableIndex": 7,
+      "nativeTableSha256": "c914349998c188fd974dee9aabd6735d497c47fd179db4bfef546a49c1db99bb",
+      "nativeTableTextSha256": "81e39a7726b88ccda18b801eafd1240d143dd817c13622e8da05a803d179f9f3",
+      "placement": "prompt",
+      "rows": [
+        [
+          "季節",
+          "天氣狀況"
+        ],
+        [
+          "春季",
+          "天色陰雨"
+        ],
+        [
+          "夏季",
+          "豔陽高照"
+        ],
+        [
+          "秋季",
+          "傾盆大雨"
+        ],
+        [
+          "冬季",
+          "陰雨寒冷"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 46,
+        "evidencePages": [
+          45,
+          46
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011765",
+      "sourcePage": 48,
+      "nativeTableIndex": 8,
+      "nativeTableSha256": "d445fa03bacd91dd4e6e38fe0d164f961f6dffdeb969283c7d0bc99353aac9bc",
+      "nativeTableTextSha256": "7976a1711c5648c9bad7afa29eeef8877e7e2ab252bff2582e31608140bb123f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "燈號顏色",
+          "標準"
+        ],
+        [
+          "紅色",
+          "氣溫達 38 ℃以上且持續 3 日以上"
+        ],
+        [
+          "橙色",
+          "氣溫達 36 ℃以上且持續 3 日以上；或氣溫達 38 ℃以上"
+        ],
+        [
+          "黃色",
+          "氣溫達 36 ℃以上"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 48,
+        "evidencePages": [
+          48,
+          49
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011773",
+      "sourcePage": 55,
+      "nativeTableIndex": 9,
+      "nativeTableSha256": "8a474c947901eee762338d6bfa6c2a1d85d24bd67da38770d62d48b468c1f7eb",
+      "nativeTableTextSha256": "f3ed3d5a138860cf3c9bbf8a9def0bf08e877e99e4aa3e0c3841407a4e69fda9",
+      "placement": "prompt",
+      "rows": [
+        [
+          "月均溫直轄市",
+          "一月",
+          "七月"
+        ],
+        [
+          "臺北市",
+          "16.1 ℃",
+          "29.6 ℃"
+        ],
+        [
+          "臺中市",
+          "16.6 ℃",
+          "28.6 ℃"
+        ],
+        [
+          "臺南市",
+          "16.9 ℃",
+          "28.9 ℃"
+        ],
+        [
+          "高雄市",
+          "19.3 ℃",
+          "29.2 ℃"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 55,
+        "evidencePages": [
+          54,
+          55
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011783",
+      "sourcePage": 60,
+      "nativeTableIndex": 10,
+      "nativeTableSha256": "31d31d51573e98706fbc2123c328ad688c218f2deaf87f3be82578c52c52d3d4",
+      "nativeTableTextSha256": "2561d2dabda08da347ccb3ff90dd288a8450b73309b2e9ddb6b64f0fcb08f0b8",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "1 月均溫(℃)",
+          "7 月均溫(℃)",
+          "年降水量(mm)"
+        ],
+        [
+          "甲",
+          "15.8",
+          "28.1",
+          "2,740.1"
+        ],
+        [
+          "乙",
+          "18.1",
+          "28.3",
+          "1,738.5"
+        ],
+        [
+          "丙",
+          "20.4",
+          "27.9",
+          "2,162.1"
+        ],
+        [
+          "丁",
+          "5.6",
+          "14.1",
+          "4,060.5"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 60,
+        "evidencePages": [
+          60,
+          61
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "55ad7022f64c10798d691c034d17155491476fe0a00e10246f5b8adf0a19ccce": [
+    {
+      "questionNumber": "05015456",
+      "sourcePage": 1,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "f32c7facde7453436671e5ee4e7bd0d422ecee4b12716ffb2fdc9bc76b5bd033",
+      "nativeTableTextSha256": "ddd4d8bab5defe3361bc169e59eac09e9f3f6d987c08033f4097cb086042f1e7",
+      "placement": "prompt",
+      "rows": [
+        [
+          "發現地區",
+          "特色"
+        ],
+        [
+          "新北市",
+          "(１)陶器以繩紋壓印(２)已知種植農作物"
+        ],
+        [
+          "臺北市",
+          "出土許多優美的雙口陶罐和貝塚層"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "dc1d365ec485fed2b7eee12adb9b56df5d2d187570011f9732a3c68ff227aa80": [
+    {
+      "questionNumber": "05012856",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "62089ff7fdfbf2ed1282a13fcacc7a8e91682bd213de9b9660107c697fb8044d",
+      "nativeTableTextSha256": "c411e74e98f9825e0d78364aec53abdc5b738b2db0fcbc09b811c3c71b53d82f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "發現位置",
+          "生活方式",
+          "器具"
+        ],
+        [
+          "臺灣北部",
+          "漁獵、農耕",
+          "陶罐、鐵斧"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012861",
+      "sourcePage": 4,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "c1f11730ceaa9c4cd5c3d4cb062843121b23990c6cc420a8037c6e226da1b977",
+      "nativeTableTextSha256": "fa68b3e2a46d48a2df796a7cd572d72b1fc5e4250dfebc6f36fc96a9a3d757e1",
+      "placement": "prompt",
+      "rows": [
+        [
+          "年代",
+          "距今 4500 ～ 6500 年"
+        ],
+        [
+          "考古遺址",
+          "大多分布於西部河口與海岸"
+        ],
+        [
+          "文化特徵",
+          "出土粗繩紋陶片、石斧等器物。推測居民以狩獵、漁撈、採集維生，可能種植根莖類作物。"
+        ],
+        [
+          "重要意義",
+          "臺灣新石器時代早期文化的代表，在中國東南沿海也發現類型相似的文化"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "c170434085492d917a8405642a4b622ab224adb79fb2be19c2137b756260ef50": [
+    {
+      "questionNumber": "05011866",
+      "sourcePage": 25,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "8cd1d89c1c46db50947c9947861d3254dccb7334139d259bd1986207bee9b96b",
+      "nativeTableTextSha256": "3b29b64b188a4f0842f3c2d752266609044a2029fce6217001b8b85f4710c8a6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "氣溫（℃）",
+          "降水量（mm）"
+        ],
+        [
+          "1 月",
+          "21",
+          "18"
+        ],
+        [
+          "2 月",
+          "21",
+          "25"
+        ],
+        [
+          "3 月",
+          "23",
+          "21"
+        ],
+        [
+          "4 月",
+          "25",
+          "36"
+        ],
+        [
+          "5 月",
+          "27",
+          "158"
+        ],
+        [
+          "6 月",
+          "28",
+          "374"
+        ],
+        [
+          "7 月",
+          "28",
+          "402"
+        ],
+        [
+          "8 月",
+          "28",
+          "461"
+        ],
+        [
+          "9 月",
+          "27",
+          "331"
+        ],
+        [
+          "10 月",
+          "26",
+          "116"
+        ],
+        [
+          "11 月",
+          "24",
+          "54"
+        ],
+        [
+          "12 月",
+          "22",
+          "26"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 25,
+        "evidencePages": [
+          25,
+          26
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05011871",
+      "sourcePage": 28,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "a0bb633b175b1722fae28d65204c5027dccad55d32af4969b4c1406f945cf8fa",
+      "nativeTableTextSha256": "6c2b5cf2479d3731e02187ab69442ef2b844590962f3408f50857ab8c1963c39",
+      "placement": "prompt",
+      "rows": [
+        [
+          "月分",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "一",
+          "340.2",
+          "181.6",
+          "26.9",
+          "74.1"
+        ],
+        [
+          "二",
+          "292.0",
+          "122.0",
+          "14.4",
+          "81.8"
+        ],
+        [
+          "三",
+          "290.4",
+          "124.9",
+          "16.1",
+          "40.1"
+        ],
+        [
+          "四",
+          "186.3",
+          "96.5",
+          "73.3",
+          "81.4"
+        ],
+        [
+          "五",
+          "308.7",
+          "234.8",
+          "167.9",
+          "495.0"
+        ],
+        [
+          "六",
+          "247.6",
+          "127.5",
+          "461.1",
+          "377.5"
+        ],
+        [
+          "七",
+          "124.9",
+          "129.6",
+          "341.3",
+          "417.9"
+        ],
+        [
+          "八",
+          "209.0",
+          "219.3",
+          "417.9",
+          "485.1"
+        ],
+        [
+          "九",
+          "366.2",
+          "440.8",
+          "97.2",
+          "274.6"
+        ],
+        [
+          "十",
+          "376.2",
+          "369.1",
+          "44.8",
+          "256.0"
+        ],
+        [
+          "十一",
+          "367.3",
+          "355.1",
+          "14.2",
+          "81.7"
+        ],
+        [
+          "十二",
+          "335.4",
+          "205.2",
+          "11.2",
+          "44.3"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          28,
+          29
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "bdddf49cbeb57f7ca1d0559d94ca5dce265b974767563dab2770ee52efdc3f10": [
+    {
+      "questionNumber": "05011968",
+      "sourcePage": 16,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "4c568503b2f3c822c055d1c716e75a382f333560fd17e9aa5617cf23b29700fb",
+      "nativeTableTextSha256": "34943eb319b9de6df2c2354da66d26a66dd7d65578b950f6cfdf3257d871980b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "甲",
+          "650ｍ",
+          "110ｍ",
+          "50ｍ",
+          "980ｍ"
+        ],
+        [
+          "乙",
+          "490ｍ",
+          "1,050ｍ",
+          "800ｍ",
+          "720ｍ"
+        ],
+        [
+          "丙",
+          "380ｍ",
+          "1,500ｍ",
+          "1,240ｍ",
+          "654ｍ"
+        ],
+        [
+          "丁",
+          "610ｍ",
+          "482ｍ",
+          "1,590ｍ",
+          "440ｍ"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "884036456f313eaff9d6a2d0152d02653220afe07607b5a793a18d9edd8bddf1": [
+    {
+      "questionNumber": "05015472",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "de9c542fe79d89986ee2c215df4c710e7a45024d92627d732f81f7ff758d7dc2",
+      "nativeTableTextSha256": "0c2f32cf33fa4ba1388494401e2a3578c80e75fc7e3dde302a43d1abfa41cb00",
+      "placement": "prompt",
+      "rows": [
+        [
+          "對象",
+          "輸入商品",
+          "輸出商品"
+        ],
+        [
+          "英國",
+          "軍火、布料",
+          "蔗糖、鹿皮"
+        ],
+        [
+          "日本",
+          "軍用物資",
+          "蔗糖、鹿皮"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015474",
+      "sourcePage": 2,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "bd54e72dabff8d794d0a3e258a48e988b90e6feb2a6b58f36c998da280fecb5d",
+      "nativeTableTextSha256": "1d60d25b6121b33112308b71bc0de6cd783fbb3593f0ca6b7649533ee4ad313e",
+      "placement": "prompt",
+      "rows": [
+        [
+          "年代",
+          "重要事蹟"
+        ],
+        [
+          "1602 年",
+          "成立聯合東印度公司"
+        ],
+        [
+          "1622 年",
+          "率領艦隊占領澎湖"
+        ],
+        [
+          "1624 年",
+          "退出澎湖，轉往臺灣發展"
+        ],
+        [
+          "1662 年",
+          "被迫撤離臺灣"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "80d16c35ff2bbca2e50e1a612eb0f1a8341c88b8972a4abbdf11c9ad05862685": [
+    {
+      "questionNumber": "05012018",
+      "sourcePage": 12,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "cd15ce657840e6d7f8444df80b5c9f0f40b996499b3fb6bdc30a83c60f618529",
+      "nativeTableTextSha256": "6ceaaa0c9dccdee69ddba93964a2695fbf3bcd70314b04aaee5fd5e03a95fadc",
+      "placement": "prompt",
+      "rows": [
+        [
+          "河川",
+          "甲",
+          "乙",
+          "丙",
+          "丁"
+        ],
+        [
+          "夏季水深（m）",
+          "14.1",
+          "12.8",
+          "14.2",
+          "8.6"
+        ],
+        [
+          "冬季水深（m）",
+          "9.2",
+          "11.1",
+          "8.7",
+          "3.1"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 12,
+        "evidencePages": [
+          11,
+          12
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012033",
+      "sourcePage": 18,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "11b3218510ce0b9dd4052b43357a0999627b5f13558a892c7cd5cebe91307e99",
+      "nativeTableTextSha256": "dac54506fe1351d009d50b96364824c1ca4833f5ab3eeb7fdb2033a4f2670851",
+      "placement": "prompt",
+      "rows": [
+        [
+          "河川名稱",
+          "長度（公里）"
+        ],
+        [
+          "濁水溪",
+          "186"
+        ],
+        [
+          "高屏溪",
+          "171"
+        ],
+        [
+          "淡水河",
+          "159"
+        ],
+        [
+          "曾文溪",
+          "138"
+        ],
+        [
+          "大甲溪",
+          "124"
+        ],
+        [
+          "大肚溪",
+          "119"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 18,
+        "evidencePages": [
+          17,
+          18
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012036",
+      "sourcePage": 19,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "c4ee8440e145848923dd271814e81609f37f543979ebde524b55a173b9962abb",
+      "nativeTableTextSha256": "bd5a0a08e8799b3b0f0440128657acde4047b76ed0857478ac69f43a8c85fc31",
+      "placement": "prompt",
+      "rows": [
+        [
+          "河川",
+          "特色"
+        ],
+        [
+          "甲",
+          "長度最長的河川"
+        ],
+        [
+          "乙",
+          "流量最穩定的河川"
+        ],
+        [
+          "丙",
+          "流域面積最大的河川"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 19,
+        "evidencePages": [
+          18,
+          19
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012068",
+      "sourcePage": 29,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "9702434a642464d71004372b99959fac8ecea6898574d47aa1cfbe848561bfb9",
+      "nativeTableTextSha256": "4e4cae3b39db80ce3a74db565f7f9db6124f64fda002ef98bd7871a78abf6231",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "(Ａ)",
+          "(Ｂ)",
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "流量最高點",
+          "颱風",
+          "雷陣雨",
+          "颱風",
+          "梅雨"
+        ],
+        [
+          "流量最低點",
+          "背風坡",
+          "氣溫高",
+          "低氣壓籠罩",
+          "滯留鋒面"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 29,
+        "evidencePages": [
+          28,
+          29
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012092",
+      "sourcePage": 38,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "c370b89bdeddd71cfadf8411a1fd982f49bbb7443253db5a118d2bc9c6f8935f",
+      "nativeTableTextSha256": "8d2f0581a909f2ac038d2b5688722347c646b9b72faa86170069f865d9fa8d42",
+      "placement": "prompt",
+      "rows": [
+        [
+          "(Ａ)",
+          "(Ｂ)"
+        ],
+        [
+          "年降水量圖",
+          "衛星雲圖"
+        ],
+        [
+          "(Ｃ)",
+          "(Ｄ)"
+        ],
+        [
+          "月均溫圖",
+          "地面天氣圖"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 38,
+        "evidencePages": [
+          37,
+          38
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012103",
+      "sourcePage": 41,
+      "nativeTableIndex": 8,
+      "nativeTableSha256": "037d3361e329e49a75dc7e169e65ee33e0fa7750ed7e5f0def0b8333d31c1f2d",
+      "nativeTableTextSha256": "9f307cf2505396b45b6b09046629eb22650a3b60ef78f5aee6ffe4d2be83f424",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "島窄山多"
+        ],
+        [
+          "乙",
+          "山脈南北縱貫"
+        ],
+        [
+          "丙",
+          "雨量少，年溫差大"
+        ],
+        [
+          "丁",
+          "夏季暴雨時水量湍急"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 41,
+        "evidencePages": [
+          40,
+          41
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012115",
+      "sourcePage": 45,
+      "nativeTableIndex": 9,
+      "nativeTableSha256": "8194e46f336c7b99911a1678e6fd62d7d397de4c23f917f7286ddafc21c42ae3",
+      "nativeTableTextSha256": "9d2d14c866c70910feb2ecfa37efffe84d90e1f0bbbb00416a09724728db38a0",
+      "placement": "prompt",
+      "rows": [
+        [
+          "年平均雨量",
+          "2,350 mm"
+        ],
+        [
+          "月平均氣溫",
+          "23 ℃"
+        ],
+        [
+          "雨季",
+          "6～10 月"
+        ],
+        [
+          "月平均相對溼度",
+          "80％"
+        ],
+        [
+          "旱季",
+          "11～5 月"
+        ],
+        [
+          "月平均蒸發量",
+          "83 mm"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 45,
+        "evidencePages": [
+          44,
+          45
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012121",
+      "sourcePage": 47,
+      "nativeTableIndex": 10,
+      "nativeTableSha256": "96debc9ffd97d8a478d8884cee8fe505d099b92a382fb50a5d1e72c944067cf1",
+      "nativeTableTextSha256": "6009470b5b2b928e5e5e88fdd7f4a03b94592bd4d636f63e92d03d701c355e95",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "發源地",
+          "主流長度（km）",
+          "流域面積（km2）"
+        ],
+        [
+          "(Ａ)",
+          "南湖大山",
+          "73",
+          "978"
+        ],
+        [
+          "(Ｂ)",
+          "合歡山",
+          "186",
+          "3156"
+        ],
+        [
+          "(Ｃ)",
+          "玉山",
+          "171",
+          "3257"
+        ],
+        [
+          "(Ｄ)",
+          "中央山脈",
+          "57",
+          "1,507"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 47,
+        "evidencePages": [
+          46,
+          47
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012123",
+      "sourcePage": 49,
+      "nativeTableIndex": 11,
+      "nativeTableSha256": "0a23bce6f0939cd2181c925d9cd44fe3e1ae10731d324052db3aa24918c88bf9",
+      "nativeTableTextSha256": "da0bbc6d184e5345f926483eda14f07dd0a001818f416575b7f38e420c67b89b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "河川名稱",
+          "長度（公里）",
+          "流域涵蓋縣市"
+        ],
+        [
+          "甲",
+          "186",
+          "彰化、雲林、南投、嘉義"
+        ],
+        [
+          "乙",
+          "171",
+          "高雄、屏東、嘉義、南投、臺東"
+        ],
+        [
+          "淡水河",
+          "159",
+          "新北、臺北、基隆、桃園、宜蘭、新竹"
+        ],
+        [
+          "曾文溪",
+          "138",
+          "臺南、嘉義、高雄"
+        ],
+        [
+          "大甲溪",
+          "124",
+          "臺中、南投、宜蘭"
+        ],
+        [
+          "烏溪",
+          "119",
+          "臺中、彰化、南投"
+        ],
+        [
+          "秀姑巒溪",
+          "104",
+          "花蓮、臺東"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 49,
+        "evidencePages": [
+          48,
+          49
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "0c692fa7e47d2cd2c55867b6a340828aa62f5615eb32fb2cb2bdf363a88ca57b": [
+    {
+      "questionNumber": "05015481",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "aab618fc2a766e6c155892bcfdd52183b73b37be09104cc6018cc3f4b1cdb4b2",
+      "nativeTableTextSha256": "693243ee88dd6405bd9ed57745ee165dda8c99f2fea620eac5e253144fcb7995",
+      "placement": "prompt",
+      "rows": [
+        [
+          "文教",
+          "拼寫新港文，設立學校，教授基督教教義"
+        ],
+        [
+          "經濟",
+          "收取高額稅金、發展轉口貿易、招募漢人開墾"
+        ],
+        [
+          "政治",
+          "透過部落長老維持秩序"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "a714290ca525cce3b6d84e0e439b1e79ed8dbdf1b227ff622ccf43b880f4639b": [
+    {
+      "questionNumber": "05012190",
+      "sourcePage": 13,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "4f3157aa58a0079a3d8a4444e0abfdf1288bd39d7275ffb106ed69ea6f0203e4",
+      "nativeTableTextSha256": "5f23504561aaa25c51a784d5304d918107015bb6f4b8d3f843014baa4a7a8274",
+      "placement": "prompt",
+      "rows": [
+        [
+          "水庫",
+          "完工時有效容量（萬立方公尺）",
+          "目前有效容量（萬立方公尺）",
+          "容量減少率（％）"
+        ],
+        [
+          "翡翠水庫",
+          "34,409",
+          "33,477",
+          "2.7"
+        ],
+        [
+          "石門水庫",
+          "25,188",
+          "20,876",
+          "17"
+        ],
+        [
+          "德基水庫",
+          "18,300",
+          "15,177",
+          "17"
+        ],
+        [
+          "曾文水庫",
+          "63,120",
+          "47,955",
+          "24"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 13,
+        "evidencePages": [
+          12,
+          13
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012230",
+      "sourcePage": 25,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "c4d667edf334b87733db38db6f71ccaf974f4e5e154d14b09491878e5497bfaa",
+      "nativeTableTextSha256": "14159b9cd6745cd2f762f84f926466fe1f320b3a91cef53fa95a7397bf7e7a15",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "豐水期",
+          "枯水期"
+        ],
+        [
+          "甲",
+          "87％",
+          "13％"
+        ],
+        [
+          "乙",
+          "79％",
+          "21％"
+        ],
+        [
+          "丙",
+          "78％",
+          "22％"
+        ],
+        [
+          "丁",
+          "63％",
+          "37％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 25,
+        "evidencePages": [
+          24,
+          25
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012238",
+      "sourcePage": 28,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "aa10fae799795ee266f9131f877064afa87e4bd5fa561d09e8fc355fede96595",
+      "nativeTableTextSha256": "56b72e3ce04eeae754543b1c7859283de054e1752d1f5a3095d589c6efe49c54",
+      "placement": "prompt",
+      "rows": [
+        [
+          "陸地名稱",
+          "年總逕流量（立方公里）",
+          "平均每人獲得年逕流量（立方公尺／人）",
+          "相當臺灣倍數"
+        ],
+        [
+          "全球",
+          "46,800",
+          "9,360",
+          "2.8"
+        ],
+        [
+          "亞洲",
+          "31,190",
+          "6,465",
+          "1.9"
+        ],
+        [
+          "歐洲",
+          "3,110",
+          "4,850",
+          "1.5"
+        ],
+        [
+          "北美洲",
+          "5,960",
+          "17,844",
+          "5.4"
+        ],
+        [
+          "南美洲",
+          "10,380",
+          "55,213",
+          "16.6"
+        ],
+        [
+          "非洲",
+          "4,225",
+          "12,250",
+          "3.7"
+        ],
+        [
+          "臺灣",
+          "66",
+          "3,330",
+          "1.0"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          27,
+          28
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012239",
+      "sourcePage": 28,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "0cf136141d7b571859c31ff987429206bd5aa38f28aa58fbeb35ca51653121f3",
+      "nativeTableTextSha256": "428db8661f678a21f069f553409b79950ce4a2818a3240e77929ee4c18796a8f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "乙"
+        ],
+        [
+          "丙",
+          "丁"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          28,
+          29
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012248",
+      "sourcePage": 31,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "ebed22b38b3663ee73a976a67c9176d99075db33872494854529b7e0198682c0",
+      "nativeTableTextSha256": "a90c7086d9cfeccb73a0424f04a3e0443b0e6bd1f48db2e187edf12f13eff5f6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "地形坡度（％）",
+          "年降水量（mm）",
+          "降水天數（天）",
+          "人口密集度（人／平方公里）"
+        ],
+        [
+          "(Ａ)",
+          "7",
+          "2,000",
+          "105",
+          "80"
+        ],
+        [
+          "(Ｂ)",
+          "5",
+          "1,800",
+          "210",
+          "60"
+        ],
+        [
+          "(Ｃ)",
+          "9",
+          "2,100",
+          "90",
+          "250"
+        ],
+        [
+          "(Ｄ)",
+          "8",
+          "1,900",
+          "85",
+          "350"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 31,
+        "evidencePages": [
+          30,
+          31
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012251",
+      "sourcePage": 35,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "ba8f25dbc5eb471f5ac22b91c6fb23bb35d393aa0bd2f14c82e713545a3e2e33",
+      "nativeTableTextSha256": "5ea01a0ab8454e478716735e4495636ec01af42f5cf63a27e718932e77eafab3",
+      "placement": "prompt",
+      "rows": [
+        [
+          "水庫",
+          "完工時有效容量（萬立方公尺）",
+          "目前有效容量（萬立方公尺）",
+          "容量減少率（％）"
+        ],
+        [
+          "翡翠水庫",
+          "34,409",
+          "33,477",
+          "2.7"
+        ],
+        [
+          "石門水庫",
+          "25,188",
+          "20,876",
+          "17"
+        ],
+        [
+          "德基水庫",
+          "18,300",
+          "15,177",
+          "7"
+        ],
+        [
+          "曾文水庫",
+          "63,120",
+          "47,955",
+          "24"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 35,
+        "evidencePages": [
+          35,
+          36
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012261",
+      "sourcePage": 43,
+      "nativeTableIndex": 7,
+      "nativeTableSha256": "669fd3724674172ce2cb7d8a6f96d514f2cb0ae6ca9c0fbc47ace513eb38791a",
+      "nativeTableTextSha256": "e23595c24ccf78c5c4a2da7bcc57b276cd5efec68a4beb29be9e452007e9689c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "分區",
+          "水庫",
+          "最近三個月降水量（mm）"
+        ],
+        [
+          "北部",
+          "新山",
+          "1,322"
+        ],
+        [
+          "",
+          "翡翠",
+          "400"
+        ],
+        [
+          "",
+          "石門",
+          "180"
+        ],
+        [
+          "",
+          "寶二",
+          "215"
+        ],
+        [
+          "中部",
+          "永和山",
+          "179"
+        ],
+        [
+          "",
+          "明德",
+          "191"
+        ],
+        [
+          "",
+          "鯉魚潭",
+          "128"
+        ],
+        [
+          "",
+          "德基",
+          "166"
+        ],
+        [
+          "南部",
+          "仁義潭",
+          "30"
+        ],
+        [
+          "",
+          "曾文",
+          "46"
+        ],
+        [
+          "",
+          "南化",
+          "27"
+        ],
+        [
+          "",
+          "牡丹",
+          "63"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 43,
+        "evidencePages": [
+          43,
+          44
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "b81b60753c0d2e1fb09a721ebdba578c71f75a8e70ff34eaa1c77ed6e93138da": [
+    {
+      "questionNumber": "05012381",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "94c0710231c13ca5ad9bbb2af9867017b744a13ad2a38d6933555b439a64eac4",
+      "nativeTableTextSha256": "1cbff77ae7a6d41faeaa4ace87ac362d20bf0dd49d896923b98748c413c20819",
+      "placement": "prompt",
+      "rows": [
+        [
+          "類別",
+          "主要發現內容"
+        ],
+        [
+          "生產技術",
+          "發現大量的煉鐵爐殘骸、鐵渣，以及少量的磨製石標頭"
+        ],
+        [
+          "裝飾工藝",
+          "出土許多精美的玻璃珠、瑪瑙與具有特殊花紋的紅褐陶"
+        ],
+        [
+          "對外貿易",
+          "發現來自境外的中國唐宋銅錢與瓷器碎片"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012400",
+      "sourcePage": 9,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "2ed1e437dc971d4a30b113b21675a3bb74aa9a37d993df243bf5cd5a2f72243b",
+      "nativeTableTextSha256": "4a770979c5ce76841ac7c830523703592a1a23c799c9a654b99b9df3d98ab6a9",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "懂得飼養家畜"
+        ],
+        [
+          "乙",
+          "製作陶器儲存糧食"
+        ],
+        [
+          "丙",
+          "利用鐵刀宰殺家畜"
+        ],
+        [
+          "丁",
+          "已有農業生產活動"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          8,
+          9
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012418",
+      "sourcePage": 15,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "242b1d208f569677c87cbec883c1c2c3989d3c193887c5e9adcec77bd5475c2e",
+      "nativeTableTextSha256": "00eeace5bd021bab150c4cdaddf667d8d17838e4efa48e938b693bdc0d00b7eb",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "距今約五萬至五千年前"
+        ],
+        [
+          "特色",
+          "(１)已知用火燒烤食物(２)利用敲打的方式製作石器(３)以採集、漁獵為主要生活方式"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          14,
+          15
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012419",
+      "sourcePage": 15,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "d4b594ff3644649c8873dbb8d29d9b2877a920cecf4a6411c09a238599840c0a",
+      "nativeTableTextSha256": "951ef6da8fa600f3346aa74fc8f42a37778128cc6052418769c81298f0b9b961",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時期",
+          "年代",
+          "器物的製作",
+          "維生方式"
+        ],
+        [
+          "甲",
+          "距今約五萬至五千年前",
+          "打製的石器",
+          "採集、漁獵"
+        ],
+        [
+          "乙",
+          "距今約七千至二千年前",
+          "磨製石器",
+          "畜牧、農業"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          14,
+          15
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012420",
+      "sourcePage": 16,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "ffabb8a35b7ee58f97a3ef3621d5decd6cecc27366cc887cbdc3286097f1c582",
+      "nativeTableTextSha256": "10d524765812a81f6220883e81ffdd08ccde21da6ba29aa39a6a32242c547b57",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "種植根莖類作物→種植稻米"
+        ],
+        [
+          "乙",
+          "打製石器→磨製石器"
+        ],
+        [
+          "丙",
+          "燒製陶器→冶煉鐵器"
+        ],
+        [
+          "丁",
+          "不知用火→用火煮食"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "090b420599f8da9d9eaf0dd1e92c93e35d59e2872835ba89e88406b5377d12c1": [
+    {
+      "questionNumber": "05012519",
+      "sourcePage": 3,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "368284a38608a59fe917e98e62edca90d9f0308402096fbd122574ef0ea29fed",
+      "nativeTableTextSha256": "6a8243cf1bfa8f4887caad56c6db600834870d7afd01c4611653a7d75c0cc033",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時期",
+          "稱呼"
+        ],
+        [
+          "清帝國時期",
+          "(甲)熟番"
+        ],
+        [
+          "日治時期",
+          "(乙)高砂族"
+        ],
+        [
+          "中華民國時期",
+          "(丙)山地同胞"
+        ],
+        [
+          "現今",
+          "(丁)原住民族"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 3,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "e99126e3b9868623416f06ec282e645b6537af79d1eb0370be378de2837ea869": [
+    {
+      "questionNumber": "05015692",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "386815a653010b81050a42c33b09371e3b6577ab4e1d56603080b38f0c94d0cc",
+      "nativeTableTextSha256": "923881adf050354e821f79371f3a6ea86d66f8dc54177c94051a0150c8961773",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "活動",
+          "科目內容"
+        ],
+        [
+          "06:00～08:00",
+          "學科",
+          "由副校長用原住民語講授基督教答問"
+        ],
+        [
+          "08:00～09:00",
+          "早餐",
+          "用餐前後由學生輪流擔任祈禱"
+        ],
+        [
+          "09:00～10:00",
+          "學科",
+          "講話、習字課"
+        ],
+        [
+          "10:00～11:00",
+          "學科",
+          "由校長用原住民語講授基督教答問"
+        ],
+        [
+          "12:00",
+          "午餐",
+          "飯前飯後祈禱，並閱讀翻譯後的原住民方言「聖經」"
+        ],
+        [
+          "15:00～17:00",
+          "學科",
+          "教授荷蘭語"
+        ],
+        [
+          "18:00",
+          "晚餐",
+          "課程與早餐同"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "6fbfd5e3562b9d0b0480387a8f769bca1a1f57c449a9e5573364097149e81a7b": [
+    {
+      "questionNumber": "05012622",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "69baf262116b9d84c6036a9fe5acf5b383e4775c28645be63f412b3cf00aff9f",
+      "nativeTableTextSha256": "8d3af4f32d1a300b267b09fdfc2f7b6e5b33a10a11969298dd95c34c9ca2b6ae",
+      "placement": "prompt",
+      "rows": [
+        [
+          "代號",
+          "事蹟"
+        ],
+        [
+          "甲",
+          "出兵擊敗西班牙人，取得北臺灣的控制權"
+        ],
+        [
+          "乙",
+          "企圖占領澎湖作為據點，遭明朝將領逼退"
+        ],
+        [
+          "丙",
+          "荷蘭聯合東印度公司（VOC）正式成立"
+        ],
+        [
+          "丁",
+          "轉進臺灣南部，開始修築熱蘭遮城"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012682",
+      "sourcePage": 21,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "94fafc918ba4357e72115aabf1695011bb0ab24461b0764d2cb6ed14f73c3689",
+      "nativeTableTextSha256": "2dace6983d2d914990f2405f437feaef5daad578b6fc3f1b6b2218517945312b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "地點"
+        ],
+        [
+          "第一天",
+          "延平郡王祠"
+        ],
+        [
+          "第二天",
+          "孔廟—全臺首學"
+        ],
+        [
+          "第三天",
+          "左營、新營、林鳳營"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 21,
+        "evidencePages": [
+          20,
+          21
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "91cc95bf4eb99f85bf6bb37fb5936cb4c95de3d7a147f71f23690544cca5abc7": [
+    {
+      "questionNumber": "05012910",
+      "sourcePage": 5,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "dda2f920d8f76b31b177e1a5bf2d49618e2089559fbf75d4dcbf5ea20f9046cb",
+      "nativeTableTextSha256": "4c7014867af42af160bb98ea1a878ba5c01b23bffaa1ce5ab88f8e864f65a5d2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "編號",
+          "新港文",
+          "中文翻譯"
+        ],
+        [
+          "1",
+          "Agoualilif",
+          "鑰匙"
+        ],
+        [
+          "2",
+          "Deus",
+          "上帝"
+        ],
+        [
+          "3",
+          "Kakato",
+          "剪刀"
+        ],
+        [
+          "4",
+          "Lalto",
+          "毛瑟槍"
+        ],
+        [
+          "5",
+          "Sackig",
+          "鐘"
+        ],
+        [
+          "6",
+          "Saga",
+          "腳"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012924",
+      "sourcePage": 9,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "40eff6784975baed1f9dd7113c0ad9a6650f437609ff7605dc6d065db4008ebc",
+      "nativeTableTextSha256": "a83cbd921f03c4629aedc532be803285dceec9ee822ce34cdc90b3acbf368aca",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "荷蘭",
+          "西班牙"
+        ],
+        [
+          "東亞據點",
+          "印尼的巴達維亞",
+          "菲律賓的馬尼拉"
+        ],
+        [
+          "占領地區",
+          "臺灣南部",
+          "臺灣北部"
+        ],
+        [
+          "傳入宗教",
+          "基督教",
+          "天主教"
+        ],
+        [
+          "重要城堡",
+          "熱蘭遮城",
+          "普羅民遮城"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          8,
+          9
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012938",
+      "sourcePage": 14,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "4f80a3e2e8ad07843838006ec86476158848b8a946a672c530687badfa02e0cd",
+      "nativeTableTextSha256": "df2fe178aab10b66067f7943ba27e9f78622587e20caba2a20cafeee7acb12c0",
+      "placement": "prompt",
+      "rows": [
+        [
+          "西拉雅族",
+          "新港社",
+          "目加溜灣社",
+          "麻豆社"
+        ],
+        [
+          "比例",
+          "83％",
+          "76％",
+          "51％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 14,
+        "evidencePages": [
+          13,
+          14
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012939",
+      "sourcePage": 14,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "4c6d1a16cfd437f1bbdb5ee15adea6bc5fdcdac6c8c54ad82c7eb58f020ca6da",
+      "nativeTableTextSha256": "0054c4c040e80b70e6d388e4cb1efc0a33a99dfaa103e086ffd0ecde282dd7f0",
+      "placement": "prompt",
+      "rows": [
+        [
+          "村社",
+          "代表人數",
+          "村社",
+          "代表人數"
+        ],
+        [
+          "新港社",
+          "2 人",
+          "大目連社",
+          "2 人"
+        ],
+        [
+          "大目降社",
+          "3 人",
+          "麻豆社",
+          "5 人"
+        ],
+        [
+          "萬丹社",
+          "1 人",
+          "大武壟社",
+          "4 人"
+        ],
+        [
+          "蕭壟社",
+          "5 人",
+          "放索社",
+          "4 人"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 14,
+        "evidencePages": [
+          13,
+          14
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012947",
+      "sourcePage": 17,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "92fb2782cbca19345d94ddaec445aac4d59fe8dbb5e19b4042a5ae5f409bd3d4",
+      "nativeTableTextSha256": "fc1fe956ad676c61f160c4e25f86611ea34dc50832e3b230b24ee2a342891fab",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "荷蘭",
+          "西班牙"
+        ],
+        [
+          "時間",
+          "1624～1662 年",
+          "1626～1642 年"
+        ],
+        [
+          "領地",
+          "臺灣南部",
+          "臺灣北部"
+        ],
+        [
+          "宗教",
+          "天主教",
+          "基督教"
+        ],
+        [
+          "貿易據點",
+          "巴達維亞",
+          "馬尼拉"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 17,
+        "evidencePages": [
+          16,
+          17
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05012996",
+      "sourcePage": 32,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "b007868fcea5e4c58b6e8a4bc2501ca43943828a56f33b9efc7cfd76efb79b2b",
+      "nativeTableTextSha256": "1ee825567269b447a91bf21c3988c3038df3b098bdfe84c09a287b990436b64a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "活動",
+          "科目"
+        ],
+        [
+          "06：00～08：00",
+          "學科",
+          "由副校長用原住民語言教授耶穌教義問答"
+        ],
+        [
+          "08：00～09：00",
+          "早餐",
+          "飯前飯後由學生輪流擔任祈禱"
+        ],
+        [
+          "09：00～10：00",
+          "學科",
+          "講話、習字課"
+        ],
+        [
+          "10：00～11：00",
+          "學科",
+          "由校長以原住民語言講授教義問答"
+        ],
+        [
+          "12：00",
+          "午餐",
+          "飯前飯後祈禱，並輪讀原住民方言譯聖書一節"
+        ],
+        [
+          "15：00～17：00",
+          "學科",
+          "教授新港文"
+        ],
+        [
+          "18：00",
+          "學科",
+          "課程與早餐同"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 32,
+        "evidencePages": [
+          31,
+          32
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "a98f16470723a96fae700d1843f159e86bf5cc70771b310eaabc456ada6206aa": [
+    {
+      "questionNumber": "05013077",
+      "sourcePage": 10,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "0f89de0cf4a60eab4edb95768552fb0a6fd1eb815e41d071c7012ef4d25ee3ac",
+      "nativeTableTextSha256": "8fcb436e02750f043dd1a16287cb9567bd6f4fe26111ea7ecdf9a66db64651c7",
+      "placement": "prompt",
+      "rows": [
+        [
+          "康熙 23 年",
+          "一府三縣"
+        ],
+        [
+          "雍正 5 年",
+          "一府四縣二廳"
+        ],
+        [
+          "嘉慶 17 年",
+          "一府四縣三廳"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 10,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013216",
+      "sourcePage": 51,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "0f7634f78fd0ebc39bf841943aa2114b107967b55fe0cfe5f69168948abcbb86",
+      "nativeTableTextSha256": "e6e02ee57a6b2e59645c32c225c594dc1b3670061ba55ea4ac5946a6d2c0c749",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時代",
+          "行政區劃"
+        ],
+        [
+          "康熙 23 年",
+          "臺灣府",
+          "一府三縣",
+          "臺灣縣、鳳山縣、諸羅縣"
+        ],
+        [
+          "雍正 5 年",
+          "",
+          "一府四縣二廳",
+          "臺灣縣、鳳山縣、諸羅縣、彰化縣、澎湖廳、淡水廳"
+        ],
+        [
+          "嘉慶 17 年",
+          "",
+          "一府四縣三廳",
+          "臺灣縣、鳳山縣、【 】縣、彰化縣、澎湖廳、淡水廳、【 】廳"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 51,
+        "evidencePages": [
+          50,
+          51
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "b1c8d76a0e277becd711880f72751fcc21db5aa90d833d1b85f519e8a192a668": [
+    {
+      "questionNumber": "05013229",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "d88188f7b2632fe20ce94eeffa1da83b97ea54f0764bf03e21d8af6056805bab",
+      "nativeTableTextSha256": "83ff9e6bcebd87afde5a67d1eaaf7772439338bd0c288b850dc3847462e9cf74",
+      "placement": "prompt",
+      "rows": [
+        [
+          "行政區",
+          "三府、十一縣、三廳、一直隸州"
+        ],
+        [
+          "軍事",
+          "在基隆等地修築西式炮臺"
+        ],
+        [
+          "教育",
+          "設立西學堂、電報學堂等，培養現代化與實務人才"
+        ],
+        [
+          "交通",
+          "修築從基隆到臺北的鐵路、架設電報系統，購置輪船，並設立郵局"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013242",
+      "sourcePage": 7,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "df9f4285c404390b50b366b9b3dd73f04cb35ba855217a105694578eafbf650e",
+      "nativeTableTextSha256": "b2767a3ae112c864df87091e0d26bdaec500ed862e2117ea57ab54d5d55efb79",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "臺灣建省"
+        ],
+        [
+          "乙",
+          "臺灣納入清帝國版圖"
+        ],
+        [
+          "丙",
+          "清法戰爭"
+        ],
+        [
+          "丁",
+          "臺灣開港通商"
+        ],
+        [
+          "戊",
+          "牡丹社事件"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 7,
+        "evidencePages": [
+          6,
+          7
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013266",
+      "sourcePage": 15,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "0fc273a489e7cfd6e10adbbc885f2f6513afcdb5faf280664ac9c19c590e4d63",
+      "nativeTableTextSha256": "0c6b44423820cb13a9f41d168f6bbaf3efb7513b3a0b1037cb30aca6a12eba41",
+      "placement": "prompt",
+      "rows": [
+        [
+          "沈葆楨",
+          "(甲)設立郵政總局"
+        ],
+        [
+          "",
+          "(乙)廢除渡臺禁令"
+        ],
+        [
+          "劉銘傳",
+          "(丙)設立臺東直隸州"
+        ],
+        [
+          "",
+          "(丁)修築基隆到臺北的鐵路"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          14,
+          15
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013267",
+      "sourcePage": 15,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "a2d168b0abc42ceb2a5624dcccad08abcdf2fc97459bed81c143b7353b45d2f2",
+      "nativeTableTextSha256": "6617be88baad8f1ff9c9e13c8034f5645c3bfec30317e12f05b71b35c2eb6b87",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "牡丹社事件"
+        ],
+        [
+          "乙",
+          "開港通商"
+        ],
+        [
+          "丙",
+          "朱一貴事件"
+        ],
+        [
+          "丁",
+          "臺灣建省"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "6c3f892321a81a2e54165e478da3d2317d8c4417e2c23a8a5c6332d89a288e45": [
+    {
+      "questionNumber": "05013418",
+      "sourcePage": 7,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "8d3a5f400153101895efd4da95855b58710acc86cd570f4ba57a80b22eb808ce",
+      "nativeTableTextSha256": "7143854cef4564343b841da8c43f895ca3b067dae38a402f0b14413f553c2317",
+      "placement": "prompt",
+      "rows": [
+        [
+          "水圳",
+          "灌溉地區"
+        ],
+        [
+          "曹公圳",
+          "彰化平原"
+        ],
+        [
+          "瑠公圳",
+          "臺北盆地"
+        ],
+        [
+          "八堡圳",
+          "嘉南平原"
+        ],
+        [
+          "貓霧捒圳",
+          "宜蘭平原"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 7,
+        "evidencePages": [
+          6,
+          7
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013456",
+      "sourcePage": 19,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "2a340c4a62662767945b0d619026d94614106206d1e19dba650ede2ff0f7328e",
+      "nativeTableTextSha256": "2b206f756a663cd30dcb0e761b9a0b284d3a3b300cfab3b57013ebf6d63db600",
+      "placement": "prompt",
+      "rows": [
+        [
+          "地點",
+          "開拓者",
+          "興建水利工程"
+        ],
+        [
+          "臺北盆地",
+          "郭錫瑠",
+          "瑠公圳"
+        ],
+        [
+          "(甲)",
+          "施世榜",
+          "(乙)"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 19,
+        "evidencePages": [
+          18,
+          19
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "bac9e33b8d7bdebc69124e98816e1815773c0f9fe1293bef2d174b35395f8d5e": [
+    {
+      "questionNumber": "05015432",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "d328246a286f660f5b2df31dae866cec340e9c6add3f93a223af5dc42ed4b774",
+      "nativeTableTextSha256": "3c5d9ac17174ede88ca79327722eb1fd218e74fd113c3519dcee8b357786791b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "民國（年）",
+          "總人口（千人）",
+          "人口成長率（‰）",
+          "當年結婚對數（千對）",
+          "總生育率（人）"
+        ],
+        [
+          "80",
+          "20,557",
+          "10.0",
+          "165",
+          "1.7"
+        ],
+        [
+          "85",
+          "21,471",
+          "7.9",
+          "167",
+          "1.8"
+        ],
+        [
+          "90",
+          "22,339",
+          "5.6",
+          "170",
+          "1.4"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "58cd99a10171f01b55e2f44389c9519ca95695df9ac44240dc7afe87b23eee6a": [
+    {
+      "questionNumber": "05013479",
+      "sourcePage": 5,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "41a36c1f1f30425e2abfafd81009bf2d23b53d26e10c776adc21d3d9298d9408",
+      "nativeTableTextSha256": "87a31ae3b6a6c1e0e03eed2936787c006c6898048364efe30ad1ab55a1cd7c01",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時期",
+          "出口物品"
+        ],
+        [
+          "荷蘭在臺期間",
+          "樟腦、稻米、蔗糖"
+        ],
+        [
+          "鄭氏時期",
+          "鹿皮、蔗糖"
+        ],
+        [
+          "清帝國開港通商前",
+          "稻米、蔗糖"
+        ],
+        [
+          "清帝國開港通商後",
+          "茶葉、蔗糖、樟腦"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013492",
+      "sourcePage": 9,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "735060d4a93c40b9463181c366c65623a6e93d1120927fe0c5995badae79b7ac",
+      "nativeTableTextSha256": "ac9b08af4ace58861f8c3319ccad119d9e1b9067d4fbabdb5857af317d843503",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "出口以蔗糖、鹿皮為主；進口以軍火、布料為主。"
+        ],
+        [
+          "乙",
+          "出口稻米、蔗糖、鹿皮，並轉運瓷器、香料、絲織品。"
+        ],
+        [
+          "丙",
+          "出口以稻米、蔗糖為主；進口以藥材、紡織品為主。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013494",
+      "sourcePage": 10,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "94fb03c8c89239a314887bcf6dfcc575f06c0ee387fa3e5ddfac10a130eb5dc3",
+      "nativeTableTextSha256": "105c6b025bbbd5e17bb63cd77aa83c36dd5a194f5eb51f1c4ee9a65f087d5c59",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時期",
+          "內容"
+        ],
+        [
+          "(甲)史前時期",
+          "十三行文化時已有與其他地區貿易往來的遺跡"
+        ],
+        [
+          "(乙)荷治時期",
+          "荷蘭人輸出臺灣的稻米、蔗糖與鹿皮等等物產"
+        ],
+        [
+          "(丙)鄭氏時期",
+          "鄭氏突破清朝海禁封鎖，與中國進行走私貿易"
+        ],
+        [
+          "(丁)清帝國時期",
+          "清帝國統治初期只有開放鹿港一地為唯一合法的港口"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 10,
+        "evidencePages": [
+          10,
+          11
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013497",
+      "sourcePage": 11,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "f4b4f8e81e365711ca989c04da3705ffe883f5b953b7e64d67e2eb641d6d88d9",
+      "nativeTableTextSha256": "9f327cea842b36556f728064a6b9574092ffdb55df1d75ae8b9e47ed7bd57469",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "渡臺禁令的影響"
+        ],
+        [
+          "乙",
+          "軍屯制度的實施"
+        ],
+        [
+          "丙",
+          "劃界封山的目的"
+        ],
+        [
+          "丁",
+          "艋舺興起的背景"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 11,
+        "evidencePages": [
+          11,
+          12
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013603",
+      "sourcePage": 42,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "86ecac884cec5e4d3b49ec5dfe34e43fc14b317aa16b33320ba3792279de6215",
+      "nativeTableTextSha256": "e9c137bfce5da675afe7709f665756d4cb5615b4ee592c0eed7706882b9ae780",
+      "placement": "prompt",
+      "rows": [
+        [
+          "期間",
+          "出口年均值",
+          "進口年均值",
+          "出口值減進口值"
+        ],
+        [
+          "1868～1869",
+          "93.0",
+          "124.5",
+          "－31.5"
+        ],
+        [
+          "1870～1874",
+          "172.0",
+          "174.4",
+          "－2.4"
+        ],
+        [
+          "1875～1879",
+          "282.3",
+          "272.0",
+          "10.3"
+        ],
+        [
+          "1880～1884",
+          "427.3",
+          "318.8",
+          "108.5"
+        ],
+        [
+          "1885～1889",
+          "435.7",
+          "361.8",
+          "73.9"
+        ],
+        [
+          "1890～1894",
+          "570.7",
+          "431.0",
+          "139.7"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 42,
+        "evidencePages": [
+          42,
+          43
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "da7824313b42dc657d1fb792bfb67311ebdd5b7df047261d064f1b8bd7024e49": [
+    {
+      "questionNumber": "05015627",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "e22bf3ad9298c3c7e562641c8e11f0614e08fe8937572e3b5e33953233be1b90",
+      "nativeTableTextSha256": "a95cbd26adf29fab15992f25313d29abab52ef73eef48b71f5dd06225541af88",
+      "placement": "prompt",
+      "rows": [
+        [
+          "姓名",
+          "出生地",
+          "出生時父母的國籍",
+          "現況"
+        ],
+        [
+          "陳俊杰",
+          "倫敦",
+          "英國",
+          "來臺工作多年"
+        ],
+        [
+          "李皓軒",
+          "西雅圖",
+          "美國",
+          "來臺留學中"
+        ],
+        [
+          "陳雨欣",
+          "臺中",
+          "澳大利亞",
+          "申請歸化我國尚未通過"
+        ],
+        [
+          "王詩涵",
+          "東京",
+          "中華民國",
+          "在日本留學"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015630",
+      "sourcePage": 2,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "d92c5d8564132c68cbde367d83ddcd4857b0a627df9c8cfb6c84dc10ac850718",
+      "nativeTableTextSha256": "9ded3af6af17ac712976f09a091466a74bd9c7758113c46d81afd063f2494438",
+      "placement": "prompt",
+      "rows": [
+        [
+          "人物敘述",
+          "浩宇",
+          "芳宜"
+        ],
+        [
+          "(Ａ)",
+          "僅具有美國國民身分",
+          "具有我國公民身分"
+        ],
+        [
+          "(Ｂ)",
+          "具有我國與美國公民身分",
+          "具有我國國民身分"
+        ],
+        [
+          "(Ｃ)",
+          "僅具有我國公民身分",
+          "具有我國國民身分"
+        ],
+        [
+          "(Ｄ)",
+          "具有我國與美國國民身分",
+          "具有我國與美國國民身分"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "b5cedfafc58016b7139499c081ded40ec31741f482fb9e95bd27200bc7ddb403": [
+    {
+      "questionNumber": "05015445",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "b3f8a26a156ac79e04b73e8bfe60b0875b3ba82f52d31f60774210e1e83e3d0c",
+      "nativeTableTextSha256": "f384f8ebf8f6300e09dcfcbfec5e75bde089ed8b59987ecb9d8c709ff518ded9",
+      "placement": "prompt",
+      "rows": [
+        [
+          "工作項目",
+          "實施內容"
+        ],
+        [
+          "海報競賽",
+          "主題：人權保障與人道關懷"
+        ],
+        [
+          "校外參訪",
+          "參觀社區附近的縣議會"
+        ],
+        [
+          "學生自治活動",
+          "1. 制定班級公約2. 舉辦學生代表選舉活動"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "9aed01a19d561c5be86e6cd43304d543e59d0e54c9ec5ad5d9bd00922e2bb548": [
+    {
+      "questionNumber": "05013655",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "5b302ab7d9d1eeb7e432dd7c961361d0c8339b6bb0a3e0207df82ed5b95419fb",
+      "nativeTableTextSha256": "c9613cf98cbf316c89a9ad098a29ee6b5ae0829227b49aa396d1b7bf51a6cc25",
+      "placement": "prompt",
+      "rows": [
+        [
+          "祖籍",
+          "移民人口比例"
+        ],
+        [
+          "泉州府",
+          "45％"
+        ],
+        [
+          "漳州府",
+          "35％"
+        ],
+        [
+          "潮州府",
+          "16％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013657",
+      "sourcePage": 5,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "ef7ed8e5224d3643df431a1213b3e8ea4b88bca916ff5acc7ef821967b89256f",
+      "nativeTableTextSha256": "a08c85b9ccd7ff7a7610d0202fc5bbefa849f0d51b01b1758b512079c1ba88d4",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "臺灣男女比例懸殊"
+        ],
+        [
+          "乙",
+          "單身來臺，異地謀生急需互助，結拜風氣盛行"
+        ],
+        [
+          "丙",
+          "羅漢腳易滋生社會問題"
+        ],
+        [
+          "丁",
+          "漢番通婚，漢人與原住民血統混合"
+        ],
+        [
+          "戊",
+          "禁令實行嚴格，成功抑制漢人來臺"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013671",
+      "sourcePage": 9,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "68f46fdb2c12476fa0e322b520ea1b9b5af3c34773d70f0bdc102eaa1d4020d4",
+      "nativeTableTextSha256": "5aa7e5aa344fa6e9ecdfa746890f4fc93c1983ea7921659991f32a67fc7ca10e",
+      "placement": "prompt",
+      "rows": [
+        [
+          "宗族組織",
+          "唐山祖",
+          "開臺祖"
+        ],
+        [
+          "姓氏",
+          "同姓",
+          "同姓"
+        ],
+        [
+          "血緣",
+          "有血緣關係",
+          "未必有血緣關係"
+        ],
+        [
+          "祭祀對象",
+          "中國原鄉同姓祖先",
+          "來臺第一代祖先"
+        ],
+        [
+          "出現時間",
+          "較早",
+          "較晚"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013681",
+      "sourcePage": 13,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "782b90d8d28d9ad5d28d1fa12f3da1de48d14b1aa26f5b8017dee0f1d7a01fc0",
+      "nativeTableTextSha256": "80331a45dd81d6aa8e55d04f3c36dcfaf6655cefd7a802fe2085ac22a876adc2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "舉人",
+          "進士"
+        ],
+        [
+          "康熙～雍正",
+          "15 人",
+          "0 人"
+        ],
+        [
+          "乾隆",
+          "56 人",
+          "2 人"
+        ],
+        [
+          "嘉慶～道光",
+          "74 人",
+          "6 人"
+        ],
+        [
+          "咸豐～光緒",
+          "106 人",
+          "21 人"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 13,
+        "evidencePages": [
+          12,
+          13
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013743",
+      "sourcePage": 28,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "a6f9fd7d58ee88c369b019ccd8ee496ce80cadccd60b4541581808d86762c38e",
+      "nativeTableTextSha256": "9ab806d8629c5ef40962796980b2d981a2a4f873d6ae16492c813b4b68e79c3b",
+      "placement": "prompt",
+      "rows": [
+        [
+          "年代",
+          "人口總數"
+        ],
+        [
+          "康熙 22 年（1683 年）",
+          "33,640"
+        ],
+        [
+          "乾隆 29 年（1764 年）",
+          "666,210"
+        ],
+        [
+          "乾隆 47 年（1782 年）",
+          "912,920"
+        ],
+        [
+          "嘉慶 16 年（1811 年）",
+          "1,944,737"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          28,
+          29
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "741d42eecd0acd01f01d17c52d5e5f7893696b2e0ac34292dc00190121a1d967": [
+    {
+      "questionNumber": "05015442",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "6865fba9dac4ac652da3eb3074ced2a3cb2bf0a72003aafa1fc59041fb6bc515",
+      "nativeTableTextSha256": "b13675d255484ca9166828ec6574fb1ed333a5ab514d5d5f67100b57dcfb6042",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "違規情形",
+          "適用法律"
+        ],
+        [
+          "甲",
+          "學校棒球社男生可優先加入，女生加入須經過老師體檢。",
+          "《民法》"
+        ],
+        [
+          "乙",
+          "公司因訂單暴增、業務繁忙，要求員工不得申請育嬰假。",
+          "《性別平等工作法》"
+        ],
+        [
+          "丙",
+          "先生要求太太冠夫姓，工作所得的薪水交由婆家管理。",
+          "《家庭暴力防治法》"
+        ],
+        [
+          "丁",
+          "男童遭母親毆打及撞擊腹部受重傷，鄰居發現報警送醫。",
+          "《性別平等教育法》"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015444",
+      "sourcePage": 5,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "d9192c2dd0d926dbd9088c576198a5f315a6cad29d899917904c9c234c760508",
+      "nativeTableTextSha256": "416fe21426da5b4515f36621818cc7efb4dd3d20876fa093e5c61d784d4babdb",
+      "placement": "prompt",
+      "rows": [
+        [
+          "年（西元）",
+          "老年人口比例（％）"
+        ],
+        [
+          "2014",
+          "10"
+        ],
+        [
+          "2020",
+          "14"
+        ],
+        [
+          "2026",
+          "20"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "abf0d9e83cd7a72f248c2667d30746b25111ff89f5ddf7dba8ec9c33525335ab": [
+    {
+      "questionNumber": "05013849",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "e72a5a08761683091d5eb9c848a527d9228303ba3d1a3be3685251288a55d703",
+      "nativeTableTextSha256": "2cc92daac09b5cba247034f80982518f1073764bb729527eef00daea6dfe2928",
+      "placement": "prompt",
+      "rows": [
+        [
+          "起因",
+          "牡丹社事件"
+        ],
+        [
+          "影響",
+          "1. 漢人進入原住民傳統生活領域，引發群起反抗2. 原住民被迫遷移他鄉，傳統文化面臨挑戰"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05013860",
+      "sourcePage": 5,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "c353230e0e30f054085605803b3ea0e89049fbe4facbad1a5c911f3fc016328d",
+      "nativeTableTextSha256": "57148b5ce46aa701f5a9865cc0602d7909bfb801fa29c1234cfc1920c4713aa3",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "發現部落裡的土地逐漸被漢人掌控"
+        ],
+        [
+          "乙",
+          "聽說隔壁部落準備遷徙至其他地區"
+        ],
+        [
+          "丙",
+          "官府對已歸化的平埔族不再欺壓差遣"
+        ],
+        [
+          "丁",
+          "他要開始學習漢人的耕作技術及漢語"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "2a72867b325b0d03e6fa7d2ead763e5fe018db0be13d314d3e7ccbdf3795c9b4": [
+    {
+      "questionNumber": "05013972",
+      "sourcePage": 1,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "1b315877d7ffb869e45b14a4b6722cdf6f6a7e408a1929c0b389fae8a41b6af0",
+      "nativeTableTextSha256": "9eabed6f18cd7ab92ed1ea489cdaa41670197b46ea488f04c58e96b75aa3e047",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "當事人父母為我國國民，但是在外國出生，也可具備該國國籍。"
+        ],
+        [
+          "乙",
+          "當事人是具備特殊功績或高級專業人才的外國人，可不放棄原國籍，便申請取得我國國籍。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 1,
+        "evidencePages": [
+          1
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014015",
+      "sourcePage": 15,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "3357b1ef56be0f81ba4da17caf60c64708c89ede2019393d86aa0979e44a1950",
+      "nativeTableTextSha256": "dafdedcfa3c548b1c4b7f1c71e3626c5a5adf6e8253c952ba12bb1419d612a47",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "血統規則",
+          "出生地規則"
+        ],
+        [
+          "採用國家",
+          "甲",
+          ""
+        ],
+        [
+          "別稱",
+          "",
+          "乙"
+        ],
+        [
+          "國籍取得方式",
+          "",
+          "丙"
+        ],
+        [
+          "國籍認定依據",
+          "丁",
+          ""
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014024",
+      "sourcePage": 19,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "c4af69ad75a738d5edfe9055feb5adfb5d074be2160a524385f38047f7b29572",
+      "nativeTableTextSha256": "e321c23fec0d0970d138ec6f5f3425ef6d792363d283f97153adf0066be0a9ed",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "我的爸爸是臺灣人，媽媽是日本人。"
+        ],
+        [
+          "乙",
+          "我是美國人，與臺灣老公結婚多年。"
+        ],
+        [
+          "丙",
+          "我是在臺灣工作十多年的國際移工。"
+        ],
+        [
+          "丁",
+          "我爸媽是德國人，來臺旅遊生下我。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 19,
+        "evidencePages": [
+          19,
+          20
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014045",
+      "sourcePage": 27,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "4a713faf0009ff3c44dd62663b75d50e7f91658485cf6a3be7d028a8f7108d0e",
+      "nativeTableTextSha256": "dff70645c2970917e041a6461a35a80f9fa0fb5c839a1d7a1561c2a90e844d2a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "血統規則",
+          "出生地規則"
+        ],
+        [
+          "甲",
+          "只要出生於該國的領土內，就獲得該國的國籍",
+          "只要父或母為本國人，就獲得該國的國籍"
+        ],
+        [
+          "乙",
+          "又稱屬地原則",
+          "又稱屬人原則"
+        ],
+        [
+          "丙",
+          "採天生取得途徑",
+          "採歸化取得途徑"
+        ],
+        [
+          "丁",
+          "中華民國適用",
+          "美國適用"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 27,
+        "evidencePages": [
+          26,
+          27
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "0e58554031ba9f9bb7ef9c4e1397b3b0e6368c541fc30ad3f4df0c54ea7d8793": [
+    {
+      "questionNumber": "05014284",
+      "sourcePage": 5,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "9f4ee6452b54988308c43c624d6afe75004212c8f13a2f37bf7bc75b46c0193f",
+      "nativeTableTextSha256": "84c9d7f28a4061023d70813c775526329cd9f1868870faff57dfd03b48eee9f2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "男",
+          "女"
+        ],
+        [
+          "剛強、獨立、勇敢",
+          "柔弱、文靜、溫柔"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014297",
+      "sourcePage": 9,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "90866d6211faf05ef12e95b004056a4fa7c2c5995765a80e3800d72625384794",
+      "nativeTableTextSha256": "b1682583c321ed985fdab7592dd0853835d677e00b07f1017806dc0a397fd446",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "與性別平等有關的規定",
+          "依據的法律"
+        ],
+        [
+          "甲",
+          "雇主不因員工性別而有差別待遇",
+          "《性別平等工作法》"
+        ],
+        [
+          "乙",
+          "學生在校園內受到性騷擾的處理",
+          "《性別平等教育法》"
+        ],
+        [
+          "丙",
+          "未成年子女姓氏由父母共同約定",
+          "《民法》"
+        ],
+        [
+          "丁",
+          "強調男女員工擁有平等的升遷機會",
+          "《性騷擾防治法》"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014333",
+      "sourcePage": 22,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "3b9f986c43ee6616a7fb46d1705a086c977504c7d21504b83a4c351e5879076a",
+      "nativeTableTextSha256": "649665d1f22b9ffd2922453166b82300676042f1f75581f857dd5ce1f00e5b82",
+      "placement": "prompt",
+      "rows": [
+        [
+          "訪問題目",
+          "同意者的比例"
+        ],
+        [
+          "★與女性相比，男性能成為更好的領袖",
+          "69％"
+        ],
+        [
+          "★與女性相比，男性更適合擔任企業主管",
+          "43％"
+        ],
+        [
+          "★女性與男性享有相同權利對民主至關重要",
+          "27％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 22,
+        "evidencePages": [
+          21,
+          22
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014334",
+      "sourcePage": 23,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "edd9454b466f1d3447997f9a7c9a0d0506e63de1cd48e6d1d9de3e97489a6cde",
+      "nativeTableTextSha256": "3f8594c80b9a84d0d55fa1231b4d3e56f342e2e3b8138b2a7a9b9e204fbac2d0",
+      "placement": "prompt",
+      "rows": [
+        [
+          "嘉賓一",
+          "為了維護受害者的權益，政府修訂此項法規，對於申訴流程訂出明確規範，如果不服公司做出的處置，可直接向政府主管機關提出檢舉。"
+        ],
+        [
+          "嘉賓二",
+          "先前有許多被害人被上司騷擾，隱忍不發，工作深受影響，這次修訂的法律對這類情形加重處罰，最高可以關 3 年，罰款 100 萬元。"
+        ],
+        [
+          "嘉賓三",
+          "2023 年 5 月＃MeToo 運動風潮的爆發，促成政府修法，但仍有許多不足之處，在法律無法顧及的地方，我們應該思考如何改變社會風氣，建立性別平權的意識，多方面杜絕性別暴力的發生。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 23,
+        "evidencePages": [
+          22,
+          23
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014348",
+      "sourcePage": 28,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "67550f989e5d9ce49ae8f0918ec7bee7c24c0d0fc8c91828255d5ca4da34d422",
+      "nativeTableTextSha256": "ea09430f6fcb4225928ef9fa3b8256d3aa96b56330915a14fc27d6fab8fba6c9",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "男女在工作職場上以能力論薪酬"
+        ],
+        [
+          "乙",
+          "男性適合當醫生，女性較適合擔任護理師"
+        ],
+        [
+          "丙",
+          "男性也可以有纖細溫柔的特質"
+        ],
+        [
+          "丁",
+          "女軍官勇闖天堂路"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          27,
+          28
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014407",
+      "sourcePage": 48,
+      "nativeTableIndex": 9,
+      "nativeTableSha256": "4c88692a592eb5bbf54d3bead31f55d14ed3fe867519270e2fed7dfaa87c3c56",
+      "nativeTableTextSha256": "baa04a42b1f117e360da93580fd5b8b7f9c420ae01d2d4e7cebfbe266e71e3cb",
+      "placement": "prompt",
+      "rows": [
+        [
+          "公司",
+          "作法"
+        ],
+        [
+          "甲",
+          "公司設置哺乳室，僅限女性使用。"
+        ],
+        [
+          "乙",
+          "應徵送貨員就職前，必須有駕照。"
+        ],
+        [
+          "丙",
+          "寒暑假或停課時，可帶子女上班。"
+        ],
+        [
+          "丁",
+          "女性員工懷孕後，必須自動離職。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 48,
+        "evidencePages": [
+          47,
+          48
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014432",
+      "sourcePage": 59,
+      "nativeTableIndex": 10,
+      "nativeTableSha256": "f2da2b381aea6c9eae44815e5512f5ef475888be7e33395d1f249416aaa37f2b",
+      "nativeTableTextSha256": "645154fdf26af6f3e9123aba831993fd3d3046876d6c505e78e34414633cded5",
+      "placement": "prompt",
+      "rows": [
+        [
+          "檢視項目",
+          "符合規定",
+          "尚待改善"
+        ],
+        [
+          "本公司之招募、甄試、進用是否因性別而有差別待遇。",
+          "",
+          ""
+        ],
+        [
+          "本公司之升遷是否因性別而有差別待遇。",
+          "",
+          ""
+        ],
+        [
+          "本公司之工作規則、勞動契約或團體協約中是否有規定，因結婚、懷孕、分娩或育兒情形時，員工應自行離職或留職停薪或予以解僱。",
+          "",
+          ""
+        ],
+        [
+          "本公司已具備育嬰留職停薪（包括復職）、育兒工時調整、家庭照顧假之規定以及請假處理程序。",
+          "",
+          ""
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 59,
+        "evidencePages": [
+          59,
+          60
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": false,
+        "allTableCharactersPresent": false,
+        "manuallyVerifiedFromWordPdf": true,
+        "verification": "manual-word-pdf-visual"
+      }
+    }
+  ],
+  "5aa14d572b263735ff357cb4013471eaedb5591497c529dbdf5f34516ce5badd": [
+    {
+      "questionNumber": "05015541",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "961a41ddb61f21af08cc0e3fc198bfa80bb03aaac5611670324449fccc410f75",
+      "nativeTableTextSha256": "04479cbc143ca4f92fbe995950c05fcf4d9322f9985b724d7fa3f28cd789978c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "活動企畫"
+        ],
+        [
+          "甲",
+          "好同學路跑盃，提倡全民運動精神"
+        ],
+        [
+          "乙",
+          "網路世界藏危機，了解資訊使用的準則"
+        ],
+        [
+          "丙",
+          "世代間的互動共好，藉由課程與長者互動"
+        ],
+        [
+          "丁",
+          "票選營養午餐委員學生代表，為學生發聲"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "2bdb4ae7df31baf7e75b420065202569b79176e8156b97ff9070ffb01e2dad32": [
+    {
+      "questionNumber": "05014492",
+      "sourcePage": 9,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "5b87fb4fd65da4b3638a77d4deeaa6e27ac426fc2d77da63e217c205c0c1b5b6",
+      "nativeTableTextSha256": "c0ffef5a210307ca27977b368352879da2e30361a78ce0306f9a60d3543651c2",
+      "placement": "prompt",
+      "rows": [
+        [
+          "讀大學的表弟偉漢",
+          "5 樓",
+          ""
+        ],
+        [
+          "",
+          "4 樓",
+          "養子昌旭"
+        ],
+        [
+          "鈺綸",
+          "3 樓",
+          "叔叔的女朋友雪瑛"
+        ],
+        [
+          "",
+          "2 樓",
+          "伯父和伯母"
+        ],
+        [
+          "姊夫的爸爸",
+          "1 樓",
+          ""
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 9,
+        "evidencePages": [
+          9,
+          10
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014532",
+      "sourcePage": 21,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "4049906d3c6eed4cc5da40eb22bbc37ec41686ed0b3b5eddf530bdde41ccef33",
+      "nativeTableTextSha256": "8f3e299ac6b5f96657c556d726cab7357f505abdbc225911f40a754e102bb73a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "親屬稱謂",
+          "親屬關係"
+        ],
+        [
+          "(甲)爸爸的姊姊",
+          "姑姑",
+          "旁系血親"
+        ],
+        [
+          "(乙)叔叔的太太",
+          "嬸嬸",
+          "姻親"
+        ],
+        [
+          "(丙)姑姑的丈夫",
+          "伯父",
+          "旁系血親"
+        ],
+        [
+          "(丁)媽媽的丈夫",
+          "爸爸",
+          "直系血親"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 21,
+        "evidencePages": [
+          21,
+          22
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "0370b3710124ef18fd0fba664177d0e930af9183fdebce813d633de8cd716ec4": [
+    {
+      "questionNumber": "05014599",
+      "sourcePage": 4,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "f69773fa1abed0f2d74ee166f54bdb660e4be02674696a5e3f826849f2430547",
+      "nativeTableTextSha256": "70f8666aeb71745c3849d9c3e1a11e25d715c5b0e6b06b14e7d032116faaa3d7",
+      "placement": "prompt",
+      "rows": [
+        [
+          "家戶型態",
+          "比例"
+        ],
+        [
+          "單身家戶",
+          "9 ％"
+        ],
+        [
+          "核心家戶",
+          "56 ％"
+        ],
+        [
+          "三代家戶",
+          "23 ％"
+        ],
+        [
+          "其他家戶",
+          "12 ％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          3,
+          4
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014600",
+      "sourcePage": 4,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "cbd1906efc2e9993e638020c275977ebfa5f9482bf6e37724a804a00bc613d2f",
+      "nativeTableTextSha256": "4c52bb5f8836d2925d8f41f58589d02c28aca507657d72ae019c126bb1c27134",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "小家庭",
+          "折衷家庭"
+        ],
+        [
+          "組成成員",
+          "由一對夫妻加上未婚子女所組成",
+          "由小家庭成員及直系尊親屬所組成"
+        ],
+        [
+          "性質",
+          "又稱「核心家庭」",
+          "以三代同堂居多"
+        ],
+        [
+          "優點",
+          "家中成員有較多經濟上的支援",
+          "子女及父母可以獲得照料"
+        ],
+        [
+          "缺點",
+          "家中年幼子女可能乏人照料",
+          "家中事務由哪代主導容易產生困擾"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 4,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014601",
+      "sourcePage": 5,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "ac28241364b7e5e8884b4b3055bfce59f6f7c489436138713542fc88d0a11fe5",
+      "nativeTableTextSha256": "423ec92c80b6a283ca14485b7b0a6bbd773af4e91ae4029e7e4e92770235b567",
+      "placement": "prompt",
+      "rows": [
+        [
+          "家庭型態",
+          "90 年",
+          "102 年"
+        ],
+        [
+          "核心家庭（％）",
+          "47.12",
+          "37.91"
+        ],
+        [
+          "折衷家庭（％）",
+          "15.48",
+          "15.24"
+        ],
+        [
+          "單親家庭（％）",
+          "7.73",
+          "9.55"
+        ],
+        [
+          "隔代教養家庭（％）",
+          "1.12",
+          "1.27"
+        ],
+        [
+          "其他家庭（％）",
+          "28.55",
+          "36.03"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          4,
+          5
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014633",
+      "sourcePage": 16,
+      "nativeTableIndex": 6,
+      "nativeTableSha256": "a26a70fa93b6b674915036ff9167827117910e66a7cbafbeafde3c2c27f10937",
+      "nativeTableTextSha256": "7c044e22dd6ac372cc384c26f48fed619403ec9873e54f2f21fefee194400569",
+      "placement": "prompt",
+      "rows": [
+        [
+          "",
+          "成人票",
+          "兒童票"
+        ],
+        [
+          "舅舅家",
+          "舅舅、舅媽",
+          "表姊"
+        ],
+        [
+          "大阿姨家",
+          "阿姨、姨丈",
+          "表哥"
+        ],
+        [
+          "姨婆家",
+          "姨婆、表舅、表舅媽",
+          "表妹"
+        ],
+        [
+          "媛媛家",
+          "外婆、爸爸、媽媽、小阿姨",
+          "我、妹妹、表弟"
+        ],
+        [
+          "共計",
+          "11 人",
+          "6 人"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 16,
+        "evidencePages": [
+          16,
+          17
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014634",
+      "sourcePage": 17,
+      "nativeTableIndex": 7,
+      "nativeTableSha256": "90ec6616b3ac7cf078e925c2afc403f0371447729372e063faf39fc749cc2984",
+      "nativeTableTextSha256": "0a30b9965ee3d77bf634c09431fb3e1850947fd1f0d5864c352b376b73a8d28a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "演員",
+          "角色"
+        ],
+        [
+          "阿妙",
+          "媽媽"
+        ],
+        [
+          "阿德",
+          "爸爸"
+        ],
+        [
+          "阿炫",
+          "兒子"
+        ],
+        [
+          "阿利",
+          "？"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 17,
+        "evidencePages": [
+          16,
+          17
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014656",
+      "sourcePage": 26,
+      "nativeTableIndex": 10,
+      "nativeTableSha256": "9dc0095bc3ce9b20f0619df20d43b15c81a1b76f91982af45a94d02498a25b28",
+      "nativeTableTextSha256": "1738a985fda79390c7c93a6806ab3abe1e474760eaba87a5e396d8aa511f93c1",
+      "placement": "prompt",
+      "rows": [
+        [
+          "姓名",
+          "家庭情況"
+        ],
+        [
+          "小米",
+          "我繼父對我超好，每天都會接送我上下學。"
+        ],
+        [
+          "小澤",
+          "我小時候父母親就離婚了，現在我和我媽媽、弟弟一起住。"
+        ],
+        [
+          "小特",
+          "我爸爸是日本人，所以我是臺日混血兒。"
+        ],
+        [
+          "小隆",
+          "我爸媽在外地工作，平常都是外公外婆照顧我。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 26,
+        "evidencePages": [
+          25,
+          26
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014662",
+      "sourcePage": 28,
+      "nativeTableIndex": 11,
+      "nativeTableSha256": "7018bf4fc3a7c06485fa236c29771e56a8345529c2044b8a569af69ffdf8162f",
+      "nativeTableTextSha256": "5034c1ac52ec648e667e267f74afd2794aa897af900576bbb8b911b7c0e3a569",
+      "placement": "prompt",
+      "rows": [
+        [
+          "家庭成員數",
+          "自己這代",
+          "（外）祖父母輩"
+        ],
+        [
+          "2～4 人",
+          "82％",
+          "4％"
+        ],
+        [
+          "5～8 人",
+          "13％",
+          "25％"
+        ],
+        [
+          "超過 8 人",
+          "5％",
+          "71％"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 28,
+        "evidencePages": [
+          27,
+          28
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "355737566944cdbbf821c1dd6b892bc08d95e1e50316e51bf5cf45dc8c20bba1": [
+    {
+      "questionNumber": "05014696",
+      "sourcePage": 3,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "2378aef31f35a4539d523799061655198d9ed8a8ab673efc65f2f1fadff18eed",
+      "nativeTableTextSha256": "eb0d06cd68fdb90efd673a06f498f14511ef0af2d76982f228c30c69a6380f68",
+      "placement": "prompt",
+      "rows": [
+        [
+          "項目",
+          "修正內容"
+        ],
+        [
+          "(甲)夫妻住所",
+          "由夫妻共同約定。"
+        ],
+        [
+          "(乙)夫妻財產",
+          "夫妻可選擇採用何種夫妻財產制。"
+        ],
+        [
+          "(丙)親子扶養",
+          "子女若有被父母家暴、遺棄等情況，可請求法院免除或減輕扶養義務。"
+        ],
+        [
+          "(丁)父母行使未成年子女親權",
+          "意見不一致時，交由子女的第二順位監護人決定。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 3,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014738",
+      "sourcePage": 19,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "864483fd24e2fb335dbe3b84e25c23ec5dda6df75ce39abf45ba21aae1e7edcf",
+      "nativeTableTextSha256": "bec99c16a2d7dc0766d1c229e2ae8019ab2039e8af08f7e582df82f4937bdbcf",
+      "placement": "prompt",
+      "rows": [
+        [
+          "緯哲",
+          "我爸爸早年都跟外遇對象生活，不管我們這些小孩，現在他老了，依法我們這些子女還是不能減輕扶養義務。"
+        ],
+        [
+          "芸潔",
+          "當爸媽用球棒打我，全身傷痕累累時，若鄰居出來規勸，爸媽都會說：「這是我們的管教權。」鄰居也只好默默離開。"
+        ],
+        [
+          "尚仁",
+          "爸爸說我的親權在他手中，媽媽一點權力也沒有。"
+        ],
+        [
+          "庚興",
+          "我從小被爸爸家暴，即使他現在孤苦無依，我也可以請求法院免除或減輕扶養義務。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 19,
+        "evidencePages": [
+          18,
+          19
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "7afb6c58d251a0181042bbeee7a935058eb70eb12a18085ccac6afbb7bc781fa": [
+    {
+      "questionNumber": "05014886",
+      "sourcePage": 2,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "6a3247fba68d54369d4157487f29d0be36d44e0cabd03d239444947900910c6c",
+      "nativeTableTextSha256": "c342299750dd8201e7bfeb1084d6bd93decc4b34d2b2d7ee6f342bdd66905e6c",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "現代家庭面臨的問題",
+          "問題發生的原因"
+        ],
+        [
+          "甲",
+          "家庭照顧問題",
+          "家庭結構變遷及人口高齡化現象"
+        ],
+        [
+          "乙",
+          "少子化問題",
+          "現代人不婚、晚婚、不生或考量經濟因素"
+        ],
+        [
+          "丙",
+          "外籍配偶生活適應問題",
+          "語言、生活習慣及文化有所差異"
+        ],
+        [
+          "丁",
+          "離婚問題",
+          "社會中以小家庭型態居多，人力缺乏，照料困難"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 2,
+        "evidencePages": [
+          1,
+          2
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014985",
+      "sourcePage": 36,
+      "nativeTableIndex": 10,
+      "nativeTableSha256": "6c9d2270351266dccdf5aa257493378ec9fd2224cb433ba1e10af3525d07a771",
+      "nativeTableTextSha256": "e3c2bde6f01bf899a2b4e253785903cd0104a48996dd7666c317cc6b268151ef",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "現代家庭型態以核心家庭為主"
+        ],
+        [
+          "乙",
+          "老人的安養、幼兒的照顧是許多現代家庭的難題"
+        ],
+        [
+          "丙",
+          "家庭暴力的防治仍舊無法可管"
+        ],
+        [
+          "丁",
+          "生育率降低，少子化現象嚴重"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 36,
+        "evidencePages": [
+          35,
+          36
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05014988",
+      "sourcePage": 37,
+      "nativeTableIndex": 11,
+      "nativeTableSha256": "b6de3b19da4d36545a9e099738eb79102b8dddc0672d7fc86cb943b687e14aa9",
+      "nativeTableTextSha256": "0db654e7e34f74f928a56de3bd680ab2dd0370d0f54239a9acc62911476bda77",
+      "placement": "prompt",
+      "rows": [
+        [
+          "期間（年）",
+          "生育率（人）"
+        ],
+        [
+          "1970～1979",
+          "3.6"
+        ],
+        [
+          "1980～1989",
+          "2.3"
+        ],
+        [
+          "1990～1999",
+          "1.6"
+        ],
+        [
+          "2000～2010",
+          "1.4"
+        ],
+        [
+          "2010～至今",
+          "1.2"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 37,
+        "evidencePages": [
+          36,
+          37
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015002",
+      "sourcePage": 45,
+      "nativeTableIndex": 12,
+      "nativeTableSha256": "34cd10858c08af94d3c6a1ffe566111630f4da9056ef1cf897b73b21d8bc70e1",
+      "nativeTableTextSha256": "d909b8c00484271e7894ad2c068fabea22796198bb57fbd9fc210eedf1a3b450",
+      "placement": "prompt",
+      "rows": [
+        [
+          "時間",
+          "出生率（‰）"
+        ],
+        [
+          "民國 70 年",
+          "22.97"
+        ],
+        [
+          "民國 75 年",
+          "15.93"
+        ],
+        [
+          "民國 80 年",
+          "15.70"
+        ],
+        [
+          "民國 85 年",
+          "15.18"
+        ],
+        [
+          "民國 90 年",
+          "11.65"
+        ],
+        [
+          "民國 95 年",
+          "8.96"
+        ],
+        [
+          "民國 100 年",
+          "8.48"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 45,
+        "evidencePages": [
+          44,
+          45
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "f261bc0c298b1222a6475b31a45d764ba3d599a178c793fca4a05ff1c578b305": [
+    {
+      "questionNumber": "05015096",
+      "sourcePage": 26,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "d1083dd0a336c93a226385d4af47170c290aa356252cd33418258495ff19b6f3",
+      "nativeTableTextSha256": "b5efd8950d76d04fd81e3e4482a2c6106776974187ddaf99fd9e60be3c35a00a",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "欣賞對方的優點"
+        ],
+        [
+          "乙",
+          "尊重對方的想法"
+        ],
+        [
+          "丙",
+          "不堅持己見，與人理性溝通"
+        ],
+        [
+          "丁",
+          "關懷彼此的情緒"
+        ],
+        [
+          "戊",
+          "誰成績好就以他的意見為主"
+        ],
+        [
+          "己",
+          "為避免衝突，完全附和他人"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 26,
+        "evidencePages": [
+          25,
+          26
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015106",
+      "sourcePage": 31,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "673eead146a5b97a46b4cf38f682edeb8d9a3c274d059962e7728fc81697a1d4",
+      "nativeTableTextSha256": "85e3fbbf4c1a39910a16744e09b7dc62caffb1c280409b0abc5202d867b5dfeb",
+      "placement": "prompt",
+      "rows": [
+        [
+          "校園霸凌的類型",
+          "說明",
+          "2020 年霸凌通報件數"
+        ],
+        [
+          "肢體霸凌",
+          "對他人身體為打、推、踢、狀、掐等行為、搶奪財物等",
+          "385"
+        ],
+        [
+          "言語霸凌",
+          "出言恐嚇、嘲笑汙辱、取綽號等",
+          "361"
+        ],
+        [
+          "關係霸凌",
+          "排擠孤立、聯合他人來對付某人等",
+          "154"
+        ],
+        [
+          "網路霸凌",
+          "散播謠言、網路跟蹤、留言攻擊、假冒他人網路身分、發布攻擊或詆毀的圖片影片、散布他人個資等",
+          "121"
+        ],
+        [
+          "反擊霸凌",
+          "受凌者不堪霸凌者的霸凌，而選擇反擊或去欺負比自己弱小的人，成為霸凌者",
+          "1"
+        ],
+        [
+          "合計",
+          "",
+          "1,022"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 31,
+        "evidencePages": [
+          31,
+          32
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": false,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "page-character-multiset"
+      }
+    },
+    {
+      "questionNumber": "05015109",
+      "sourcePage": 33,
+      "nativeTableIndex": 5,
+      "nativeTableSha256": "a63f1e12f74d605bcd66829ee1cd7f7bf53184866b9849240b0af3994a741e3c",
+      "nativeTableTextSha256": "b95788dcff296b67ab796cff2fc4b4cedda1f5a5d9162d2b91612f819d1c76fc",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "行為"
+        ],
+        [
+          "甲",
+          "網路上誹謗同學"
+        ],
+        [
+          "乙",
+          "言語辱罵"
+        ],
+        [
+          "丙",
+          "暴力攻擊"
+        ],
+        [
+          "丁",
+          "制止不友善的動作"
+        ],
+        [
+          "戊",
+          "教導同學功課"
+        ],
+        [
+          "己",
+          "協助行動不便同學上廁所"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 33,
+        "evidencePages": [
+          33,
+          34
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "ddd19a5eddcd08e2289b98c06400d2321648d628acfe9eb74b028ecd225fb89b": [
+    {
+      "questionNumber": "05015126",
+      "sourcePage": 3,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "cf4d3b11402a765a116ca9d3dad67f03db09fd0a84c6462fd312006969d44181",
+      "nativeTableTextSha256": "1f0bb55ddf0129f92d20855118113d5e173116937b2ae5a8d608fe8dae3c8e31",
+      "placement": "prompt",
+      "rows": [
+        [
+          "選項",
+          "影響班會進行的狀況",
+          "適用程序"
+        ],
+        [
+          "甲",
+          "有動物闖進會場造成混亂",
+          "權宜問題"
+        ],
+        [
+          "乙",
+          "有人發言超出議題範圍",
+          "秩序問題"
+        ],
+        [
+          "丙",
+          "場外有人喧鬧，影響出席人的聆聽",
+          "權宜問題"
+        ],
+        [
+          "丁",
+          "會場突然停電，造成出席者秩序大亂",
+          "秩序問題"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 3,
+        "evidencePages": [
+          2,
+          3
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015134",
+      "sourcePage": 5,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "8ead30b278928d6e1a993ae29d561534b149fd3ffe0814d02e82072a16180fd0",
+      "nativeTableTextSha256": "28a8a2d2fcdb34ab1574c2732dc4502bbb69424947dcb0d552dd9782585107f9",
+      "placement": "prompt",
+      "rows": [
+        [
+          "說明",
+          "內容"
+        ],
+        [
+          "甲",
+          "當議題進行中發生程序的錯誤。"
+        ],
+        [
+          "乙",
+          "針對議場偶發的緊急事件，足以影響出席人員。"
+        ],
+        [
+          "丙",
+          "目的在排除阻礙會議進行的事故。"
+        ],
+        [
+          "丁",
+          "目的在改正會議本身進行中的錯誤。"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 5,
+        "evidencePages": [
+          5,
+          6
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015165",
+      "sourcePage": 17,
+      "nativeTableIndex": 3,
+      "nativeTableSha256": "6050bebf55d0202f0351f0cfbb3a5bbd18977f60c0f961703f3612c5f9205be6",
+      "nativeTableTextSha256": "d665df340a3175145313d8093df44f29f916635fa82db5bd4ee96e05b5a7109f",
+      "placement": "prompt",
+      "rows": [
+        [
+          "頁面",
+          "劇情說明"
+        ],
+        [
+          "甲",
+          "……阿振與同學們穿著所有同學一起表決選出的 T 恤，覺得非常滿意"
+        ],
+        [
+          "乙",
+          "……阿振希望自己的班上能製作班服，但擔心這是否能由學生決定"
+        ],
+        [
+          "丙",
+          "……班上同學提案設計動漫圖片的 T 恤，並獲得最高票"
+        ],
+        [
+          "丁",
+          "……阿振請教了導師的意見，導師建議他可以在班會時提案，再由同學投票表決"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 17,
+        "evidencePages": [
+          16,
+          17
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015176",
+      "sourcePage": 22,
+      "nativeTableIndex": 4,
+      "nativeTableSha256": "c3d616092c4b640d8f060797fe04867e0d7c65294a1ca6f091c2342e4ed25b5c",
+      "nativeTableTextSha256": "01043530158595623401959a8af518735183695be6cde18ec671f97c553be631",
+      "placement": "prompt",
+      "rows": [
+        [
+          "工作項目",
+          "實施內容"
+        ],
+        [
+          "海報競賽",
+          "主題：維護公共環境"
+        ],
+        [
+          "學生活動",
+          "1. 制定班級公約2. 制定社團組織章程"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 22,
+        "evidencePages": [
+          21,
+          22
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015220",
+      "sourcePage": 36,
+      "nativeTableIndex": 7,
+      "nativeTableSha256": "221b5f7beda8a3e229c3e7ce0e996dd7fad1277bb7b66952a7f6feba720274fe",
+      "nativeTableTextSha256": "0c2018097840627d312ef197a45f7f6895adee274dd1cc3bb97ee6a02fdf0c63",
+      "placement": "prompt",
+      "rows": [
+        [
+          "發言者",
+          "任務分工"
+        ],
+        [
+          "丁丁",
+          "老師主持表決"
+        ],
+        [
+          "拉拉",
+          "紀錄詳實記下開會內容"
+        ],
+        [
+          "卡波",
+          "司儀維持會場秩序"
+        ],
+        [
+          "迪西",
+          "主席宣讀會議程序"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 36,
+        "evidencePages": [
+          35,
+          36
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015221",
+      "sourcePage": 37,
+      "nativeTableIndex": 8,
+      "nativeTableSha256": "e20e90875be743fe1fa8f7f4afea58b5d8d0c3ecceddf8117bfe65648445372f",
+      "nativeTableTextSha256": "6fb04f96b4afd686561dad7960bfb8f0dbb7a0b6c9283354621249cc892d75f6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "姓名",
+          "地點",
+          "提議先後順序"
+        ],
+        [
+          "花道",
+          "六福村",
+          "2"
+        ],
+        [
+          "川楓",
+          "劍湖山",
+          "3"
+        ],
+        [
+          "岡憲",
+          "九族文化村",
+          "1"
+        ],
+        [
+          "良田",
+          "義大世界",
+          "4"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 37,
+        "evidencePages": [
+          36,
+          37
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ],
+  "7cc591e591dc9982655fe83cace3954b41f171a663f337977cd2e858ef422a8d": [
+    {
+      "questionNumber": "05015280",
+      "sourcePage": 8,
+      "nativeTableIndex": 1,
+      "nativeTableSha256": "076e6379c0e08c70d22b071ea82ab3fb819b46fdf537cb713ad8cc9c68afe833",
+      "nativeTableTextSha256": "9e74fa17469d173bdb0f22fa8245d8ec6e9bcf58b8fb1d18dffc25541e9fc1c6",
+      "placement": "prompt",
+      "rows": [
+        [
+          "甲",
+          "居住區域",
+          "原住民於原住民族地區一定區域內，依其傳統規範、共同生活"
+        ],
+        [
+          "乙",
+          "組成成員",
+          "來自同一祖先、血緣相近的原住民"
+        ],
+        [
+          "丙",
+          "核定單位",
+          "由該部落成員自行召開會議全員通過，即可成為部落"
+        ],
+        [
+          "丁",
+          "依據法律",
+          "《原住民族基本法》"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 8,
+        "evidencePages": [
+          7,
+          8
+        ],
+        "matchedAllNonemptyCells": true,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    },
+    {
+      "questionNumber": "05015303",
+      "sourcePage": 15,
+      "nativeTableIndex": 2,
+      "nativeTableSha256": "4df5c0096c46fbe3939788e9b068e2f5a2d74185f422013f739145d7ca35fb23",
+      "nativeTableTextSha256": "02686b7eaba4a9ab13cfce96d481638420ca0ff2ef66b1981ad863c441969d51",
+      "placement": "prompt",
+      "rows": [
+        [
+          "同學",
+          "舉例"
+        ],
+        [
+          "艾美",
+          "由長老推選領袖，管理部落共同事務"
+        ],
+        [
+          "又廷",
+          "定期舉辦歲時祭儀，感謝神靈的恩惠"
+        ],
+        [
+          "芳毓",
+          "將捕獲的獵物與族人同享，平均分配"
+        ],
+        [
+          "至明",
+          "農業採取輪流休耕，讓土地休養生息"
+        ]
+      ],
+      "evidence": {
+        "kind": "microsoft-word-pdf",
+        "pdfPage": 15,
+        "evidencePages": [
+          15,
+          16
+        ],
+        "matchedAllNonemptyCells": false,
+        "matchedAllCellsAcrossEvidencePages": true,
+        "allTableCharactersPresent": true,
+        "manuallyVerifiedFromWordPdf": false,
+        "verification": "cell-order"
+      }
+    }
+  ]
+}

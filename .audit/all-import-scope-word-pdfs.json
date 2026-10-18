@@ -1,0 +1,2441 @@
+{
+  "dryRun": false,
+  "totals": {
+    "國文": 20,
+    "數學": 11,
+    "自然": 40,
+    "社會": 199
+  },
+  "results": [
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-1　食物中的養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-1　食物中的養分.pdf",
+      "action": "verified-existing",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 661737
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-2　酵素.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-2　酵素.pdf",
+      "action": "verified-existing",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1302856
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-3　植物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-3　植物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 11,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 615527
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-4　動物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/2-4　動物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 586633
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-1　植物的運輸構造.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-1　植物的運輸構造.pdf",
+      "action": "verified-existing",
+      "pages": 11,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 616575
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-2　植物體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-2　植物體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 13,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 883523
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-3　人體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-3　人體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 17,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1142420
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-4　人體的防禦作用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/01_題庫題目/第一冊/3-4　人體的防禦作用.pdf",
+      "action": "verified-existing",
+      "pages": 6,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 458081
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-1　食物中的養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-1　食物中的養分.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 252069
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-2　酵素.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-2　酵素.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 721238
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-3　植物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-3　植物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 81990
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-4　動物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/2-4　動物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 88867
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-1　植物的運輸構造.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-1　植物的運輸構造.pdf",
+      "action": "verified-existing",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 151657
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-2　植物體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-2　植物體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 436227
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-3　人體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-3　人體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 119473
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-4　人體的防禦作用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/03_素養題/第一冊/3-4　人體的防禦作用.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 212109
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-1　食物中的養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-1　食物中的養分.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 507840
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-2　酵素.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-2　酵素.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 281713
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-3　植物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-3　植物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 364759
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-4　動物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/2-4　動物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 211937
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-1　植物的運輸構造.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-1　植物的運輸構造.pdf",
+      "action": "verified-existing",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 433688
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-2　植物體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-2　植物體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 322075
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-3　人體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-3　人體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 451253
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-4　人體的防禦作用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/04_隨課練/第一冊/3-4　人體的防禦作用.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 210206
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-1　食物中的養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-1　食物中的養分.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 173139
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-2　酵素.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-2　酵素.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 285262
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-3　植物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-3　植物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 169951
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-4　動物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/2-4　動物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 225952
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-1　植物的運輸構造.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-1　植物的運輸構造.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 265281
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-2　植物體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-2　植物體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 247083
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-3　人體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-3　人體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 226114
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-4　人體的防禦作用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/06_KBOOK/第一冊/3-4　人體的防禦作用.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 125630
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-1　食物中的養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-1　食物中的養分.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 251157
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-2　酵素.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-2　酵素.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 303605
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-3　植物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-3　植物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 246191
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-4　動物如何獲得養分.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/2-4　動物如何獲得養分.pdf",
+      "action": "verified-existing",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 174477
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-1　植物的運輸構造.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-1　植物的運輸構造.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 172447
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-2　植物體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-2　植物體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 280356
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-3　人體內物質的運輸.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-3　人體內物質的運輸.pdf",
+      "action": "verified-existing",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 313895
+    },
+    {
+      "subject": "自然",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-4　人體的防禦作用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中自然/07_同步練習卷/第一冊/3-4　人體的防禦作用.pdf",
+      "action": "verified-existing",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 132452
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/01_01_1-1_1-1_如何表示位置.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/01_01_1-1_1-1_如何表示位置.pdf",
+      "action": "verified-existing",
+      "pages": 18,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1078920
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/02_01_1-1_1-2_經緯線網格.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/02_01_1-1_1-2_經緯線網格.pdf",
+      "action": "verified-existing",
+      "pages": 27,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1055905
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/03_01_1-1_1-3_位置與生活的關聯.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "action": "verified-existing",
+      "pages": 49,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2615310
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "action": "verified-existing",
+      "pages": 36,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1998539
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/05_01_1-2_2-1_全球海陸分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/05_01_1-2_2-1_全球海陸分布.pdf",
+      "action": "verified-existing",
+      "pages": 28,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1897948
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/06_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/06_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "action": "verified-existing",
+      "pages": 35,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1629008
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/07_01_1-2_2-3_臺灣地區的範圍.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/07_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "action": "verified-existing",
+      "pages": 23,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1225865
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/08_01_1-3_3-1_地形如何被形塑.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/08_01_1-3_3-1_地形如何被形塑.pdf",
+      "action": "verified-existing",
+      "pages": 23,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1200359
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.pdf",
+      "action": "verified-existing",
+      "pages": 48,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2824251
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "action": "verified-existing",
+      "pages": 75,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 3628532
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/11_01_1-4_4-1_海岸的類型與特色.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/11_01_1-4_4-1_海岸的類型與特色.pdf",
+      "action": "verified-existing",
+      "pages": 32,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2695885
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/12_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/12_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "action": "exported",
+      "pages": 70,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 5927453
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/13_01_1-4_4-3_臺灣離島的成因.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/13_01_1-4_4-3_臺灣離島的成因.pdf",
+      "action": "exported",
+      "pages": 44,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2016478
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/14_01_1-5_5-1_天氣.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/14_01_1-5_5-1_天氣.pdf",
+      "action": "exported",
+      "pages": 48,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 3872879
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/15_01_1-5_5-2_氣候.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/15_01_1-5_5-2_氣候.pdf",
+      "action": "exported",
+      "pages": 15,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 706802
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/16_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/16_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "action": "exported",
+      "pages": 66,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2891963
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/17_01_1-5_5-4_臺灣的氣象災害.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/17_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "action": "exported",
+      "pages": 32,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1701493
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/18_01_1-6_6-1_水循環.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/18_01_1-6_6-1_水循環.pdf",
+      "action": "exported",
+      "pages": 15,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 581900
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/19_01_1-6_6-2_水系與流域.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/19_01_1-6_6-2_水系與流域.pdf",
+      "action": "exported",
+      "pages": 22,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1325958
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.pdf",
+      "action": "exported",
+      "pages": 61,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2083648
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "action": "exported",
+      "pages": 48,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2078120
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/22_02_2-0_導言_歷史的基礎觀念.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/22_02_2-0_導言_歷史的基礎觀念.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 130225
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/23_02_2-1_1-1_考古發掘與史前文化.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/23_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "action": "exported",
+      "pages": 43,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1837593
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/24_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/24_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "action": "exported",
+      "pages": 20,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 721631
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/25_02_2-2_2-1_大航海時代的到來.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/25_02_2-2_2-1_大航海時代的到來.pdf",
+      "action": "exported",
+      "pages": 15,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 349032
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/26_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/26_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "action": "exported",
+      "pages": 73,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2419453
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/27_02_2-3_3-1_歐洲人與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/27_02_2-3_3-1_歐洲人與原住民.pdf",
+      "action": "exported",
+      "pages": 39,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1080626
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/28_02_2-3_3-2_鄭氏政權與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/28_02_2-3_3-2_鄭氏政權與原住民.pdf",
+      "action": "exported",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 328410
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/29_02_2-4_4-1_清初治臺政策與措施.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/29_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "action": "exported",
+      "pages": 54,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2018332
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/30_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/30_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "action": "exported",
+      "pages": 58,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2151266
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/31_02_2-5_5-1_農業發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/31_02_2-5_5-1_農業發展.pdf",
+      "action": "exported",
+      "pages": 23,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 572097
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/32_02_2-5_5-2_商業活動.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/32_02_2-5_5-2_商業活動.pdf",
+      "action": "exported",
+      "pages": 58,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1445877
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/33_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/33_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "action": "exported",
+      "pages": 61,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 3410738
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/34_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/34_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "action": "exported",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 477794
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/35_03_3-1_1-1_什麼是公民？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/35_03_3-1_1-1_什麼是公民？.pdf",
+      "action": "exported",
+      "pages": 33,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 824085
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/36_03_3-1_1-2_現代公民應具備的基本德性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/36_03_3-1_1-2_現代公民應具備的基本德性.pdf",
+      "action": "exported",
+      "pages": 36,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 890134
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/37_03_3-2_2-1_人性尊嚴與人權.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/37_03_3-2_2-1_人性尊嚴與人權.pdf",
+      "action": "exported",
+      "pages": 34,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1093413
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/38_03_3-2_2-2_ 人權保障的落實.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/38_03_3-2_2-2_ 人權保障的落實.pdf",
+      "action": "exported",
+      "pages": 65,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2201851
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/39_03_3-3_3-1_家庭中的親屬關係.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/39_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "action": "exported",
+      "pages": 40,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1235796
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/40_03_3-3_3-2_家庭型態與生活模式.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/40_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "action": "exported",
+      "pages": 37,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1153060
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/41_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/41_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "action": "exported",
+      "pages": 29,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 953776
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/42_03_3-4_4-1_家庭的功能與轉變.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/42_03_3-4_4-1_家庭的功能與轉變.pdf",
+      "action": "exported",
+      "pages": 38,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1482954
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/43_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/43_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "action": "exported",
+      "pages": 50,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1647176
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/44_03_3-5_5-1_校園中的權利與維護.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/44_03_3-5_5-1_校園中的權利與維護.pdf",
+      "action": "exported",
+      "pages": 36,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1037841
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/45_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/45_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "action": "exported",
+      "pages": 51,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1616819
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/46_03_3-6_6-1_部落的意義與重要性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/46_03_3-6_6-1_部落的意義與重要性.pdf",
+      "action": "exported",
+      "pages": 32,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1073292
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/47_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/47_03_3-6_6-2_部落的挑戰與公民參與.pdf",
+      "action": "exported",
+      "pages": 25,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 933904
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/01_01_1-1_1-1_如何表示位置.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/01_01_1-1_1-1_如何表示位置.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 77116
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/02_01_1-1_1-2_經緯線網格.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/02_01_1-1_1-2_經緯線網格.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 53274
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/03_01_1-1_1-3_位置與生活的關聯.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 192483
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 228457
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/05_01_1-2_2-1_全球海陸分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/05_01_1-2_2-1_全球海陸分布.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 301233
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/06_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/06_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 85075
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/07_01_1-2_2-3_臺灣地區的範圍.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/07_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 207587
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/08_01_1-3_3-2_常見的地形表示方法.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/08_01_1-3_3-2_常見的地形表示方法.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 221911
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/09_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/09_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 911917
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/10_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/10_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1026934
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/11_01_1-4_4-3_臺灣離島的成因.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/11_01_1-4_4-3_臺灣離島的成因.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 207006
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/12_01_1-5_5-1_天氣.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/12_01_1-5_5-1_天氣.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 60369
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/13_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/13_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 98534
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/14_01_1-5_5-4_臺灣的氣象災害.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/14_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 207137
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/15_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/15_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 183837
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/16_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 132374
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/17_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/17_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 101505
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/18_02_2-2_2-1_大航海時代的到來.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/18_02_2-2_2-1_大航海時代的到來.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 99628
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/19_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/19_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 170596
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/20_02_2-3_3-1_歐洲人與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/20_02_2-3_3-1_歐洲人與原住民.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 127734
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/21_02_2-3_3-2_鄭氏政權與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/21_02_2-3_3-2_鄭氏政權與原住民.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 71950
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/22_02_2-4_4-1_清初治臺政策與措施.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/22_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 124986
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/23_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/23_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 175160
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/24_02_2-5_5-1_農業發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/24_02_2-5_5-1_農業發展.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 91192
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/25_02_2-5_5-2_商業活動.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/25_02_2-5_5-2_商業活動.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 54938
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/26_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/26_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 98415
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/27_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/27_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 53751
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/28_03_3-1_1-1_什麼是公民？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/28_03_3-1_1-1_什麼是公民？.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 232628
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/29_03_3-1_1-2_現代公民應具備的基本德性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/29_03_3-1_1-2_現代公民應具備的基本德性.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 286103
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/30_03_3-2_2-1_人性尊嚴與人權.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/30_03_3-2_2-1_人性尊嚴與人權.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 185271
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/31_03_3-2_2-2_ 人權保障的落實.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/31_03_3-2_2-2_ 人權保障的落實.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 185250
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/32_03_3-3_3-1_家庭中的親屬關係.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/32_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 173413
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/33_03_3-3_3-2_家庭型態與生活模式.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/33_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 201270
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/34_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/34_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 141437
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/35_03_3-4_4-1_家庭的功能與轉變.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/35_03_3-4_4-1_家庭的功能與轉變.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 187832
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/36_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/36_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 233279
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/37_03_3-5_5-1_校園中的權利與維護.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/37_03_3-5_5-1_校園中的權利與維護.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 177401
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/38_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/38_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 342293
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/39_03_3-6_6-1_部落的意義與重要性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/39_03_3-6_6-1_部落的意義與重要性.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 216303
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/40_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/02_素養題/40_03_3-6_6-2_部落的挑戰與公民參與.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 109647
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/01_01_1-1_1-1_如何表示位置.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/01_01_1-1_1-1_如何表示位置.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 124664
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/02_01_1-1_1-3_位置與生活的關聯.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/02_01_1-1_1-3_位置與生活的關聯.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 182143
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/03_01_1-1_1-4_如何閱讀地圖.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/03_01_1-1_1-4_如何閱讀地圖.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 344980
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/04_01_1-2_2-1_全球海陸分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/04_01_1-2_2-1_全球海陸分布.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 142902
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/05_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/05_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 199758
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/06_01_1-2_2-3_臺灣地區的範圍.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/06_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 214531
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/07_01_1-3_3-1_地形如何被形塑.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/07_01_1-3_3-1_地形如何被形塑.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 266616
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/08_01_1-3_3-2_常見的地形表示方法.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/08_01_1-3_3-2_常見的地形表示方法.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 479192
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/09_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/09_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 256340
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/10_01_1-4_4-1_海岸的類型與特色.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/10_01_1-4_4-1_海岸的類型與特色.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 455059
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/11_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/11_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1558163
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/12_01_1-4_4-3_臺灣離島的成因.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/12_01_1-4_4-3_臺灣離島的成因.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 684264
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/13_01_1-5_5-1_天氣.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/13_01_1-5_5-1_天氣.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 97099
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/14_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/14_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 285853
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/15_01_1-5_5-4_臺灣的氣象災害.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/15_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 473690
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/16_01_1-6_6-1_水循環.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/16_01_1-6_6-1_水循環.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 160875
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/17_01_1-6_6-2_水系與流域.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/17_01_1-6_6-2_水系與流域.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 93501
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/18_01_1-6_6-3_臺灣河川的特色.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/18_01_1-6_6-3_臺灣河川的特色.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 193352
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/19_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/19_01_1-6_6-4_臺灣水資源利用與保育.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 274576
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/20_02_2-1_1-1_考古發掘與史前文化.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/20_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 129350
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/21_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/21_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 155245
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/22_02_2-2_2-1_大航海時代的到來.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/22_02_2-2_2-1_大航海時代的到來.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 170558
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/23_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/23_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 371845
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/24_02_2-3_3-1_歐洲人與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/24_02_2-3_3-1_歐洲人與原住民.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 126203
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/25_02_2-3_3-2_鄭氏政權與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/25_02_2-3_3-2_鄭氏政權與原住民.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 106245
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/26_02_2-4_4-1_清初治臺政策與措施.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/26_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 429823
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/27_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/27_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 791151
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/28_02_2-5_5-1_農業發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/28_02_2-5_5-1_農業發展.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 93016
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/29_02_2-5_5-2_商業活動.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/29_02_2-5_5-2_商業活動.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 170651
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/30_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/30_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 183516
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/31_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/31_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 130696
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/32_03_3-1_1-1_什麼是公民？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/32_03_3-1_1-1_什麼是公民？.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 225496
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/33_03_3-1_1-2_現代公民應具備的基本德性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/33_03_3-1_1-2_現代公民應具備的基本德性.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 130973
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/34_03_3-2_2-1_人性尊嚴與人權.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/34_03_3-2_2-1_人性尊嚴與人權.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 327191
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/35_03_3-2_2-2_ 人權保障的落實.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/35_03_3-2_2-2_ 人權保障的落實.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 118494
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/36_03_3-3_3-1_家庭中的親屬關係.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/36_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 279105
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/37_03_3-3_3-2_家庭型態與生活模式.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/37_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 73804
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/38_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/38_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 105451
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/39_03_3-4_4-1_家庭的功能與轉變.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/39_03_3-4_4-1_家庭的功能與轉變.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 88017
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/40_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/40_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 236226
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/41_03_3-5_5-1_校園中的權利與維護.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/41_03_3-5_5-1_校園中的權利與維護.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 126232
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/42_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/42_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 169125
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/43_03_3-6_6-1_部落的意義與重要性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/43_03_3-6_6-1_部落的意義與重要性.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 127657
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/44_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/44_03_3-6_6-2_部落的挑戰與公民參與.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 108666
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/01_01_1-1_1-1_如何表示位置.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/01_01_1-1_1-1_如何表示位置.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 283495
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/02_01_1-1_1-2_經緯線網格.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/02_01_1-1_1-2_經緯線網格.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 189399
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/03_01_1-1_1-3_位置與生活的關聯.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/03_01_1-1_1-3_位置與生活的關聯.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 167221
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/04_01_1-1_1-4_如何閱讀地圖.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 216816
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/05_01_1-2_2-1_全球海陸分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/05_01_1-2_2-1_全球海陸分布.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 371027
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/06_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/06_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 56072
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/07_01_1-2_2-3_臺灣地區的範圍.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/07_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 130440
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/08_01_1-3_3-1_地形如何被形塑.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/08_01_1-3_3-1_地形如何被形塑.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 74490
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/09_01_1-3_3-2_常見的地形表示方法.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 330306
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/10_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/10_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 249554
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/11_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/11_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 525704
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/12_01_1-4_4-3_臺灣離島的成因.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/12_01_1-4_4-3_臺灣離島的成因.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 680769
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/13_01_1-5_5-1_天氣.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/13_01_1-5_5-1_天氣.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 243697
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/14_01_1-5_5-2_氣候.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/14_01_1-5_5-2_氣候.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 208493
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/15_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/15_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "action": "exported",
+      "pages": 7,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 423373
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/16_02_2-1_1-1_考古發掘與史前文化.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/16_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "action": "exported",
+      "pages": 5,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 263887
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/17_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/17_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 82503
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/18_02_2-2_2-1_大航海時代的到來.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/18_02_2-2_2-1_大航海時代的到來.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 76959
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/19_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/19_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 192712
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/20_02_2-3_3-1_歐洲人與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/20_02_2-3_3-1_歐洲人與原住民.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 112139
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/21_02_2-4_4-1_清初治臺政策與措施.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/21_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 317972
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/22_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/22_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 214115
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/23_02_2-5_5-1_農業發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/23_02_2-5_5-1_農業發展.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 50739
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/24_02_2-5_5-2_商業活動.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/24_02_2-5_5-2_商業活動.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 145207
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/25_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/25_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 240154
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/26_03_3-1_1-1_什麼是公民？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/26_03_3-1_1-1_什麼是公民？.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 54348
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/27_03_3-2_2-2_ 人權保障的落實.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/27_03_3-2_2-2_ 人權保障的落實.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 82704
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/28_03_3-3_3-1_家庭中的親屬關係.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/28_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 91235
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/29_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/29_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 54380
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/30_03_3-4_4-1_家庭的功能與轉變.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/30_03_3-4_4-1_家庭的功能與轉變.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 46331
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/31_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/31_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 157136
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/32_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/32_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 55819
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/01_01_1-1_1-1_如何表示位置.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/01_01_1-1_1-1_如何表示位置.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 138849
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/02_01_1-1_1-3_位置與生活的關聯.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/02_01_1-1_1-3_位置與生活的關聯.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 78292
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/03_01_1-1_1-4_如何閱讀地圖.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/03_01_1-1_1-4_如何閱讀地圖.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 253633
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/04_01_1-2_2-2_臺灣的位置及其影響.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/04_01_1-2_2-2_臺灣的位置及其影響.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 63550
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/05_01_1-2_2-3_臺灣地區的範圍.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/05_01_1-2_2-3_臺灣地區的範圍.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 131069
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/06_01_1-3_3-1_地形如何被形塑.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/06_01_1-3_3-1_地形如何被形塑.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 50751
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/07_01_1-3_3-2_常見的地形表示方法.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/07_01_1-3_3-2_常見的地形表示方法.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 335930
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/08_01_1-3_3-3_臺灣地形的特徵與分布.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/08_01_1-3_3-3_臺灣地形的特徵與分布.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 502227
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/09_01_1-4_4-2_臺灣的海岸與利用.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/09_01_1-4_4-2_臺灣的海岸與利用.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 124439
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/10_01_1-4_4-3_臺灣離島的成因.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/10_01_1-4_4-3_臺灣離島的成因.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 82462
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/11_01_1-5_5-1_天氣.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/11_01_1-5_5-1_天氣.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 56200
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/12_01_1-5_5-3_臺灣的氣候特徵.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/12_01_1-5_5-3_臺灣的氣候特徵.pdf",
+      "action": "exported",
+      "pages": 5,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 320087
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/13_01_1-5_5-4_臺灣的氣象災害.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/13_01_1-5_5-4_臺灣的氣象災害.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 101251
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/14_02_2-0_導言_歷史的基礎觀念.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/14_02_2-0_導言_歷史的基礎觀念.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 101939
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/15_02_2-1_1-1_考古發掘與史前文化.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 667234
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/16_02_2-1_1-2_臺灣原住民的遷徙與傳說.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/16_02_2-1_1-2_臺灣原住民的遷徙與傳說.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 120515
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/17_02_2-2_2-1_大航海時代的到來.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/17_02_2-2_2-1_大航海時代的到來.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 93371
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/18_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/18_02_2-2_2-2_各方勢力在臺灣的競逐.pdf",
+      "action": "exported",
+      "pages": 5,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 353026
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/19_02_2-3_3-1_歐洲人與原住民.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/19_02_2-3_3-1_歐洲人與原住民.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 132840
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/20_02_2-4_4-1_清初治臺政策與措施.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/20_02_2-4_4-1_清初治臺政策與措施.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 142412
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/21_02_2-4_4-2_外力入侵與現代化建設.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/21_02_2-4_4-2_外力入侵與現代化建設.pdf",
+      "action": "exported",
+      "pages": 5,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 533836
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/22_02_2-5_5-2_商業活動.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/22_02_2-5_5-2_商業活動.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 238274
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/23_02_2-6_6-1_漢人社會與文教的發展.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/23_02_2-6_6-1_漢人社會與文教的發展.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 242725
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/24_02_2-6_6-2_原住民的社會文化變遷.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/24_02_2-6_6-2_原住民的社會文化變遷.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 74394
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/25_03_3-1_1-1_什麼是公民？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/25_03_3-1_1-1_什麼是公民？.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 160538
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/26_03_3-1_1-2_現代公民應具備的基本德性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/26_03_3-1_1-2_現代公民應具備的基本德性.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 72940
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/27_03_3-2_2-1_人性尊嚴與人權.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/27_03_3-2_2-1_人性尊嚴與人權.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 62901
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/28_03_3-2_2-2_ 人權保障的落實.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/28_03_3-2_2-2_ 人權保障的落實.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 264092
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/29_03_3-3_3-1_家庭中的親屬關係.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/29_03_3-3_3-1_家庭中的親屬關係.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 217521
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/30_03_3-3_3-2_家庭型態與生活模式.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/30_03_3-3_3-2_家庭型態與生活模式.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 150595
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/31_03_3-3_3-3_家庭成員的權利與義務.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/31_03_3-3_3-3_家庭成員的權利與義務.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 90068
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/32_03_3-4_4-1_家庭的功能與轉變.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/32_03_3-4_4-1_家庭的功能與轉變.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 92013
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/33_03_3-4_4-2_政府如何協助家庭發揮功能？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/33_03_3-4_4-2_政府如何協助家庭發揮功能？.pdf",
+      "action": "exported",
+      "pages": 6,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 271565
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/34_03_3-5_5-2_如何參與校園公共事務？.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/34_03_3-5_5-2_如何參與校園公共事務？.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 265369
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/35_03_3-6_6-1_部落的意義與重要性.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/35_03_3-6_6-1_部落的意義與重要性.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 139571
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/36_03_3-6_6-2_部落的挑戰與公民參與.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/36_03_3-6_6-2_部落的挑戰與公民參與.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 55749
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.pdf",
+      "action": "exported",
+      "pages": 56,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1392024
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/06_第五課_背影.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/06_第五課_背影.pdf",
+      "action": "exported",
+      "pages": 57,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1497544
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/07_第六課_心囚.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/07_第六課_心囚.pdf",
+      "action": "exported",
+      "pages": 55,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1473241
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/01_試題/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 16,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 688584
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/04_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/04_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.pdf",
+      "action": "exported",
+      "pages": 12,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 633278
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/05_第五課_背影.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/05_第五課_背影.pdf",
+      "action": "exported",
+      "pages": 10,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1277552
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/06_第六課_心囚.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/06_第六課_心囚.pdf",
+      "action": "exported",
+      "pages": 13,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1187931
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/07_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/02_素養題/07_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 661719
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/04_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/04_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 179689
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/05_第六課_心囚.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/05_第六課_心囚.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 195659
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/06_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/05_各章節基測試題/06_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 306631
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.pdf",
+      "action": "exported",
+      "pages": 5,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 264884
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/06_第五課_背影.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/06_第五課_背影.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 92228
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/07_第六課_心囚.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/07_第六課_心囚.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 215263
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/06_各章節會考試題/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 7,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 406153
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 178753
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/06_第五課_背影.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/06_第五課_背影.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 260827
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/07_第六課_心囚.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/07_第六課_心囚.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 195165
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/08_配套-階梯式隨堂測驗卷Plus/08_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 189505
+    },
+    {
+      "subject": "國文",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/09_配套-語文基礎段考卷/02_語文常識（二）閱讀導航－－策略運用與資訊檢索.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中國文/01_第一冊/09_配套-語文基礎段考卷/02_語文常識（二）閱讀導航－－策略運用與資訊檢索.pdf",
+      "action": "exported",
+      "pages": 10,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 506897
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-1　因數與倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-1　因數與倍數.pdf",
+      "action": "verified-existing",
+      "pages": 42,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1719389
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-2　最大公因數與最小公倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-2　最大公因數與最小公倍數.pdf",
+      "action": "verified-existing",
+      "pages": 40,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2763154
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-3　分數的四則運算.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-3　分數的四則運算.pdf",
+      "action": "verified-existing",
+      "pages": 50,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2009707
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-4　指數律.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/01_題庫題目/第一冊/2-4　指數律.pdf",
+      "action": "verified-existing",
+      "pages": 19,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 503433
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-1　因數與倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-1　因數與倍數.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 113241
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-2　最大公因數與最小公倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-2　最大公因數與最小公倍數.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 166304
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-3　分數的四則運算.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/07_素養題/第一冊/2-3　分數的四則運算.pdf",
+      "action": "exported",
+      "pages": 4,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 2496752
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-1　因數與倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-1　因數與倍數.pdf",
+      "action": "exported",
+      "pages": 3,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 1502690
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-2　最大公因數與最小公倍數.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-2　最大公因數與最小公倍數.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 264538
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-3　分數的四則運算.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-3　分數的四則運算.pdf",
+      "action": "exported",
+      "pages": 2,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 609486
+    },
+    {
+      "subject": "數學",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-4　指數律.doc",
+      "outputPath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中數學/08_仿會考非選題/第一冊/2-4　指數律.pdf",
+      "action": "exported",
+      "pages": 1,
+      "producer": "macOS 版本27.0.1（版號26A434） Quartz PDFContext",
+      "size": 232297
+    }
+  ]
+}

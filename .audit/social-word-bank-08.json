@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-source-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/08_01_1-3_3-1_地形如何被形塑.doc",
+      "fileName": "08_01_1-3_3-1_地形如何被形塑.doc",
+      "questionNumber": "05010672",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010671\n難易度:易\n出處:試題\n認知向度:高層次批判思考\n知識向度:外營力\n 臺灣的風景秀麗,被譽為「福爾摩沙」,受到不同的地形作用影響,因此各地的景觀多樣化,成為地理環境特色。附圖中的甲、乙兩地,其成因應該為何?\n/\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007甲\n\u0007侵蝕作用\n\u0007侵蝕作用\n\u0007堆積作用\n\u0007堆積作用\n\u0007\n\u0007乙\n\u0007侵蝕作用\n\u0007堆積作用\n\u0007侵蝕作用\n\u0007堆積作用\n\u0007\n\u0007答案:(C)\n解析:圖中甲地為河川沖積而成的平原,乙地則是山區侵蝕作用形成的河谷。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    }
+  ]
+}

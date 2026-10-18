@@ -1,0 +1,53 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 2,
+      "byWordStatus": {
+        "word-confirms-image-options": 1,
+        "word-confirms-source-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1,
+        "multi-part-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "questionNumber": "05012004",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": " 第一篇_臺灣的環境(上) 第6章_水文 6-4_臺灣水資源利用與保育\f單題\n 下列為臺灣四地的氣候圖,若僅依降水量分布判斷,何者設水庫的需求最迫切? (A) / (B) / (C) / (D) /\n答案:(D)\n解析:(D)圖的降水量明顯集中於夏季,為了妥善利用水源,應設立水庫儲存雨季水源。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 4,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "fileName": "21_01_1-6_6-4_臺灣水資源利用與保育.doc",
+      "questionNumber": "05012258",
+      "sourcePage": 26,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "multi-part-parse-failed"
+      ],
+      "wordBlock": "編號:05012257\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川開發與保育\n 附表為淡水河、蘭陽溪、大甲溪、濁水溪、曾文溪、高屏溪六條河川的水文資料。請以表中河川代號回答下列問題:\n/\n(1)日月潭水庫位於表中哪一條河川上游?\n(2)曾文水庫是全臺容量最大水庫,位於表中哪一條河川上游?\n( )(3)丙、丁兩條河川年逕流量的豐、枯水期差異程度較其他四條河川小,其可能原因為何? (A)流經的區域較少 (B)有地形雨補注水量 (C)沿岸人民取水量少 (D)流域地形落差較小。\n答案:(1)甲;(2)戊;(3)(B)\n解析:(1)甲—濁水溪;乙—高屏溪;丙—淡水河;丁—蘭陽溪;戊—曾文溪;己—大甲溪。\n(2)甲—濁水溪;乙—高屏溪;丙—淡水河;丁—蘭陽溪;戊—曾文溪;己—大甲溪。\n(3)丙、丁位於北部區域,夏季為雨季,冬季受到季風和地形影響而有雨。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    }
+  ]
+}

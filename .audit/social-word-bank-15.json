@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/15_01_1-5_5-2_氣候.doc",
+      "fileName": "15_01_1-5_5-2_氣候.doc",
+      "questionNumber": "05011609",
+      "sourcePage": 5,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05011608\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:氣候\n 某四個地區的氣象觀察紀錄如下表。請問:其中哪一地區的年溫差最大? \n地點\n分項 \n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007一月月均溫\n(°C)\n\u000714\n\u000712\n\u000710\n\u000716\n\u0007\n\u0007七月月均溫\n(°C)\n\u000728\n\u000728\n\u000720\n\u000728\n\u0007\n\u0007年降水量\n(mm)\n\u00073,000\n\u00072,000\n\u00072,000\n\u00072,500\n\u0007\n\u0007答案:(B)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

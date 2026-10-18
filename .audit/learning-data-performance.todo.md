@@ -1,0 +1,27 @@
+# Learning data performance
+
+- [x] 1. Capture a baseline trace via the matching driver skill. Vet the baseline, and each later number, with the **benchmark-checklist** skill.
+- [x] 2. `how` to ground hypotheses. Don't claim a perf ceiling without running it first.
+  - [ ] Don't do it. Stop work whose result nothing uses rather than cheapening it.
+  - [ ] Do it, but don't do it again.
+  - [ ] Do it less.
+  - [ ] Do it later.
+  - [ ] Do it when they're not looking.
+  - [ ] Do it concurrently.
+  - [ ] Do it cheaper.
+- [x] 3. Plan the fix from the trace. If it crosses a function boundary, `architect` first. Delegate implementation to a subagent using your configured perf-issue model (default in poteto-mode's Models section). Pick each subagent's reasoning level for the job, per the Subagents section. Review the diff. Capture a post-fix trace.
+  - [x] Architect phase 1. Ground.
+  - [x] Architect phase 2. Sketch.
+  - [x] Architect phase 3. Agree.
+  - [x] Architect phase 4. Implement.
+    - [x] Stage 1 identifier lookup index, isolated migration verification, persistent backup, exact EXPLAIN, and five-run browser benchmark.
+    - [x] Stage 2 database-driven accessible catalog and narrow post-session refresh.
+    - [x] Stage 3 gzip negotiation for the remaining large answer-free catalog response.
+  - [x] Architect phase 5. Scrap. Keep route-scoped lazy loading as the next scale unit because the measured result remains above the three-second stretch gate; do not mix its unresolved facet and collection migration into this delivery.
+- [x] 4. Parse and compare the artifacts (JSON to sqlite, diff). "Inconclusive" or wrong-surface is not a pass. Flag it.
+- [ ] 5. Cite the measurement in the PR.
+  - [ ] skip: no PR was requested. Keep the measurement artifact in `.audit/`.
+- [ ] 6. Run **Opening a PR**.
+  - [ ] skip: no PR was requested.
+- [x] Verify focused tests, lint/type/build, and the real desktop and mobile UI.
+- [x] Record unrelated failures and preserve unrelated working-tree changes.

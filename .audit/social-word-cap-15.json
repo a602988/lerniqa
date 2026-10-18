@@ -1,0 +1,36 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "fileName": "15_02_2-1_1-1_考古發掘與史前文化.doc",
+      "questionNumber": "05012877",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": " 第二篇_臺灣的歷史(上) 第1章_史前臺灣與原住民文化 1-1_考古發掘與史前文化\f單題\n 阿華至博物館參觀卑南文化遺址的展覽,他最可能在展覽中看到哪一項該史前文化的出土文物?【106 年會考】 (A) / (B) / (C) / (D) /\n答案:(B)\n解析:卑南文化為臺灣新石器時代晚期的文化遺址,根據新石器文化特色為燒製陶器,故選(B)。(A)與(C)為金屬器時代,(D)為中國殷商的文字。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 4,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

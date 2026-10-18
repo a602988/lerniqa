@@ -127,6 +127,21 @@ test("搜尋可比對題目文字與編號欄的所有顯示來源", () => {
     assert.deepEqual(filterQuestions(searchableQuestions, filters({ search: "3429003" }), []).map((question) => question.id), [3429003]);
 });
 
+test("搜尋可比對公式的可讀文字投影", () => {
+    const searchableQuestions = [
+        makeQuestion(1501004796, {
+            subject: "數學",
+            prompt: "在下列空格內填入適當的數",
+            searchText: String.raw`\frac{6}{8} 6/8`,
+        }),
+    ];
+
+    assert.deepEqual(
+        filterQuestions(searchableQuestions, { ...filters({ subject: "數學" }), search: "6/8" }, []).map((question) => question.id),
+        [1501004796],
+    );
+});
+
 test("切換科目只會套用真的有候選題目的學習者學期", () => {
     assert.equal(getPreferredQuestionSemester(questions, "國語", "上學期"), "上學期");
     assert.equal(getPreferredQuestionSemester(questions, "國語", "暑假"), ALL_QUESTION_FILTERS);

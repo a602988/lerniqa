@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import sharp from "sharp";
 
 import {
     VISUAL_REFERENCE,
@@ -16,9 +17,10 @@ import {
     parseParts,
     parseWrittenParts,
 } from "../import-grade-seven-fixtures.mjs";
+import { verifiedMathFormula } from "./verified-math-formulas.mjs";
 
 export const PARSER_VERSION = "hanlin-zh-doc-v7";
-export const SANITIZER_VERSION = "libreoffice-macro-disabled-docx-v1";
+export const SANITIZER_VERSION = "libreoffice-macro-disabled-docx-v2";
 export const AUTHORIZED_FOURTH_LESSON_FILE = "05_第四課_論語選（一）子游問孝（二）譬如為山（三）三省吾身.doc";
 export const AUTHORIZED_FOURTH_LESSON_SHA256 = "c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2";
 export const AUTHORIZED_FIFTH_LESSON_FILE = "06_第五課_背影.doc";
@@ -244,6 +246,57 @@ export function approvedInlineMathImageText(checksum) {
     return APPROVED_INLINE_MATH_IMAGE_TEXT.get(String(checksum ?? "").toLowerCase()) ?? null;
 }
 
+const VERIFIED_1501005679_FORMULA = Object.freeze({
+    sourceSha256: "50b1f60f5a722042dea5429edfac8f694d273ac7160f74f3ea4a9229e2b916f0",
+    sourcePage: 16,
+    answerChecksum: "8e2a7cc5fb2bec2455a120de2ec80207bd7dfb20c044e82160c93a2a0df3d958",
+    body: "計算－⟦未解析公式圖:1bd94b90f73806974b5f8c4ecc658e5e435d4798c0f6b118687079b921413690⟧ －⟦未解析公式圖:747e89852f61ec65edf509f6820757d1479395ba781f2fcc4effe52c56556914⟧ －⟦未解析公式圖:c15d88598d5d77b9ee95b0c80352f39826bddebf05953198e411df16cabf97ec⟧ －⟦未解析公式圖:125cb5cc4948b05f1ad53bfc4b87f6463e5f710ead091e09d49969b59b9207d9⟧ 的值。",
+    explanation: "原式＝－⟦未解析公式圖:1bd94b90f73806974b5f8c4ecc658e5e435d4798c0f6b118687079b921413690⟧ －⟦未解析公式圖:ce6623edc2e66ef0cd3d713992bee94c4d0a2b120540d988c31f134fe064a1f6⟧ －⟦未解析公式圖:59282f0183a5f930d3adb7c26f7a07d20af31914408cb5d13265d47f5c618946⟧ －⟦未解析公式圖:dd405866ce21d7dcd8a820c6f79697fd5338abd69c67605cc2c4c9b2563f1b6a⟧\n＝－⟦未解析公式圖:4e25c3b43fa4f8367451d040e4b4aaef8f3a5c52d39ee96e3d08bc0b568ac82f⟧ －⟦未解析公式圖:1d1f0282284dfdae92734229416bb42ad5c0c363486682e2d647358da3a3c1a8⟧ －⟦未解析公式圖:8f32bf856a3fc9a1feef630a7ae5f373f2614bedf3e7728b6d4158e3c4cb741f⟧ －⟦未解析公式圖:dd405866ce21d7dcd8a820c6f79697fd5338abd69c67605cc2c4c9b2563f1b6a⟧\n＝－⟦未解析公式圖:35639d634a66af784494d0dc642ade91c626975a44f019f7ff04365cf7a32839⟧\n＝－⟦未解析公式圖:8e2a7cc5fb2bec2455a120de2ec80207bd7dfb20c044e82160c93a2a0df3d958⟧\n\n1",
+    replacements: Object.freeze({
+        "1bd94b90f73806974b5f8c4ecc658e5e435d4798c0f6b118687079b921413690": "\\frac{1}{2}",
+        "747e89852f61ec65edf509f6820757d1479395ba781f2fcc4effe52c56556914": "\\frac{1}{2²}",
+        "c15d88598d5d77b9ee95b0c80352f39826bddebf05953198e411df16cabf97ec": "\\frac{1}{2³}",
+        "125cb5cc4948b05f1ad53bfc4b87f6463e5f710ead091e09d49969b59b9207d9": "\\frac{1}{2⁴}",
+        "ce6623edc2e66ef0cd3d713992bee94c4d0a2b120540d988c31f134fe064a1f6": "\\frac{1}{4}",
+        "59282f0183a5f930d3adb7c26f7a07d20af31914408cb5d13265d47f5c618946": "\\frac{1}{8}",
+        "dd405866ce21d7dcd8a820c6f79697fd5338abd69c67605cc2c4c9b2563f1b6a": "\\frac{1}{16}",
+        "4e25c3b43fa4f8367451d040e4b4aaef8f3a5c52d39ee96e3d08bc0b568ac82f": "\\frac{8}{16}",
+        "1d1f0282284dfdae92734229416bb42ad5c0c363486682e2d647358da3a3c1a8": "\\frac{4}{16}",
+        "8f32bf856a3fc9a1feef630a7ae5f373f2614bedf3e7728b6d4158e3c4cb741f": "\\frac{2}{16}",
+        "35639d634a66af784494d0dc642ade91c626975a44f019f7ff04365cf7a32839": "\\frac{8＋4＋2＋1}{16}",
+        "8e2a7cc5fb2bec2455a120de2ec80207bd7dfb20c044e82160c93a2a0df3d958": "\\frac{15}{16}",
+    }),
+});
+
+/** Source-reviewed transcription applies only to this exact answer occurrence. */
+export function correctVerifiedKangxuanMathFormula(record, {
+    sourceSha256,
+    sourcePage,
+    inlineImageChecksums,
+} = {}) {
+    if (String(record.number ?? "").trim() !== "1501005679") return record;
+    const approved = VERIFIED_1501005679_FORMULA;
+    const expectedAnswer = `－${unresolvedInlineMathImage(approved.answerChecksum)}`;
+    if (sourceSha256 !== approved.sourceSha256
+        || sourcePage !== approved.sourcePage
+        || record.body !== approved.body
+        || record.explanation !== approved.explanation
+        || record.sourceAnswer !== expectedAnswer
+        || !inlineImageChecksums?.has(approved.answerChecksum)) {
+        throw new HanlinImportError("APPROVED_FORMULA_SOURCE_MISMATCH", "1501005679 的核准公式來源、頁碼、原文或答案圖片 checksum 不一致。");
+    }
+    const replaceVerifiedFormulaMarkers = (value) => String(value).replace(
+        UNRESOLVED_INLINE_MATH_IMAGE_PATTERN,
+        (marker, checksum) => approved.replacements[checksum] ?? marker,
+    );
+    return {
+        ...record,
+        body: replaceVerifiedFormulaMarkers(record.body),
+        explanation: replaceVerifiedFormulaMarkers(record.explanation),
+        sourceAnswer: replaceVerifiedFormulaMarkers(record.sourceAnswer),
+    };
+}
+
 const KANGXUAN_MATH_21_BANK_IMAGE_MAPPINGS = Object.freeze([
     Object.freeze({
         checksum: "28cfed3d74f8f7334440b0a88b86c3e86f3cf7ca77fd8c9a99474d9751cf4b8f",
@@ -276,6 +329,17 @@ const KANGXUAN_MATH_DOCUMENTS = Object.freeze([
     ["2-3　分數的四則運算.doc", "8580c6aab7daa197f801b706cc3ec642f22b1c9451baa80048b3a2fd45c43399", 3, 3, "分數的四則運算", "mock-comprehensive-written", "仿會考非選題", "mock-cap"],
     ["2-4　指數律.doc", "c42e74824672f630256c159d54021f90ccd554b8447e6871905208c69d32bbfb", 1, 4, "指數律", "mock-comprehensive-written", "仿會考非選題", "mock-cap"],
 ]);
+
+const KANGXUAN_MATH_APPROVED_ANSWER_FIELDS = Object.freeze({
+    "372f14612c6c4d0a12a2c55e04dea006da2f558f4e80eb5c082e7da2b9c91989": Object.freeze({
+        "1501004796": Object.freeze({ "1": 2, "2": 3, "3": 2, "4": 2 }),
+    }),
+    "50b1f60f5a722042dea5429edfac8f694d273ac7160f74f3ea4a9229e2b916f0": Object.freeze({
+        "1501003705": Object.freeze({ "1": 2, "2": 2 }),
+        "1501005024": Object.freeze({ "1": 2, "2": 2 }),
+        "1501005583": Object.freeze({ "1": 2, "2": 2, "3": 2 }),
+    }),
+});
 
 const KANGXUAN_SCIENCE_BASE_TARGET = Object.freeze({
     gradeCode: "junior-high-1", gradeName: "國一",
@@ -407,6 +471,178 @@ const HANLIN_ENGLISH_LITERACY_UNIT_ONE_IMAGE_MAPPINGS = Object.freeze([
     Object.freeze({ checksum: "f40279eadbf2634a1512edcbabcb246bc4f3b3b0a31c827ee001c57510e3933b", questionNumber: "05010853", optionKey: "C", altText: "選項 C：雞" }),
     Object.freeze({ checksum: "39cfa1094c2c5ec393870bd761713ab46c4ac2451f73ef2d6bffa38e511d5fe7", questionNumber: "05010853", optionKey: "D", altText: "選項 D：猴子" }),
 ]);
+export const HANLIN_ENGLISH_APPROVED_EMF_IMAGE_MAPPINGS = Object.freeze({
+    "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a": Object.freeze([
+        Object.freeze({
+            rawChecksum: "ce6b2d19ad438ce7bc20ef1d499db4f4d23df8ec5166e3d36e97e134e8141c3f",
+            replacesDerivedChecksum: "bc4a9b3864a322181fb8be45bc0abcbced8a8ae73fc24a84af323e878d55be9a",
+            renderedChecksum: "a85ab5f7fab3c83a8df0f1e3f2021edace7ddfd5dcdd9c048910d7931a3b00bb",
+            questionNumber: "05010327",
+            altText: "Leo、Tony、Amy、Peter 與 Susan 的人物資料",
+        }),
+        Object.freeze({
+            rawChecksum: "8764e12e7a73f1e715160ce3b4995c2b884565aad7670f0087f57e62dbba03c9",
+            replacesDerivedChecksum: "94a2a2d261f66bfa1c3598782a6ded196485ff816fb4df82fb59fa8357b62e47",
+            renderedChecksum: "49980ad5c4175123456d9a7434fc6b7f7fca7b85ead760e2a6600a1dd9ffc063",
+            questionNumber: "05010328",
+            altText: "Alice、Fiona 與小狗 Sugar 的人物介紹",
+        }),
+        Object.freeze({
+            rawChecksum: "0565244914c56cf9c32c01d82cd575d86cadb0d897842cc49d9dfe8e23f5381a",
+            replacesDerivedChecksum: "64d1ce74ea542c14d530b24d341b28e94be45b09b17c4e364a84594dcc8ab04c",
+            renderedChecksum: "f68759f54bcc5944b108543b50ebd37aa2d4ef20dcd05e28814ab3cf2242665d",
+            questionNumber: "05010329",
+            altText: "四位飼主及寵物種類、名稱與年齡表",
+        }),
+        Object.freeze({
+            rawChecksum: "f56fee305c5ebc6cc61f5ea49a6ed8e74f43d887b8143f17de21b6ec675bb5f5",
+            replacesDerivedChecksum: "b045d2eb1dd81e0d1da5d98a92bf19b2e5d67da43fb592fe51f23380a7f057fa",
+            renderedChecksum: "5a04ab4f0bc67848a276b05b1d360014efd45bb0535b2f3c6a874bc98898374b",
+            questionNumber: "05010335",
+            altText: "Betty、Mary、Ken 與 Mia 的人物資料",
+        }),
+    ]),
+    "10b0e26b82329f0590def4811e513ff9db7d19d3ca90803151a6c7052eff3740": Object.freeze([
+        Object.freeze({
+            rawChecksum: "36428b6e9b15c05b3c1d8f378c143fc8e75cb2dec990d86e1d23e6fb981a33dd",
+            replacesDerivedChecksum: "ebdc0c8ef212fc09de70a4b1eeb1b6acbed62aff59f5d276b1bc2445a17f5ffc",
+            questionNumber: "05010883",
+            altText: "Tom、Ann、Ken 與 Sue 的資料表",
+        }),
+    ]),
+    "4506bf8eb30de242755f814a3734238f266746226f12d8711cc3d274fa7b58a9": Object.freeze([
+        Object.freeze({
+            rawChecksum: "89b1e710e0caf77701490b3c6406e4892b18e952d1d22b07ed6f0a21a49cb982",
+            replacesDerivedChecksum: "b9ab11cb44a79c3c45c6840f35a2b6023066a8d25be22da9079d65543899f6f1",
+            questionNumber: "05010768",
+            altText: "給 Linda 的留言",
+        }),
+        Object.freeze({
+            rawChecksum: "31f4a95bb334625c9ad6b91fa0911acd55644f9aa60cf06f57fb7602cc7fa2a0",
+            replacesDerivedChecksum: "ad405dc593e0e82772f4078a5b2c6177acdfd0ff343a15bc65ebe20a44eff0cb",
+            renderedChecksum: "c44bfe46094e8faa3062dbe3b993d43bcd968756fa3b9e2de457fe01889fcbb1",
+            questionNumber: "05010687",
+            altText: "Lily 寫給 Angela 的生日感謝信",
+        }),
+        Object.freeze({
+            rawChecksum: "a44736bc1a5e7511cb3d4d8e4b150c9b45e12d7001d4fba386c9777798de3647",
+            replacesDerivedChecksum: "90f918cd9f69fce834f32e0207021d55af150d41596232a0cf86f5fe617ed6be",
+            renderedChecksum: "0898c30450d9c8e1ffdcce3c5d689df363e7c1c0e636c9ea761ece2ca346eca7",
+            questionNumber: "05010692",
+            altText: "物品與房間位置的配對表",
+        }),
+    ]),
+    "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7": Object.freeze([
+        Object.freeze({ rawChecksum: "de34bf34f4ab59d487cb5af49eb82d5f93ece2cfbeb96f046cc0b1edca2be5fa", replacesDerivedChecksum: "f3fa955443df1aeeb7ae8016519e307a3c9e672f4acfc7c38ea3c1975cbf205c", renderedChecksum: "6887881ab7f27db681918ff2a57f3023098be3c769b0539b13963e89ce46c76d", questionNumber: "05011087", altText: "校車乘車規則" }),
+        Object.freeze({ rawChecksum: "2a571f950590ee2d997d2911943d3e220322e10758400a7391cd2f51f5b67955", replacesDerivedChecksum: "c0aa69b9d3f1b6203484ec8f42a95fe5b5876e111045123a0e0b6a2f3ce37ee6", renderedChecksum: "150a3595d3e5e4131b1d6aa8ad8a8cee0f12a8721128901868016ffab969ab91", questionNumber: "05011090", altText: "Andrew、Joyce、Polly、Sherry 與 Leo 的興趣表" }),
+        Object.freeze({ rawChecksum: "3b346853752018200188c43405f72f484395f06b5926369bbe93295966130d53", replacesDerivedChecksum: "ef366dabfcdfbd46a2a17ebdd531395063dc3a48a0d4fc6eb933108b5e4ad3dd", renderedChecksum: "39387a2a17480822bdb5ef0fdda3cd4988d8e20971a1444d5ad49e883325db34", questionNumber: "05011091", altText: "Leo、Billy、Gloria 與 Robin 的才藝表" }),
+    ]),
+    "38288e2bec85304c669dce072738d57fe9610445f2a40da3ba3f7f829a9a4ecf": Object.freeze([
+        Object.freeze({
+            rawChecksum: "3a9a2b7a80dbe2a0a1af5520f83912ec04cc3bd8108ce1b7edf8b03c246c551d",
+            replacesDerivedChecksum: "1df353253e0949de639c6a4feae5d6a10a5c7bde81fe2ace5dd12e4502b8cf87",
+            questionNumber: "05012275",
+            altText: "才藝表 A",
+        }),
+        Object.freeze({
+            rawChecksum: "787e5e03f90f603d63e401ec67ecb3e4efe0b5497624140896b5bf43414acee8",
+            replacesDerivedChecksum: "2b6fc11129c97a279534f3c6d255e3f1eb48169c89dcc8f7e49cf12c0d0f4f5e",
+            questionNumber: "05012275",
+            altText: "才藝表 B",
+        }),
+        Object.freeze({
+            rawChecksum: "533baf00b0ead7ccb31130c63ebfeb282f6dd3cec3437532279c3b4fc7fc9e86",
+            replacesDerivedChecksum: "7639352cbb8fbb3192fdbd60de8cd6f38538a94738f150fd33b301319756ad12",
+            questionNumber: "05012275",
+            altText: "才藝表 C",
+        }),
+        Object.freeze({
+            rawChecksum: "c1a2abe5ad7935488a9162a8d01117ac81cca91cafce6571c17b02bdf89ea70d",
+            replacesDerivedChecksum: "7639352cbb8fbb3192fdbd60de8cd6f38538a94738f150fd33b301319756ad12",
+            questionNumber: "05012275",
+            altText: "才藝表 D",
+        }),
+        Object.freeze({
+            rawChecksum: "70c180298b2eb1d07d5b717c3cbc0f269c392b2f01a1e670160b89226b12e5ca",
+            replacesDerivedChecksum: "24e9d0989408c845d5acde5d8c9740184f03840aafa45f6bcfe243bba8ad6490",
+            questionNumber: "05012278",
+            altText: "規則 A 至 D",
+        }),
+        Object.freeze({ rawChecksum: "1d1379864d5bdae08925d4ed32b9ef024cd8bcb7aa8118b7216ff08b983f15f6", replacesDerivedChecksum: "cbbbbed7ebc22eeec3b75a3831e724beb77caa22e1eac3878c5c7d253c110261", renderedChecksum: "979bac270e9989b121a00263fdd67eb26ffb1a61196304f67a59ba421b9e5651", questionNumber: "05012279", altText: "Andy、Cindy、Betty 與 Neil 的兩次測驗成績表" }),
+    ]),
+    "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec": Object.freeze([
+        Object.freeze({
+            rawChecksum: "20b42cffaffa167b04b98177d62e9c9d457856051879e4d5521561121dfd3731",
+            replacesDerivedChecksum: "3a3fb3a313bf6891d21ff10a285d0a399401234f43c527cc593c8cd9fc276239",
+            questionNumber: "05012300",
+            altText: "John 的行程表",
+        }),
+        Object.freeze({ rawChecksum: "3bd6af5c2404bd5c142ff516cb0037bd9907283b5878233f6fcc57129c5431fa", replacesDerivedChecksum: "ce691bd6ba29468eccae53e52e7b987b90a05ee3c55e1f2dbd50a1735989d87e", renderedChecksum: "679f8638f64a8a3e7fa973451c8d1607d8b9171a76f10da66368d02e9d2077c6", questionNumber: "05012297", altText: "Andy 的每週行程表" }),
+        Object.freeze({ rawChecksum: "8551ff0861d62f4a446684ee00044e9d11633c9334e0a568551ca71c0972fb39", replacesDerivedChecksum: "f6c0208616e388eba2208756394f6196fcd0dd7352b504490610ecaae2efe124", renderedChecksum: "0407efa5edcf7ecdb6c96c508f7a750cc204dfe2613e489db836aaf6e99d6a1d", questionNumber: "05012297", altText: "Betty 的每週行程表" }),
+        Object.freeze({ rawChecksum: "9645567f4077f9973360502c11f8ae7c12e9eda938710f263249b90df26dc7f1", replacesDerivedChecksum: "6df328926a4873a7ab1c6ef81fd2616f035acea122c4364a26f78eaef0e12548", renderedChecksum: "49d139f84061512456d3a3f9eff5cc30f147816d893dc55b37a7166181573780", questionNumber: "05012297", altText: "Cindy 的每週行程表" }),
+        Object.freeze({ rawChecksum: "ca99fbd8cc48e9f1b57228f9724534cf16ef81b68ec785f345edd34b3f9145a7", replacesDerivedChecksum: "9abee723df9b0da89ca21f7b36b4e68ca2fe848685249638c4ec5b902a5e2a1f", renderedChecksum: "442eb468158006e3e0a37f0dfe8105996e51c442692cad9912207b26587aeaa9", questionNumber: "05012297", altText: "Debby 的每週行程表" }),
+    ]),
+    "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8": Object.freeze([
+        Object.freeze({
+            rawChecksum: "9400c59b4259461c77bdf3c0d99fcb3bc12b094e22d54e969823a612b6f07c15",
+            replacesDerivedChecksum: "f2fb0ea63e2af9ef06462316a32d9a2dd2c2c5444a6f5e09e6e1802c0314b63e",
+            questionNumber: "05011443",
+            altText: "醫師看診時間表",
+        }),
+        Object.freeze({ rawChecksum: "8d6e0feb9ea33af60875a1d07d24b3887d247c39bb3a5306f93a4248c2f5af0c", replacesDerivedChecksum: "d4dfc7f43ed51268458642bb096ce61aea067cfa01e10e5bfb8154cd873de78c", renderedChecksum: "c41db89327458bbf7e1d9efbe3c1d09bef6abee64873ed1aa82c2bdb11feb5ad", questionNumber: "05011441", altText: "一週電視節目時間表" }),
+        Object.freeze({ rawChecksum: "49d9a9ae9d4d3ba3481308ca90784b0d8c12d41c394319c32bdad8eaca577f5c", replacesDerivedChecksum: "a83b3bfa9e2ec852eedad45af58bc05210409c69dd0b4863b829b79b89841ecd", renderedChecksum: "d12d47a87567947b44a8f47c92d61c2b1bced5f84b423ae0a830eadc66648f18", questionNumber: "05011451", altText: "六月二十日至二十四日的行程表" }),
+        Object.freeze({ rawChecksum: "dbebf8b078051a0210db0e76de0362b5bb252d494c11788204ddf7b6d6c98c5b", replacesDerivedChecksum: "3cd0ec8134a1d8f7f032d785dc12c243e55290adf0adf0a40da468f7d2861f48", renderedChecksum: "848adb34d3b3a0af55776732a4113527604aa925b6127894dacf4da21f41d969", questionNumber: "05011453", altText: "電影上映日期與時間表" }),
+    ]),
+    "ca5bad6a610fc5bd3afd62a053cc87e8639085763e6dfe83ee098422c0ff5630": Object.freeze([
+        Object.freeze({ rawChecksum: "ab5cb4860490303f37d1790a55dad5cd9b0dd0f625406a1c3225f335e01aa8e5", replacesDerivedChecksum: "33696e512fa092500bfb76788eb078c4d26f40c1f6ad2cc239db11a74adab98d", renderedChecksum: "1a60e437df3d64ec8b7c29ae3069b5358ae0803175f0aa4b159f58e2cc8b63e0", questionNumber: "05012114", altText: "墾丁國家公園與台江國家公園的文氏圖" }),
+        Object.freeze({ rawChecksum: "14580b345482276fb5b557008a5be145a6f9ae107a73095a9c2f773a9465663f", replacesDerivedChecksum: "3a98a41672ba72c01f25bb580a0b90c6dc8e60618d5c64ac16ea133b0cb9f20d", renderedChecksum: "23a35e1f1c7ed61b2706cfabda244ba1a963cbc63e3079d0202991c7c04c943d", questionNumber: "05012176", altText: "斑馬與鳥的共生示意圖" }),
+    ]),
+    "57932d7a9213392d0e5db2955065887e3416f88b1972a0ade24c242914eba6e0": Object.freeze([
+        Object.freeze({ rawChecksum: "bfc33b4ce6ec27e82ec987a73304d229ac7c6c22ec6ee9e99b6ec4d317069c37", replacesDerivedChecksum: "e57f1d6025453b307247d411c2486fdb8cea03a402a891a4b5e48c4082fe34c2", renderedChecksum: "ee117ab95e255691ecaf35cac65ff61504f8eeaa5901c07f08b69f3df6fd52dc", questionNumber: "05012322", altText: "臺灣、日本、印度、泰國與美國的新年習俗表" }),
+    ]),
+    "54f7eab7ca49d8599d7b57cbc6adf0e5c6d7ddc72cb69388c90cd87477e3d6aa": Object.freeze([
+        Object.freeze({
+            rawChecksum: "ea0783896fabf350525df41362f4f3ae093a2a4de8af701b6d252b6ac19b5833",
+            replacesDerivedChecksum: "a1091ebb1600c85a06c4b25fd78a9d9569d9778a6b6491e546911a46b42e3507",
+            questionNumber: "05011780",
+            altText: "May 的行程月曆",
+        }),
+    ]),
+    "2661ca1f729c4a5718123103c1949ff1fe45d6e33a1762d9adc71396bc15b683": Object.freeze([
+        Object.freeze({
+            rawChecksum: "f92da96a72ebf8298f4587d00c44cb8deefeb44b52c4f612348d0419296f879c",
+            replacesDerivedChecksum: "2ddd601e64a11677a85e7e9f69f8c57a61444762f8d6be501a0d1618c900776e",
+            questionNumber: "05012344",
+            altText: "Cute Zoo 動物之家海報",
+        }),
+        Object.freeze({
+            rawChecksum: "a7722370082646086c3f8b73bcc0575aa32e23641ca651fee4673cf84ced02ac",
+            replacesDerivedChecksum: "634f7818d2cc8808571fa59fb0b3566613d93db79dfd3e6fcc48c0f4baab0210",
+            questionNumber: "05012346",
+            altText: "動物比較表",
+        }),
+    ]),
+    e04e5b593258d20cdf1c3e75c5fcaed33cb62040744874571bf621d1095ec20e: Object.freeze([
+        Object.freeze({
+            rawChecksum: "b2c740e5e21d9f9e06e47f82387af15c72c5e49b7ef1440016ddf88b6f8e0ee8",
+            replacesDerivedChecksum: "329fac189db610e34cb7f76a41aaf5a148c372f35c644ca2dec750424837d06f",
+            questionNumber: "05010871",
+            altText: "Ian 與父母、姊妹和祖父的全家福",
+        }),
+    ]),
+    "5aa2daa2318772841c53b40b6623b794c53ad98a7192fa819c78b18dc1f4061a": Object.freeze([
+        Object.freeze({
+            rawChecksum: "ec71b2a079e454daa51f06c25bf7a6c01f111a7e249ddd77328441d77a31b72d",
+            replacesDerivedChecksum: "9e96290198180fe28772aef9048eda034d5c4ca25aeb75fb8df484eaf7edb0dd",
+            questionNumber: "05012548",
+            altText: "Judy 手持 Emma、Peter 與 Lucy 的合照",
+        }),
+    ]),
+});
+const HANLIN_ENGLISH_LEGACY_DIALOGUE_RECONCILIATION_SOURCES = new Set([
+    "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8",
+    "54f7eab7ca49d8599d7b57cbc6adf0e5c6d7ddc72cb69388c90cd87477e3d6aa",
+]);
 const HANLIN_ENGLISH_STARTER_TEST_IMAGE_MAPPINGS = Object.freeze([
     Object.freeze({
         checksum: "e93ef9e874ec182d721cf94a1d2b1aa07f5d0baceba4ceeacfc02b3c232b42aa",
@@ -422,6 +658,91 @@ const HANLIN_ENGLISH_STARTER_TEST_IMAGE_MAPPINGS = Object.freeze([
         checksum: "e79eef08b41b567201d59d4d2c41d34374a391e83f9ada3318db6a1a5cca923b",
         questionNumber: "05010090",
         altText: "Class 1A 教室座位、老師 Emily 與學生編號",
+    }),
+]);
+const HANLIN_ENGLISH_STARTER_WORKBOOK_PART_IMAGE_MAPPINGS = Object.freeze([
+    ...[
+        "5c0ad56569c9d252363254d9574206beacf92c8e2104970b122ed2b71b7e94e9",
+        "98c9ac468913e810d9c54de8c2676eba1de50fb1ffa3fd2022e92119819c907b",
+        "50c194550521f85eec3fbaa0e198b00dcd1388dfcb469bdcfef5adcdc053f259",
+        "784fb31a228790d5e34b6eb00e204e5fc5c65c0e2256a556a9a62307d706934a",
+    ].map((checksum, index) => Object.freeze({
+        checksum,
+        questionNumber: "05012406",
+        partStableKey: String(index + 1),
+        altText: `第 ${index + 1} 小題圖片`,
+    })),
+    Object.freeze({
+        checksum: "7f9a4961a314a957313991dbbe4a4305d5a885c668884d10a7c1dbeee49fc139",
+        questionNumber: "05012407",
+        altText: "Amy、Patty、Kevin、John 與 Doggy 的姓名圖卡",
+    }),
+    Object.freeze({
+        checksum: "ad8891b99563ae83e25287b4dcf7f92db0f1c256b2c847d42023c08b1801a1fc",
+        questionNumber: "05012407",
+        partStableKey: "1",
+        altText: "第 1 小題姓名問答圖",
+    }),
+    Object.freeze({
+        checksum: "5f27c44a9530b06699cab24ddba75f010396d20137045bdc73711104e5c59609",
+        questionNumber: "05012407",
+        partStableKey: "2",
+        altText: "第 2 小題姓名問答圖",
+    }),
+    Object.freeze({
+        checksum: "e89a5fdb421640a242cb051f8e4641f327d8319b1bac8999c3f7065b58800d7d",
+        questionNumber: "05012407",
+        partStableKey: "3",
+        altText: "第 3 小題姓名問答圖",
+    }),
+    Object.freeze({
+        checksum: "75fe13684a1a45c250a8fd7a34c961749602e2e8bf81871fd6db5cc609efc8d3",
+        questionNumber: "05012407",
+        partStableKey: "4",
+        altText: "第 4 小題姓名問答圖",
+    }),
+    ...[
+        "5e398f8fa31c3418ed3e0732ec7d4ea814756c5f2ddd00cf77b762a8044e26e3",
+        "499d7c27c56e6adc8fa88c95a949107667271299211e084380ac186b0c4fb0fe",
+        "f70f4732c5d495799e217423a1668a074a9c3818f43284702d40db124bc2eeff",
+        "4353974406998c824c794ce651560dbec56194f6025b317eedad14c6c2d8b25e",
+        "5125df68b30fcb685e1ecccb1a4642cf7388260513e05b7990c00fed8cb210d5",
+        "a67f30845dbe61f58842c925f4289344fd6361b68e0fe78142a8146b81054b07",
+    ].map((checksum, index) => Object.freeze({
+        checksum,
+        questionNumber: "05012408",
+        partStableKey: String(index + 1),
+        altText: `第 ${index + 1} 小題圖片`,
+    })),
+    ...[
+        "537be899eef56852851a9313559ca5e3f7e87d12828ca872b8c04b2ca5ac36aa",
+        "ad08bf69823c2165013715af046dd4cdb6148d3553bcde59471c0eebeba13127",
+        "d98f4cd1aa965f76dd9424f714a1cd508ede9167e58f197403512bfbaf6517a4",
+        "48b1d8703bfa9ff2774b0e4e4a34daae221eae56f1a2c14df26a934c6b81010a",
+    ].map((checksum, index) => Object.freeze({
+        checksum,
+        questionNumber: "05012409",
+        partStableKey: String(index + 1),
+        altText: `第 ${index + 1} 小題圖片`,
+    })),
+    Object.freeze({
+        checksum: "b423cefdb63f1e1d767fa7120bc8a9fc407141c4563062dc1866445012d801e6",
+        questionNumber: "05012410",
+        altText: "作答範例圖",
+    }),
+    Object.freeze({
+        checksum: "51f6060096f1c8a99a5720bc5edf47fd0ed746c559457651c34399c99fbfb572",
+        questionNumber: "05012410",
+        sourceOccurrence: 1,
+        partStableKey: "1",
+        altText: "第 1 小題圖片",
+    }),
+    Object.freeze({
+        checksum: "51f6060096f1c8a99a5720bc5edf47fd0ed746c559457651c34399c99fbfb572",
+        questionNumber: "05012410",
+        sourceOccurrence: 2,
+        partStableKey: "2",
+        altText: "第 2 小題圖片",
     }),
 ]);
 const HANLIN_ENGLISH_LITERACY_UNIT_ONE_CHOICE_REPAIRS = Object.freeze([
@@ -755,7 +1076,7 @@ export const AUTHORIZED_HANLIN_LESSON_IMPORTS = Object.freeze([
             target,
             ids: catalogIdsForTarget(target),
             parserStyle: "metadata-first",
-            parserVersion: "kangxuan-math-doc-v5",
+            parserVersion: "kangxuan-math-doc-v9",
             questionTypes: suffix === "mock-cap" ? KANGXUAN_MATH_WRITTEN_TYPES : KANGXUAN_MATH_TYPES,
             approvedDecorativeImageSha256s: Object.freeze([]),
             approvedQuestionImageMappings,
@@ -789,6 +1110,7 @@ export const AUTHORIZED_HANLIN_LESSON_IMPORTS = Object.freeze([
     ...HANLIN_ENGLISH_DOCUMENTS.map(([folder, fileName, originalSha256, unitCode, unitName, unitPosition], documentIndex) => {
         const target = hanlinEnglishTarget(folder, unitCode, unitName, unitPosition);
         const isStarterTestBank = originalSha256 === "f95c59ad0917520d063363cfefbcd5dc04d94b70ebb7cd126a032d683a140ec0";
+        const isStarterWorkbook = originalSha256 === "747f21406e0d7c811bc3aba37fe66d3d274839fc23793d3d321e525ab4180e14";
         const isLiteracyUnitOneImageQuestion = originalSha256 === "e04e5b593258d20cdf1c3e75c5fcaed33cb62040744874571bf621d1095ec20e";
         const sourceIndex = HANLIN_ENGLISH_DOCUMENTS.slice(0, documentIndex)
             .filter(([sourceFolder]) => sourceFolder === folder).length;
@@ -798,15 +1120,30 @@ export const AUTHORIZED_HANLIN_LESSON_IMPORTS = Object.freeze([
             expectedPublishedCount: expectedQuestionCount,
             expectedPendingReviewCount: 0,
             target, ids: catalogIdsForTarget(target),
-            parserVersion: "hanlin-en-v2",
+            parserVersion: isStarterWorkbook
+                ? "hanlin-en-v12"
+                : HANLIN_ENGLISH_APPROVED_EMF_IMAGE_MAPPINGS[originalSha256]?.some((mapping) => mapping.renderedChecksum)
+                    ? "hanlin-en-v13"
+                : HANLIN_ENGLISH_LEGACY_DIALOGUE_RECONCILIATION_SOURCES.has(originalSha256)
+                ? "hanlin-en-v10"
+                : HANLIN_ENGLISH_APPROVED_EMF_IMAGE_MAPPINGS[originalSha256]
+                    ? "hanlin-en-v9"
+                    : "hanlin-en-v5",
             questionTypes: HANLIN_ENGLISH_TYPES,
             allowDerivedHtmlImages: true,
             approvedDecorativeImageSha256s: Object.freeze([]),
             approvedQuestionImageMappings: isStarterTestBank
                 ? HANLIN_ENGLISH_STARTER_TEST_IMAGE_MAPPINGS
+                : isStarterWorkbook
+                    ? HANLIN_ENGLISH_STARTER_WORKBOOK_PART_IMAGE_MAPPINGS
                 : isLiteracyUnitOneImageQuestion
                     ? HANLIN_ENGLISH_LITERACY_UNIT_ONE_IMAGE_MAPPINGS
                     : Object.freeze([]),
+            requiredPartImageQuestionNumbers: isStarterWorkbook
+                ? Object.freeze(["05012406", "05012407", "05012408", "05012409", "05012410"])
+                : Object.freeze([]),
+            approvedEmfImageMappings: HANLIN_ENGLISH_APPROVED_EMF_IMAGE_MAPPINGS[originalSha256]
+                ?? Object.freeze([]),
             approvedChoiceRepairs: isLiteracyUnitOneImageQuestion
                 ? HANLIN_ENGLISH_LITERACY_UNIT_ONE_CHOICE_REPAIRS
                 : Object.freeze([]),
@@ -864,11 +1201,13 @@ const TOOLS = Object.freeze({
     pdfinfo: findTool("/opt/homebrew/bin/pdfinfo", "pdfinfo"),
     pdftotext: findTool("/opt/homebrew/bin/pdftotext", "pdftotext"),
     pdfimages: findTool("/opt/homebrew/bin/pdfimages", "pdfimages"),
+    pdftoppm: findTool("/opt/homebrew/bin/pdftoppm", "pdftoppm"),
     pdfdetach: findTool("/opt/homebrew/bin/pdfdetach", "pdfdetach"),
     unzip: findTool("/usr/bin/unzip", "unzip"),
     zip: findTool("/usr/bin/zip", "zip"),
     sevenZip: findTool("/opt/homebrew/bin/7z", "7z"),
 });
+const APPROVED_EMF_RASTER_DPI = 300;
 const PDF_INSPECTOR = fileURLToPath(new URL("./inspect-pdf.mjs", import.meta.url));
 
 const STORAGE_KEY_SEGMENT = /^(?!\.{1,2}$)[^/\\]+$/;
@@ -916,6 +1255,15 @@ function normalizeSanitizedSectionHeaders(value, questionTypes = HANLIN_CHINESE_
     );
 }
 
+function normalizeWordTextForParsing(value, questionTypes) {
+    return mergeFragmentedMathScripts(cleanText(stripLegacyWordSequenceFieldPrefixes(normalizeLegacyWordSymbolArrows(
+        normalizeSanitizedSectionHeaders(
+            normalizeLegacyWordOverstrikeSpeakers(value),
+            questionTypes,
+        ),
+    )))).replace(/^\s*\d+\s+(?=題號：)/gm, "");
+}
+
 /**
  * LibreOffice preserves some legacy Word sequence fields as strings such as
  * `\\S\\do 4(１)１...` at the beginning of a question line. They are layout
@@ -926,6 +1274,91 @@ export function stripLegacyWordSequenceFieldPrefixes(value) {
         /^[\t 　]*(?=\\S\\do)(?:\\S\\do\s+\d+\([0-9０-９]\)?|[0-9０-９()（）])+/gm,
         "",
     );
+}
+
+/** 移除舊版 Word 清單轉換後殘留在英文題幹開頭的單一清單標記。 */
+export function stripLegacyWordPromptListMarker(value) {
+    return String(value).replace(/^[\t 　]*[•●▪◦][\t 　]*(?:\r?\n)*/u, "");
+}
+
+/**
+ * `textutil` exposes legacy Word EQ overstrike speaker labels as field-code
+ * text. Keep only the rendered speaker operand and leave all other EQ fields
+ * untouched. This evidence is used only for an already approved English source.
+ */
+export function normalizeLegacyWordOverstrikeSpeakers(value) {
+    return String(value).replace(
+        /^[\t ]*(?:eq|EQ)\s+\\[oO]\\ar\([\t 　]*,([A-Za-z][A-Za-z .’'\-]{0,60})\)(?=:)/gmu,
+        "$1",
+    );
+}
+
+function comparableDialoguePayload(value) {
+    // The sanitized conversion may drop line-end padding, but every meaningful
+    // character and every internal space must still match the approved source.
+    return String(value).replace(/[ \t　]+$/u, "");
+}
+
+/** Restore verified dialogue speakers and blank operands from the approved source. */
+export function restoreLegacyWordDialogueSpeakers(sanitizedBody, sourceBody) {
+    const sanitizedLines = String(sanitizedBody).split("\n");
+    const sourceLines = String(sourceBody).split("\n");
+    const sanitizedDialogueLines = sanitizedLines.flatMap((line, index) => {
+        const match = line.match(/^([\t 　]*)([A-Za-z][A-Za-z .’'\-]{0,60})?:(.*)$/u);
+        return match ? [{ index, match }] : [];
+    });
+    const sourceDialogueLines = sourceLines.flatMap((line) => {
+        const match = line.match(/^([\t 　]*)([A-Za-z][A-Za-z .’'\-]{0,60}):(.*)$/u);
+        return match ? [match] : [];
+    });
+    if (sanitizedDialogueLines.length !== sourceDialogueLines.length) {
+        throw new HanlinImportError(
+            "LEGACY_DIALOGUE_SPEAKER_MISMATCH",
+            "舊版 Word 對話講者的來源數量與安全轉檔內容不一致，停止匯入。",
+        );
+    }
+
+    const restoredLines = [...sanitizedLines];
+    for (const [dialogueIndex, { index, match: sanitizedMatch }] of sanitizedDialogueLines.entries()) {
+        const sourceMatch = sourceDialogueLines[dialogueIndex];
+        const sourcePayload = sourceMatch[3];
+        const blankFields = / EQ \\o\(,([\t 　]+(?:\([0-9]+\)[\t 　]+)?)\)/gu;
+        const operands = [];
+        let projection = "";
+        let cursor = 0;
+        for (const field of sourcePayload.matchAll(blankFields)) {
+            projection += sourcePayload.slice(cursor, field.index);
+            operands.push({ offset: projection.length, value: field[1] });
+            cursor = field.index + field[0].length;
+        }
+        projection += sourcePayload.slice(cursor);
+        let restoredPayload = projection;
+        for (const { offset, value } of operands.toReversed()) {
+            restoredPayload = `${restoredPayload.slice(0, offset)}${value}${restoredPayload.slice(offset)}`;
+        }
+        const sanitizedPayload = sanitizedMatch[3];
+        const sourceTailPadding = sourcePayload.slice(cursor).match(/[ \t　]+$/u)?.[0] ?? "";
+        const restoredCore = restoredPayload.slice(0, restoredPayload.length - sourceTailPadding.length);
+        const alreadyRestored = sanitizedPayload.startsWith(restoredCore)
+            && sourceTailPadding.startsWith(sanitizedPayload.slice(restoredCore.length));
+        if ((sanitizedMatch[2] && sanitizedMatch[2] !== sourceMatch[2])
+            || /\bEQ\b/iu.test(projection)
+            || (!alreadyRestored
+                && comparableDialoguePayload(sanitizedPayload) !== comparableDialoguePayload(projection))) {
+            throw new HanlinImportError(
+                "LEGACY_DIALOGUE_SPEAKER_MISMATCH",
+                "舊版 Word 對話講者與安全轉檔內容不一致，停止匯入。",
+            );
+        }
+        let outputPayload = sanitizedPayload;
+        if (!alreadyRestored) {
+            for (const { offset, value } of operands.toReversed()) {
+                outputPayload = `${outputPayload.slice(0, offset)}${value}${outputPayload.slice(offset)}`;
+            }
+        }
+        restoredLines[index] = `${sanitizedMatch[1]}${sourceMatch[2]}:${outputPayload}`;
+    }
+    return restoredLines.join("\n");
 }
 
 /**
@@ -1501,6 +1934,118 @@ async function extractStableEmbeddedImages(
     return { images, ambiguous, missingImageNames };
 }
 
+export async function trimNearWhitePng(buffer) {
+    const { data, info } = await sharp(buffer)
+        .trim({ background: "#ffffff", threshold: 8 })
+        .png({ compressionLevel: 9, adaptiveFiltering: false })
+        .toBuffer({ resolveWithObject: true });
+    return { buffer: data, width: info.width, height: info.height };
+}
+
+export async function inspectVisibleImageBounds(buffer) {
+    const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let left = info.width;
+    let top = info.height;
+    let right = 0;
+    let bottom = 0;
+    for (let y = 0; y < info.height; y += 1) {
+        for (let x = 0; x < info.width; x += 1) {
+            const offset = (y * info.width + x) * info.channels;
+            const alpha = data[offset + 3];
+            const nonWhite = data[offset] < 247 || data[offset + 1] < 247 || data[offset + 2] < 247;
+            if (alpha <= 8 || !nonWhite) continue;
+            left = Math.min(left, x);
+            top = Math.min(top, y);
+            right = Math.max(right, x + 1);
+            bottom = Math.max(bottom, y + 1);
+        }
+    }
+    const bounds = right > left && bottom > top ? { left, top, right, bottom } : null;
+    return {
+        bounds,
+        width: info.width,
+        height: info.height,
+        likelyOffsetClipped: Boolean(bounds
+            && (bounds.left / info.width > 0.25 || bounds.top / info.height > 0.25)
+            && (bounds.right === info.width || bounds.bottom === info.height)),
+    };
+}
+
+async function extractApprovedEmfImages(unpackedDocx, documentWork, fileName, mappings) {
+    if (!mappings.length) return [];
+    const mediaRoot = path.join(unpackedDocx, "word", "media");
+    const entries = await readdir(mediaRoot, { withFileTypes: true }).catch((error) => {
+        if (error?.code === "ENOENT") return [];
+        throw error;
+    });
+    const mappingsByChecksum = new Map(mappings.map((mapping) => [mapping.rawChecksum, mapping]));
+    const imagesByRawChecksum = new Map();
+    for (const entry of entries.filter((candidate) => candidate.isFile() && path.extname(candidate.name).toLowerCase() === ".emf")) {
+        const emfPath = path.join(mediaRoot, entry.name);
+        const rawChecksum = sha256Buffer(await readFile(emfPath));
+        const mapping = mappingsByChecksum.get(rawChecksum);
+        if (!mapping) continue;
+        const outputRoot = path.join(documentWork, "approved-emf-images", rawChecksum);
+        await mkdir(outputRoot, { recursive: true });
+        const profile = path.join(outputRoot, "libreoffice-profile");
+        await configureLockedLibreOfficeProfile(profile, fileName);
+        runTool(TOOLS.soffice, [
+            `-env:UserInstallation=${pathToFileURL(profile).href}`,
+            "--headless", "--nologo", "--nodefault", "--nolockcheck", "--norestore",
+            "--convert-to", "pdf", "--outdir", outputRoot, emfPath,
+        ], fileName, {
+            timeout: 900_000,
+        });
+        const pdfPath = path.join(outputRoot, `${path.basename(entry.name, path.extname(entry.name))}.pdf`);
+        const rasterPrefix = path.join(outputRoot, "raster");
+        runTool(TOOLS.pdftoppm, [
+            "-png", "-r", String(APPROVED_EMF_RASTER_DPI), "-singlefile", pdfPath, rasterPrefix,
+        ], fileName, { timeout: 900_000 });
+        const renderedPath = `${rasterPrefix}.png`;
+        const rendered = await readFile(renderedPath).catch((error) => {
+            if (error?.code === "ENOENT") {
+                throw new HanlinImportError("APPROVED_EMF_RENDER_MISSING", `${fileName} 的核准 EMF 未產生 PNG。`, fileName);
+            }
+            throw error;
+        });
+        const trimmed = await trimNearWhitePng(rendered);
+        const checksum = sha256Buffer(trimmed.buffer);
+        if (mapping.renderedChecksum && checksum !== mapping.renderedChecksum) {
+            throw new HanlinImportError(
+                "APPROVED_EMF_RENDER_MISMATCH",
+                `${fileName} 的核准 EMF 轉換結果與登錄 checksum 不一致。`,
+                fileName,
+            );
+        }
+        const temporaryPath = path.join(outputRoot, `${checksum}.png`);
+        await writeFile(temporaryPath, trimmed.buffer);
+        imagesByRawChecksum.set(rawChecksum, {
+            buffer: trimmed.buffer,
+            checksum,
+            dimensions: { width: trimmed.width, height: trimmed.height },
+            extension: ".png",
+            mimeType: "image/png",
+            provenance: "approved-emf",
+            rawChecksum,
+            replacesDerivedChecksum: mapping.replacesDerivedChecksum,
+            questionNumber: mapping.questionNumber,
+            placement: mapping.placement ?? "prompt",
+            altText: mapping.altText ?? null,
+            temporaryPath,
+        });
+    }
+    const foundChecksums = new Set(imagesByRawChecksum.keys());
+    const missing = mappings.filter((mapping) => !foundChecksums.has(mapping.rawChecksum));
+    if (missing.length) {
+        throw new HanlinImportError(
+            "APPROVED_EMF_SOURCE_MISSING",
+            `${fileName} 找不到核准 EMF：${missing.map((mapping) => mapping.rawChecksum).join(", ")}。`,
+            fileName,
+        );
+    }
+    return mappings.map((mapping) => imagesByRawChecksum.get(mapping.rawChecksum));
+}
+
 function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -1547,12 +2092,13 @@ function questionImageAsset(stableImage, pdfImage = null, mapping = null) {
         height: dimensions.height ?? pdfImage?.height ?? null,
         temporaryPath,
         optionKey: mapping?.optionKey ?? null,
+        partStableKey: mapping?.partStableKey ?? null,
         placement: mapping?.placement === "explanation" ? "explanation" : "prompt",
         altText: mapping?.altText ?? null,
     };
 }
 
-function inlineMathImageAsset(inspection) {
+function inlineMathImageAsset(inspection, formula = null) {
     return {
         ...questionImageAsset({
             ...inspection,
@@ -1562,10 +2108,59 @@ function inlineMathImageAsset(inspection) {
             altText: "來源數學公式",
         }),
         inlineFormula: true,
+        formula,
     };
 }
 
-async function extractImages({
+function approvedImageMappingRegistry(mappings, fileName) {
+    const groupsByChecksum = new Map();
+    const occurrenceGroups = [];
+    for (const mapping of mappings) {
+        const questionNumber = normalizeQuestionNumber(mapping.questionNumber);
+        const checksum = String(mapping.checksum ?? "").toLowerCase();
+        if (!questionNumber || !checksum) {
+            throw new HanlinImportError(
+                "APPROVED_IMAGE_MAPPING_INVALID",
+                "核准圖片映射缺少題號或 checksum。",
+                fileName,
+            );
+        }
+        const groupsByQuestion = groupsByChecksum.get(checksum) ?? new Map();
+        const group = groupsByQuestion.get(questionNumber) ?? {
+            checksum,
+            questionNumber,
+            mappings: [],
+            byOccurrence: null,
+        };
+        group.mappings.push(mapping);
+        groupsByQuestion.set(questionNumber, group);
+        groupsByChecksum.set(checksum, groupsByQuestion);
+    }
+    for (const groupsByQuestion of groupsByChecksum.values()) {
+        for (const group of groupsByQuestion.values()) {
+            const occurrenceAware = group.mappings.length > 1
+                || group.mappings.some((mapping) => mapping.sourceOccurrence !== undefined);
+            if (!occurrenceAware) continue;
+            const occurrences = group.mappings.map((mapping) => mapping.sourceOccurrence);
+            const ordered = [...occurrences].sort((left, right) => left - right);
+            const valid = occurrences.every((occurrence) => Number.isInteger(occurrence) && occurrence >= 1)
+                && new Set(occurrences).size === occurrences.length
+                && ordered.every((occurrence, index) => occurrence === index + 1);
+            if (!valid) {
+                throw new HanlinImportError(
+                    "APPROVED_IMAGE_MAPPING_INVALID",
+                    `${group.questionNumber} 的圖片 ${group.checksum} sourceOccurrence 必須是連續且不重複的 1 至 ${group.mappings.length}。`,
+                    fileName,
+                );
+            }
+            group.byOccurrence = new Map(group.mappings.map((mapping) => [mapping.sourceOccurrence, mapping]));
+            occurrenceGroups.push(group);
+        }
+    }
+    return { groupsByChecksum, occurrenceGroups };
+}
+
+export async function extractImages({
     html,
     htmlPath,
     pdfImageRows,
@@ -1578,6 +2173,7 @@ async function extractImages({
     preferPrecedingAssociation = false,
     allowDocxMedia = false,
     allowDerivedHtmlImages = false,
+    approvedEmfImages = [],
 }) {
     const imageTags = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)].map((match) => {
         const width = Number(match[0].match(/\bwidth="([0-9]+)"/i)?.[1] ?? 0);
@@ -1595,7 +2191,10 @@ async function extractImages({
         const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
         const localHtml = preceding ? html.slice(preceding.index, tag.index) : "";
         const localText = localHtml.replace(/<[^>]*>/g, " ").replace(/&#65306;|&colon;/g, "：");
+        const normalizedLocalText = localText.normalize("NFKC");
+        const optionMarkers = [...normalizedLocalText.matchAll(/\(\s*([A-H])\s*\)/gu)];
         tag.placement = /詳解\s*[：:]/u.test(localText) ? "explanation" : "prompt";
+        tag.optionKey = optionMarkers.at(-1)?.[1] ?? null;
     }
     const recordIndexesByNumber = new Map();
     records.forEach((record, index) => {
@@ -1605,9 +2204,28 @@ async function extractImages({
     const pendingIndexes = new Set();
     const imagesByRecord = new Map();
     const approvedRecordIndexes = new Set();
+    const approvedEmfReplacementChecksums = new Set(
+        approvedEmfImages.map((image) => image.replacesDerivedChecksum),
+    );
+    for (const approvedImage of approvedEmfImages) {
+        const candidateIndexes = recordIndexesByNumber.get(approvedImage.questionNumber) ?? [];
+        if (candidateIndexes.length !== 1) {
+            throw new HanlinImportError(
+                "APPROVED_EMF_QUESTION_AMBIGUOUS",
+                `${approvedImage.questionNumber} 無法唯一對應核准 EMF。`,
+            );
+        }
+        const recordIndex = candidateIndexes[0];
+        imagesByRecord.set(recordIndex, [
+            ...(imagesByRecord.get(recordIndex) ?? []),
+            questionImageAsset(approvedImage, null, approvedImage),
+        ]);
+        approvedRecordIndexes.add(recordIndex);
+    }
     if (allowDerivedHtmlImages) {
         const inspectionCache = new Map();
-        const approvedMappingsByChecksum = new Map(approvedQuestionImageMappings.map((mapping) => [mapping.checksum, mapping]));
+        const approvedRegistry = approvedImageMappingRegistry(approvedQuestionImageMappings, htmlPath);
+        const sourceOccurrences = new Map();
         for (const tag of imageTags) {
             if (tag.decorative) continue;
             const preceding = numberMatches.filter((entry) => entry.index < tag.index).at(-1);
@@ -1615,17 +2233,41 @@ async function extractImages({
             const associated = preferPrecedingAssociation ? preceding : following;
             if (tag.missingImagePlaceholder) continue;
             const inspection = await inspectHtmlImage(htmlPath, tag.source, inspectionCache);
-            const approvedMapping = inspection ? approvedMappingsByChecksum.get(inspection.checksum) ?? null : null;
+            const associatedNumber = associated ? normalizeQuestionNumber(associated.number) : null;
+            const groupsByQuestion = inspection
+                ? approvedRegistry.groupsByChecksum.get(inspection.checksum) ?? new Map()
+                : new Map();
+            const associatedGroup = associatedNumber ? groupsByQuestion.get(associatedNumber) ?? null : null;
+            const allMappings = [...groupsByQuestion.values()].flatMap((group) => group.mappings);
+            const fallbackMapping = allMappings.length === 1 ? allMappings[0] : null;
+            let approvedMapping = fallbackMapping;
+            if (associatedGroup?.byOccurrence) {
+                const occurrenceKey = `${associatedGroup.questionNumber}:${associatedGroup.checksum}`;
+                const sourceOccurrence = (sourceOccurrences.get(occurrenceKey) ?? 0) + 1;
+                sourceOccurrences.set(occurrenceKey, sourceOccurrence);
+                approvedMapping = associatedGroup.byOccurrence.get(sourceOccurrence) ?? null;
+                if (!approvedMapping) {
+                    throw new HanlinImportError(
+                        "APPROVED_IMAGE_OCCURRENCE_MISMATCH",
+                        `${associatedGroup.questionNumber} 的圖片 ${associatedGroup.checksum} 來源出現次數超過核准映射。`,
+                        htmlPath,
+                    );
+                }
+            }
+            else if (associatedGroup) {
+                approvedMapping = associatedGroup.mappings[0];
+            }
             const candidateIndexes = approvedMapping
-                ? recordIndexesByNumber.get(approvedMapping.questionNumber) ?? []
+                ? recordIndexesByNumber.get(normalizeQuestionNumber(approvedMapping.questionNumber)) ?? []
                 : associated ? recordIndexesByNumber.get(associated.number) ?? [] : [];
+            if (inspection && approvedEmfReplacementChecksums.has(inspection.checksum)) continue;
             if (!inspection) {
                 candidateIndexes.forEach((index) => pendingIndexes.add(index));
                 continue;
             }
             const isInlineFormula = inspection.mimeType === "image/gif"
                 && (inspection.dimensions.height ?? Number.POSITIVE_INFINITY) <= 64;
-            if (isInlineFormula) continue;
+            if (isInlineFormula && !approvedMapping) continue;
             if (candidateIndexes.length !== 1) {
                 candidateIndexes.forEach((index) => pendingIndexes.add(index));
                 continue;
@@ -1639,8 +2281,20 @@ async function extractImages({
                 dimensions: inspection.dimensions,
                 temporaryPath: inspection.imagePath,
             }, null, approvedMapping ?? { placement: tag.placement });
+            image.detectedOptionKey = approvedMapping?.optionKey ?? tag.optionKey;
             imagesByRecord.set(candidateIndex, [...(imagesByRecord.get(candidateIndex) ?? []), image]);
             if (approvedMapping) approvedRecordIndexes.add(candidateIndex);
+        }
+        for (const group of approvedRegistry.occurrenceGroups) {
+            const occurrenceKey = `${group.questionNumber}:${group.checksum}`;
+            const actual = sourceOccurrences.get(occurrenceKey) ?? 0;
+            if (actual !== group.mappings.length) {
+                throw new HanlinImportError(
+                    "APPROVED_IMAGE_OCCURRENCE_MISMATCH",
+                    `${group.questionNumber} 的圖片 ${group.checksum} 來源出現 ${actual} 次，核准映射需要 ${group.mappings.length} 次。`,
+                    htmlPath,
+                );
+            }
         }
         approvedRecordIndexes.forEach((index) => pendingIndexes.delete(index));
         return { imagesByRecord, pendingIndexes, imageTags: imageTags.length, pdfImages: pdfImageRows.length };
@@ -1858,9 +2512,14 @@ function correctedExplanation(record) {
  */
 export function hasSuspiciousMissingMultiplicationSign(value) {
     return String(value ?? "").split("\n").some((line) => {
+        // A numbered solution prefix is structural text, not the left operand of
+        // the first number in the expression. Keep inspecting the expression
+        // after the prefix so `(1) 3 7＝21` is still held while `(1) 3×7＝21`
+        // is not falsely treated as a dropped multiplication sign.
+        const expression = line.replace(/^\s*(?:\(\d+\)|（\d+）)\s*/u, "");
         const factorGap = /(?:[A-Za-z0-9％%)\]])[ \t]+(?=[A-Za-z0-9％%(\[])/u;
-        if (!factorGap.test(line)) return false;
-        return /[＝=÷]/u.test(line) || /^\s*\([A-H]\)\s*[0-9]/u.test(line);
+        if (!factorGap.test(expression)) return false;
+        return /[＝=÷]/u.test(expression) || /^\s*\([A-H]\)\s*[0-9]/u.test(expression);
     });
 }
 
@@ -1895,27 +2554,136 @@ export function hasFragmentedMathScript(value) {
         || /_\([^\r\n)]*\)[ \t]*_\(/u.test(text);
 }
 
-function structuredRecord(record, approvedChoiceRepair = null) {
+/** Hold formulas whose serialized super/subscript is empty, bare, or unclosed. */
+export function hasMalformedMathScript(value) {
+    const text = String(value ?? "");
+    if (/\^(?!\()/u.test(text) || /[\^_]\(\s*\)/u.test(text)) return true;
+    let searchFrom = 0;
+    while (searchFrom < text.length) {
+        const relativeStart = text.slice(searchFrom).search(/[\^_]\(/u);
+        if (relativeStart < 0) return false;
+        const openingParenthesis = searchFrom + relativeStart + 1;
+        let depth = 0;
+        let closed = false;
+        for (let cursor = openingParenthesis; cursor < text.length; cursor += 1) {
+            if (text[cursor] === "(") depth += 1;
+            else if (text[cursor] === ")") {
+                depth -= 1;
+                if (depth === 0) {
+                    searchFrom = cursor + 1;
+                    closed = true;
+                    break;
+                }
+            }
+        }
+        if (!closed) return true;
+    }
+    return false;
+}
+
+export function stripTrailingSourcePageMarker(value, sourcePage, { isLastRecord = false } = {}) {
+    const text = String(value ?? "");
+    if (!Number.isInteger(sourcePage) || sourcePage < 1) return text;
+    const marker = text.match(/\n[ \t]*\n[ \t]*(\d{1,4})[ \t]*$/u);
+    if (!marker) return text;
+    const markerNumber = Number(marker[1]);
+    // Some approved legacy Word files restart their visible footer at 1. The
+    // converter appends that footer only to the final parsed record, so accept
+    // this second structural proof without stripping isolated numeric content
+    // from any earlier question.
+    if (markerNumber !== sourcePage && !(isLastRecord && markerNumber === 1)) return text;
+    return text.slice(0, marker.index).trimEnd();
+}
+
+function parseEmbeddedTrueFalse(record, body, sourceAnswer) {
+    if (record.type !== "填充題") return null;
+
+    const lines = body.split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    if (!lines.length || !/^[•‧·●▪]?\s*是非題\s*[：:]?$/u.test(lines[0].normalize("NFKC"))) return null;
+
+    const normalizedAnswer = sourceAnswer.normalize("NFKC").replace(/\s+/gu, "");
+    const answerKey = new Map([
+        ["○", "是"], ["〇", "是"], ["O", "是"], ["對", "是"], ["是", "是"],
+        ["╳", "否"], ["×", "否"], ["X", "否"], ["✕", "否"], ["錯", "否"], ["否", "否"],
+    ]).get(normalizedAnswer);
+    const prompt = lines.slice(1)
+        .join("\n")
+        .replace(/^[•‧·●▪]\s*/u, "")
+        .trim();
+    if (!prompt || !answerKey) return null;
+
+    return {
+        prompt,
+        answerKey,
+    };
+}
+
+export function structuredRecord(record, approvedChoiceRepair = null, {
+    approvedVisualMatchingRepair = null,
+    approvedMultiPartRepair = null,
+    approvedTables = [],
+    stripLeadingWordListMarker = false,
+    sourcePage = null,
+    isLastRecord = false,
+    stripTrailingPageMarker = false,
+} = {}) {
     const pendingReasons = [];
     const correctedBody = correctedQuestionBody(record);
     const correctedExplanationText = correctedExplanation(record);
     // Source math GIF markers must survive parsing. The writer later expands each
     // checksum marker into an ordered image block, preserving the exact Word glyph.
-    const body = correctedBody.trim();
-    const explanation = correctedExplanationText.trim();
+    const body = (stripLeadingWordListMarker
+        ? stripLegacyWordPromptListMarker(correctedBody)
+        : correctedBody).trim();
+    const explanation = (stripTrailingPageMarker
+        ? stripTrailingSourcePageMarker(correctedExplanationText, sourcePage, { isLastRecord })
+        : correctedExplanationText).trim();
     const sourceAnswer = String(record.sourceAnswer ?? "").trim();
     const difficultyCode = strictDifficulty(record.difficulty);
     if (!body) pendingReasons.push("missing-prompt");
     if (!sourceAnswer) pendingReasons.push("missing-answer");
     if (!difficultyCode) pendingReasons.push("unknown-difficulty");
-    if (hasFragmentedMathScript(body) || hasFragmentedMathScript(explanation)) {
+    if (hasFragmentedMathScript(body)
+        || hasFragmentedMathScript(explanation)
+        || hasFragmentedMathScript(sourceAnswer)) {
         pendingReasons.push("fragmented-math-script");
+    }
+    if (hasMalformedMathScript(body)
+        || hasMalformedMathScript(explanation)
+        || hasMalformedMathScript(sourceAnswer)) {
+        pendingReasons.push("malformed-math-script");
     }
     if (!HANLIN_ENGLISH_TYPES.includes(record.type)
         && !isApprovedMissingMultiplicationFalsePositive(record.number)
         && (hasSuspiciousMissingMultiplicationSign(body)
             || hasSuspiciousMissingMultiplicationSign(explanation))) {
         pendingReasons.push("suspected-missing-multiplication-sign");
+    }
+
+    const embeddedTrueFalse = parseEmbeddedTrueFalse(record, body, sourceAnswer);
+    if (embeddedTrueFalse) {
+        return {
+            kind: "choice",
+            questionTypeCode: "single-choice",
+            originalTypeLabel: "是非題",
+            difficultyCode,
+            prompt: embeddedTrueFalse.prompt,
+            parts: pendingReasons.length ? [] : [{
+                stableKey: "main",
+                prompt: "",
+                answerMode: "boolean",
+                gradingPolicy: "automatic",
+                options: [
+                    { key: "是", text: "是" },
+                    { key: "否", text: "否" },
+                ],
+                answer: { answerKey: embeddedTrueFalse.answerKey },
+            }],
+            explanation,
+            pendingReasons,
+        };
     }
 
     if (["單一選擇題", "選擇", "字彙選擇", "文法選擇", "對話與完成句子", "單題"].includes(record.type)) {
@@ -1928,10 +2696,14 @@ function structuredRecord(record, approvedChoiceRepair = null) {
                 text: option.text,
             }));
             const optionKeys = new Set(options.map((option) => option.key));
+            const nativeTableMatches = !approvedChoiceRepair.nativeTableSha256
+                || approvedTables.some((table) => table.sourceKind === "native"
+                    && table.sourceObjectSha256 === approvedChoiceRepair.nativeTableSha256);
             if (sourceAnswerKey !== approvedChoiceRepair.answerKey
                 || !optionKeys.has(approvedChoiceRepair.answerKey)
                 || optionKeys.size !== options.length
                 || options.length < 2
+                || !nativeTableMatches
                 || (approvedChoiceRepair.prompt && !body.includes(approvedChoiceRepair.prompt))) {
                 pendingReasons.push("choice-repair-invalid");
             }
@@ -1940,7 +2712,7 @@ function structuredRecord(record, approvedChoiceRepair = null) {
                 questionTypeCode: "single-choice",
                 difficultyCode,
                 prompt: approvedChoiceRepair.prompt
-                    ?? body.replace(/(?:\s*\([A-H]\)\s*)+$/u, "").trim(),
+                    ?? body.normalize("NFKC").replace(/(?:\s*\(\s*[A-H]\s*\)\s*)+$/u, "").trim(),
                 parts: pendingReasons.length ? [] : [{
                     stableKey: "main",
                     prompt: "",
@@ -1984,7 +2756,66 @@ function structuredRecord(record, approvedChoiceRepair = null) {
     }
 
     if (["配合題", "選詞測驗", "題組", "克漏字測驗", "閱讀測驗"].includes(record.type)) {
-        const parsed = parseParts(body, sourceAnswer);
+        if (approvedMultiPartRepair) {
+            const sourceAnswerKeys = parseAnswerLetters(sourceAnswer);
+            const stableKeys = new Set();
+            const comparable = (value) => String(value ?? "").normalize("NFKC").replace(/\s+/gu, "");
+            const bodyEvidence = comparable(body);
+            const explanationEvidence = comparable(explanation);
+            const nativeTableMatches = Boolean(approvedMultiPartRepair.nativeTableSha256)
+                && approvedTables.some((table) => table.sourceKind === "native"
+                    && table.sourceObjectSha256 === approvedMultiPartRepair.nativeTableSha256);
+            const sourceEvidenceMatches = approvedMultiPartRepair.parts.every((part) =>
+                bodyEvidence.includes(comparable(part.prompt))
+                && (part.options ?? []).every((option) => bodyEvidence.includes(comparable(option.text))
+                    || explanationEvidence.includes(comparable(option.text))
+                    || nativeTableMatches));
+            const parts = approvedMultiPartRepair.parts.map((part) => {
+                const options = part.options ?? [];
+                const optionKeys = new Set(options.map((option) => option.key));
+                const isTextPart = part.answerMode === "text";
+                if (stableKeys.has(part.stableKey)
+                    || (isTextPart && (!part.acceptedValue || options.length))
+                    || (!isTextPart && (optionKeys.size !== options.length
+                        || options.length < 2
+                        || !optionKeys.has(part.answerKey)))) {
+                    pendingReasons.push("multi-part-repair-invalid");
+                }
+                stableKeys.add(part.stableKey);
+                return {
+                    stableKey: part.stableKey,
+                    prompt: part.prompt,
+                    answerMode: isTextPart ? "text" : "single_choice",
+                    gradingPolicy: isTextPart ? "manual_review" : "automatic",
+                    options: options.map((option) => ({ key: option.key, text: option.text })),
+                    answer: isTextPart ? { acceptedValue: part.acceptedValue } : { answerKey: part.answerKey },
+                };
+            });
+            const sourceAnswerMatches = approvedMultiPartRepair.expectedSourceAnswer
+                ? comparable(sourceAnswer) === comparable(approvedMultiPartRepair.expectedSourceAnswer)
+                : sourceAnswerKeys.length === parts.length
+                    && sourceAnswerKeys.every((key, index) => key === approvedMultiPartRepair.parts[index].answerKey);
+            if (!sourceAnswerMatches
+                || !bodyEvidence.includes(comparable(approvedMultiPartRepair.prompt))
+                || !sourceEvidenceMatches) {
+                pendingReasons.push("multi-part-repair-source-mismatch");
+            }
+            return {
+                kind: "multi-choice",
+                questionTypeCode: "multi-choice",
+                difficultyCode,
+                prompt: approvedMultiPartRepair.prompt,
+                parts: pendingReasons.length ? [] : parts,
+                explanation,
+                pendingReasons,
+            };
+        }
+        const parsed = parseParts(body, sourceAnswer, {
+            commonOptions: approvedVisualMatchingRepair?.labels.map((label) => ({
+                label,
+                value: `(${label})`,
+            })) ?? null,
+        });
         if (!parsed && ["克漏字測驗", "閱讀測驗"].includes(record.type)) {
             const writtenParts = parseWrittenParts(body, sourceAnswer);
             if (writtenParts?.length) {
@@ -2095,6 +2926,40 @@ function structuredRecord(record, approvedChoiceRepair = null) {
     };
 }
 
+export function inferVerifiedImageChoiceRepair(record, images, enabled) {
+    if (!enabled || !["單一選擇題", "選擇", "字彙選擇", "文法選擇", "對話與完成句子", "單題"].includes(record.type)) {
+        return null;
+    }
+    const body = correctedQuestionBody(record).normalize("NFKC").trim();
+    const trailingMarkers = body.match(/(?:\s*\(\s*[A-H]\s*\)\s*){2,8}$/u)?.[0] ?? "";
+    const optionKeys = [...trailingMarkers.matchAll(/\(\s*([A-H])\s*\)/gu)].map((match) => match[1]);
+    if (optionKeys.length < 2 || new Set(optionKeys).size !== optionKeys.length) return null;
+    const expectedKeys = Array.from({ length: optionKeys.length }, (_, index) => String.fromCharCode(65 + index));
+    if (!optionKeys.every((key, index) => key === expectedKeys[index])) return null;
+
+    const optionImages = images.filter((image) => image.placement === "prompt" && image.detectedOptionKey);
+    const imageByOption = new Map();
+    for (const image of optionImages) {
+        if (imageByOption.has(image.detectedOptionKey)) return null;
+        imageByOption.set(image.detectedOptionKey, image);
+    }
+    if (imageByOption.size !== optionKeys.length || optionKeys.some((key) => !imageByOption.has(key))) return null;
+
+    const sourceAnswer = String(record.sourceAnswer ?? "").normalize("NFKC").trim();
+    const answerKey = parseAnswerLetters(sourceAnswer)[0] ?? sourceAnswer.match(/^([A-H])(?:\s+\d+)?$/u)?.[1];
+    if (!answerKey || !imageByOption.has(answerKey)) return null;
+    if (!body.slice(0, body.length - trailingMarkers.length).trim()) return null;
+    return {
+        questionNumber: normalizeQuestionNumber(record.number),
+        answerKey,
+        options: optionKeys.map((key) => ({
+            key,
+            text: `選項 ${key}`,
+            imageChecksum: imageByOption.get(key).checksum,
+        })),
+    };
+}
+
 function hasUnresolvedVisualReference(body, images, allowTextualTables) {
     if (!VISUAL_REFERENCE.test(body) || images.length) return false;
     if (!allowTextualTables) return true;
@@ -2117,7 +2982,218 @@ function hasUnresolvedVisualReference(body, images, allowTextualTables) {
     return true;
 }
 
-function recordFingerprint(record) {
+function normalizedEmbeddedTableCells(value) {
+    return String(value)
+        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/gu, "")
+        .split(/\r?\n/u)
+        .map((cell) => cell.replace(/[\t　 ]+/gu, " ").trim())
+        .filter(Boolean);
+}
+
+function decodeWordXmlText(value) {
+    return value
+        .replaceAll("&lt;", "<")
+        .replaceAll("&gt;", ">")
+        .replaceAll("&quot;", '"')
+        .replaceAll("&apos;", "'")
+        .replaceAll("&amp;", "&");
+}
+
+function nativeWordTableRows(tableXml) {
+    return [...tableXml.matchAll(/<w:tr\b[\s\S]*?<\/w:tr>/gu)]
+        .map((rowMatch) => [...rowMatch[0].matchAll(/<w:tc\b[\s\S]*?<\/w:tc>/gu)]
+            .map((cellMatch) => [...cellMatch[0].matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gu)]
+                .map((textMatch) => decodeWordXmlText(textMatch[1]))
+                .join("")
+                .replace(/\s+/gu, " ")
+                .trim()))
+        .filter((row) => row.some((cell) => cell.length > 0));
+}
+
+function normalizedTableText(value) {
+    return String(value).normalize("NFKC").replace(/[\t　 ]+/gu, " ").trim();
+}
+
+export function removeApprovedNativeTableText(body, tables, fileName = "來源文件") {
+    let lines = String(body ?? "").split("\n");
+    for (const table of tables.filter((entry) => entry.sourceKind === "native")) {
+        const cells = table.rows.flat().map(normalizedTableText).filter(Boolean);
+        if (!cells.length) continue;
+        let matchedIndexes = null;
+        for (let start = 0; start < lines.length; start += 1) {
+            const indexes = [];
+            let cursor = start;
+            for (const cell of cells) {
+                while (cursor < lines.length && !normalizedTableText(lines[cursor])) cursor += 1;
+                if (cursor >= lines.length || normalizedTableText(lines[cursor]) !== cell) break;
+                indexes.push(cursor);
+                cursor += 1;
+            }
+            if (indexes.length === cells.length) {
+                matchedIndexes = new Set(indexes);
+                break;
+            }
+        }
+        if (!matchedIndexes) {
+            const cellSet = new Set(cells);
+            const partiallyFlattenedIndexes = new Set(lines
+                .map((line, index) => cellSet.has(normalizedTableText(line)) ? index : null)
+                .filter((index) => index !== null));
+            if (partiallyFlattenedIndexes.size) {
+                lines = lines.filter((_line, index) => !partiallyFlattenedIndexes.has(index));
+            }
+            continue;
+        }
+        lines = lines.filter((_line, index) => !matchedIndexes.has(index));
+    }
+    return lines.join("\n").replace(/\n{3,}/gu, "\n\n").trim();
+}
+
+async function extractApprovedQuestionTables(normalizedDocxRoot, fileName, mappings) {
+    const tablesByQuestionNumber = new Map();
+    const nativeMappings = mappings.filter((mapping) => mapping.nativeTableSha256);
+    const documentXml = nativeMappings.length
+        ? await readFile(path.join(normalizedDocxRoot, "word", "document.xml"), "utf8")
+        : "";
+    const nativeTables = [...documentXml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/gu)].map((match, index) => ({
+        index: index + 1,
+        checksum: sha256Buffer(Buffer.from(match[0], "utf8")),
+        rows: nativeWordTableRows(match[0]),
+    })).map((table) => ({
+        ...table,
+        textChecksum: sha256Buffer(Buffer.from(JSON.stringify(table.rows), "utf8")),
+    }));
+    for (const mapping of mappings) {
+        if (mapping.nativeTableSha256) {
+            const sourceTable = nativeTables.find((table) => table.index === mapping.nativeTableIndex);
+            const checksumMatches = mapping.nativeTableTextSha256
+                ? sourceTable?.textChecksum === mapping.nativeTableTextSha256
+                : sourceTable?.checksum === mapping.nativeTableSha256;
+            if (!sourceTable || !checksumMatches) {
+                throw new HanlinImportError(
+                    "APPROVED_NATIVE_TABLE_MISMATCH",
+                    `${fileName} 的核准原生表格 checksum 不一致：table ${mapping.nativeTableIndex ?? "missing"}。`,
+                    fileName,
+                );
+            }
+            const rows = mapping.rows?.map((row) => [...row]) ?? [];
+            if (!rows.length || rows.some((row) => !row.length || !row.some((cell) => String(cell).trim()))) {
+                throw new HanlinImportError("APPROVED_TABLE_ROWS_INVALID", `${fileName} 的核准表格內容不完整。`, fileName);
+            }
+            if (JSON.stringify(sourceTable.rows) !== JSON.stringify(rows)) {
+                throw new HanlinImportError("APPROVED_TABLE_TEXT_MISMATCH", `${fileName} 的核准表格文字與原生 Word 表格不一致。`, fileName);
+            }
+            const table = {
+                placement: mapping.placement ?? "prompt",
+                text: rows.map((row) => row.join("\t")).join("\n"),
+                rows,
+                sourceKind: "native",
+                sourceObjectSha256: mapping.nativeTableSha256,
+            };
+            tablesByQuestionNumber.set(mapping.questionNumber, [
+                ...(tablesByQuestionNumber.get(mapping.questionNumber) ?? []),
+                table,
+            ]);
+            continue;
+        }
+        const objectName = path.basename(String(mapping.embeddedObjectName ?? ""));
+        if (!objectName || objectName !== mapping.embeddedObjectName) {
+            throw new HanlinImportError("APPROVED_TABLE_OBJECT_INVALID", `${fileName} 的核准表格物件名稱不合法。`, fileName);
+        }
+        const objectPath = path.join(normalizedDocxRoot, "word", "embeddings", objectName);
+        const objectBuffer = await readFile(objectPath).catch(() => null);
+        const actualObjectSha256 = objectBuffer ? sha256Buffer(objectBuffer) : "missing";
+        if (actualObjectSha256 !== mapping.embeddedObjectSha256) {
+            throw new HanlinImportError(
+                "APPROVED_TABLE_OBJECT_MISMATCH",
+                `${fileName} 的核准表格物件 checksum 不一致：${objectName}=${actualObjectSha256}。`,
+                fileName,
+            );
+        }
+        const rows = mapping.rows?.map((row) => [...row]) ?? [];
+        if (!rows.length || rows.some((row) => !row.length || row.some((cell) => !String(cell).trim()))) {
+            throw new HanlinImportError("APPROVED_TABLE_ROWS_INVALID", `${fileName} 的核准表格內容不完整。`, fileName);
+        }
+        const sourceCells = normalizedEmbeddedTableCells(runTool(
+            TOOLS.textutil,
+            ["-convert", "txt", "-stdout", objectPath],
+            fileName,
+            { maxBuffer: 8 * 1024 * 1024 },
+        ));
+        const approvedCells = rows.flat().map((cell) => String(cell).replace(/[\t　 ]+/gu, " ").trim());
+        if (sourceCells.length !== approvedCells.length
+            || sourceCells.some((cell, index) => cell !== approvedCells[index])) {
+            throw new HanlinImportError("APPROVED_TABLE_TEXT_MISMATCH", `${fileName} 的核准表格文字與內嵌 Word 物件不一致。`, fileName);
+        }
+        const table = {
+            placement: mapping.placement ?? "prompt",
+            text: rows.map((row) => row.join("\t")).join("\n"),
+            sourceObjectSha256: mapping.embeddedObjectSha256,
+            rows,
+            sourceKind: "embedded",
+        };
+        tablesByQuestionNumber.set(mapping.questionNumber, [
+            ...(tablesByQuestionNumber.get(mapping.questionNumber) ?? []),
+            table,
+        ]);
+    }
+    return tablesByQuestionNumber;
+}
+
+export function validatePartImageOwnership({
+    structured,
+    images,
+    approvedMappings,
+    questionNumber,
+    fileName,
+    required = false,
+    allowPartial = false,
+}) {
+    const expected = approvedMappings.filter((mapping) => mapping.questionNumber === questionNumber);
+    const expectedPartImages = expected.filter((mapping) => mapping.partStableKey !== undefined);
+    if (!expectedPartImages.length) {
+        if (required) {
+            throw new HanlinImportError("APPROVED_PART_IMAGE_MAPPING_INVALID", `${questionNumber} 的小題圖片缺少 partStableKey。`, fileName);
+        }
+        return false;
+    }
+
+    const partKeys = new Set(structured.parts.map((part) => part.stableKey));
+    const mappedPartKeys = expectedPartImages.map((mapping) => mapping.partStableKey);
+    if (mappedPartKeys.some((key) => typeof key !== "string" || key.length === 0)) {
+        throw new HanlinImportError("APPROVED_PART_IMAGE_MAPPING_INVALID", `${questionNumber} 的小題圖片缺少 partStableKey。`, fileName);
+    }
+    if (new Set(mappedPartKeys).size !== mappedPartKeys.length) {
+        throw new HanlinImportError("APPROVED_PART_IMAGE_MAPPING_INVALID", `${questionNumber} 的小題圖片 partStableKey 重複。`, fileName);
+    }
+    const unknownPartKeys = mappedPartKeys.filter((key) => !partKeys.has(key));
+    if (unknownPartKeys.length) {
+        throw new HanlinImportError("APPROVED_PART_IMAGE_MAPPING_INVALID", `${questionNumber} 的小題圖片指向不存在的小題：${unknownPartKeys.join(", ")}。`, fileName);
+    }
+    const missingPartKeys = [...partKeys].filter((key) => !mappedPartKeys.includes(key));
+    if (!allowPartial && missingPartKeys.length) {
+        throw new HanlinImportError("APPROVED_PART_IMAGE_MAPPING_INVALID", `${questionNumber} 的小題圖片缺少對應：${missingPartKeys.join(", ")}。`, fileName);
+    }
+    for (const mapping of expectedPartImages) {
+        const matches = images.filter((image) => image.partStableKey === mapping.partStableKey);
+        if (matches.length !== 1 || matches[0].checksum !== mapping.checksum) {
+            throw new HanlinImportError(
+                "APPROVED_PART_IMAGE_MAPPING_INVALID",
+                `${questionNumber} 的小題 ${mapping.partStableKey} 圖片 checksum 不符合核准對照。`,
+                fileName,
+            );
+        }
+    }
+    return true;
+}
+
+export function stripVerifiedNumberedPartLabels(prompt) {
+    return String(prompt ?? "")
+        .replace(/(?:\s*[（(]\s*[0-9０-９]+\s*[）)])+\s*$/u, "")
+        .trimEnd();
+}
+
+export function recordFingerprint(record) {
     return sha256Text(stableJson({
         type: record.originalType,
         difficulty: record.originalDifficulty,
@@ -2127,7 +3203,11 @@ function recordFingerprint(record) {
         prompt: record.structured.prompt,
         parts: record.structured.parts,
         explanation: record.structured.explanation,
-        images: record.images.map((image) => image.checksum),
+        tables: record.tables.map((table) => ({ placement: table.placement, text: table.text })),
+        images: record.images.map((image) => ({
+            checksum: image.checksum,
+            partStableKey: image.partStableKey ?? null,
+        })),
     }));
 }
 
@@ -2238,7 +3318,7 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         "--outdir",
         documentWork,
         sourcePath,
-    ], fileName);
+    ], fileName, { timeout: 900_000 });
     const initialOutputs = await readdir(documentWork);
     const docxName = initialOutputs.find((name) => name.toLowerCase().endsWith(".docx"));
     if (!docxName) {
@@ -2248,19 +3328,32 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
     const docxPath = await normalizeSanitizedDocx(convertedDocxPath, documentWork, fileName);
     const sanitized = await validateSanitizedDocx(docxPath, fileName);
 
-    const derivativeProfile = path.join(documentWork, "derivative-profile");
-    await configureLockedLibreOfficeProfile(derivativeProfile, fileName);
-    const derivativeProfileUrl = pathToFileURL(derivativeProfile).href;
-    const derivativeCommandPrefix = [
-        `-env:UserInstallation=${derivativeProfileUrl}`,
-        "--headless",
-        "--nologo",
-        "--nodefault",
-        "--nolockcheck",
-        "--norestore",
-    ];
-    runTool(TOOLS.soffice, [...derivativeCommandPrefix, "--convert-to", "pdf", "--outdir", documentWork, docxPath], fileName);
-    runTool(TOOLS.soffice, [...derivativeCommandPrefix, "--convert-to", "html", "--outdir", documentWork, docxPath], fileName);
+    async function convertDerivative(format) {
+        // Large legacy math documents can take more than two minutes, and a
+        // profile reused immediately after PDF export can retain a transient
+        // LibreOffice lock. Each derivative therefore gets a fresh locked
+        // profile and an explicit fifteen-minute ceiling. Some legacy math
+        // documents spend several minutes rebuilding LibreOffice's font and
+        // formula caches before the HTML export begins.
+        const derivativeProfile = path.join(documentWork, `${format}-profile`);
+        await configureLockedLibreOfficeProfile(derivativeProfile, fileName);
+        const derivativeProfileUrl = pathToFileURL(derivativeProfile).href;
+        runTool(TOOLS.soffice, [
+            `-env:UserInstallation=${derivativeProfileUrl}`,
+            "--headless",
+            "--nologo",
+            "--nodefault",
+            "--nolockcheck",
+            "--norestore",
+            "--convert-to",
+            format,
+            "--outdir",
+            documentWork,
+            docxPath,
+        ], fileName, { timeout: 900_000 });
+    }
+    await convertDerivative("pdf");
+    await convertDerivative("html");
     const outputs = await readdir(documentWork);
     const pdfName = outputs.find((name) => name.toLowerCase().endsWith(".pdf"));
     const htmlName = outputs.find((name) => name.toLowerCase().endsWith(".html"));
@@ -2291,12 +3384,52 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
             maxBuffer: 64 * 1024 * 1024,
         });
     }
-    const normalizedText = mergeFragmentedMathScripts(cleanText(stripLegacyWordSequenceFieldPrefixes(normalizeLegacyWordSymbolArrows(
-        normalizeSanitizedSectionHeaders(sanitizedText, authorizedLesson?.questionTypes ?? HANLIN_CHINESE_TYPES),
-    )))).replace(/^\s*\d+\s+(?=題號：)/gm, "");
+    const questionTypes = authorizedLesson?.questionTypes ?? HANLIN_CHINESE_TYPES;
+    const normalizedText = normalizeWordTextForParsing(sanitizedText, questionTypes);
     const records = authorizedLesson?.parserStyle === "metadata-first"
         ? parseMetadataFirst(normalizedText, authorizedLesson.questionTypes ?? KANGXUAN_MATH_TYPES, fileName)
-        : parseMetadataLast(normalizedText, authorizedLesson?.questionTypes ?? HANLIN_CHINESE_TYPES, fileName);
+        : parseMetadataLast(normalizedText, questionTypes, fileName);
+    if (authorizedLesson?.target.subjectCode === "english"
+        && records.some((record) => /^[\t 　]*:/mu.test(record.body))) {
+        // The approved source checksum and macro scan were validated above. Read
+        // only static text from the private snapshot and use it as narrow
+        // evidence for EQ overstrike speaker labels lost by LibreOffice.
+        const sourceEvidenceText = runTool(
+            TOOLS.textutil,
+            ["-convert", "txt", "-stdout", sourcePath],
+            fileName,
+            { maxBuffer: 64 * 1024 * 1024 },
+        );
+        const sourceEvidenceRecords = parseMetadataLast(
+            normalizeWordTextForParsing(sourceEvidenceText, questionTypes),
+            questionTypes,
+            fileName,
+        );
+        const sourceEvidenceByNumber = new Map();
+        for (const record of sourceEvidenceRecords) {
+            const number = normalizeQuestionNumber(record.number);
+            if (!number || sourceEvidenceByNumber.has(number)) {
+                throw new HanlinImportError(
+                    "LEGACY_DIALOGUE_EVIDENCE_AMBIGUOUS",
+                    `${fileName} 的舊版 Word 對話來源含空白或重複題號，停止匯入。`,
+                    fileName,
+                );
+            }
+            sourceEvidenceByNumber.set(number, record);
+        }
+        for (const record of records) {
+            if (!/^[\t 　]*:/mu.test(record.body)) continue;
+            const sourceEvidence = sourceEvidenceByNumber.get(normalizeQuestionNumber(record.number));
+            if (!sourceEvidence) {
+                throw new HanlinImportError(
+                    "LEGACY_DIALOGUE_SPEAKER_MISMATCH",
+                    `${fileName} 題號 ${record.number} 找不到可核對的舊版 Word 對話講者，停止匯入。`,
+                    fileName,
+                );
+            }
+            record.body = restoreLegacyWordDialogueSpeakers(record.body, sourceEvidence.body);
+        }
+    }
     if (authorizedLesson?.parserStyle === "metadata-first") {
         records.forEach((record) => {
             record.origin = authorizedLesson.target.originalSourceName ?? authorizedLesson.target.sourceCategoryName;
@@ -2320,6 +3453,14 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         ignoredImageChecksums,
         approvedQuestionChecksums,
     );
+    const approvedEmfImages = await extractApprovedEmfImages(
+        path.join(documentWork, "normalized-docx"),
+        documentWork,
+        fileName,
+        authorizedLesson?.originalSha256 === validation.sha256
+            ? authorizedLesson.approvedEmfImageMappings ?? []
+            : [],
+    );
     const imageAnalysis = await extractImages({
         html,
         htmlPath,
@@ -2337,26 +3478,93 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         preferPrecedingAssociation: authorizedLesson?.parserStyle === "metadata-first",
         allowDocxMedia: authorizedLesson?.parserStyle === "metadata-first" || authorizedLesson?.allowDerivedHtmlImages === true,
         allowDerivedHtmlImages: authorizedLesson?.parserStyle === "metadata-first" || authorizedLesson?.allowDerivedHtmlImages === true,
+        approvedEmfImages,
     });
+    const tablesByQuestionNumber = await extractApprovedQuestionTables(
+        path.join(documentWork, "normalized-docx"),
+        fileName,
+        authorizedLesson?.originalSha256 === validation.sha256
+            ? authorizedLesson.approvedQuestionTableMappings ?? []
+            : [],
+    );
     const originalTitle = path.basename(fileName, path.extname(fileName));
     const sourceDocumentId = deterministicUuid(`source-document:sanitized-docx:${SANITIZER_VERSION}:${validation.sha256}`);
 
     const parsedRecords = records.map((record, recordIndex) => {
+        const recordImages = imageAnalysis.imagesByRecord.get(recordIndex) ?? [];
+        const tables = tablesByQuestionNumber.get(normalizeQuestionNumber(record.number)) ?? [];
+        if (tables.some((table) => table.sourceKind === "native")) {
+            record = {
+                ...record,
+                body: removeApprovedNativeTableText(
+                    record.body,
+                    tables,
+                    `${fileName}（題號 ${normalizeQuestionNumber(record.number)}）`,
+                ),
+            };
+        }
         const approvedChoiceRepair = authorizedLesson?.approvedChoiceRepairs?.find((repair) =>
+            repair.questionNumber === normalizeQuestionNumber(record.number))
+            ?? inferVerifiedImageChoiceRepair(
+                record,
+                recordImages,
+                authorizedLesson?.allowVerifiedImageChoiceInference === true,
+            );
+        const approvedVisualMatchingRepair = authorizedLesson?.approvedVisualMatchingRepairs?.find((repair) =>
+            repair.questionNumber === normalizeQuestionNumber(record.number)
+            && recordImages.length === 1
+            && recordImages[0].placement === "prompt"
+            && recordImages[0].checksum === repair.imageChecksum)
+            ?? null;
+        const approvedMultiPartRepair = authorizedLesson?.approvedMultiPartRepairs?.find((repair) =>
             repair.questionNumber === normalizeQuestionNumber(record.number)) ?? null;
         const unresolvedInlineMathImageEvidence = hasUnresolvedInlineMathImage(record.body)
             || hasUnresolvedInlineMathImage(record.explanation)
+            || hasUnresolvedInlineMathImage(record.sourceAnswer)
             ? {
                 body: String(record.body ?? ""),
                 explanation: String(record.explanation ?? ""),
+                sourceAnswer: String(record.sourceAnswer ?? ""),
             }
             : null;
-        const structured = structuredRecord(record, approvedChoiceRepair);
+        const uniqueSourcePage = recordPages[recordIndex].length === 1 ? recordPages[recordIndex][0] : null;
+        record = correctVerifiedKangxuanMathFormula(record, {
+            sourceSha256: validation.sha256,
+            sourcePage: uniqueSourcePage,
+            inlineImageChecksums: new Set(inlineMathImagesByChecksum.keys()),
+        });
+        const structured = structuredRecord(record, approvedChoiceRepair, {
+            approvedVisualMatchingRepair,
+            approvedMultiPartRepair,
+            approvedTables: tables,
+            stripLeadingWordListMarker: authorizedLesson?.target.subjectCode === "english",
+            sourcePage: uniqueSourcePage,
+            isLastRecord: recordIndex === records.length - 1,
+            stripTrailingPageMarker: authorizedLesson?.parserStyle === "metadata-first"
+                && authorizedLesson?.target.subjectCode === "math",
+        });
         const pendingReasons = [...structured.pendingReasons];
+        const approvedAnswerFields = KANGXUAN_MATH_APPROVED_ANSWER_FIELDS[validation.sha256]?.[normalizeQuestionNumber(record.number)];
+        if (approvedAnswerFields) {
+            const expectedKeys = Object.keys(approvedAnswerFields);
+            if (structured.parts.length !== expectedKeys.length
+                || structured.parts.some((part) => part.answerMode !== "text"
+                    || !Object.hasOwn(approvedAnswerFields, part.stableKey)
+                    || part.answer?.acceptedValue?.split("，").length !== approvedAnswerFields[part.stableKey]
+                    || !part.answer.acceptedValue.split("，").every((slot) => slot.trim()))) {
+                pendingReasons.push("approved-answer-fields-source-mismatch");
+            }
+            else {
+                for (const part of structured.parts) part.answerFieldCount = approvedAnswerFields[part.stableKey];
+            }
+        }
         if (recordPages[recordIndex].length !== 1) pendingReasons.push("source-page-not-unique");
-        if (hasUnresolvedVisualReference(
+        const approvedNoVisualReference = authorizedLesson?.originalSha256 === validation.sha256
+            && (authorizedLesson?.approvedNoVisualReferenceQuestionNumbers ?? [])
+                .includes(normalizeQuestionNumber(record.number));
+        if (!approvedNoVisualReference && hasUnresolvedVisualReference(
             record.body,
-            imageAnalysis.imagesByRecord.get(recordIndex) ?? [],
+            [...(imageAnalysis.imagesByRecord.get(recordIndex) ?? []), ...tables],
             authorizedLesson?.allowTextualTableVisualReferences === true,
         )) {
             pendingReasons.push("visual-reference-without-image");
@@ -2364,17 +3572,55 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         const sourceInlineChecksums = [
             ...inlineMathImageChecksums(record.body),
             ...inlineMathImageChecksums(record.explanation),
+            ...inlineMathImageChecksums(record.sourceAnswer),
         ];
         if (sourceInlineChecksums.some((checksum) => !checksum || !inlineMathImagesByChecksum.has(checksum))) {
             pendingReasons.push("unresolved-inline-math-image");
         }
+        if (hasUnresolvedInlineMathImage(record.sourceAnswer)) {
+            // Exact answer-image storage is not sufficient for automatic or
+            // manual grading: the answer model still requires a textual value.
+            pendingReasons.push("unresolved-inline-math-answer-image");
+        }
         const inlineImages = [...new Set(sourceInlineChecksums.filter(Boolean))]
             .map((checksum) => inlineMathImagesByChecksum.get(checksum))
             .filter(Boolean)
-            .map(inlineMathImageAsset);
-        const images = [...(imageAnalysis.imagesByRecord.get(recordIndex) ?? [])];
+            .map((inspection) => inlineMathImageAsset(
+                inspection,
+                verifiedMathFormula(validation.sha256, normalizeQuestionNumber(record.number), inspection.checksum),
+            ));
+        const images = [...recordImages];
+        for (const image of images) {
+            const repairedOption = approvedChoiceRepair?.options.find((option) => option.imageChecksum === image.checksum);
+            if (repairedOption) {
+                image.optionKey = repairedOption.key;
+                image.altText ??= `選項 ${repairedOption.key} 圖片`;
+            }
+            delete image.detectedOptionKey;
+        }
         for (const image of inlineImages) {
-            if (!images.some((candidate) => candidate.checksum === image.checksum)) images.push(image);
+            const existing = images.find((candidate) => candidate.checksum === image.checksum);
+            if (existing) {
+                existing.inlineFormula = true;
+                existing.formula = image.formula;
+                existing.altText = image.altText;
+            }
+            else images.push(image);
+        }
+        const number = normalizeQuestionNumber(record.number);
+        const approvedImageMappings = authorizedLesson?.originalSha256 === validation.sha256
+            ? authorizedLesson.approvedQuestionImageMappings ?? []
+            : [];
+        if (validatePartImageOwnership({
+            structured,
+            images,
+            approvedMappings: approvedImageMappings,
+            questionNumber: number,
+            fileName,
+            required: (authorizedLesson?.requiredPartImageQuestionNumbers ?? []).includes(number),
+            allowPartial: (authorizedLesson?.allowPartialPartImageQuestionNumbers ?? []).includes(number),
+        })) {
+            structured.prompt = stripVerifiedNumberedPartLabels(structured.prompt);
         }
         const requiredChoiceImages = approvedChoiceRepair?.options
             .filter((option) => option.imageChecksum)
@@ -2385,16 +3631,15 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         if (imageAnalysis.pendingIndexes.has(recordIndex) && !approvedChoiceRepair) {
             pendingReasons.push("image-mapping-unverified");
         }
-        const number = normalizeQuestionNumber(record.number);
         if (!number || number.length > 120) pendingReasons.push("invalid-question-number");
         const item = {
             documentIndex,
             recordIndex,
             sourceDocumentId,
-            sourcePage: recordPages[recordIndex].length === 1 ? recordPages[recordIndex][0] : null,
+            sourcePage: uniqueSourcePage,
             sourceQuestionNumber: String(record.number ?? "").trim(),
             normalizedQuestionNumber: number,
-            originalType: record.type,
+            originalType: structured.originalTypeLabel ?? record.type,
             originalDifficulty: String(record.difficulty ?? "").trim(),
             originalCognitive: String(record.cognitive ?? "").trim(),
             originalKnowledge: String(record.knowledge ?? "").trim(),
@@ -2402,7 +3647,9 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
             originalUnit: String(record.unit ?? "").trim() || originalTitle,
             unresolvedInlineMathImageEvidence,
             structured,
+            tables,
             images,
+            approvedForReactivation: approvedNoVisualReference,
             pendingReasons: [...new Set(pendingReasons)],
         };
         return { ...item, contentFingerprint: recordFingerprint(item) };
@@ -2424,7 +3671,7 @@ async function convertAndParseDocument(sourceDir, fileName, documentIndex, tempo
         sanitizedByteSize: sanitized.byteSize,
         sanitizedMimeType: sanitized.mimeType,
         sanitizedPath: docxPath,
-        storageKey: assertAssetStorageKey(`sanitized-source-documents/${validation.sha256}.docx`),
+        storageKey: assertAssetStorageKey(`sanitized-source-documents/${SANITIZER_VERSION}/${validation.sha256}.docx`),
         assetId: deterministicUuid(`asset:sanitized-source-document:${SANITIZER_VERSION}:${validation.sha256}`),
         sourceDocumentId,
         sanitization: {

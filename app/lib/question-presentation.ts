@@ -6,9 +6,58 @@ export type InlineQuestionTextToken =
     | Readonly<{ kind: "fraction"; numerator: string; denominator: string }>
     | Readonly<{ kind: "script"; placement: "superscript" | "subscript"; value: string }>;
 
-/** 將舊版 Symbol 字型留下的私用區數學符號轉成標準 Unicode。 */
-export function normalizeLegacyMathSymbols(value: string): string {
-    return value.replaceAll("\uF0DE", "⇒");
+export type PromptBlankToken =
+    | Readonly<{ kind: "text"; value: string }>
+    | Readonly<{ kind: "blank"; label?: string; widthEm: number }>;
+
+type ReferenceAnswerDisplay = Readonly<{
+    answerKeys: readonly string[];
+    acceptedValues: readonly string[];
+    options: readonly Readonly<{ key: string; label: string }>[];
+}>;
+
+const PROMPT_BLANK_PATTERN = /((?:[ \t]*　[ \t　]*)[(（][0-9０-９]+[)）](?:(?:[ \t　]*　[ \t　]*)|(?=\r?\n|$))| {4,}|　{2,})/gu;
+const NUMBERED_PROMPT_BLANK_PATTERN = /[(（][0-9０-９]+[)）]/u;
+const QUESTION_DISPLAY_TEXT_REPLACEMENTS = [
+    ["\uF0DE", "⇒"],
+    ["∵", "因為"],
+    ["∴", "所以"],
+] as const;
+
+/**
+ * 將來源題幹中的作答空格轉成共用呈現 token。舊版英文 Word 會把
+ * 「全形空白＋小題編號＋全形空白」整段加底線，因此編號必須保留在底線上。
+ */
+export function tokenizePromptBlanks(value: string): PromptBlankToken[] {
+    const tokens: PromptBlankToken[] = [];
+    let offset = 0;
+    for (const match of value.matchAll(PROMPT_BLANK_PATTERN)) {
+        const index = match.index ?? 0;
+        if (index > offset) tokens.push({ kind: "text", value: value.slice(offset, index) });
+        const segment = match[0];
+        const label = segment.match(NUMBERED_PROMPT_BLANK_PATTERN)?.[0];
+        const spacingWidth = [...segment].reduce((width, character) => {
+            if (character === "　") return width + 1;
+            if (character === " ") return width + 0.5;
+            return width;
+        }, 0);
+        tokens.push({
+            kind: "blank",
+            ...(label ? { label: label.normalize("NFKC") } : {}),
+            widthEm: Math.min(Math.max(spacingWidth + (label ? 2 : 0), label ? 4 : 3), 8),
+        });
+        offset = index + segment.length;
+    }
+    if (offset < value.length) tokens.push({ kind: "text", value: value.slice(offset) });
+    return tokens.length ? tokens : [{ kind: "text", value }];
+}
+
+/** 將題庫原始字元轉成學習者可直接閱讀的畫面文字，不改寫持久資料。 */
+export function normalizeQuestionDisplayText(value: string): string {
+    return QUESTION_DISPLAY_TEXT_REPLACEMENTS.reduce(
+        (displayText, [source, replacement]) => displayText.replaceAll(source, replacement),
+        value,
+    );
 }
 
 function scriptEnd(value: string, openParenthesisIndex: number): number | null {
@@ -90,6 +139,19 @@ export function getRepeatedNumberedPartLabel(parentPrompt: string, partPrompt: s
         });
 
     return repeated ? `(${expectedNumber})` : undefined;
+}
+
+/** 將多小題參考答案依來源順序補回可見編號，單一小題維持原答案文字。 */
+export function formatNumberedReferenceAnswers(referenceAnswers: readonly ReferenceAnswerDisplay[]): string {
+    return referenceAnswers.map((reference, index) => {
+        const optionLabels = new Map(reference.options.map((option) => [option.key, option.label]));
+        const values = reference.acceptedValues.length
+            ? reference.acceptedValues
+            : reference.answerKeys.map((key) => optionLabels.get(key) ?? key);
+        const value = values.length ? values.join("、") : "需人工批改";
+        if (referenceAnswers.length === 1) return value;
+        return `(${index + 1})${value.replace(/[；;]+\s*$/u, "")}`;
+    }).join("；");
 }
 
 /** 編號解析維持分段，但移除段內由來源文件帶入的硬換行。 */

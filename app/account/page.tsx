@@ -24,7 +24,7 @@ import {
     ACCOUNT_PASSWORD_MIN_LENGTH,
     validateNewAccountPassword,
 } from "../lib/auth-input";
-import { resolveAdminReturnPath } from "../lib/admin-return-path";
+import { resolveAccountReturnPath, resolveLearningBookShareReturnPath } from "../lib/account-return-path";
 import {
     AUTH_SESSION_EXPIRED_EVENT,
     broadcastAuthSessionExpired,
@@ -131,7 +131,13 @@ export default function AccountPage() {
                 if (response.status === 401) return null;
                 return readApi<AccountResponse>(response);
             })
-            .then((result) => setAccount(result?.data.account ?? null))
+            .then((result) => {
+                setAccount(result?.data.account ?? null);
+                const returnPath = resolveLearningBookShareReturnPath(
+                    new URLSearchParams(window.location.search).get("returnTo"),
+                );
+                if (result?.data.account && returnPath !== null) window.location.replace(returnPath);
+            })
             .catch((error) => {
                 setMessageTone("error");
                 setMessage(error instanceof Error ? error.message : "無法讀取帳號狀態。");
@@ -302,17 +308,17 @@ export default function AccountPage() {
             setAccount(result.data.account);
             setMessageTone("success");
             setMessage(mode === "register" ? "帳號已建立，學習者資料也已連結。" : "登入成功。" );
+            const rawReturnPath = new URLSearchParams(window.location.search).get("returnTo");
             const returnPath = mode === "login"
-                ? resolveAdminReturnPath(new URLSearchParams(window.location.search).get("returnTo"))
-                : null;
-
-            if (returnPath !== null) {
-                window.location.replace(returnPath);
-                return;
-            }
+                ? resolveAccountReturnPath(rawReturnPath)
+                : resolveLearningBookShareReturnPath(rawReturnPath);
 
             if (mode === "register" && result.data.account.emailVerified === false) {
                 await sendVerificationEmail(true);
+            }
+            if (returnPath !== null) {
+                window.location.replace(returnPath);
+                return;
             }
         }
         catch (error) {

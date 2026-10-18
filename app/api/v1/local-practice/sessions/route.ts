@@ -1,6 +1,8 @@
 import {
     createLocalPracticeSession,
+    createLearningBookPracticeSession,
     getLocalPracticeSession,
+    listLocalPracticeSessionQuestions,
     updateLocalPracticeSessionStatus,
     type LocalPracticeMutableSessionStatus,
 } from "@/app/lib/local-practice-store";
@@ -84,14 +86,18 @@ export async function GET(request: Request) {
             return errorResponse("INVALID_SESSION_ID", "練習識別碼格式不正確。", 400);
         }
         const result = await getLocalPracticeSession(sessionId.toLowerCase(), actorFrom(account));
-        return localPracticeJsonResponse({ data: result, meta: localPracticeMeta() });
+        const includeQuestions = new URL(request.url).searchParams.get("includeQuestions") === "true";
+        const questions = includeQuestions
+            ? await listLocalPracticeSessionQuestions(sessionId.toLowerCase(), actorFrom(account))
+            : undefined;
+        return localPracticeJsonResponse({ data: { ...result, ...(questions ? { questions } : {}) }, meta: localPracticeMeta() });
     }
     catch (error) {
         return handleLocalPracticeError(error);
     }
 }
 
-/** Starts an ad-hoc session owned by the authenticated learner. */
+/** Starts an ad-hoc or published learning-book session owned by the authenticated learner. */
 export async function POST(request: Request) {
     try {
         const account = await requireLocalPracticeAccount(request);
@@ -101,6 +107,31 @@ export async function POST(request: Request) {
         }
         catch {
             return errorResponse("INVALID_SESSION_REQUEST", "練習題目格式不正確。", 400);
+        }
+        const sourceFields = ["practicePlanId", "practicePlanRevisionId", "practiceScheduleId", "subscriptionId"] as const;
+        const hasFormalSource = isRecord(body) && sourceFields.some((key) => body[key] !== undefined);
+        if (hasFormalSource && isRecord(body)) {
+            const providedSources = [body.practicePlanId, body.practiceScheduleId, body.subscriptionId].filter((value) => value !== undefined);
+            const invalidId = sourceFields.some((key) => body[key] !== undefined
+                && (typeof body[key] !== "string" || !UUID_PATTERN.test(body[key] as string)));
+            if (invalidId || providedSources.length !== 1 || body.questions !== undefined || body.questionIds !== undefined
+                || body.mode !== undefined || body.checkMode !== undefined) {
+                return errorResponse("INVALID_SESSION_SOURCE", "學習本練習請只指定一個來源，題目與檢核方式由版本決定。", 400);
+            }
+            if (body.sessionId !== undefined && (typeof body.sessionId !== "string" || !UUID_PATTERN.test(body.sessionId))) {
+                return errorResponse("INVALID_SESSION_ID", "練習識別碼格式不正確。", 400);
+            }
+            const source = Object.fromEntries(sourceFields.flatMap((key) => (
+                typeof body[key] === "string" ? [[key, body[key].toLowerCase()]] : []
+            )));
+            const result = await createLearningBookPracticeSession(
+                source, actorFrom(account), typeof body.sessionId === "string" ? body.sessionId.toLowerCase() : undefined,
+            );
+            const questions = await listLocalPracticeSessionQuestions(result.session.id, actorFrom(account));
+            return localPracticeJsonResponse(
+                { data: { session: result.session, questions }, meta: localPracticeMeta({ replayed: result.replayed }) },
+                { status: result.replayed ? 200 : 201 },
+            );
         }
         const targets = parseSessionTargets(body);
         if (!targets) {

@@ -1,0 +1,98 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 5,
+      "byWordStatus": {
+        "word-confirms-source-visual": 4,
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 2,
+        "visual-reference-without-image": 3
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012068",
+      "sourcePage": 20,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05012067\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 河川的平均流量變化主要受到降水時間及空間的因素影響,對於沿岸居民的生活影響相當大。附圖為臺灣某河川的平均流量變化,圖中流量最高點及最低點的成因最可能為附表中何者?\n/\n\n\u0007(A)\n\u0007(B)\n\u0007(C)\n\u0007(D)\n\u0007\n\u0007流量最高點\n\u0007颱風\n\u0007雷陣雨\n\u0007颱風\n\u0007梅雨\n\u0007\n\u0007流量最低點\n\u0007背風坡\n\u0007氣溫高\n\u0007低氣壓籠罩\n\u0007滯留鋒面\n\u0007\n\u0007答案:(A)\n解析:颱風帶來的降水量多且強度大,而冬季位於東北季風的背風坡,因此氣候乾早少雨。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012092",
+      "sourcePage": 26,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05012091\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 臺灣河川水量的季節變化情形,從下列哪一張圖中可以觀察出來? \n(A)\n/\n\u0007(B)\n/\n\u0007\n\u0007年降水量圖\n\u0007衛星雲圖\n\u0007\n\u0007(C)\n/\n\u0007(D)\n/\n\u0007\n\u0007月均溫圖\n\u0007地面天氣圖\n\u0007\n\u0007答案:(A)\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 4,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012100",
+      "sourcePage": 28,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05012099\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 附圖為臺灣某河川的流量變化圖,請根據圖中資料加以判斷,該條河川最可能為下列何者?\n/\n(A)淡水河 (B)蘭陽溪 (C)濁水溪 (D)秀姑巒溪。\n答案:(C)\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012120",
+      "sourcePage": 32,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05012119\n難易度:中\n出處:試題\n認知向度:高層次批判思考\n知識向度:臺灣河川特色\n 根據臺灣的水文年報統計發現,臺灣第一長河濁水溪的流量變化如附圖所示。請問:造成圖中水位最高的主要原因為何?\n/\n(A)鋒面造成長時間的降雨 (B)迎東北季風多地形雨 (C)西伯利亞高氣壓南下致雨 (D)颱風帶來的豪大雨。\n答案:(D)\n解析:由圖中流量最高的月分為八月分判斷應該為颱風所致。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 1,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/20_01_1-6_6-3_臺灣河川的特色.doc",
+      "fileName": "20_01_1-6_6-3_臺灣河川的特色.doc",
+      "questionNumber": "05012131",
+      "sourcePage": 37,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05012130\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:臺灣河川特色\n 附圖為濁水溪的各月流量變化圖。請依圖回答問題:\n/\n( )(1)由流量變化可知臺灣中部的降水特徵為何? (A)冬雨夏乾 (B)夏雨冬乾 (C)四季有雨 (D)全年少雨。\n( )(2)圖中哪一個月分可見河川磊石遍布的現象? (A)一月 (B)六月 (C)八月 (D)十月。\n( )(3)六月的河川流量可達 250 m3/s 以上的情況,可推知當時濁水溪流域的氣候現象為何? (A)寒害 (B)梅雨 (C)颱風 (D)東北季風盛行。\n答案:(1)(B);(2)(A);(3)(B)\n解析:(2)因一月是乾季,河川水位較低。\n(3)五~六月為梅雨季。\n",
+      "wordStatus": "word-confirms-source-visual",
+      "inlineVisuals": 2,
+      "optionVisuals": []
+    }
+  ]
+}

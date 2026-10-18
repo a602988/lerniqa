@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/04_練習本/23_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "fileName": "23_02_2-2_2-2_各方勢力在臺灣的競逐.doc",
+      "questionNumber": "05015597",
+      "sourcePage": 1,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05015596\n難易度:中\n出處:練習本\n認知向度:明瞭知識內涵能力\n知識向度:各方勢力在臺灣的競逐\n 17 世紀中葉,鄭成功決定以臺灣作為反清復明的基地。當時鄭成功為了趕走荷蘭人而登陸臺灣本島時,所看到的海岸景觀應與下列何者最相似? (A)  (B)  (C)  (D) 。\n答案:(A)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

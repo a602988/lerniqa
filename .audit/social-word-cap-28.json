@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/06_各章節會考試題/28_03_3-2_2-2_ 人權保障的落實.doc",
+      "fileName": "28_03_3-2_2-2_ 人權保障的落實.doc",
+      "questionNumber": "05014460",
+      "sourcePage": 1,
+      "reviewMethod": "word-opened-textutil-fallback",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": " 第三篇_公民身分及社群 第2章_人性尊嚴與人權保障 2-2_ 人權保障的落實\f單題\n 小強參加辯論比賽,辯論主題是「目前甲國社會尚未達到性別平等」,若他是站在正方的立場,須提出支持主題的論點,下列四張關於甲國不同面向的統計圖,何者最適合小強作為強化論點的證據?【111 年會考】 (A)  (B)  (C)  (D) \n答案:(C)\n解析:(C)女性為家庭中相對弱勢者,易成為家暴事件的受害者,屬於性別不平等的現象。(A)男女就學比例相近,已達性別平等;(B)(D)身心障礙與接受長照服務的人數比例,是受到非生理性別因素的影響。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

@@ -3007,7 +3007,67 @@ async function createSession(api, questions, settings = {}) {
     return session;
 }
 
+async function verifySessionTargetAuthorization(client, origin, api, question) {
+    const unit = (await client.query(`
+        SELECT unit.id, unit.name
+        FROM question_revision_units AS revision_unit
+        JOIN curriculum_units AS unit ON unit.id = revision_unit.curriculum_unit_id
+        WHERE revision_unit.question_revision_id = $1
+            AND revision_unit.is_primary = true
+    `, [question.revisionId])).rows[0];
+    invariant(unit, "SESSION_TARGET_UNIT_MISSING", "找不到 session target 的主要課次。");
+
+    try {
+        await client.query("UPDATE curriculum_units SET name = '隔離驗證非預設課次' WHERE id = $1", [unit.id]);
+        const offDefault = await api.request("/api/v1/local-practice/sessions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                sessionId: randomUUID(),
+                questions: [{ questionId: question.id, revisionId: question.revisionId }],
+                mode: "practice",
+                checkMode: "complete",
+            }),
+        }, [201]);
+        invariant(
+            offDefault.body?.data?.session?.items?.[0]?.questionId === question.id,
+            "AUTHORIZED_OFF_DEFAULT_TARGET_REJECTED",
+            "已授權但不在預設課次的題目無法建立 session。",
+        );
+    }
+    finally {
+        await client.query("UPDATE curriculum_units SET name = $2 WHERE id = $1", [unit.id, unit.name]);
+    }
+
+    const unauthorized = await createSyntheticAuthClient(origin);
+    try {
+        await client.query("DELETE FROM question_bank_learners WHERE learner_id = $1", [unauthorized.learnerId]);
+        const rejected = await unauthorized.request("/api/v1/local-practice/sessions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                sessionId: randomUUID(),
+                questions: [{ questionId: question.id, revisionId: question.revisionId }],
+                mode: "practice",
+                checkMode: "complete",
+            }),
+        }, [409]);
+        invariant(
+            rejected.body?.error?.code === "QUESTION_TARGET_INVALID",
+            "UNAUTHORIZED_SESSION_TARGET_ACCEPTED",
+            "未取得題庫授權的學習者仍可建立 session。",
+        );
+    }
+    finally {
+        await unauthorized.logout();
+        await verifyAuthSessionRevoked(client, unauthorized.sessionTokenHash);
+    }
+
+    return { authorizedOffDefaultAccepted: true, unauthorizedRejected: true };
+}
+
 async function verifySessionContracts(client, origin, api, question) {
+    const targetAuthorization = await verifySessionTargetAuthorization(client, origin, api, question);
     const sessionId = randomUUID();
     const requestBody = {
         sessionId,
@@ -3104,6 +3164,7 @@ async function verifySessionContracts(client, origin, api, question) {
         conflictRejected: true,
         crossAccountIsolated: true,
         staleRevisionRejected: true,
+        ...targetAuthorization,
         getAndLifecycle: true,
         legacyQuestionIds: true,
         answerOrStorageLeaks: 0,

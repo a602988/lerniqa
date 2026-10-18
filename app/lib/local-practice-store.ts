@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { hasCompleteAnswerSlots } from "@/app/lib/answer-slots";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { ValidatedHandwritingPng } from "@/app/lib/handwriting-png";
 import {
@@ -21,6 +22,8 @@ import {
     type LocalPracticeAttemptPartResult,
     type LocalPracticeAttemptReceipt,
     type LocalPracticeAttemptSubmission,
+    type LocalPracticeCatalogQuery,
+    type LocalPracticeCatalogResult,
     type LocalPracticeContentBlock,
     type LocalPracticeFilters,
     type LocalPracticeGradingSource,
@@ -80,6 +83,21 @@ export class LocalPracticeRequestError extends Error {
     }
 }
 
+async function requireLocalPracticeSessionAccess(client: PoolClient, actor: LocalPracticeActor): Promise<void> {
+    const result = await client.query(`
+        SELECT access.id
+        FROM learner_access AS access
+        JOIN users AS app_user ON app_user.id = access.user_id AND app_user.status = 'active'
+        JOIN learners AS learner ON learner.id = access.learner_id AND learner.status = 'active'
+        WHERE access.user_id = $1 AND access.learner_id = $2
+            AND access.accepted_at IS NOT NULL AND access.revoked_at IS NULL
+        ORDER BY access.id LIMIT 1 FOR SHARE OF access
+    `, [actor.userId, actor.learnerId]);
+    if (result.rows.length === 0) {
+        throw new LocalPracticeRequestError("LEARNER_ACCESS_DENIED", "目前帳號無法使用這位學習者的練習。", 403);
+    }
+}
+
 async function requireLocalPracticeResultAccess(
     client: PoolClient,
     actor: LocalPracticeActor,
@@ -114,6 +132,8 @@ async function requireLocalPracticeResultAccess(
 interface QuestionRow extends QueryResultRow {
     question_id: string;
     revision_id: string;
+    /** Absent/null for whole questions; session reads union only the authorized pinned parts. */
+    scoped_part_ids?: string[] | null;
     revision_number: number;
     question_code: string | null;
     question_type_id: string;
@@ -138,6 +158,7 @@ interface QuestionRow extends QueryResultRow {
     unit_code: string | null;
     unit_name: string;
     unit_type: string;
+    volume_name: string;
     difficulty_id: string | null;
     difficulty_code: string | null;
     difficulty_name: string | null;
@@ -153,6 +174,7 @@ interface PartRow extends QueryResultRow {
     stable_key: string;
     position: number;
     answer_mode: LocalPracticeQuestionPart["answerMode"];
+    answer_field_count: number;
     grading_policy: LocalPracticeGradingSource;
     is_independently_gradable: boolean;
 }
@@ -207,6 +229,10 @@ interface SessionRow extends QueryResultRow {
     status: LocalPracticeSession["status"];
     started_at: Date | string;
     completed_at: Date | string | null;
+    practice_plan_id?: string | null;
+    practice_plan_revision_id?: string | null;
+    practice_schedule_id?: string | null;
+    practice_plan_subscription_id?: string | null;
 }
 
 interface AttemptRow extends QueryResultRow {
@@ -261,6 +287,7 @@ interface ScoreReceiptRow extends QueryResultRow {
 interface GradePartRow extends QueryResultRow {
     id: string;
     answer_mode: LocalPracticeQuestionPart["answerMode"];
+    answer_field_count: number;
     grading_policy: LocalPracticeGradingSource;
     position: number;
     answer_key: string | null;
@@ -345,6 +372,7 @@ interface RecommendationRequestRow extends QueryResultRow {
 }
 
 interface StoredRecommendationQuestionRow extends QuestionRow {
+    scoped_part_id: string | null;
     selection_reason: string;
     question_template_id: string | null;
     similarity_group_id: string | null;
@@ -369,8 +397,8 @@ function asIso(value: Date | string): string {
     return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-function toContentBlock(row: BlockRow, filters: LocalPracticeFilters): LocalPracticeContentBlock {
-    const assetQuery = new URLSearchParams([
+function toContentBlock(row: BlockRow, filters: LocalPracticeFilters, sessionId?: string): LocalPracticeContentBlock {
+    const assetQuery = new URLSearchParams(sessionId ? [["sessionId", sessionId]] : [
         ["grade", filters.grade],
         ["subject", filters.subject],
         ["publisher", filters.publisher],
@@ -411,12 +439,13 @@ async function hydrateLocalPracticeQuestions(
     baseRows: readonly QuestionRow[],
     filtersFor: (row: QuestionRow) => LocalPracticeFilters,
     runQuery: LocalPracticeQueryRunner,
+    sessionId?: string,
 ): Promise<LocalPracticeQuestion[]> {
     if (baseRows.length === 0) return [];
     const revisionIds = baseRows.map((row) => row.revision_id);
     const [partRows, optionRows, blockRows, metadataRows] = await Promise.all([
         runQuery<PartRow>(`
-            SELECT id, question_revision_id, stable_key, position, answer_mode,
+            SELECT id, question_revision_id, stable_key, position, answer_mode, answer_field_count,
                 grading_policy, is_independently_gradable
             FROM question_parts
             WHERE question_revision_id = ANY($1::uuid[])
@@ -527,15 +556,17 @@ async function hydrateLocalPracticeQuestions(
         const revisionBlocks = blocksByRevision.get(row.revision_id) ?? [];
         const rootPromptBlocks = revisionBlocks
             .filter((block) => block.question_part_id === null && block.question_option_id === null)
-            .map((block) => toContentBlock(block, filters));
-        const parts = (partsByRevision.get(row.revision_id) ?? []).map<LocalPracticeQuestionPart>((part) => {
+            .map((block) => toContentBlock(block, filters, sessionId));
+        const parts = (partsByRevision.get(row.revision_id) ?? [])
+            .filter((part) => row.scoped_part_ids == null || row.scoped_part_ids.includes(part.id))
+            .map<LocalPracticeQuestionPart>((part) => {
             const promptBlocks = revisionBlocks
                 .filter((block) => block.question_part_id === part.id && block.question_option_id === null)
-                .map((block) => toContentBlock(block, filters));
+                .map((block) => toContentBlock(block, filters, sessionId));
             const options = (optionsByPart.get(part.id) ?? []).map((option) => {
                 const contentBlocks = revisionBlocks
                     .filter((block) => block.question_option_id === option.id)
-                    .map((block) => toContentBlock(block, filters));
+                    .map((block) => toContentBlock(block, filters, sessionId));
                 return {
                     id: option.id,
                     key: option.option_key,
@@ -549,6 +580,7 @@ async function hydrateLocalPracticeQuestions(
                 stableKey: part.stable_key,
                 position: part.position,
                 answerMode: part.answer_mode,
+                answerFieldCount: part.answer_field_count,
                 gradingPolicy: part.grading_policy,
                 isIndependentlyGradable: part.is_independently_gradable,
                 prompt: blocksToText(promptBlocks),
@@ -590,7 +622,7 @@ async function hydrateLocalPracticeQuestions(
     });
 }
 
-const TARGET_QUESTION_FROM_SQL = `
+const CURRENT_PUBLISHED_QUESTION_FROM_SQL = `
     FROM questions AS question
     JOIN question_revisions AS revision
         ON revision.id = question.current_revision_id
@@ -625,6 +657,10 @@ const TARGET_QUESTION_FROM_SQL = `
         AND subject.status = 'active'
         AND book_version.status = 'active'
         AND unit.status = 'active'
+`;
+
+const TARGET_QUESTION_FROM_SQL = `
+    ${CURRENT_PUBLISHED_QUESTION_FROM_SQL}
         AND (grade.name = $1 OR grade.code = $1)
         AND (
             subject.name = ANY($2::text[])
@@ -670,24 +706,82 @@ const TARGET_QUESTION_FROM_SQL = `
         )
 `;
 
-/** Returns only public prompt/option content for the selected published revision. */
-export async function listLocalPracticeQuestions(
-    filters: LocalPracticeFilters,
-    page: number,
-    limit: number,
+const ACCESSIBLE_QUESTION_FROM_SQL = `
+    ${CURRENT_PUBLISHED_QUESTION_FROM_SQL}
+        AND EXISTS (
+            SELECT 1
+            FROM question_bank_items AS bank_item
+            JOIN question_banks AS bank
+                ON bank.id = bank_item.question_bank_id
+                AND bank.status = 'active'
+            JOIN question_bank_learners AS bank_learner
+                ON bank_learner.question_bank_id = bank.id
+            WHERE bank_item.question_id = question.id
+                AND bank_learner.learner_id = $1
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM learners AS catalog_learner
+            JOIN learner_access AS catalog_access
+                ON catalog_access.learner_id = catalog_learner.id
+                AND catalog_access.user_id = $2
+                AND catalog_access.accepted_at IS NOT NULL
+                AND catalog_access.revoked_at IS NULL
+            JOIN users AS catalog_user
+                ON catalog_user.id = catalog_access.user_id
+                AND catalog_user.status = 'active'
+            JOIN learner_subject_settings AS subject_setting
+                ON subject_setting.learner_id = catalog_learner.id
+                AND subject_setting.subject_id = revision.subject_id
+                AND subject_setting.enabled = true
+                AND (
+                    subject_setting.book_version_id IS NULL
+                    OR subject_setting.book_version_id = revision.book_version_id
+                )
+            WHERE catalog_learner.id = $1
+                AND catalog_learner.status = 'active'
+                AND (
+                    catalog_learner.grade_id IS NULL
+                    OR catalog_learner.grade_id = revision.grade_id
+                )
+        )
+`;
+
+const SESSION_TARGET_QUESTION_FROM_SQL = `
+    ${CURRENT_PUBLISHED_QUESTION_FROM_SQL}
+        AND EXISTS (
+            SELECT 1
+            FROM question_bank_items AS bank_item
+            JOIN question_banks AS bank
+                ON bank.id = bank_item.question_bank_id
+                AND bank.status = 'active'
+            JOIN question_bank_learners AS bank_learner
+                ON bank_learner.question_bank_id = bank.id
+            WHERE bank_item.question_id = question.id
+                AND bank_learner.learner_id = $1
+        )
+`;
+
+/** Returns only public prompt/option content within the authenticated learner's catalog scope. */
+export async function readLocalPracticeCatalog(
+    query: LocalPracticeCatalogQuery,
     actor: LocalPracticeActor,
-): Promise<{ questions: LocalPracticeQuestion[]; total: number }> {
-    const offset = (page - 1) * limit;
-    const params = [
-        filters.grade,
-        getSubjectLookupLabels(filters.subject),
-        filters.publisher,
-        filters.volume,
-        filters.lesson,
-        actor.learnerId,
-        limit,
-        offset,
-    ] as const;
+): Promise<LocalPracticeCatalogResult> {
+    const filtered = query.kind === "filtered";
+    const params = filtered
+        ? [
+            query.filters.grade,
+            getSubjectLookupLabels(query.filters.subject),
+            query.filters.publisher,
+            query.filters.volume,
+            query.filters.lesson,
+            actor.learnerId,
+            query.limit,
+            (query.page - 1) * query.limit,
+        ] as const
+        : [actor.learnerId, actor.userId] as const;
+    const fromSql = filtered ? TARGET_QUESTION_FROM_SQL : ACCESSIBLE_QUESTION_FROM_SQL;
+    const paginationSql = filtered ? "LIMIT $7 OFFSET $8" : "";
     const base = await queryLocalPostgres<QuestionRow>(`
         SELECT
             question.id AS question_id,
@@ -716,6 +810,7 @@ export async function listLocalPracticeQuestions(
             unit.code AS unit_code,
             unit.name AS unit_name,
             unit.unit_type,
+            COALESCE(volume_unit.name, unit.name) AS volume_name,
             difficulty.id AS difficulty_id,
             difficulty.code AS difficulty_code,
             difficulty.name AS difficulty_name,
@@ -723,7 +818,7 @@ export async function listLocalPracticeQuestions(
             source_category.code AS source_category_code,
             source_category.name AS source_category_name,
             count(*) OVER () AS total_count
-        ${TARGET_QUESTION_FROM_SQL}
+        ${fromSql}
         ORDER BY
             CASE
                 WHEN regexp_replace(question_identifier.value, '^[0-9A-Fa-f]{16}:', '') ~ '^[0-9]+$'
@@ -733,20 +828,35 @@ export async function listLocalPracticeQuestions(
             regexp_replace(question_identifier.value, '^[0-9A-Fa-f]{16}:', '') NULLS LAST,
             question.created_at,
             question.id
-        LIMIT $7 OFFSET $8
+        ${paginationSql}
     `, params);
 
     if (base.rows.length === 0) return { questions: [], total: 0 };
 
-    const questions = await hydrateLocalPracticeQuestions(
-        base.rows,
-        () => filters,
-        async <Row extends QueryResultRow>(text: string, values: readonly unknown[] = []) => (
-            await queryLocalPostgres<Row>(text, values)
-        ).rows,
-    );
+    const runQuery: LocalPracticeQueryRunner = async <Row extends QueryResultRow>(
+        text: string,
+        values: readonly unknown[] = [],
+    ) => (await queryLocalPostgres<Row>(text, values)).rows;
+    const revisionIds = base.rows.map((row) => row.revision_id);
+    const [questions, knowledgeRows] = await Promise.all([
+        hydrateLocalPracticeQuestions(
+            base.rows,
+            (row) => filtered ? query.filters : {
+                grade: row.grade_name,
+                subject: row.subject_name,
+                publisher: row.publisher_name ?? row.book_version_name,
+                volume: row.volume_name ?? row.book_version_name,
+                lesson: row.unit_name,
+            },
+            runQuery,
+        ),
+        runQuery<PracticeCatalogKnowledgeRow>(PRACTICE_CATALOG_KNOWLEDGE_SQL, [revisionIds]),
+    ]);
 
-    return { questions, total: Number(base.rows[0]?.total_count ?? 0) };
+    return {
+        questions: attachPracticeCatalogKnowledge(questions, knowledgeRows),
+        total: Number(base.rows[0]?.total_count ?? 0),
+    };
 }
 
 async function readRecommendationSources(
@@ -1432,17 +1542,16 @@ function recommendationExplanation(
                 : "相同與相近題已全部練習完成。";
 }
 
-async function readStoredRecommendationResult(
+async function readPinnedSessionQuestionRows(
     client: PoolClient,
-    receipt: RecommendationRequestRow,
+    sessionId: string,
     actor: LocalPracticeActor,
-): Promise<LocalPracticeRecommendationResult> {
-    await requireLocalPracticeResultAccess(client, actor);
-    const session = await readSession(client, receipt.practice_session_id, actor);
-    const storedResult = await client.query<StoredRecommendationQuestionRow>(`
+): Promise<StoredRecommendationQuestionRow[]> {
+    const result = await client.query<StoredRecommendationQuestionRow>(`
         SELECT
             candidate.id AS question_id,
             candidate_revision.id AS revision_id,
+            item.question_part_id AS scoped_part_id,
             candidate_revision.revision_number,
             candidate_identifier.value AS question_code,
             candidate_type.id AS question_type_id,
@@ -1522,7 +1631,67 @@ async function readStoredRecommendationResult(
             AND session.learner_id = $2
             AND session.created_by_user_id = $3
         ORDER BY item.position, item.id
-    `, [receipt.practice_session_id, actor.learnerId, actor.userId]);
+    `, [sessionId, actor.learnerId, actor.userId]);
+    const questions = new Map<string, StoredRecommendationQuestionRow>();
+    for (const row of result.rows) {
+        const current = questions.get(row.question_id);
+        if (current && current.revision_id !== row.revision_id) {
+            throw new LocalPracticeRequestError(
+                "SESSION_QUESTION_REVISION_CONFLICT",
+                "同一道題的小題使用了不同版本，請重新建立學習本內容。",
+                409,
+            );
+        }
+        if (!current) {
+            questions.set(row.question_id, {
+                ...row,
+                scoped_part_ids: row.scoped_part_id === null ? null : [row.scoped_part_id],
+            });
+        }
+        else if (row.scoped_part_id === null) current.scoped_part_ids = null;
+        else if (current.scoped_part_ids && !current.scoped_part_ids.includes(row.scoped_part_id)) {
+            current.scoped_part_ids.push(row.scoped_part_id);
+        }
+    }
+    return [...questions.values()];
+}
+
+/** Reads content using session-item revisions, including superseded published revisions. */
+export async function listLocalPracticeSessionQuestions(
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeQuestion[]> {
+    return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeSessionAccess(client, actor);
+        await readSession(client, sessionId, actor);
+        const rows = await readPinnedSessionQuestionRows(client, sessionId, actor);
+        const runQuery: LocalPracticeQueryRunner = async <Row extends QueryResultRow>(
+            text: string,
+            values: readonly unknown[] = [],
+        ) => (await client.query<Row>(text, [...values])).rows;
+        const questions = await hydrateLocalPracticeQuestions(rows, (row) => ({
+            grade: row.grade_name,
+            subject: row.subject_name,
+            publisher: row.publisher_name ?? row.book_version_name,
+            volume: row.volume_name,
+            lesson: row.unit_name,
+        }), runQuery, sessionId);
+        const knowledgeRows = (await client.query<PracticeCatalogKnowledgeRow>(
+            PRACTICE_CATALOG_KNOWLEDGE_SQL,
+            [rows.map((row) => row.revision_id)],
+        )).rows;
+        return attachPracticeCatalogKnowledge(questions, knowledgeRows);
+    });
+}
+
+async function readStoredRecommendationResult(
+    client: PoolClient,
+    receipt: RecommendationRequestRow,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeRecommendationResult> {
+    await requireLocalPracticeResultAccess(client, actor);
+    const session = await readSession(client, receipt.practice_session_id, actor);
+    const storedResult = { rows: await readPinnedSessionQuestionRows(client, receipt.practice_session_id, actor) };
     const selectionReasons = new Set(storedResult.rows.map((row) => row.selection_reason));
     const recommendationKind: LocalPracticeRecommendationKind = selectionReasons.size === 1
         && selectionReasons.has("same_type_review")
@@ -1941,6 +2110,21 @@ export interface CreateLocalPracticeSessionResult {
     replayed: boolean;
 }
 
+async function completePracticeScheduleForSession(
+    client: PoolClient,
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<void> {
+    await client.query(`
+        UPDATE practice_schedules AS schedule
+        SET status = 'completed', lock_version = schedule.lock_version + 1, updated_at = transaction_timestamp()
+        FROM practice_sessions AS session
+        WHERE session.id = $1 AND session.learner_id = $2 AND session.created_by_user_id = $3
+            AND session.status = 'completed' AND schedule.id = session.practice_schedule_id
+            AND schedule.learner_id = session.learner_id AND schedule.status IN ('scheduled', 'available')
+    `, [sessionId, actor.learnerId, actor.userId]);
+}
+
 function sameSessionTargets(
     items: readonly SessionItemRow[],
     targets: readonly LocalPracticeSessionTarget[],
@@ -1960,12 +2144,202 @@ export async function getLocalPracticeSession(
     actor: LocalPracticeActor,
 ): Promise<LocalPracticeSessionRead> {
     return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeSessionAccess(client, actor);
         const session = await readSession(client, sessionId, actor);
         const disclosesResults = session.checkMode === "instant"
             || (session.checkMode === "complete" && session.status === "completed")
             || (session.checkMode === "score" && session.status === "completed");
         if (disclosesResults) await requireLocalPracticeResultAccess(client, actor);
         return readSessionDisclosure(client, session, actor);
+    });
+}
+
+export interface LearningBookSessionSource {
+    practicePlanId?: string;
+    practicePlanRevisionId?: string;
+    practiceScheduleId?: string;
+    subscriptionId?: string;
+}
+
+interface LearningBookSessionSourceRow extends QueryResultRow {
+    practice_plan_id: string | null;
+    practice_plan_revision_id: string;
+    practice_plan_subscription_id: string | null;
+    check_mode: LocalPracticeSessionSettings["checkMode"];
+}
+
+/** Starts only from persisted published content; browser question lists cannot replace a pinned revision. */
+export async function createLearningBookPracticeSession(
+    source: LearningBookSessionSource,
+    actor: LocalPracticeActor,
+    requestedSessionId: string = randomUUID(),
+): Promise<CreateLocalPracticeSessionResult> {
+    const sourceCount = [source.practicePlanId, source.subscriptionId, source.practiceScheduleId].filter(Boolean).length;
+    if (sourceCount !== 1) {
+        throw new LocalPracticeRequestError("INVALID_SESSION_SOURCE", "請指定一個學習本或排程來源。", 400);
+    }
+    return withLocalPostgresTransaction(async (client) => {
+        await requireLocalPracticeSessionAccess(client, actor);
+        await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [
+            `practice-session:${requestedSessionId}`,
+        ]);
+        const existing = (await client.query<SessionRow>(`
+            SELECT *, practice_plan_subscription_id FROM practice_sessions WHERE id = $1 FOR UPDATE
+        `, [requestedSessionId])).rows[0];
+        if (existing) {
+            const sameSource = source.practiceScheduleId
+                ? existing.practice_schedule_id === source.practiceScheduleId
+                : source.subscriptionId
+                    ? existing.practice_plan_subscription_id === source.subscriptionId && !existing.practice_schedule_id
+                    : existing.practice_plan_id === source.practicePlanId && !existing.practice_schedule_id;
+            if (!sameSource || existing.learner_id !== actor.learnerId || existing.created_by_user_id !== actor.userId
+                || (source.practicePlanRevisionId && existing.practice_plan_revision_id !== source.practicePlanRevisionId)) {
+                throw new LocalPracticeRequestError("SESSION_IDEMPOTENCY_CONFLICT", "這個練習識別碼已用於不同的練習內容。", 409);
+            }
+            return { session: await readSession(client, requestedSessionId, actor), replayed: true };
+        }
+
+        let resolved: LearningBookSessionSourceRow | undefined;
+        if (source.practiceScheduleId) {
+            const schedule = (await client.query<LearningBookSessionSourceRow & { status: string }>(`
+                SELECT practice_plan_id, practice_plan_revision_id, practice_plan_subscription_id, check_mode, status
+                FROM practice_schedules WHERE id = $1 AND learner_id = $2 FOR UPDATE
+            `, [source.practiceScheduleId, actor.learnerId])).rows[0];
+            if (!schedule) throw new LocalPracticeRequestError("SCHEDULE_NOT_FOUND", "找不到這個排程。", 404);
+            const previous = (await client.query<SessionRow>(`
+                SELECT * FROM practice_sessions WHERE practice_schedule_id = $1
+            `, [source.practiceScheduleId])).rows[0];
+            if (previous) {
+                if (previous.created_by_user_id !== actor.userId || previous.learner_id !== actor.learnerId
+                    || (source.practicePlanRevisionId && previous.practice_plan_revision_id !== source.practicePlanRevisionId)) {
+                    throw new LocalPracticeRequestError("SCHEDULE_ALREADY_STARTED", "這個排程已由另一個帳號開始練習。", 409);
+                }
+                return { session: await readSession(client, previous.id, actor), replayed: true };
+            }
+            if (!["scheduled", "available"].includes(schedule.status) || !schedule.practice_plan_revision_id) {
+                throw new LocalPracticeRequestError("SCHEDULE_UNAVAILABLE", "這個排程目前無法開始練習。", 409);
+            }
+            resolved = schedule;
+        }
+        else if (source.practicePlanId) {
+            resolved = (await client.query<LearningBookSessionSourceRow>(`
+                SELECT plan.id AS practice_plan_id, revision.id AS practice_plan_revision_id,
+                    NULL::uuid AS practice_plan_subscription_id, revision.check_mode
+                FROM practice_plans AS plan
+                JOIN practice_plan_revisions AS revision ON revision.practice_plan_id = plan.id
+                    AND revision.id = COALESCE($3::uuid, plan.current_published_revision_id)
+                    AND revision.status = 'published'
+                WHERE plan.id = $1 AND plan.learner_id = $2 AND plan.status = 'active'
+                FOR SHARE OF plan, revision
+            `, [source.practicePlanId, actor.learnerId, source.practicePlanRevisionId ?? null])).rows[0];
+        }
+        else {
+            resolved = (await client.query<LearningBookSessionSourceRow>(`
+                SELECT NULL::uuid AS practice_plan_id, revision.id AS practice_plan_revision_id,
+                    subscription.id AS practice_plan_subscription_id, revision.check_mode
+                FROM practice_plan_subscriptions AS subscription
+                JOIN practice_plans AS plan ON plan.id = subscription.source_plan_id AND plan.status = 'active'
+                JOIN practice_plan_revisions AS revision ON revision.id = subscription.current_revision_id
+                    AND revision.practice_plan_id = plan.id AND revision.status = 'published'
+                WHERE subscription.id = $1 AND subscription.recipient_learner_id = $2
+                    AND subscription.status = 'active'
+                    AND ($3::uuid IS NULL OR revision.id = $3)
+                FOR SHARE OF subscription, plan, revision
+            `, [source.subscriptionId, actor.learnerId, source.practicePlanRevisionId ?? null])).rows[0];
+        }
+        if (!resolved || (source.practicePlanRevisionId && resolved.practice_plan_revision_id !== source.practicePlanRevisionId)) {
+            throw new LocalPracticeRequestError("LEARNING_BOOK_UNAVAILABLE", "學習本版本已更新或目前無法使用。", 409);
+        }
+        // A schedule keeps its original revision, but an unstarted revoked subscription cannot be opened.
+        if (source.practiceScheduleId) {
+            if (resolved.practice_plan_subscription_id) {
+                const subscription = await client.query(`
+                    SELECT id FROM practice_plan_subscriptions AS subscription
+                    WHERE subscription.id = $1 AND subscription.recipient_learner_id = $2
+                        AND subscription.status = 'active'
+                    FOR SHARE OF subscription
+                `, [resolved.practice_plan_subscription_id, actor.learnerId]);
+                if (subscription.rows.length === 0) {
+                    throw new LocalPracticeRequestError("LEARNING_BOOK_UNAVAILABLE", "分享已撤銷，無法開始這個排程。", 409);
+                }
+            }
+            const availability = await client.query(`
+                SELECT revision.id
+                FROM practice_plan_revisions AS revision
+                JOIN practice_plans AS plan ON plan.id = revision.practice_plan_id AND plan.status = 'active'
+                WHERE revision.id = $1 AND revision.status = 'published'
+                    AND (
+                        ($2::uuid IS NULL AND plan.id = $3 AND plan.learner_id = $4)
+                        OR EXISTS (
+                            SELECT 1 FROM practice_plan_subscriptions AS subscription
+                            WHERE subscription.id = $2 AND subscription.source_plan_id = plan.id
+                                AND subscription.recipient_learner_id = $4 AND subscription.status = 'active'
+                        )
+                    )
+                FOR SHARE OF plan, revision
+            `, [resolved.practice_plan_revision_id, resolved.practice_plan_subscription_id,
+                resolved.practice_plan_id, actor.learnerId]);
+            if (availability.rows.length === 0) {
+                throw new LocalPracticeRequestError("LEARNING_BOOK_UNAVAILABLE", "分享已撤銷或學習本已封存，無法開始這個排程。", 409);
+            }
+        }
+        const items = (await client.query<{
+            question_id: string; question_revision_id: string; question_part_id: string | null;
+        } & QueryResultRow>(source.practiceScheduleId ? `
+            SELECT question_id, question_revision_id, question_part_id
+            FROM practice_schedule_items WHERE practice_schedule_id = $1 ORDER BY position, id
+        ` : `
+            SELECT question_id, question_revision_id, question_part_id
+            FROM practice_plan_revision_items WHERE practice_plan_revision_id = $1 ORDER BY position, id
+        `, [source.practiceScheduleId ?? resolved.practice_plan_revision_id])).rows;
+        if (items.length === 0 || items.length > LOCAL_PRACTICE_MAX_QUESTIONS) {
+            throw new LocalPracticeRequestError("LEARNING_BOOK_ITEMS_INVALID", "學習本沒有可開始的固定題目，請檢查內容。", 409);
+        }
+        const questionRevisions = new Map<string, string>();
+        for (const item of items) {
+            const revision = questionRevisions.get(item.question_id);
+            if (revision && revision !== item.question_revision_id) {
+                throw new LocalPracticeRequestError("SESSION_QUESTION_REVISION_CONFLICT",
+                    "同一道題的小題使用了不同版本，請重新建立學習本內容。", 409);
+            }
+            questionRevisions.set(item.question_id, item.question_revision_id);
+        }
+        const validItems = await client.query(`
+            SELECT requested.question_id
+            FROM unnest($1::uuid[], $2::uuid[], $3::uuid[]) AS requested(question_id, revision_id, part_id)
+            JOIN question_revisions AS revision ON revision.id = requested.revision_id
+                AND revision.question_id = requested.question_id AND revision.status IN ('published', 'superseded')
+            WHERE EXISTS (
+                SELECT 1 FROM question_parts AS part WHERE part.question_revision_id = revision.id
+                    AND part.is_independently_gradable = true
+                    AND (requested.part_id IS NULL OR part.id = requested.part_id)
+            )
+            FOR SHARE OF revision
+        `, [items.map((item) => item.question_id), items.map((item) => item.question_revision_id),
+            items.map((item) => item.question_part_id)]);
+        if (validItems.rows.length !== items.length) {
+            throw new LocalPracticeRequestError("LEARNING_BOOK_ITEMS_INVALID", "學習本包含無法辨識的固定題目版本。", 409);
+        }
+        await client.query(`
+            INSERT INTO practice_sessions (id, learner_id, created_by_user_id, mode, check_mode, status,
+                practice_plan_id, practice_plan_revision_id, practice_schedule_id, practice_plan_subscription_id)
+            VALUES ($1, $2, $3, 'practice', $4, 'active', $5, $6, $7, $8)
+        `, [requestedSessionId, actor.learnerId, actor.userId, resolved.check_mode, resolved.practice_plan_id,
+            resolved.practice_plan_revision_id, source.practiceScheduleId ?? null, resolved.practice_plan_subscription_id]);
+        await client.query(`
+            INSERT INTO practice_session_items (id, practice_session_id, question_id, question_revision_id,
+                question_part_id, position, selection_reason)
+            SELECT requested.item_id, $1::uuid, requested.question_id, requested.revision_id, requested.part_id,
+                requested.position - 1, 'fixed'
+            FROM unnest($2::uuid[], $3::uuid[], $4::uuid[], $5::uuid[])
+                WITH ORDINALITY AS requested(item_id, question_id, revision_id, part_id, position)
+        `, [requestedSessionId, items.map(() => randomUUID()), items.map((item) => item.question_id),
+            items.map((item) => item.question_revision_id), items.map((item) => item.question_part_id)]);
+        if (resolved.check_mode === "score") {
+            await client.query(`UPDATE practice_sessions SET score_total_count = $2, score_pending_count = $2 WHERE id = $1`,
+                [requestedSessionId, items.length]);
+        }
+        return { session: await readSession(client, requestedSessionId, actor), replayed: false };
     });
 }
 
@@ -2014,7 +2388,8 @@ export async function createLocalPracticeSession(
 
         const existingSessionResult = await client.query<SessionRow>(`
             SELECT id, learner_id, created_by_user_id, mode, check_mode, status,
-                started_at, completed_at
+                started_at, completed_at, practice_plan_id, practice_plan_revision_id,
+                practice_schedule_id, practice_plan_subscription_id
             FROM practice_sessions
             WHERE id = $1
             FOR UPDATE
@@ -2026,6 +2401,8 @@ export async function createLocalPracticeSession(
                 || existingSession.created_by_user_id !== actor.userId
                 || existingSession.mode !== settings.mode
                 || existingSession.check_mode !== settings.checkMode
+                || Boolean(existingSession.practice_plan_revision_id || existingSession.practice_schedule_id
+                    || existingSession.practice_plan_subscription_id || existingSession.practice_plan_id)
             ) {
                 throw new LocalPracticeRequestError(
                     "SESSION_IDEMPOTENCY_CONFLICT",
@@ -2061,7 +2438,7 @@ export async function createLocalPracticeSession(
         }>(`
             WITH requested AS (
                 SELECT question_id, requested_revision_id, requested_part_id, position
-                FROM unnest($7::uuid[], $8::uuid[], $9::uuid[])
+                FROM unnest($2::uuid[], $3::uuid[], $4::uuid[])
                     WITH ORDINALITY AS input(
                         question_id,
                         requested_revision_id,
@@ -2070,8 +2447,8 @@ export async function createLocalPracticeSession(
                     )
             ), target_questions AS (
                 SELECT question.id AS question_id, revision.id AS revision_id
-                ${TARGET_QUESTION_FROM_SQL}
-                    AND question.id = ANY($7::uuid[])
+                ${SESSION_TARGET_QUESTION_FROM_SQL}
+                    AND question.id = ANY($2::uuid[])
                     AND EXISTS (
                         SELECT 1
                         FROM question_parts AS part
@@ -2097,11 +2474,6 @@ export async function createLocalPracticeSession(
                 AND selected_part.is_independently_gradable = true
             ORDER BY requested.position
         `, [
-            LOCAL_PRACTICE_DEFAULT_FILTERS.grade,
-            getSubjectLookupLabels(LOCAL_PRACTICE_DEFAULT_FILTERS.subject),
-            LOCAL_PRACTICE_DEFAULT_FILTERS.publisher,
-            LOCAL_PRACTICE_DEFAULT_FILTERS.volume,
-            LOCAL_PRACTICE_DEFAULT_FILTERS.lesson,
             actor.learnerId,
             questionIds,
             targets.map((target) => target.revisionId ?? null),
@@ -2432,7 +2804,7 @@ async function getAttemptReferenceAnswers(
         LEFT JOIN LATERAL (
             SELECT COALESCE(
                 NULLIF(
-                    string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                    string_agg(COALESCE(block.text_content, block.alt_text), '' ORDER BY block.position, block.id),
                     ''
                 ),
                 disclosed_option.option_key
@@ -2444,7 +2816,7 @@ async function getAttemptReferenceAnswers(
         ) AS option_content ON true
         LEFT JOIN LATERAL (
             SELECT NULLIF(
-                string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                string_agg(COALESCE(block.text_content, block.alt_text), '' ORDER BY block.position, block.id),
                 ''
             ) AS text
             FROM question_content_blocks AS block
@@ -2494,7 +2866,7 @@ export async function getLocalPracticeQuestionReferenceAnswers(
             LEFT JOIN LATERAL (
                 SELECT COALESCE(
                     NULLIF(
-                        string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                        string_agg(COALESCE(block.text_content, block.alt_text), '' ORDER BY block.position, block.id),
                         ''
                     ),
                     disclosed_option.option_key
@@ -2506,7 +2878,7 @@ export async function getLocalPracticeQuestionReferenceAnswers(
             ) AS option_content ON true
             LEFT JOIN LATERAL (
                 SELECT NULLIF(
-                    string_agg(COALESCE(block.text_content, block.alt_text), E'\n' ORDER BY block.position, block.id),
+                    string_agg(COALESCE(block.text_content, block.alt_text), '' ORDER BY block.position, block.id),
                     ''
                 ) AS text
                 FROM question_content_blocks AS block
@@ -3093,6 +3465,7 @@ export async function submitLocalPracticeAttempt(
             SELECT
                 part.id,
                 part.answer_mode,
+                part.answer_field_count,
                 part.grading_policy,
                 part.position,
                 answer.answer_key,
@@ -3141,6 +3514,9 @@ export async function submitLocalPracticeAttempt(
             if (part.answer_mode !== "multiple_choice" && Array.isArray(value)) {
                 throw new LocalPracticeRequestError("INVALID_ANSWER_VALUE", "這個小題只能提交一個答案。", 400);
             }
+            if (part.answer_field_count > 1 && (typeof value !== "string" || !hasCompleteAnswerSlots(value, part.answer_field_count))) {
+                throw new LocalPracticeRequestError("INCOMPLETE_ANSWER", "請填完這個小題的所有答案欄位。", 400);
+            }
         }
         const missingParts = [...groupedParts.values()].filter(({ row }) => !normalizedInput.has(row.id));
         if (
@@ -3163,6 +3539,7 @@ export async function submitLocalPracticeAttempt(
                 || !groupedParts.has(input.handwritingTranscriptionPartId)
                 || !normalizedInput.has(input.handwritingTranscriptionPartId)
                 || groupedParts.get(input.handwritingTranscriptionPartId)?.row.answer_mode !== "text"
+                || groupedParts.get(input.handwritingTranscriptionPartId)?.row.answer_field_count !== 1
             )
         ) {
             throw new LocalPracticeRequestError(
@@ -3184,7 +3561,8 @@ export async function submitLocalPracticeAttempt(
             const submittedValue = normalizedInput.get(row.id);
             const usesHandwriting = Boolean(input.handwriting) && handwrittenPartIds.has(row.id);
             const usesTranscription = Boolean(input.handwriting)
-                && input.handwritingTranscriptionPartId === row.id;
+                && input.handwritingTranscriptionPartId === row.id
+                && row.answer_field_count === 1;
             const grade = gradeLocalPracticePart({
                 answerMode: row.answer_mode,
                 gradingPolicy: usesTranscription ? "automatic" : row.grading_policy,
@@ -3277,6 +3655,7 @@ export async function submitLocalPracticeAttempt(
             `, [input.sessionId, actor.learnerId, actor.userId, overallResult]);
             const finalSession = finalSessionResult.rows[0];
             if (!finalSession) throw new Error("score aggregate update did not return its session");
+            if (finalSession.status === "completed") await completePracticeScheduleForSession(client, input.sessionId, actor);
             return discloseSubmittedScoreReceipt(client, receipt, finalSession, actor, false);
         }
 
@@ -3475,6 +3854,8 @@ export async function submitLocalPracticeAttempt(
         const attempt = insertedAttempt.rows[0];
         if (!finalSession || !attempt) throw new Error("attempt transaction did not return its final rows");
 
+        if (finalSession.status === "completed") await completePracticeScheduleForSession(client, input.sessionId, actor);
+
             return discloseSubmittedAttempt(client, attempt, insertedPartRows, finalSession, actor, false);
         });
     }
@@ -3531,6 +3912,7 @@ export async function findLocalPracticeHandwritingPart(
           AND session.check_mode IN ('instant', 'complete')
           AND session.status IN ('active', 'paused')
           AND part.answer_mode = 'text'
+          AND part.answer_field_count = 1
           AND part.is_independently_gradable = true
           AND NOT (part.id = ANY($7::uuid[]))
         ORDER BY part.position, part.id
@@ -3743,6 +4125,45 @@ export async function getLocalPracticeHistory(limit: number, actor: LocalPractic
             }),
         };
     });
+}
+
+/** Authorizes only prompt/option media referenced by this account's session-pinned question revisions. */
+export async function findLocalPracticeSessionAsset(
+    assetId: string,
+    sessionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeAssetRecord | null> {
+    const result = await queryLocalPostgres<QueryResultRow & {
+        id: string; storage_key: string; mime_type: string; byte_size: string | number; checksum: string;
+    }>(`
+        SELECT DISTINCT asset.id, asset.storage_key, asset.mime_type, asset.byte_size, asset.checksum
+        FROM practice_sessions AS session
+        JOIN practice_session_items AS item ON item.practice_session_id = session.id
+        JOIN question_content_blocks AS block ON block.question_revision_id = item.question_revision_id
+        LEFT JOIN question_options AS block_option ON block_option.id = block.question_option_id
+        JOIN assets AS asset ON asset.id = block.asset_id
+        WHERE session.id = $1 AND session.learner_id = $2 AND session.created_by_user_id = $3
+            AND asset.id = $4 AND asset.deleted_at IS NULL AND asset.scan_status = 'clean'
+            AND block.placement IN ('prompt', 'option')
+            AND (
+                (block.content_type = 'page_crop' AND asset.purpose = 'page_crop')
+                OR (block.content_type IN ('image', 'audio') AND asset.purpose = 'question_content')
+            )
+            AND (item.question_part_id IS NULL OR COALESCE(block.question_part_id, block_option.question_part_id) IS NULL
+                OR COALESCE(block.question_part_id, block_option.question_part_id) = item.question_part_id)
+            AND EXISTS (
+                SELECT 1 FROM learner_access AS access
+                JOIN users AS app_user ON app_user.id = access.user_id AND app_user.status = 'active'
+                JOIN learners AS learner ON learner.id = access.learner_id AND learner.status = 'active'
+                WHERE access.user_id = $3 AND access.learner_id = $2
+                    AND access.accepted_at IS NOT NULL AND access.revoked_at IS NULL
+            )
+    `, [sessionId, actor.learnerId, actor.userId, assetId]);
+    const asset = result.rows[0];
+    return asset ? {
+        id: asset.id, storageKey: asset.storage_key, mimeType: asset.mime_type,
+        byteSize: Number(asset.byte_size), checksum: asset.checksum,
+    } : null;
 }
 
 /** Resolves a safe question-content asset only when a current published target references it. */

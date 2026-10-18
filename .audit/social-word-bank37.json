@@ -1,0 +1,46 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 2,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 2
+      },
+      "byPendingReason": {
+        "visual-reference-without-image": 2
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/37_03_3-2_2-1_人性尊嚴與人權.doc",
+      "fileName": "37_03_3-2_2-1_人性尊嚴與人權.doc",
+      "questionNumber": "05014194",
+      "sourcePage": 6,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05014193\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:人權\n 上完公民課,小美將上課的重點抄在筆記上(如附表),卻忘了將名稱寫上去。根據表中內容判斷,該名稱應是指下列何者?\n\u0001\n(A)公平正義 (B)理性思考 (C)人性尊嚴 (D)刻板印象。\n答案:(D)\n解析:因種族、階級、性別、年齡等因素,對某些群體有先入為主的觀念,就會產生刻板印象,可能因此而傷害他人的人性尊嚴及人權。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/37_03_3-2_2-1_人性尊嚴與人權.doc",
+      "fileName": "37_03_3-2_2-1_人性尊嚴與人權.doc",
+      "questionNumber": "05014249",
+      "sourcePage": 17,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05014248\n難易度:易\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:人性尊嚴\n 瑜莉將資料整理完畢後,卻不小心讓標題沾到汙漬(如附圖),由內容可知該標題最可能是下列何者?\n\u0001\n◎每個人都具有價值和獨特性,應該受到尊重。\n◎強調每個人都是應該受到尊重的個體。\n◎每個人都可以自由選擇理想的生活方式。\n(A)制定法律的程序 (B)人性尊嚴的意義 (C)國民外交的重要 (D)社會階級的存在。\n答案:(B)\n解析:資料內容表示任何人都有作為人的尊嚴,都應該受到尊重,此即人性尊嚴的意義。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

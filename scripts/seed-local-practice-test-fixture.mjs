@@ -237,6 +237,7 @@ function createPlan() {
             structured,
             pendingReasons: [],
             contentFingerprint: sha256(stableJson({ number, structured })),
+            tables: [],
             images: [],
         };
     });

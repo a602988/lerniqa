@@ -1,0 +1,538 @@
+{
+  "rasterDpi": 300,
+  "currentGifCandidates": 0,
+  "approvedQualityContracts": 20,
+  "auditedContracts": 20,
+  "paired": 20,
+  "inconclusive": 0,
+  "documents": [
+    {
+      "sourceSha256": "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/01_試題/02_Unit 1 Who's That Handsome Boy_.doc",
+      "candidates": [
+        {
+          "questionNumber": "05010327",
+          "questionId": null,
+          "sourceSha256": "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a",
+          "fileName": null,
+          "derivedChecksum": "bc4a9b3864a322181fb8be45bc0abcbced8a8ae73fc24a84af323e878d55be9a",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "ce6b2d19ad438ce7bc20ef1d499db4f4d23df8ec5166e3d36e97e134e8141c3f",
+          "expectedRenderedChecksum": "a85ab5f7fab3c83a8df0f1e3f2021edace7ddfd5dcdd9c048910d7931a3b00bb",
+          "status": "paired",
+          "imageName": "Image29",
+          "rawChecksum": "ce6b2d19ad438ce7bc20ef1d499db4f4d23df8ec5166e3d36e97e134e8141c3f",
+          "rendered": {
+            "checksum": "a85ab5f7fab3c83a8df0f1e3f2021edace7ddfd5dcdd9c048910d7931a3b00bb",
+            "dimensions": {
+              "width": 768,
+              "height": 1066
+            },
+            "bytes": 103898,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010327-0-a85ab5f7fab3c83a8df0f1e3f2021edace7ddfd5dcdd9c048910d7931a3b00bb.png"
+          }
+        },
+        {
+          "questionNumber": "05010328",
+          "questionId": null,
+          "sourceSha256": "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a",
+          "fileName": null,
+          "derivedChecksum": "94a2a2d261f66bfa1c3598782a6ded196485ff816fb4df82fb59fa8357b62e47",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "8764e12e7a73f1e715160ce3b4995c2b884565aad7670f0087f57e62dbba03c9",
+          "expectedRenderedChecksum": "49980ad5c4175123456d9a7434fc6b7f7fca7b85ead760e2a6600a1dd9ffc063",
+          "status": "paired",
+          "imageName": "Image30",
+          "rawChecksum": "8764e12e7a73f1e715160ce3b4995c2b884565aad7670f0087f57e62dbba03c9",
+          "rendered": {
+            "checksum": "49980ad5c4175123456d9a7434fc6b7f7fca7b85ead760e2a6600a1dd9ffc063",
+            "dimensions": {
+              "width": 946,
+              "height": 1434
+            },
+            "bytes": 216773,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010328-1-49980ad5c4175123456d9a7434fc6b7f7fca7b85ead760e2a6600a1dd9ffc063.png"
+          }
+        },
+        {
+          "questionNumber": "05010329",
+          "questionId": null,
+          "sourceSha256": "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a",
+          "fileName": null,
+          "derivedChecksum": "64d1ce74ea542c14d530b24d341b28e94be45b09b17c4e364a84594dcc8ab04c",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 2,
+          "expectedRawChecksum": "0565244914c56cf9c32c01d82cd575d86cadb0d897842cc49d9dfe8e23f5381a",
+          "expectedRenderedChecksum": "f68759f54bcc5944b108543b50ebd37aa2d4ef20dcd05e28814ab3cf2242665d",
+          "status": "paired",
+          "imageName": "_x005F_x0000_i0001",
+          "rawChecksum": "0565244914c56cf9c32c01d82cd575d86cadb0d897842cc49d9dfe8e23f5381a",
+          "rendered": {
+            "checksum": "f68759f54bcc5944b108543b50ebd37aa2d4ef20dcd05e28814ab3cf2242665d",
+            "dimensions": {
+              "width": 948,
+              "height": 538
+            },
+            "bytes": 37845,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010329-2-f68759f54bcc5944b108543b50ebd37aa2d4ef20dcd05e28814ab3cf2242665d.png"
+          }
+        },
+        {
+          "questionNumber": "05010335",
+          "questionId": null,
+          "sourceSha256": "b04485725a604982c2d4eb6c2d5fabb1e1b303be921e37516a980e43d4afb46a",
+          "fileName": null,
+          "derivedChecksum": "b045d2eb1dd81e0d1da5d98a92bf19b2e5d67da43fb592fe51f23380a7f057fa",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 3,
+          "expectedRawChecksum": "f56fee305c5ebc6cc61f5ea49a6ed8e74f43d887b8143f17de21b6ec675bb5f5",
+          "expectedRenderedChecksum": "5a04ab4f0bc67848a276b05b1d360014efd45bb0535b2f3c6a874bc98898374b",
+          "status": "paired",
+          "imageName": "Image35",
+          "rawChecksum": "f56fee305c5ebc6cc61f5ea49a6ed8e74f43d887b8143f17de21b6ec675bb5f5",
+          "rendered": {
+            "checksum": "5a04ab4f0bc67848a276b05b1d360014efd45bb0535b2f3c6a874bc98898374b",
+            "dimensions": {
+              "width": 700,
+              "height": 1243
+            },
+            "bytes": 107862,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010335-3-5a04ab4f0bc67848a276b05b1d360014efd45bb0535b2f3c6a874bc98898374b.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "4506bf8eb30de242755f814a3734238f266746226f12d8711cc3d274fa7b58a9",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/01_試題/03_Unit 2 Where Are My Pencils_.doc",
+      "candidates": [
+        {
+          "questionNumber": "05010687",
+          "questionId": null,
+          "sourceSha256": "4506bf8eb30de242755f814a3734238f266746226f12d8711cc3d274fa7b58a9",
+          "fileName": null,
+          "derivedChecksum": "ad405dc593e0e82772f4078a5b2c6177acdfd0ff343a15bc65ebe20a44eff0cb",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "31f4a95bb334625c9ad6b91fa0911acd55644f9aa60cf06f57fb7602cc7fa2a0",
+          "expectedRenderedChecksum": "c44bfe46094e8faa3062dbe3b993d43bcd968756fa3b9e2de457fe01889fcbb1",
+          "status": "paired",
+          "imageName": "Image26",
+          "rawChecksum": "31f4a95bb334625c9ad6b91fa0911acd55644f9aa60cf06f57fb7602cc7fa2a0",
+          "rendered": {
+            "checksum": "c44bfe46094e8faa3062dbe3b993d43bcd968756fa3b9e2de457fe01889fcbb1",
+            "dimensions": {
+              "width": 946,
+              "height": 828
+            },
+            "bytes": 86645,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010687-0-c44bfe46094e8faa3062dbe3b993d43bcd968756fa3b9e2de457fe01889fcbb1.png"
+          }
+        },
+        {
+          "questionNumber": "05010692",
+          "questionId": null,
+          "sourceSha256": "4506bf8eb30de242755f814a3734238f266746226f12d8711cc3d274fa7b58a9",
+          "fileName": null,
+          "derivedChecksum": "90f918cd9f69fce834f32e0207021d55af150d41596232a0cf86f5fe617ed6be",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "a44736bc1a5e7511cb3d4d8e4b150c9b45e12d7001d4fba386c9777798de3647",
+          "expectedRenderedChecksum": "0898c30450d9c8e1ffdcce3c5d689df363e7c1c0e636c9ea761ece2ca346eca7",
+          "status": "paired",
+          "imageName": "Image29",
+          "rawChecksum": "a44736bc1a5e7511cb3d4d8e4b150c9b45e12d7001d4fba386c9777798de3647",
+          "rendered": {
+            "checksum": "0898c30450d9c8e1ffdcce3c5d689df363e7c1c0e636c9ea761ece2ca346eca7",
+            "dimensions": {
+              "width": 947,
+              "height": 1120
+            },
+            "bytes": 203163,
+            "previewPath": ".audit/hanlin-english-emf-previews/05010692-1-0898c30450d9c8e1ffdcce3c5d689df363e7c1c0e636c9ea761ece2ca346eca7.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/01_試題/04_Unit 3 Open the Magic Door.doc",
+      "candidates": [
+        {
+          "questionNumber": "05011087",
+          "questionId": null,
+          "sourceSha256": "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7",
+          "fileName": null,
+          "derivedChecksum": "f3fa955443df1aeeb7ae8016519e307a3c9e672f4acfc7c38ea3c1975cbf205c",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "de34bf34f4ab59d487cb5af49eb82d5f93ece2cfbeb96f046cc0b1edca2be5fa",
+          "expectedRenderedChecksum": "6887881ab7f27db681918ff2a57f3023098be3c769b0539b13963e89ce46c76d",
+          "status": "paired",
+          "imageName": "Image31",
+          "rawChecksum": "de34bf34f4ab59d487cb5af49eb82d5f93ece2cfbeb96f046cc0b1edca2be5fa",
+          "rendered": {
+            "checksum": "6887881ab7f27db681918ff2a57f3023098be3c769b0539b13963e89ce46c76d",
+            "dimensions": {
+              "width": 918,
+              "height": 712
+            },
+            "bytes": 70623,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011087-0-6887881ab7f27db681918ff2a57f3023098be3c769b0539b13963e89ce46c76d.png"
+          }
+        },
+        {
+          "questionNumber": "05011090",
+          "questionId": null,
+          "sourceSha256": "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7",
+          "fileName": null,
+          "derivedChecksum": "c0aa69b9d3f1b6203484ec8f42a95fe5b5876e111045123a0e0b6a2f3ce37ee6",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "2a571f950590ee2d997d2911943d3e220322e10758400a7391cd2f51f5b67955",
+          "expectedRenderedChecksum": "150a3595d3e5e4131b1d6aa8ad8a8cee0f12a8721128901868016ffab969ab91",
+          "status": "paired",
+          "imageName": "_x005F_x0000_i1243_BR89",
+          "rawChecksum": "2a571f950590ee2d997d2911943d3e220322e10758400a7391cd2f51f5b67955",
+          "rendered": {
+            "checksum": "150a3595d3e5e4131b1d6aa8ad8a8cee0f12a8721128901868016ffab969ab91",
+            "dimensions": {
+              "width": 940,
+              "height": 1925
+            },
+            "bytes": 262859,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011090-1-150a3595d3e5e4131b1d6aa8ad8a8cee0f12a8721128901868016ffab969ab91.png"
+          }
+        },
+        {
+          "questionNumber": "05011091",
+          "questionId": null,
+          "sourceSha256": "249521f76935f4c7f2995f8068a23a8a6a2ef95702dc5c606fd9b7262c0d2ac7",
+          "fileName": null,
+          "derivedChecksum": "ef366dabfcdfbd46a2a17ebdd531395063dc3a48a0d4fc6eb933108b5e4ad3dd",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 2,
+          "expectedRawChecksum": "3b346853752018200188c43405f72f484395f06b5926369bbe93295966130d53",
+          "expectedRenderedChecksum": "39387a2a17480822bdb5ef0fdda3cd4988d8e20971a1444d5ad49e883325db34",
+          "status": "paired",
+          "imageName": "_x005F_x0000_i1473_BR88",
+          "rawChecksum": "3b346853752018200188c43405f72f484395f06b5926369bbe93295966130d53",
+          "rendered": {
+            "checksum": "39387a2a17480822bdb5ef0fdda3cd4988d8e20971a1444d5ad49e883325db34",
+            "dimensions": {
+              "width": 903,
+              "height": 774
+            },
+            "bytes": 46733,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011091-2-39387a2a17480822bdb5ef0fdda3cd4988d8e20971a1444d5ad49e883325db34.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "38288e2bec85304c669dce072738d57fe9610445f2a40da3ba3f7f829a9a4ecf",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/02_素養題/03_Unit 3 Open the Magic Door.doc",
+      "candidates": [
+        {
+          "questionNumber": "05012279",
+          "questionId": null,
+          "sourceSha256": "38288e2bec85304c669dce072738d57fe9610445f2a40da3ba3f7f829a9a4ecf",
+          "fileName": null,
+          "derivedChecksum": "cbbbbed7ebc22eeec3b75a3831e724beb77caa22e1eac3878c5c7d253c110261",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "1d1379864d5bdae08925d4ed32b9ef024cd8bcb7aa8118b7216ff08b983f15f6",
+          "expectedRenderedChecksum": "979bac270e9989b121a00263fdd67eb26ffb1a61196304f67a59ba421b9e5651",
+          "status": "paired",
+          "imageName": "Image28",
+          "rawChecksum": "1d1379864d5bdae08925d4ed32b9ef024cd8bcb7aa8118b7216ff08b983f15f6",
+          "rendered": {
+            "checksum": "979bac270e9989b121a00263fdd67eb26ffb1a61196304f67a59ba421b9e5651",
+            "dimensions": {
+              "width": 830,
+              "height": 463
+            },
+            "bytes": 24934,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012279-0-979bac270e9989b121a00263fdd67eb26ffb1a61196304f67a59ba421b9e5651.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/02_素養題/04_Unit 4 What Time Is the Concert_.doc",
+      "candidates": [
+        {
+          "questionNumber": "05012297",
+          "questionId": null,
+          "sourceSha256": "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec",
+          "fileName": null,
+          "derivedChecksum": "ce691bd6ba29468eccae53e52e7b987b90a05ee3c55e1f2dbd50a1735989d87e",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "3bd6af5c2404bd5c142ff516cb0037bd9907283b5878233f6fcc57129c5431fa",
+          "expectedRenderedChecksum": "679f8638f64a8a3e7fa973451c8d1607d8b9171a76f10da66368d02e9d2077c6",
+          "status": "paired",
+          "imageName": "Image33",
+          "rawChecksum": "3bd6af5c2404bd5c142ff516cb0037bd9907283b5878233f6fcc57129c5431fa",
+          "rendered": {
+            "checksum": "679f8638f64a8a3e7fa973451c8d1607d8b9171a76f10da66368d02e9d2077c6",
+            "dimensions": {
+              "width": 952,
+              "height": 204
+            },
+            "bytes": 11461,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012297-0-679f8638f64a8a3e7fa973451c8d1607d8b9171a76f10da66368d02e9d2077c6.png"
+          }
+        },
+        {
+          "questionNumber": "05012297",
+          "questionId": null,
+          "sourceSha256": "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec",
+          "fileName": null,
+          "derivedChecksum": "f6c0208616e388eba2208756394f6196fcd0dd7352b504490610ecaae2efe124",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "8551ff0861d62f4a446684ee00044e9d11633c9334e0a568551ca71c0972fb39",
+          "expectedRenderedChecksum": "0407efa5edcf7ecdb6c96c508f7a750cc204dfe2613e489db836aaf6e99d6a1d",
+          "status": "paired",
+          "imageName": "Image34",
+          "rawChecksum": "8551ff0861d62f4a446684ee00044e9d11633c9334e0a568551ca71c0972fb39",
+          "rendered": {
+            "checksum": "0407efa5edcf7ecdb6c96c508f7a750cc204dfe2613e489db836aaf6e99d6a1d",
+            "dimensions": {
+              "width": 951,
+              "height": 202
+            },
+            "bytes": 11374,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012297-1-0407efa5edcf7ecdb6c96c508f7a750cc204dfe2613e489db836aaf6e99d6a1d.png"
+          }
+        },
+        {
+          "questionNumber": "05012297",
+          "questionId": null,
+          "sourceSha256": "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec",
+          "fileName": null,
+          "derivedChecksum": "6df328926a4873a7ab1c6ef81fd2616f035acea122c4364a26f78eaef0e12548",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 2,
+          "expectedRawChecksum": "9645567f4077f9973360502c11f8ae7c12e9eda938710f263249b90df26dc7f1",
+          "expectedRenderedChecksum": "49d139f84061512456d3a3f9eff5cc30f147816d893dc55b37a7166181573780",
+          "status": "paired",
+          "imageName": "Image35",
+          "rawChecksum": "9645567f4077f9973360502c11f8ae7c12e9eda938710f263249b90df26dc7f1",
+          "rendered": {
+            "checksum": "49d139f84061512456d3a3f9eff5cc30f147816d893dc55b37a7166181573780",
+            "dimensions": {
+              "width": 951,
+              "height": 204
+            },
+            "bytes": 11712,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012297-2-49d139f84061512456d3a3f9eff5cc30f147816d893dc55b37a7166181573780.png"
+          }
+        },
+        {
+          "questionNumber": "05012297",
+          "questionId": null,
+          "sourceSha256": "d0027ec148dfa6e31b5fee856975d4f42e79e9fecf1206ce54eac06d76ade3ec",
+          "fileName": null,
+          "derivedChecksum": "9abee723df9b0da89ca21f7b36b4e68ca2fe848685249638c4ec5b902a5e2a1f",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 3,
+          "expectedRawChecksum": "ca99fbd8cc48e9f1b57228f9724534cf16ef81b68ec785f345edd34b3f9145a7",
+          "expectedRenderedChecksum": "442eb468158006e3e0a37f0dfe8105996e51c442692cad9912207b26587aeaa9",
+          "status": "paired",
+          "imageName": "Image36",
+          "rawChecksum": "ca99fbd8cc48e9f1b57228f9724534cf16ef81b68ec785f345edd34b3f9145a7",
+          "rendered": {
+            "checksum": "442eb468158006e3e0a37f0dfe8105996e51c442692cad9912207b26587aeaa9",
+            "dimensions": {
+              "width": 951,
+              "height": 204
+            },
+            "bytes": 11636,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012297-3-442eb468158006e3e0a37f0dfe8105996e51c442692cad9912207b26587aeaa9.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/01_試題/05_Unit 4 What Time Is the Concert_.doc",
+      "candidates": [
+        {
+          "questionNumber": "05011441",
+          "questionId": null,
+          "sourceSha256": "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8",
+          "fileName": null,
+          "derivedChecksum": "d4dfc7f43ed51268458642bb096ce61aea067cfa01e10e5bfb8154cd873de78c",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "8d6e0feb9ea33af60875a1d07d24b3887d247c39bb3a5306f93a4248c2f5af0c",
+          "expectedRenderedChecksum": "c41db89327458bbf7e1d9efbe3c1d09bef6abee64873ed1aa82c2bdb11feb5ad",
+          "status": "paired",
+          "imageName": "Object1",
+          "rawChecksum": "8d6e0feb9ea33af60875a1d07d24b3887d247c39bb3a5306f93a4248c2f5af0c",
+          "rendered": {
+            "checksum": "c41db89327458bbf7e1d9efbe3c1d09bef6abee64873ed1aa82c2bdb11feb5ad",
+            "dimensions": {
+              "width": 1414,
+              "height": 761
+            },
+            "bytes": 81076,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011441-0-c41db89327458bbf7e1d9efbe3c1d09bef6abee64873ed1aa82c2bdb11feb5ad.png"
+          }
+        },
+        {
+          "questionNumber": "05011451",
+          "questionId": null,
+          "sourceSha256": "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8",
+          "fileName": null,
+          "derivedChecksum": "a83b3bfa9e2ec852eedad45af58bc05210409c69dd0b4863b829b79b89841ecd",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "49d9a9ae9d4d3ba3481308ca90784b0d8c12d41c394319c32bdad8eaca577f5c",
+          "expectedRenderedChecksum": "d12d47a87567947b44a8f47c92d61c2b1bced5f84b423ae0a830eadc66648f18",
+          "status": "paired",
+          "imageName": "Image24",
+          "rawChecksum": "49d9a9ae9d4d3ba3481308ca90784b0d8c12d41c394319c32bdad8eaca577f5c",
+          "rendered": {
+            "checksum": "d12d47a87567947b44a8f47c92d61c2b1bced5f84b423ae0a830eadc66648f18",
+            "dimensions": {
+              "width": 936,
+              "height": 615
+            },
+            "bytes": 60406,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011451-1-d12d47a87567947b44a8f47c92d61c2b1bced5f84b423ae0a830eadc66648f18.png"
+          }
+        },
+        {
+          "questionNumber": "05011453",
+          "questionId": null,
+          "sourceSha256": "19d8a15aaf285ce063b20dc9a81689038068bd9b662da41b5e10a0b5e22e26c8",
+          "fileName": null,
+          "derivedChecksum": "3cd0ec8134a1d8f7f032d785dc12c243e55290adf0adf0a40da468f7d2861f48",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 2,
+          "expectedRawChecksum": "dbebf8b078051a0210db0e76de0362b5bb252d494c11788204ddf7b6d6c98c5b",
+          "expectedRenderedChecksum": "848adb34d3b3a0af55776732a4113527604aa925b6127894dacf4da21f41d969",
+          "status": "paired",
+          "imageName": "Image27",
+          "rawChecksum": "dbebf8b078051a0210db0e76de0362b5bb252d494c11788204ddf7b6d6c98c5b",
+          "rendered": {
+            "checksum": "848adb34d3b3a0af55776732a4113527604aa925b6127894dacf4da21f41d969",
+            "dimensions": {
+              "width": 888,
+              "height": 311
+            },
+            "bytes": 25065,
+            "previewPath": ".audit/hanlin-english-emf-previews/05011453-2-848adb34d3b3a0af55776732a4113527604aa925b6127894dacf4da21f41d969.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "ca5bad6a610fc5bd3afd62a053cc87e8639085763e6dfe83ee098422c0ff5630",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/01_試題/07_Unit 6 There Are Some Elephants Over There.doc",
+      "candidates": [
+        {
+          "questionNumber": "05012114",
+          "questionId": null,
+          "sourceSha256": "ca5bad6a610fc5bd3afd62a053cc87e8639085763e6dfe83ee098422c0ff5630",
+          "fileName": null,
+          "derivedChecksum": "33696e512fa092500bfb76788eb078c4d26f40c1f6ad2cc239db11a74adab98d",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "ab5cb4860490303f37d1790a55dad5cd9b0dd0f625406a1c3225f335e01aa8e5",
+          "expectedRenderedChecksum": "1a60e437df3d64ec8b7c29ae3069b5358ae0803175f0aa4b159f58e2cc8b63e0",
+          "status": "paired",
+          "imageName": "Image29",
+          "rawChecksum": "ab5cb4860490303f37d1790a55dad5cd9b0dd0f625406a1c3225f335e01aa8e5",
+          "rendered": {
+            "checksum": "1a60e437df3d64ec8b7c29ae3069b5358ae0803175f0aa4b159f58e2cc8b63e0",
+            "dimensions": {
+              "width": 594,
+              "height": 299
+            },
+            "bytes": 15110,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012114-0-1a60e437df3d64ec8b7c29ae3069b5358ae0803175f0aa4b159f58e2cc8b63e0.png"
+          }
+        },
+        {
+          "questionNumber": "05012176",
+          "questionId": null,
+          "sourceSha256": "ca5bad6a610fc5bd3afd62a053cc87e8639085763e6dfe83ee098422c0ff5630",
+          "fileName": null,
+          "derivedChecksum": "3a98a41672ba72c01f25bb580a0b90c6dc8e60618d5c64ac16ea133b0cb9f20d",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 1,
+          "expectedRawChecksum": "14580b345482276fb5b557008a5be145a6f9ae107a73095a9c2f773a9465663f",
+          "expectedRenderedChecksum": "23a35e1f1c7ed61b2706cfabda244ba1a963cbc63e3079d0202991c7c04c943d",
+          "status": "paired",
+          "imageName": "Image32",
+          "rawChecksum": "14580b345482276fb5b557008a5be145a6f9ae107a73095a9c2f773a9465663f",
+          "rendered": {
+            "checksum": "23a35e1f1c7ed61b2706cfabda244ba1a963cbc63e3079d0202991c7c04c943d",
+            "dimensions": {
+              "width": 1005,
+              "height": 1021
+            },
+            "bytes": 359277,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012176-1-23a35e1f1c7ed61b2706cfabda244ba1a963cbc63e3079d0202991c7c04c943d.png"
+          }
+        }
+      ]
+    },
+    {
+      "sourceSha256": "57932d7a9213392d0e5db2955065887e3416f88b1972a0ade24c242914eba6e0",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中英語/題本檔案/01_第一冊/02_素養題/05_Unit 5 What's the Date_.doc",
+      "candidates": [
+        {
+          "questionNumber": "05012322",
+          "questionId": null,
+          "sourceSha256": "57932d7a9213392d0e5db2955065887e3416f88b1972a0ade24c242914eba6e0",
+          "fileName": null,
+          "derivedChecksum": "e57f1d6025453b307247d411c2486fdb8cea03a402a891a4b5e48c4082fe34c2",
+          "derivedDimensions": null,
+          "derivedBytes": null,
+          "position": 0,
+          "expectedRawChecksum": "bfc33b4ce6ec27e82ec987a73304d229ac7c6c22ec6ee9e99b6ec4d317069c37",
+          "expectedRenderedChecksum": "ee117ab95e255691ecaf35cac65ff61504f8eeaa5901c07f08b69f3df6fd52dc",
+          "status": "paired",
+          "imageName": "Object1",
+          "rawChecksum": "bfc33b4ce6ec27e82ec987a73304d229ac7c6c22ec6ee9e99b6ec4d317069c37",
+          "rendered": {
+            "checksum": "ee117ab95e255691ecaf35cac65ff61504f8eeaa5901c07f08b69f3df6fd52dc",
+            "dimensions": {
+              "width": 948,
+              "height": 1115
+            },
+            "bytes": 145979,
+            "previewPath": ".audit/hanlin-english-emf-previews/05012322-0-ee117ab95e255691ecaf35cac65ff61504f8eeaa5901c07f08b69f3df6fd52dc.png"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 6,
+      "byWordStatus": {
+        "word-confirms-image-options": 1,
+        "word-has-no-inline-visual": 5
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1,
+        "visual-reference-without-image": 5
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010738",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010737\n難易度:難\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:等高線地形圖\n 附圖為宜蘭縣的分層設色圖,根據圖中四條剖面線繪製而成的地形剖面圖,下列何者正確?\n/\n(A) / (B) / (C) / (D) /\n答案:(D)\n解析:根據分層設色圖可知,四條剖面線繪製而成的地形剖面圖分別為 / 、 / 、 / 、 / 。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 5,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010739",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010738\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:分層設色圖\n 下列為小珍同學參加「地形圖繪製大賽」前整理的許多筆記,關於小珍的筆記哪項有誤? (A)將海拔高度相同的點連接成閉合曲線,利用等高線表示地表高低起伏 (B)在地圖上標上山地、丘陵、平原、台地名稱,以此呈現地形高低起伏 (C)將等高線圖中不同高度範圍的區域,分別畫上不同的顏色,以表現地形高度的分布 (D)在等高線地形圖中畫一條剖面線,找出各交點相對應高度,繪成一條曲線,表示該剖面地表的高低起伏。\n答案:(B)\n解析:(B)呈現地形高低起伏要使用等高線地形圖或地形剖面圖。地圖上標上山地、丘陵、平原、台地名稱,只能呈現地形類型而無法呈現地形高低起伏。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010740",
+      "sourcePage": 3,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010739\n難易度:中\n出處:試題\n認知向度:高層次批判思考\n知識向度:等高線地形圖\n 俊儒在地理課繪製地形剖面圖,下列何者是他應先著手的步驟? (A)先設定地形圖的經緯度 (B)先在地圖上,找出各種不同地形的名稱 (C)先將地形圖中不同高度區域的範圍標上顏色 (D)先製作一張圖,將地表上海拔高度相同的點連接成閉合曲線。\n答案:(D)\n解析:繪製地形剖面圖的三大步驟:\u0015在等高線地形圖上畫一直線,代表剖面線。下方繪製表示高度的垂直軸與距離的水平軸;\u0015沿著剖面線和等高線的各個交點,畫垂直線到相對應的高度上,並標點;\u0015將所有高度的標點以平滑的曲線連起來。與(A)(B)(C)無關。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010786",
+      "sourcePage": 15,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010785\n難易度:易\n出處:試題\n認知向度:具備基本知識\n知識向度:等高線地形圖\n 在分層設色圖中,是利用不同的顏色層次來代表何種地形要素? (A)距離 (B)高度 (C)地質 (D)作用力。\n答案:(B)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010790",
+      "sourcePage": 16,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010789\n難易度:易\n出處:試題\n認知向度:具備基本知識\n知識向度:等高線地形圖\n 等高線地形圖中,等高線之間的距離疏密不同,顯示的意義是下列何者? (A)地形的起伏陡緩 (B)比例尺的大小 (C)河谷分布的位置 (D)梯田的分布範圍。\n答案:(A)\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    },
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/09_01_1-3_3-2_常見的地形表示方法.doc",
+      "fileName": "09_01_1-3_3-2_常見的地形表示方法.doc",
+      "questionNumber": "05010849",
+      "sourcePage": 35,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "visual-reference-without-image"
+      ],
+      "wordBlock": "編號:05010848\n難易度:中\n出處:試題\n認知向度:具備基本知識\n知識向度:等高線地形圖\n 地形剖面圖是從【    】圖中,沿著某一條剖線,以【    】軸為高度,【    】軸為距離,用簡單的曲線畫出該剖面地表的高低起伏。\n答案:等高線地形;垂直;水平\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

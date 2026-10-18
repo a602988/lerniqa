@@ -62,7 +62,7 @@ test("isolated practice E2E includes a publishable manual-review question", asyn
 test("catalog stays answer-free while detailed attempts read the session-pinned revision", async () => {
     const store = await readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8");
     const catalog = store.slice(
-        store.indexOf("export async function listLocalPracticeQuestions("),
+        store.indexOf("export async function readLocalPracticeCatalog("),
         store.indexOf("async function readSession("),
     );
     assert.doesNotMatch(catalog, /question_answers|accepted_value|answer_key/u);
@@ -78,6 +78,14 @@ test("catalog stays answer-free while detailed attempts read the session-pinned 
     assert.match(disclosure, /block\.placement = 'explanation'/u);
     assert.match(disclosure, /option_content\.label AS option_label/u);
     assert.match(disclosure, /COALESCE\(block\.text_content, block\.alt_text\)/u);
+    assert.equal(
+        [...disclosure.matchAll(/string_agg\(COALESCE\(block\.text_content, block\.alt_text\), '' ORDER BY/gu)].length,
+        4,
+    );
+    assert.doesNotMatch(
+        disclosure,
+        /string_agg\(COALESCE\(block\.text_content, block\.alt_text\), E'\\n' ORDER BY/gu,
+    );
 });
 
 test("explicit question review requires result access, current revision, visibility and no-store", async () => {

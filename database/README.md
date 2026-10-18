@@ -2,7 +2,7 @@
 
 正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
 
-Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0013` 共十三個 migration 定義 106 張業務資料表，另有技術性的 `schema_migrations`。`0012` 新增管理目錄、題庫補全與手寫分析 sidecar 等十張資料表；`0013` 建立國小、國中、高中共十二個年級與上下學期正式目錄。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
+Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0019` 共十九個 migration 定義 117 張業務資料表，另有技術性的 `schema_migrations`。`0016` 將出版社版本與冊次分開；`0017` 新增學習本不可變版本、分享訂閱、通知、稽核與冪等收據；`0018` 為文字小題保存經來源核准的答案欄位數；`0019` 加速每題首選題號的查詢。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
 
 ## 本機驗證
 
@@ -13,10 +13,12 @@ npm run db:test
 npm run test:import-ownership
 npm run test:local-practice
 npm run test:account-recovery
+npm run test:learning-books
+npm run test:learning-books:db
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-前三個資料庫 runner 使用隔離合成資料。`test:account-recovery` 不啟動資料庫或寄送真實郵件，檢查密碼／PIN 輸入、token、mail adapter 與 repository／route 契約。
+資料庫 runner 使用隔離合成資料。`test:account-recovery` 不啟動資料庫或寄送真實郵件，檢查密碼／PIN 輸入、token、mail adapter 與 repository／route 契約。`test:learning-books` 檢查 API、權限、搬移與 session 契約；`test:learning-books:db` 在隔離 PostgreSQL 驗證建立、發布、多排程、分享、領取、同步、分叉、撤銷、通知、稽核與冪等生命週期。
 
 預設模式需要 `initdb`、`pg_ctl`、`createdb`、`psql` 與 `pg_dump` 可由 `PATH` 執行。驗證腳本會在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP，只開啟權限為 `0700` 的私有 Unix socket，並清除可能把指令導向既有伺服器的 PostgreSQL 環境設定。每個資料庫指令都明確指定 host、port、user 與 database，且以 `PSQLRC=/dev/null` 執行。
 
@@ -30,7 +32,7 @@ macOS 的 SysV shared-memory 額度無法再建立短命 cluster 時，可明確
 
 腳本會自動找出每組 migration，依序執行前進與限制測試，再逐階段回滾、檢查 migration 紀錄／資料表／schema 回復，最後再次前進並比對 schema。預設模式結束時停止 cluster 並刪除整個暫存目錄；existing-local-server 模式則刪除本次建立的所有測試資料庫與 session，不停止既有 server。兩種模式都不得沿用未經明確核對的 `PGHOST` 或 production 連線。
 
-`db:test` 會驗證 `0001` 至 `0013` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前十三個 migration 的驗收。
+`db:test` 會驗證 `0001` 至 `0019` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前十九個 migration 的驗收。
 
 最近一次完整 `db:test` 已在明確 opt-in 的本機 Unix-socket PostgreSQL 隔離資料庫模式通過。它涵蓋 `0007` 到 `0008` 安裝窗口的 archive race、`0009` preflight 與子資料發布併發、`0010` 的 `account_role`／grant 撤銷及 self access／learner rename 雙連線回歸，以及 `0011` 的舊版 `score` 明細清除、統計重建、資產清理排程、彙總與收據完整性、逐層 down、第二次 up 和 schema parity；完成後 `lerniqa_schema_test_%` 資料庫與測試 session 均為 0。
 
@@ -138,6 +140,8 @@ Migration 會在建立限制前檢查既有的 published／superseded 版本；�
 
 為 `practice_sessions` 加入 `score_total_count`、`score_answered_count`、`score_correct_count`、`score_wrong_count` 與 `score_pending_count`。這些欄位只供 `check_mode=score` 使用；其他模式必須全部保持為 0。限制也要求 `correct + wrong <= answered <= total`，且 `correct + wrong + pending = total`。
 
+臨時建立的練習 session 以呼叫端指定的題目版本與可選小題為目標，資料庫查詢只要求題目、目前版本與分類節點仍啟用並已發布，且學習者仍屬於包含該題的有效題庫。題庫清單使用的預設年級、科目、版本、冊次與課次只負責列出清單，不得再次限制 session target；隔離驗證會暫時把已授權題目改成非預設課次，確認仍可建立 session，並確認移除題庫成員關係後會被拒絕。
+
 新增的 `practice_score_receipts` 每個 session item 最多一筆，並以 `(learner_id, idempotency_key)` 阻止同一學習者重複提交。收據只保存識別碼、session item、學習者、冪等鍵與送出時間，不保存答案、逐題判定、小題、耗時或附件。`score` 提交仍由伺服器在交易內判分，但只寫入收據並累加 session aggregate；所有 item 都有收據後才把 session 標記為完成。相同冪等鍵的相同提交可安全重播，同一 item 換新鍵重送則回傳衝突。
 
 升級既有資料時，每個舊版 `score` item 只取最新一次 attempt 回填收據及 aggregate，接著刪除該模式留下的 `analytics_outbox`、來源追溯、錯題／相近題佇列、審核、作答附件、小題結果與作答。五張可重建統計表 `learner_question_stats`、`learner_part_stats`、`learner_similarity_group_stats`、`learner_daily_stats` 與 `question_daily_stats` 會先清空，再只從仍可保留的 `instant` 作答及已完成 `complete` session 明細確定性重建；不從舊 aggregate 猜測或扣除 `score` 貢獻。非 `score` 原始作答與審核明細不會被刪除。
@@ -157,6 +161,14 @@ down 可回到 `0010` 的 schema，但無法也不應虛構已由這次隱私修
 ### `0013_education_stage_catalog`
 
 `0013` 將 `grades.stage` 正式限制為 `elementary`、`junior_high`、`senior_high`，建立小一至高三共十二個啟用年級，以及上學期、下學期兩筆學期目錄。公開 `/api/v1/auth/catalog` 依資料庫排序回傳 no-store 目錄；註冊與學習者設定先選教育階段，再從該階段選年級。不在學學習者不保存年級或學期。
+
+### `0018_question_answer_field_count`
+
+`0018` 在 `question_parts` 新增 `answer_field_count`。預設為 `1`；只有 `answer_mode=text` 且 `grading_policy=manual_review` 的小題可使用 `2` 至 `8`。欄位數屬於題目 revision 的公開作答版面契約，不從參考答案、逗號數、空白或畫面內容推測。多欄答案在既有字串契約中依原順序以全形逗號保存，送出時必須欄位數完全相符且每欄非空白；參考答案仍只留在伺服器端。
+
+### `0019_question_identifier_question_lookup`
+
+`0019` 為題目清單的首選題號查詢新增複合索引。索引先依 `question_id` 找出同一題的題號，再優先選擇 `publisher_question`，最後依 `value` 排序。這個索引不改變題號內容、優先順序或公開回傳契約，也不新增資料表。
 
 ## 尚未完成的 production 串接
 

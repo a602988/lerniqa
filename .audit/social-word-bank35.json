@@ -1,0 +1,31 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-has-no-inline-visual": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/01_試題/35_03_3-1_1-1_什麼是公民？.doc",
+      "fileName": "35_03_3-1_1-1_什麼是公民？.doc",
+      "questionNumber": "05014016",
+      "sourcePage": 10,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05014015\n難易度:中\n出處:試題\n認知向度:明瞭知識內涵能力\n知識向度:國民\n 小崇為了準備主題為「參政權」的公民科報告,上網蒐集資料,下列何者與他的報告主題最為相符? (A) \u0001 (B) \u0001 (C) \u0001 (D) \u0001\n答案:(D)\n解析:參政權包括選舉、罷免及公民投票等權利,僅(D)公民投票,符合小崇的報告主題。(B)出書屬於著作上的自由權。\n",
+      "wordStatus": "word-has-no-inline-visual",
+      "inlineVisuals": 0,
+      "optionVisuals": []
+    }
+  ]
+}

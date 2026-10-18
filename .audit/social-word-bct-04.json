@@ -1,0 +1,36 @@
+{
+  "documents": 1,
+  "summary": {
+    "社會": {
+      "total": 1,
+      "byWordStatus": {
+        "word-confirms-image-options": 1
+      },
+      "byPendingReason": {
+        "choice-parse-failed": 1
+      }
+    }
+  },
+  "audits": [
+    {
+      "subject": "社會",
+      "sourcePath": "/Users/chianlin/Library/CloudStorage/GoogleDrive-jean@minmax.biz/我的雲端硬碟/個人/題庫資料/國中/國中社會/題本檔案/01_第一冊/05_各章節基測試題/04_01_1-1_1-4_如何閱讀地圖.doc",
+      "fileName": "04_01_1-1_1-4_如何閱讀地圖.doc",
+      "questionNumber": "05010633",
+      "sourcePage": 1,
+      "reviewMethod": "word-text-object",
+      "pendingReasons": [
+        "choice-parse-failed"
+      ],
+      "wordBlock": "編號:05010632\n難易度:中\n出處:各章節基測試題\n認知向度:明瞭知識內涵能力\n知識向度:地圖要素\n 附圖為童話世界廣場園區示意圖。若園區設立在臺灣,早上太陽總是從山的那一頭升起,如附圖所示。請根據此一條件判斷,本圖的座標應如何標示?[94.第二次基測]\n/\n(A) / (B) / (C) / (D) /。\n答案:(D)\n解析:早上太陽由東方升起,圖的上方為東方,則圖的左側為北方。\n",
+      "wordStatus": "word-confirms-image-options",
+      "inlineVisuals": 5,
+      "optionVisuals": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    }
+  ]
+}

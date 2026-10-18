@@ -722,6 +722,17 @@
     white-space: pre-wrap;
 }
 
+.answerPart legend.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .partNumber {
     display: grid;
     width: 1.55rem;
@@ -816,6 +827,42 @@
     line-height: 1.6;
 }
 
+.answerSlots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.answerSlotsRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.answerSlotsNumber {
+    flex: none;
+    min-width: 2.25rem;
+    color: var(--pilot-ink);
+    font-size: 1.125rem;
+    font-weight: 750;
+    line-height: 1.5;
+    padding-top: 0.5rem;
+    text-align: right;
+}
+
+.answerSlots input {
+    width: 6.5rem;
+    min-width: 4rem;
+    border: 1px solid #d7d6e4;
+    border-radius: 0.6rem;
+    background: #fff;
+    padding: 0.55rem 0.65rem;
+    color: var(--pilot-ink);
+    font: inherit;
+}
+
 .textAnswer::placeholder {
     color: #999aac;
 }
@@ -854,13 +901,13 @@
 }
 
 .inlineFormulaSequence {
-    align-items: center;
-    column-gap: 0.18rem;
-    row-gap: 0.35rem;
+    display: block;
+    line-height: 1.8;
+    white-space: pre-wrap;
 }
 
-.inlineFormulaSequence > p {
-    flex: 0 1 auto;
+.inlineFormulaSequence > span {
+    white-space: pre-wrap;
 }
 
 .inlineFormulaAsset {
@@ -868,6 +915,8 @@
     align-items: center;
     align-self: center;
     line-height: 1;
+    margin-inline: 0.09rem;
+    vertical-align: middle;
 }
 
 .inlineFormulaImage {
@@ -893,6 +942,18 @@
     font-size: 0.82rem;
     line-height: 1.55;
     white-space: pre-wrap;
+}
+
+.formula {
+    display: inline-flex;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    font-family: inherit;
+    font-size: clamp(1.5rem, 1.6em, 1.75rem);
+    line-height: 1.35;
 }
 
 .promptImage {
