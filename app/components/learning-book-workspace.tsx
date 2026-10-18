@@ -234,7 +234,7 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
             </div>}
         </section>
         <section className="learning-book-list-section" aria-labelledby="learning-book-list-title">
-            <div className="learning-book-list-heading"><div><h2 id="learning-book-list-title">學習本清單</h2><span aria-live="polite">{loading ? "讀取中…" : `共 ${result?.total ?? 0} 本`}</span></div><Button size="sm" appearance="ghost" disabled={loading || disabled} onClick={() => setReload((value) => value + 1)}><RefreshCw />重新整理</Button></div>
+            <div className="learning-book-list-heading"><div><h2 id="learning-book-list-title">學習本清單</h2><span aria-live="polite">{loading ? "讀取中…" : `共 ${result?.total ?? 0} 本`}</span></div><div className="learning-book-list-heading-actions"><Button size="sm" appearance="outline" disabled={loading || disabled} onClick={() => setReload((value) => value + 1)}><RefreshCw />重新整理</Button></div></div>
             <div className="learning-book-table-wrap" aria-busy={loading}>
                 <table className="learning-book-table">
                     <thead><tr><th scope="col">名稱與狀態</th><th scope="col">內容與版本</th><th scope="col">來源</th><th scope="col">安排</th><th scope="col">相關人員</th><th scope="col">操作</th></tr></thead>
@@ -247,22 +247,24 @@ export function LearningBookWorkspace({ learnerId, canCreatePlans, currentConten
                             <td data-label="相關人員"><span>建立者 {book.creator.displayName}</span><small>分享者 {book.sharer?.displayName ?? "—"}</small></td>
                             <td className="learning-book-table-actions" data-label="操作"><Button size="sm" appearance="outline" disabled={disabled} onClick={() => openDetail(book)}>查看與管理</Button><Button size="sm" disabled={disabled || !book.questions.length || book.status !== "active" || book.syncStatus === "revoked" || !book.publishedRevisionNumber} onClick={() => start(book)}>開始練習<ArrowRight /></Button></td>
                         </tr>)}
-                        {!loading && result && !result.books.length && <tr><td className="learning-book-empty" colSpan={6}><BookOpen /><strong>沒有符合的學習本</strong><p>可調整篩選，或回到練習頁選擇內容後建立。</p></td></tr>}
                     </tbody>
                 </table>
+                {!loading && result && !result.books.length && <div className="learning-book-empty"><BookOpen /><strong>沒有符合的學習本</strong><p>可調整篩選，或回到練習頁選擇內容後建立。</p><Button appearance="outline" size="sm" onClick={resetFilters}>清除篩選</Button></div>}
             </div>
+            <nav className="learning-book-pagination" aria-label="學習本分頁">
+                <span>第 {cursorHistory.length} 頁</span>
+                <div className="learning-book-pagination-controls">
+                    <Button appearance="outline" size="sm" disabled={cursorHistory.length < 2 || loading} onClick={() => {
+                        const previous = cursorHistory.slice(0, -1);
+                        setCursorHistory(previous); setFilters((current) => ({ ...current, cursor: previous.at(-1) ?? undefined }));
+                    }}>上一頁</Button>
+                    <Button appearance="outline" size="sm" disabled={!result?.nextCursor || loading} onClick={() => {
+                        if (!result?.nextCursor) return;
+                        setCursorHistory((current) => [...current, result.nextCursor]); setFilters((current) => ({ ...current, cursor: result.nextCursor ?? undefined }));
+                    }}>下一頁</Button>
+                </div>
+            </nav>
         </section>
-        <nav className="learning-book-pagination" aria-label="學習本分頁">
-            <Button appearance="outline" disabled={cursorHistory.length < 2 || loading} onClick={() => {
-                const previous = cursorHistory.slice(0, -1);
-                setCursorHistory(previous); setFilters((current) => ({ ...current, cursor: previous.at(-1) ?? undefined }));
-            }}>上一頁</Button>
-            <span>第 {cursorHistory.length} 頁</span>
-            <Button appearance="outline" disabled={!result?.nextCursor || loading} onClick={() => {
-                if (!result?.nextCursor) return;
-                setCursorHistory((current) => [...current, result.nextCursor]); setFilters((current) => ({ ...current, cursor: result.nextCursor ?? undefined }));
-            }}>下一頁</Button>
-        </nav>
         </CardContent>
         </Card>
 
