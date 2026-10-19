@@ -99,10 +99,13 @@ export async function verifyRolePin(pin: string, encoded: string): Promise<boole
     }
 }
 
-export function createSessionToken(): string {
+export function createOpaqueToken(): string {
     return randomBytes(32).toString("base64url");
 }
 
-export function hashSessionToken(token: string): string {
+export function hashOpaqueToken(token: string): string {
     return `sha256:v1:${createHash("sha256").update(token, "utf8").digest("hex")}`;
 }
+
+export const createSessionToken = createOpaqueToken;
+export const hashSessionToken = hashOpaqueToken;

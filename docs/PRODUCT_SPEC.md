@@ -51,9 +51,9 @@ Lerniqa 是持續開發中的多科目正式產品，提供國小至高中學生
 - 每位學習者的題目、練習計畫、作答紀錄、錯題與學習成果必須分開保存。切換學習者時，不得混入其他學習者的資料。
 - 主導覽的「系統設定」必須直接從 PostgreSQL 管理帳號身分、有效一般角色與可存取的學習者。`accountRole` 表示主要身分，`activeRole` 表示目前能力；只要仍有有效的 parent 或 tutor 授權，即使 `accountRole=learner`，切到相應 `activeRole` 後也可建立、選取與管理學習者。建立時在同一交易給目前帳號可管理的 `learner_access`。切入受管學習者的 learner 模式後，前端隱藏系統設定，帳號身分、建立、帳號層更新與選取 API 回傳 `403`。只有 self learner 能力的帳號仍可查看自己的系統設定，但不能建立受管學習者。
 - 「學習者設定」只處理 session 目前選取的學習者。成人切入受管學習者的 learner 模式後仍可進入此頁；寫入前必須確認有效、已接受、未撤銷的 `learner_access`，且 `can_manage_settings=true`，否則只能查看。
-- 帳號可使用 LINE、Facebook 或 Google 綁定登入，也可使用電子郵件與密碼註冊及登入。
-- 同一帳號使用多種登入方式時，登入身份需指向同一份帳號資料，避免產生重複帳號與分散紀錄。
-- 登入、註冊、登出確認、忘記密碼、快速註冊與帳號綁定需使用獨立網址，重新整理後仍維持目前流程。本機 PostgreSQL 整合以 `/account` 實際處理電子郵件密碼註冊、登入、登出與驗證信寄送，`/account/verify-email` 完成一次性信箱確認，`/account/forgot-password` 與 `/account/reset-password` 完成本機忘記密碼流程；只有 SMTP 設定完成的環境才會真正寄信。OAuth 與帳號綁定仍只保留需求，不得宣稱已完成。
+- 帳號可使用電子郵件與密碼註冊及登入。`/quick-register` 使用 Google Identity Services 快速註冊新帳號；Google 身份已註冊時可直接登入，電子郵件已屬於密碼帳號時停止，不自動合併身份。LINE、Facebook 與帳號綁定仍未交付。
+- Google 快速註冊只要求 `openid`、`email` 與 `profile` 身份資料，不要求 Drive、Gmail 或 Calendar 權限，也不保存 access token 或 refresh token。後端以 Google `sub` 作為不可變身份，驗證 ID token 後把短效註冊狀態保存在 PostgreSQL；瀏覽器只持有 HttpOnly 不透明 token。使用者補完帳號角色與學習者資料後，服務才在同一交易建立帳號、登入身份、角色、學習者關係與 session。
+- 登入、註冊、登出確認、忘記密碼、快速註冊與帳號綁定使用獨立網址，重新整理後仍維持目前流程。本機 PostgreSQL 整合以 `/account` 實際處理電子郵件密碼註冊、登入、登出與驗證信寄送，`/account/verify-email` 完成一次性信箱確認，`/account/forgot-password` 與 `/account/reset-password` 完成本機忘記密碼流程；只有 SMTP 設定完成的環境才會真正寄信。Google 快速註冊的程式與隔離測試已完成，仍須設定 Google Cloud Web Client 並完成真實帳號往返驗收；`/account-link` 不得用快速註冊冒充帳號綁定。
 
 一般帳號本身的 `accountRole` 只能是 `parent`、`tutor` 或 `learner`；它表示主要身分，不會覆蓋帳號另外持有的有效一般角色。`system_admin` 是另一條管理授權，不混入一般帳號身分。登入 session 的 `activeRole` 與 `activeLearner` 分開保存，`activeRole` 必須對應有效 `user_roles` 授權，並決定目前可用能力。切換目前操作情境不得改變 `accountRole`，也不得產生新角色或新存取權。
 
@@ -199,7 +199,7 @@ Lerniqa 是持續開發中的多科目正式產品，提供國小至高中學生
 - 大量資料下可使用每日彙總與常用期間的實體化檢視加速查詢，但必須保存最後更新時間、可重算範圍及處理進度，讓延遲與漏算可被發現及修復。
 
 ## 重要資料模型
-正式資料庫的實際資料表、欄位、關聯與限制，以 `database/migrations/0001` 至 `0020` 的原生 SQL schema 為權威；二十個 migration 合計 122 張業務資料表，隔離資料庫往返驗證已通過。`0020` 尚未套用持久本機資料庫。[題庫資料庫設計](question-database-design.md)說明完整契約，[正式資料庫完成對照](database-completion-matrix.md)負責對照產品需求與串接狀態。本文件不另維護第二份表名清單。
+正式資料庫的實際資料表、欄位、關聯與限制，以 `database/migrations/0001` 至 `0021` 的原生 SQL schema 為權威；二十一個 migration 合計 123 張業務資料表，隔離資料庫往返驗證已通過。`0020` 與 `0021` 尚未套用持久本機資料庫。[題庫資料庫設計](question-database-design.md)說明完整契約，[正式資料庫完成對照](database-completion-matrix.md)負責對照產品需求與串接狀態。本文件不另維護第二份表名清單。
 
 關聯要求：一個帳號可關聯多位學習者，一位學習者也可授權給多個帳號；登入方式需關聯至同一帳號；題庫與帳號建立的題目需記錄擁有者；系統題目需有明確來源標記；練習計畫需記錄建立者與學習者；題目能追溯原始檔案及頁碼；學習者作答有時間戳並連結當時的題目版本；更正題目、答案或解析不得覆寫歷史作答的判定依據；手寫附件需連結到題目及作答紀錄；相近題需連結到原始錯題；正式目錄種子資料需保存版本、來源、內容雜湊與套用結果；管理員權限異動與系統題目修改需留下稽核紀錄。
 
@@ -234,7 +234,7 @@ Ollama 服務、固定模型 metadata、digest 與 vision capability 已核實�
 - `instant` 與 `complete` 的練習、作答、逐小題結果、錯題佇列與 `analytics_outbox` 必須寫入持久 PostgreSQL；`score` 保存 session aggregate 與不含答案／判定的冪等收據，不建立逐題明細、佇列或 outbox。重開 Next.js 或本機 PostgreSQL 後，允許顯示的歷程與 aggregate 仍須可讀取。進行中的 session 可依 UUID 恢復並暫停；若固定 revision 不一致就把舊 session 標記為 `abandoned` 並要求建立新練習。從任意題直接作答時，要繼續尋找尚未送出的題目，只有全部題目都送出後才完成。未送出的文字與手寫內容不在恢復範圍。
 - 舊 `score` 逐題資料升級後必須移除；五張可重建統計表只從仍可保留的 `instant` 與已完成 `complete` 明細重建。只由舊 `score` 作答引用的 private 手寫／一般答案附件需解除引用、標記刪除並排入物件清理工作，共用 asset 保留。資料庫清理完成不代表外部物件已刪除；只有 worker 實際確認後才能完成工作並寫入物件刪除時間。
 - `/account` 提供電子郵件密碼註冊、登入、登出與目前帳號查詢。密碼使用 scrypt 雜湊，session cookie 為 HttpOnly，資料庫只保存不透明 token 的雜湊；`/practice` 與內部診斷入口依 session、`learner_access` 與 `question_bank_learners` 決定可用學習者及題庫。帳號回應只提供練習所需的學習者資料，不包含學校或 private asset。
-- 自動化測試只用隔離的合成使用者、學習者與測試資料庫；這不改變正式匯入資料的持久性。未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口登入；本機信箱驗證、密碼重設與角色 PIN 設定／重設的 challenge、API 與介面已完成，實際 SMTP 執行環境與真實投遞尚未設定。公開／production HTTPS、公開登入 rate limit、OAuth、跨帳號分享、RLS、production GRANT、正式角色授權、物件儲存與資料保存政策仍未完成，也不部署到 Vercel。
+- 自動化測試只用隔離的合成使用者、學習者與測試資料庫；這不改變正式匯入資料的持久性。未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口登入；本機信箱驗證、密碼重設與角色 PIN 設定／重設的 challenge、API 與介面已完成，實際 SMTP 執行環境與真實投遞尚未設定。Google 快速註冊仍缺 Google Cloud Web Client 設定與真實帳號往返驗收。公開／production HTTPS、公開登入 rate limit、LINE／Facebook、帳號綁定、跨帳號分享、RLS、production GRANT、正式角色授權、物件儲存與資料保存政策仍未完成，也不部署到 Vercel。
 - 完整啟動、匯入與驗收方式記錄在[本機 PostgreSQL 操作與診斷](local-practice-pilot.md)。
 
 ## 已封閉的 JSON 契約與剩餘資料域

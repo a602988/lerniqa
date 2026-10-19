@@ -356,32 +356,28 @@ export default function AccountPage() {
                 <span />
                 <span />
             </div>
-            <header className={styles.topbar}>
-                <Link className={styles.brand} href="/overview" aria-label="返回 Lerniqa 首頁">
-                    <span className={styles.brandMark}><LerniqaMark /></span>
-                    <span><strong>Lerniqa</strong><small>讓每次練習接得起來</small></span>
-                </Link>
-                <Link aria-label="前往練習" className={styles.practiceLink} href="/practice"><span>前往練習</span><ArrowRight aria-hidden="true" /></Link>
-            </header>
-
             <section className={styles.shell}>
                 <section className={styles.story} aria-labelledby="account-story-title">
                     <div className={styles.storyGlow} aria-hidden="true" />
                     <div className={styles.intro}>
-                        <span className={styles.kicker}><Sparkles aria-hidden="true" />讓學習有方向，也有下一步</span>
-                        <h1 id="account-story-title">從今天的練習，接回下一次進步</h1>
-                        <p>登入後，依年級、科目與版本安排練習；作答、錯題與最近紀錄都會依學習者分開保存。</p>
+                        <Link className={styles.storyBrand} href="/overview" aria-label="返回 Lerniqa 首頁">
+                            <span><LerniqaMark /></span>
+                            <strong>Lerniqa</strong>
+                        </Link>
+                        <span className={styles.kicker}><Sparkles aria-hidden="true" />想練就開始，進度接得上</span>
+                        <h1 id="account-story-title">每次練習，都接得上下一次進步</h1>
+                        <p>登入後，依主題與需求安排練習；作答、錯題與最近進度都會持續保存，方便下次接著複習。</p>
                     </div>
 
-                    <div className={styles.journeyCard} aria-label="Lerniqa 學習流程">
+                    <div className={styles.journeyCard} aria-label="Lerniqa 練習與複習流程">
                         <div className={styles.journeyHeading}>
-                            <span>自己的學習路徑</span>
-                            <small>每次回來，都知道從哪裡繼續</small>
+                            <span>自己的複習節奏</span>
+                            <small>每次回來，都知道接著練什麼</small>
                         </div>
                         <ol className={styles.journeySteps}>
                             <li>
                                 <span className={styles.stepIcon}><BookOpenCheck aria-hidden="true" /></span>
-                                <span><small>01</small><strong>選擇範圍</strong><em>年級・科目・版本・課次</em></span>
+                                <span><small>01</small><strong>選擇內容</strong><em>主題・版本・章節・範圍</em></span>
                             </li>
                             <li>
                                 <span className={styles.stepIcon}><ClipboardCheck aria-hidden="true" /></span>
@@ -389,13 +385,13 @@ export default function AccountPage() {
                             </li>
                             <li>
                                 <span className={styles.stepIcon}><Target aria-hidden="true" /></span>
-                                <span><small>03</small><strong>回顧錯題</strong><em>找出下一次練習重點</em></span>
+                                <span><small>03</small><strong>回顧錯題</strong><em>找出下一次複習重點</em></span>
                             </li>
                         </ol>
                     </div>
 
                     <div className={styles.promiseGrid}>
-                        <div><ShieldCheck aria-hidden="true" /><span><strong>學習紀錄分開保存</strong><small>每次作答綁定目前學習者</small></span></div>
+                        <div><ShieldCheck aria-hidden="true" /><span><strong>複習進度持續保存</strong><small>每次作答都能接續回顧</small></span></div>
                         <div><LockKeyhole aria-hidden="true" /><span><strong>密碼只存安全雜湊</strong><small>不把原始密碼寫進頁面或紀錄</small></span></div>
                     </div>
                 </section>
@@ -550,11 +546,16 @@ export default function AccountPage() {
                                         {mode === "login" ? <LogIn aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
                                         {submitting ? "處理中…" : mode === "login" ? "登入" : "建立帳號並登入"}
                                     </Button>
+                                    <div className={styles.quickRegisterDivider}><span>或</span></div>
+                                    <Link className={styles.googleRegisterAction} href="/quick-register">
+                                        <span aria-hidden="true">G</span>
+                                        使用 Google 快速註冊
+                                    </Link>
                                 </form>
                             </>
                         )}
                     </section>
-                    <p className={styles.securityNote}><ShieldCheck aria-hidden="true" />跨裝置登入只接受 HTTPS；密碼不會以原文保存。</p>
+                    <p className={styles.securityNote}><ShieldCheck aria-hidden="true" />帳號登入採安全連線，密碼經單向雜湊處理，不保存原始內容。</p>
                 </div>
             </section>
         </main>

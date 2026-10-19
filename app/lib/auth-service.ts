@@ -2,11 +2,19 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
-import { createSessionToken, hashAccountPassword, hashSessionToken, verifyAccountPassword } from "./auth-crypto";
+import {
+    createOpaqueToken,
+    createSessionToken,
+    hashAccountPassword,
+    hashOpaqueToken,
+    hashSessionToken,
+    verifyAccountPassword,
+} from "./auth-crypto";
 import type {
     AccountRole,
     CreateAccountLearnerInput,
     EnableLearnerSubjectInput,
+    GoogleQuickRegistrationInput,
     LearnerEducationStatus,
     LoginAccountInput,
     RegisterAccountInput,
@@ -18,6 +26,8 @@ import { queryLocalPostgres, withLocalPostgresTransaction } from "./local-postgr
 
 export const AUTH_SESSION_COOKIE = "lerniqa_session";
 export const AUTH_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+export const GOOGLE_QUICK_REGISTRATION_COOKIE = "lerniqa_google_registration";
+export const GOOGLE_QUICK_REGISTRATION_MAX_AGE_SECONDS = 10 * 60;
 
 const DEFAULT_GRADE_CODE = "junior-high-1";
 const DEFAULT_SEMESTER_CODE = "semester-1";
@@ -102,6 +112,19 @@ export interface IssuedAuthSession {
     token: string;
 }
 
+export interface GoogleQuickRegistrationProfile {
+    displayName: string;
+    email: string;
+}
+
+export type GoogleQuickRegistrationStart =
+    | Readonly<{ kind: "authenticated"; issued: IssuedAuthSession }>
+    | Readonly<{
+        kind: "pending";
+        token: string;
+        profile: GoogleQuickRegistrationProfile;
+    }>;
+
 export class AuthServiceError extends Error {
     readonly code: string;
     readonly status: number;
@@ -146,9 +169,16 @@ interface AccessibleLearnerRow extends QueryResultRow {
 
 interface LoginRow extends QueryResultRow {
     user_id: string;
-    password_hash: string;
+    password_hash: string | null;
     role: AccountRole;
     learner_id: string;
+}
+
+interface GoogleQuickRegistrationRow extends QueryResultRow {
+    id: string;
+    provider_subject: string;
+    email_normalized: string;
+    display_name: string;
 }
 
 interface LoginIdentityRow extends QueryResultRow {
@@ -714,10 +744,18 @@ const AUTH_ACCOUNT_SELECT = `
         AND access.learner_id = session.active_learner_id
         AND access.accepted_at IS NOT NULL
         AND access.revoked_at IS NULL
-    JOIN account_identities AS identity
-        ON identity.user_id = session.user_id
-        AND identity.provider = 'email'
-        AND identity.revoked_at IS NULL
+    JOIN LATERAL (
+        SELECT candidate.email_normalized, candidate.verified_at, candidate.created_at, candidate.id
+        FROM account_identities AS candidate
+        WHERE candidate.user_id = session.user_id
+            AND candidate.revoked_at IS NULL
+            AND candidate.email_normalized IS NOT NULL
+        ORDER BY
+            CASE candidate.provider WHEN 'email' THEN 0 WHEN 'google' THEN 1 ELSE 2 END,
+            candidate.created_at,
+            candidate.id
+        LIMIT 1
+    ) AS identity ON true
 `;
 
 async function readAccessibleLearners(
@@ -929,90 +967,173 @@ export async function getAuthenticatedAccount(request: Request): Promise<Authent
     });
 }
 
+interface AccountRegistrationProfile {
+    displayName: string;
+    learnerName: string;
+    role: AccountRole;
+    educationStatus: LearnerEducationStatus;
+    gradeCode: string | null;
+    semesterCode: string | null;
+}
+
+interface RegistrationIdentity {
+    provider: "email" | "google";
+    subject: string;
+    email: string;
+    passwordHash: string | null;
+    verified: boolean;
+}
+
+async function createRegisteredAccount(
+    client: PoolClient,
+    profile: AccountRegistrationProfile,
+    identity: RegistrationIdentity,
+): Promise<IssuedAuthSession> {
+    const catalog = profile.educationStatus === "enrolled"
+        ? await resolveLearnerCatalog(client, profile.gradeCode!, profile.semesterCode!)
+        : null;
+    const userId = randomUUID();
+    const learnerId = randomUUID();
+    const grantedRoles: readonly AccountRole[] = profile.role === "learner"
+        ? ["learner"]
+        : ["learner", profile.role];
+    const [canView, canCreate, canReview, canManage] = permissionsForRole(profile.role);
+    const learnerDisplayName = profile.role === "learner"
+        ? profile.displayName
+        : profile.learnerName;
+
+    await client.query(`
+        INSERT INTO users (id, display_name, account_role, status)
+        VALUES ($1, $2, $3, 'active')
+    `, [userId, profile.displayName, profile.role]);
+    await client.query(`
+        INSERT INTO account_identities (
+            id, user_id, provider, provider_subject, email_normalized, password_hash, verified_at
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6,
+            CASE WHEN $7::boolean THEN transaction_timestamp() ELSE NULL END
+        )
+    `, [
+        randomUUID(),
+        userId,
+        identity.provider,
+        identity.subject,
+        identity.email,
+        identity.passwordHash,
+        identity.verified,
+    ]);
+    await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [userId]);
+    for (const role of grantedRoles) {
+        await client.query(`
+            INSERT INTO user_roles (
+                id, user_id, role, granted_by_type, granted_by_user_id
+            )
+            VALUES ($1, $2, $3, 'user', $2)
+        `, [randomUUID(), userId, role]);
+    }
+    await client.query(`
+        INSERT INTO learners (
+            id, display_name, education_status, grade_id, semester_id, school_name, status
+        )
+        VALUES ($1, $2, $3, $4, $5, NULL, 'active')
+    `, [
+        learnerId,
+        learnerDisplayName,
+        profile.educationStatus,
+        catalog?.grade_id ?? null,
+        catalog?.semester_id ?? null,
+    ]);
+    await client.query(`
+        INSERT INTO learner_access (
+            id, learner_id, user_id, access_role,
+            can_view_results, can_create_plans, can_review_answers, can_manage_settings,
+            invited_by_user_id, accepted_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, transaction_timestamp())
+    `, [
+        randomUUID(),
+        learnerId,
+        userId,
+        profile.role,
+        canView,
+        canCreate,
+        canReview,
+        canManage,
+    ]);
+    await client.query(`
+        INSERT INTO learner_preferences (
+            learner_id, question_limit_options, default_question_limit, default_check_mode
+        )
+        VALUES ($1, ARRAY[5, 10, 20, 50]::smallint[], 10, 'complete')
+    `, [learnerId]);
+
+    if (catalog) {
+        await createDefaultSubjectSettings(client, userId, learnerId, catalog.grade_id);
+    }
+
+    await attachHanlinQuestionBanks(client, learnerId);
+    const issued = await issueSession(client, { userId, role: profile.role, learnerId });
+    const account = await readSessionById(client, issued.sessionId);
+    return { account, token: issued.token };
+}
+
+async function readLoginCandidate(
+    client: PoolClient,
+    userId: string,
+    provider: RegistrationIdentity["provider"],
+    subject: string,
+): Promise<LoginRow | undefined> {
+    const result = await client.query<LoginRow>(`
+        SELECT
+            identity.user_id,
+            identity.password_hash,
+            role.role,
+            access.learner_id
+        FROM account_identities AS identity
+        JOIN users AS app_user
+            ON app_user.id = identity.user_id
+            AND app_user.status = 'active'
+        JOIN user_roles AS role
+            ON role.user_id = identity.user_id
+            AND role.role IN ('parent', 'learner', 'tutor')
+            AND role.revoked_at IS NULL
+        JOIN learner_access AS access
+            ON access.user_id = identity.user_id
+            AND access.accepted_at IS NOT NULL
+            AND access.revoked_at IS NULL
+        JOIN learners AS learner
+            ON learner.id = access.learner_id
+            AND learner.status = 'active'
+        WHERE identity.user_id = $1
+            AND identity.provider = $2
+            AND identity.provider_subject = $3
+            AND identity.revoked_at IS NULL
+        ORDER BY
+            CASE WHEN role.role = app_user.account_role THEN 0 ELSE 1 END,
+            CASE WHEN access.access_role = app_user.account_role THEN 0 ELSE 1 END,
+            CASE WHEN role.role = access.access_role THEN 0 ELSE 1 END,
+            access.accepted_at,
+            access.learner_id,
+            role.granted_at,
+            role.role,
+            access.id,
+            role.id
+        LIMIT 1
+    `, [userId, provider, subject]);
+    return result.rows[0];
+}
+
 export async function registerAccount(input: RegisterAccountInput): Promise<IssuedAuthSession> {
     const passwordHash = await hashAccountPassword(input.password);
     try {
-        return await withLocalPostgresTransaction(async (client) => {
-            const catalog = input.educationStatus === "enrolled"
-                ? await resolveLearnerCatalog(client, input.gradeCode!, input.semesterCode!)
-                : null;
-
-            const userId = randomUUID();
-            const identityId = randomUUID();
-            const learnerId = randomUUID();
-            const accessId = randomUUID();
-            const grantedRoles: readonly AccountRole[] = input.role === "learner"
-                ? ["learner"]
-                : ["learner", input.role];
-            const [canView, canCreate, canReview, canManage] = permissionsForRole(input.role);
-            const learnerDisplayName = input.role === "learner"
-                ? input.displayName
-                : input.learnerName;
-
-            await client.query(`
-                INSERT INTO users (id, display_name, account_role, status)
-                VALUES ($1, $2, $3, 'active')
-            `, [userId, input.displayName, input.role]);
-            await client.query(`
-                INSERT INTO account_identities (
-                    id, user_id, provider, provider_subject, email_normalized, password_hash, verified_at
-                )
-                VALUES ($1, $2, 'email', $3, $3, $4, NULL)
-            `, [identityId, userId, input.email, passwordHash]);
-            await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [userId]);
-            for (const role of grantedRoles) {
-                await client.query(`
-                    INSERT INTO user_roles (
-                        id, user_id, role, granted_by_type, granted_by_user_id
-                    )
-                    VALUES ($1, $2, $3, 'user', $2)
-                `, [randomUUID(), userId, role]);
-            }
-            await client.query(`
-                INSERT INTO learners (
-                    id, display_name, education_status, grade_id, semester_id, school_name, status
-                )
-                VALUES ($1, $2, $3, $4, $5, NULL, 'active')
-            `, [
-                learnerId,
-                learnerDisplayName,
-                input.educationStatus,
-                catalog?.grade_id ?? null,
-                catalog?.semester_id ?? null,
-            ]);
-            await client.query(`
-                INSERT INTO learner_access (
-                    id, learner_id, user_id, access_role,
-                    can_view_results, can_create_plans, can_review_answers, can_manage_settings,
-                    invited_by_user_id, accepted_at
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, transaction_timestamp())
-            `, [
-                accessId,
-                learnerId,
-                userId,
-                input.role,
-                canView,
-                canCreate,
-                canReview,
-                canManage,
-            ]);
-            await client.query(`
-                INSERT INTO learner_preferences (
-                    learner_id, question_limit_options, default_question_limit, default_check_mode
-                )
-                VALUES ($1, ARRAY[5, 10, 20, 50]::smallint[], 10, 'complete')
-            `, [learnerId]);
-
-            if (catalog) {
-                await createDefaultSubjectSettings(client, userId, learnerId, catalog.grade_id);
-            }
-
-            await attachHanlinQuestionBanks(client, learnerId);
-            const issued = await issueSession(client, { userId, role: input.role, learnerId });
-            const account = await readSessionById(client, issued.sessionId);
-            return { account, token: issued.token };
-        });
+        return await withLocalPostgresTransaction((client) => createRegisteredAccount(client, input, {
+            provider: "email",
+            subject: input.email,
+            email: input.email,
+            passwordHash,
+            verified: false,
+        }));
     }
     catch (error) {
         if (error instanceof AuthServiceError) throw error;
@@ -1042,46 +1163,9 @@ export async function loginAccount(input: LoginAccountInput): Promise<IssuedAuth
             await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [userId]);
         }
 
-        const candidateResult = userId
-            ? await client.query<LoginRow>(`
-                SELECT
-                    identity.user_id,
-                    identity.password_hash,
-                    role.role,
-                    access.learner_id
-                FROM account_identities AS identity
-                JOIN users AS app_user
-                    ON app_user.id = identity.user_id
-                    AND app_user.status = 'active'
-                JOIN user_roles AS role
-                    ON role.user_id = identity.user_id
-                    AND role.role IN ('parent', 'learner', 'tutor')
-                    AND role.revoked_at IS NULL
-                JOIN learner_access AS access
-                    ON access.user_id = identity.user_id
-                    AND access.accepted_at IS NOT NULL
-                    AND access.revoked_at IS NULL
-                JOIN learners AS learner
-                    ON learner.id = access.learner_id
-                    AND learner.status = 'active'
-                WHERE identity.user_id = $1
-                    AND identity.provider = 'email'
-                    AND identity.email_normalized = $2
-                    AND identity.revoked_at IS NULL
-                ORDER BY
-                    CASE WHEN role.role = app_user.account_role THEN 0 ELSE 1 END,
-                    CASE WHEN access.access_role = app_user.account_role THEN 0 ELSE 1 END,
-                    CASE WHEN role.role = access.access_role THEN 0 ELSE 1 END,
-                    access.accepted_at,
-                    access.learner_id,
-                    role.granted_at,
-                    role.role,
-                    access.id,
-                    role.id
-                LIMIT 1
-            `, [userId, input.email])
-            : null;
-        const candidate = candidateResult?.rows[0];
+        const candidate = userId
+            ? await readLoginCandidate(client, userId, "email", input.email)
+            : undefined;
         const passwordMatches = await verifyAccountPassword(
             input.password,
             candidate?.password_hash ?? DUMMY_PASSWORD_HASH,
@@ -1099,6 +1183,202 @@ export async function loginAccount(input: LoginAccountInput): Promise<IssuedAuth
         const account = await readSessionById(client, issued.sessionId);
         return { account, token: issued.token };
     });
+}
+
+export async function beginGoogleQuickRegistration(
+    identity: Readonly<{ subject: string; email: string; displayName: string }>,
+): Promise<GoogleQuickRegistrationStart> {
+    return withLocalPostgresTransaction(async (client) => {
+        const identityResult = await client.query<LoginIdentityRow>(`
+            SELECT identity.user_id
+            FROM account_identities AS identity
+            WHERE identity.provider = 'google'
+                AND identity.provider_subject = $1
+                AND identity.revoked_at IS NULL
+            LIMIT 1
+        `, [identity.subject]);
+        const userId = identityResult.rows[0]?.user_id;
+        if (userId) {
+            await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [userId]);
+            const candidate = await readLoginCandidate(client, userId, "google", identity.subject);
+            if (!candidate) {
+                throw new AuthServiceError(
+                    "GOOGLE_ACCOUNT_UNAVAILABLE",
+                    "這個 Google 帳號目前無法登入。",
+                    403,
+                );
+            }
+            await attachHanlinQuestionBanks(client, candidate.learner_id);
+            const session = await issueSession(client, {
+                userId: candidate.user_id,
+                role: candidate.role,
+                learnerId: candidate.learner_id,
+            });
+            const account = await readSessionById(client, session.sessionId);
+            return { kind: "authenticated", issued: { account, token: session.token } };
+        }
+
+        const emailConflict = await client.query(`
+            SELECT 1
+            FROM account_identities AS identity
+            WHERE identity.email_normalized = $1
+                AND identity.revoked_at IS NULL
+            LIMIT 1
+        `, [identity.email]);
+        if (emailConflict.rowCount) {
+            throw new AuthServiceError(
+                "GOOGLE_EMAIL_ALREADY_REGISTERED",
+                "這個電子郵件已註冊，請改用密碼登入。",
+                409,
+            );
+        }
+
+        await client.query(`
+            UPDATE google_quick_registrations
+            SET consumed_at = COALESCE(consumed_at, transaction_timestamp())
+            WHERE provider_subject = $1
+                AND consumed_at IS NULL
+        `, [identity.subject]);
+        const token = createOpaqueToken();
+        await client.query(`
+            INSERT INTO google_quick_registrations (
+                id, token_hash, provider_subject, email_normalized, display_name, expires_at
+            )
+            VALUES (
+                $1, $2, $3, $4, $5,
+                transaction_timestamp() + ($6::integer * interval '1 second')
+            )
+        `, [
+            randomUUID(),
+            hashOpaqueToken(token),
+            identity.subject,
+            identity.email,
+            identity.displayName,
+            GOOGLE_QUICK_REGISTRATION_MAX_AGE_SECONDS,
+        ]);
+        return {
+            kind: "pending",
+            token,
+            profile: { displayName: identity.displayName, email: identity.email },
+        };
+    });
+}
+
+export function googleQuickRegistrationTokenFromRequest(request: Request): string | null {
+    const cookieHeader = request.headers.get("cookie");
+    if (!cookieHeader) return null;
+    for (const item of cookieHeader.split(";")) {
+        const separator = item.indexOf("=");
+        if (separator < 0) continue;
+        const name = item.slice(0, separator).trim();
+        if (name !== GOOGLE_QUICK_REGISTRATION_COOKIE) continue;
+        const token = item.slice(separator + 1).trim();
+        return /^[A-Za-z0-9_-]{43}$/u.test(token) ? token : null;
+    }
+    return null;
+}
+
+export async function readGoogleQuickRegistration(
+    request: Request,
+): Promise<GoogleQuickRegistrationProfile> {
+    const token = googleQuickRegistrationTokenFromRequest(request);
+    if (!token) {
+        throw new AuthServiceError(
+            "GOOGLE_REGISTRATION_REQUIRED",
+            "請先選擇 Google 帳號。",
+            401,
+        );
+    }
+    const result = await queryLocalPostgres<GoogleQuickRegistrationRow>(`
+        SELECT id, provider_subject, email_normalized, display_name
+        FROM google_quick_registrations
+        WHERE token_hash = $1
+            AND consumed_at IS NULL
+            AND expires_at > statement_timestamp()
+        LIMIT 1
+    `, [hashOpaqueToken(token)]);
+    const registration = result.rows[0];
+    if (!registration) {
+        throw new AuthServiceError(
+            "GOOGLE_REGISTRATION_EXPIRED",
+            "Google 快速註冊已逾時，請重新選擇帳號。",
+            401,
+        );
+    }
+    return {
+        displayName: registration.display_name,
+        email: registration.email_normalized,
+    };
+}
+
+export async function completeGoogleQuickRegistration(
+    request: Request,
+    input: GoogleQuickRegistrationInput,
+): Promise<IssuedAuthSession> {
+    const token = googleQuickRegistrationTokenFromRequest(request);
+    if (!token) {
+        throw new AuthServiceError(
+            "GOOGLE_REGISTRATION_REQUIRED",
+            "請先選擇 Google 帳號。",
+            401,
+        );
+    }
+
+    try {
+        return await withLocalPostgresTransaction(async (client) => {
+            const result = await client.query<GoogleQuickRegistrationRow>(`
+                SELECT id, provider_subject, email_normalized, display_name
+                FROM google_quick_registrations
+                WHERE token_hash = $1
+                    AND consumed_at IS NULL
+                    AND expires_at > transaction_timestamp()
+                LIMIT 1
+                FOR UPDATE
+            `, [hashOpaqueToken(token)]);
+            const registration = result.rows[0];
+            if (!registration) {
+                throw new AuthServiceError(
+                    "GOOGLE_REGISTRATION_EXPIRED",
+                    "Google 快速註冊已逾時，請重新選擇帳號。",
+                    401,
+                );
+            }
+
+            const issued = await createRegisteredAccount(client, {
+                displayName: registration.display_name,
+                learnerName: input.role === "learner"
+                    ? registration.display_name
+                    : input.learnerName,
+                role: input.role,
+                educationStatus: input.educationStatus,
+                gradeCode: input.gradeCode,
+                semesterCode: input.semesterCode,
+            }, {
+                provider: "google",
+                subject: registration.provider_subject,
+                email: registration.email_normalized,
+                passwordHash: null,
+                verified: true,
+            });
+            await client.query(`
+                UPDATE google_quick_registrations
+                SET consumed_at = transaction_timestamp()
+                WHERE id = $1
+            `, [registration.id]);
+            return issued;
+        });
+    }
+    catch (error) {
+        if (error instanceof AuthServiceError) throw error;
+        if (databaseCode(error) === "23505") {
+            throw new AuthServiceError(
+                "GOOGLE_ACCOUNT_ALREADY_REGISTERED",
+                "這個 Google 帳號或電子郵件已註冊，請重新登入。",
+                409,
+            );
+        }
+        throw error;
+    }
 }
 
 export async function logoutAccount(request: Request): Promise<void> {

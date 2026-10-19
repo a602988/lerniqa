@@ -4,12 +4,12 @@
 
 信箱驗證、密碼重設與角色 PIN 設定／重設的 API、帳號介面與不連網測試已完成。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 SMTP handshake，不可讀取或複製 ERP secret 來當作完成。`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約；SMTP outbox 不在 `0012`。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋。成人角色切換仍使用帳號密碼重新確認，角色 PIN 尚不參與角色切換。OCR 與 AI 拆題仍未串接；本地 AI 手寫分析已接上 sidecar worker，但真實筆跡品質與人工審核介面仍待驗收。
 
-狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0020` 共二十個 migration 已建立 PostgreSQL schema，合計 122 張業務資料表，並通過隔離資料庫往返驗證；`0020` 尚未套用持久本機資料庫。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程和錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的練習 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。舊 JSON API 已封閉。第四課 279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
+狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0021` 共二十一個 migration 已建立 PostgreSQL schema，合計 123 張業務資料表，並通過隔離資料庫往返驗證；`0020` 與 `0021` 尚未套用持久本機資料庫。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程和錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的練習 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。舊 JSON API 已封閉。第四課 279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
 
 ### 本輪資料庫擴充狀態
 
 - 階段性相關題目推薦、private 手寫 PNG、帳號復原與題庫補全的程式／針對性測試已完成。這些結果屬於靜態、單元或契約層，不表示完整產品規則與正式資料已交付。
-- `0012` 已整合帳號復原 identity binding、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄；`0014`、`0015` 建立可審核的題目關聯；`0016` 至 `0019` 分別建立版本與冊次邊界、學習本版本與分享、文字答案欄位數，以及題號查詢索引；`0020` 建立教材目錄、處理批次、逐頁影像、OCR 區塊與題目版本證據。二十個 migration 的隔離資料庫往返驗證已通過；`0020` 尚未套用持久本機資料庫。
+- `0012` 已整合帳號復原 identity binding、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄；`0014`、`0015` 建立可審核的題目關聯；`0016` 至 `0019` 分別建立版本與冊次邊界、學習本版本與分享、文字答案欄位數，以及題號查詢索引；`0020` 建立教材來源證據；`0021` 建立 Google 快速註冊短效狀態。二十一個 migration 的隔離資料庫往返驗證已通過；`0020` 與 `0021` 尚未套用持久本機資料庫。
 - 推薦程式已依已確認模板、相似群組、共同正式關鍵字與共同主題逐層選題，保存方法版本與命中證據，不再把來源題型或同單元當成相同題。離線分析、pending 匯入與管理員核准／退回流程已接上；279 題尚未完成全量分析與人工核准，目前只有一題煙霧測試待審，confirmed 關聯仍為 0。`score` 禁止逐題推薦與手寫附件。
 - `instant`／`complete` 的手寫圖儲存為 private PNG。缺文字答案時保持 pending／manual；已有完整答案時只作為計算過程附件，不改變判分。
 - 題庫補全預設 dry-run，只能先建立 pending suggestion；279 題尚未 apply，必須先通過品質抽檢與人工核准。
@@ -19,7 +19,7 @@
 
 註冊與密碼重設的新密碼採至少 8 字元，不要求大小寫、數字或符號混用，並拒絕常見弱密碼、全空白及首尾空白。前後端共用新密碼驗證規則，登入保留既有密碼相容；不批次修改既有密碼。密碼重設的本機 challenge、API、介面與郵件流程已完成；重設不改動電子郵件的 `verified_at`，成功後撤銷該帳號的所有 session。
 
-依 `docs/PRODUCT_SPEC.md` 維持可操作的多科目主應用，並把本機 PostgreSQL 能力接入既有學習者、科目與練習流程。`/account`、`/system-settings`、`/settings` 與 `/practice` 依登入 session 讀寫本機 PostgreSQL。尚未資料庫化的非識別性 UI 設定、計畫、排程與收藏才依學習者保存在瀏覽器；舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`。信箱驗證、密碼重設與角色 PIN 設定／重設使用本機 PostgreSQL challenge，實際郵件只能由設定完成的 SMTP 環境寄出；OAuth、分享權限、OCR、正式匯入、AI 手寫辨識與相近題生成不連接外部服務。介面必須清楚區分瀏覽器設定、本機 PostgreSQL 資料與未完成的外部服務，不得讓使用者誤認為已完成 production 帳號、權限或雲端保存。
+依 `docs/PRODUCT_SPEC.md` 維持可操作的多科目主應用，並把本機 PostgreSQL 能力接入既有學習者、科目與練習流程。`/account`、`/system-settings`、`/settings` 與 `/practice` 依登入 session 讀寫本機 PostgreSQL。尚未資料庫化的非識別性 UI 設定、計畫、排程與收藏才依學習者保存在瀏覽器；舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`。信箱驗證、密碼重設與角色 PIN 設定／重設使用本機 PostgreSQL challenge，實際郵件只能由設定完成的 SMTP 環境寄出。Google 快速註冊使用 Google Identity Services 驗證身份，短效註冊狀態寫入本機 PostgreSQL；Google Cloud Web Client 尚未設定，真實帳號往返尚未驗收。LINE、Facebook、帳號綁定、分享權限、OCR、正式匯入、AI 手寫辨識與相近題生成不連接外部服務。介面必須清楚區分瀏覽器設定、本機 PostgreSQL 資料與未完成的外部服務，不得讓使用者誤認為已完成 production 帳號、權限或雲端保存。
 
 主要導覽分為總覽、練習、題目、錯題、學習者設定與系統設定。`/system-settings` 集中處理登入帳號身分、有效一般角色與學習者關係；`/settings` 處理目前學習者的個人資料與學習設定。題目入口使用 `/questions`；舊 mock `/bank` 已從主導覽移除，直接開啟時轉址到 `/questions`。正式 PostgreSQL 匯入 API／介面尚未交付；成果內容合併到總覽，舊 `/results` 轉址到總覽。
 
@@ -28,7 +28,7 @@
 - 需求來源：`docs/PRODUCT_SPEC.md`，介面範圍已確認採多科目產品介面。
 - 既有基線：Next.js 前端、Keel 元件、多科目題庫介面、學習者切換及本機作答紀錄可用。文件保留過往 Vercel 驗收紀錄，但本輪未重新部署或驗證 production，不能據此判定目前正式網址狀態。
 - 資料來源：正式主流程的帳號、角色、學習者、題庫、文件與 session 寫入 `local-data/postgres`。`instant`／`complete` 另保存已送出作答、錯題佇列與 outbox；`score` 只保存 session aggregate 與不含答案／判定的冪等收據。asset 寫入 `local-data/assets`。PostgreSQL auth DTO 提供年級、學期、預設檢核方式、已啟用科目與書籍版本；`/practice` 不保存瀏覽器學習者快照。練習畫面的非識別性 UI 設定、計畫、排程及收藏依學習者保存在瀏覽器。`data/fixtures` 與 `runtime-data` 只供隔離測試或歷史相容程式使用，不是正式主流程的備援資料來源。
-- 外部依賴：PostgreSQL schema、migration、本機執行環境、電子郵件密碼 session、本機信箱驗證、密碼重設與角色 PIN challenge、本機練習 API，以及私有 tailnet HTTPS 已納入本輪；SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、OAuth、主應用後端／ORM、分享權限、託管式物件儲存、OCR、AI 與手寫辨識仍不在本輪 production 串接範圍。
+- 外部依賴：PostgreSQL schema、migration、本機執行環境、電子郵件密碼 session、本機信箱驗證、密碼重設與角色 PIN challenge、Google 快速註冊程式、本機練習 API，以及私有 tailnet HTTPS 已納入本輪；Google Cloud Web Client、真實 Google 帳號往返、SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、LINE／Facebook、帳號綁定、主應用後端／ORM、分享權限、託管式物件儲存、OCR、AI 與手寫辨識仍不在本輪 production 串接範圍。
 - 部署條件：介面改動通過型別檢查、production build、桌面與手機操作驗證後保留在本機；只有使用者另行允許時才部署至 Vercel production。
 
 ## 架構契約
@@ -65,7 +65,7 @@
 - 新增只顯示成績模式，結果頁不揭露個別答案與解析。
 - 手寫板新增橡皮擦並縮減說明區；結果有手寫內容時改為題目與手寫左右排列。
 - 題目匯入新增文字貼上，以及圖片與題目的預覽、替換、移除及重新指派。
-- 當時新增六個帳號流程網址與前端操作介面；目前 `/login` 與 `/register` 的主要動作已導向 `/account`，由本機 PostgreSQL 實際處理電子郵件密碼註冊與登入。本機信箱驗證、忘記密碼與角色 PIN 設定／重設的 challenge、寄送／確認 API 與介面已完成，SMTP 真實投遞仍待設定；OAuth 及其餘帳號綁定流程尚未串接。
+- 當時新增六個帳號流程網址與前端操作介面；目前 `/login` 與 `/register` 的主要動作已導向 `/account`，由本機 PostgreSQL 實際處理電子郵件密碼註冊與登入。`/quick-register` 已改為 Google 快速註冊，Google 身份已註冊時直接登入，電子郵件已屬於密碼帳號時拒絕自動合併。本機信箱驗證、忘記密碼與角色 PIN 設定／重設的 challenge、寄送／確認 API 與介面已完成，SMTP 真實投遞仍待設定；Google Cloud Web Client 與真實帳號往返尚未驗收，LINE、Facebook 與帳號綁定仍未串接。
 - 本機驗證：`npm run lint`、`npm run build`、`git diff --check` 均通過；build 只有 Keel 文件預覽器既有的選用套件警告。
 - 瀏覽器驗證：六個帳號網址可直接開啟；已完成題數控制、只顯示成績、多題文字匯入、圖片配對、手寫橡皮擦及結果右側手寫操作。登入頁與題庫頁在 390 × 844 無水平溢出，Console 沒有應用程式錯誤。
 - 練習設定驗證：`/practice` 重新整理後會回到練習頁；進行中的持久 session 則恢復已送出進度並暫停，不恢復尚未送出的文字與手寫。預設與進階設定分層正常，來源篩選會同步更新可用題數，390 × 844 沒有水平溢出，Console 沒有應用程式錯誤。
@@ -94,7 +94,7 @@
 - `/account` 以電子郵件與密碼建立或登入合成帳號。密碼使用 scrypt 雜湊；瀏覽器持有 HttpOnly session cookie，資料庫只保存不透明 token 的 SHA-256 雜湊。auth 公開 DTO 提供練習所需的年級、學期、偏好、已啟用科目與版本，不包含學校或 private asset。`/practice` 從 session 取得學習者，先檢查 `learner_access` 與 `question_bank_learners`；`questions` API 只回傳題幹、小題、選項與正式知識點，`sessions` 固定題目版本，`attempts` 由伺服器判分。`instant`／`complete` 以單一交易保存作答明細、允許的錯題佇列與 `analytics_outbox`；`score` 只保存 aggregate 與不含答案／判定的冪等收據。
 - `/system-settings` 已把帳號身分與學習者關係接上 PostgreSQL，`/settings` 則獨立管理目前學習者。角色 PIN 設定／重設要求單一有效且已驗證的電子郵件與仍有效的目標角色，成功後只撤銷該目標角色的 session。角色 API 僅切換目前 session 至已授予角色，不是 `system_admin` 授權 API；成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與切換。
 - 只有判分政策為自動判分，且標準答案完整的小題可以判為對或錯。未作答、缺少標準答案或需要人工／AI 輔助確認的小題保持 `pending`，不產生模擬答案。
-- 未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口使用，驗證帳號與自動化測試只使用隔離合成資料，不得因此清除已保存的資料。本機信箱驗證、密碼重設及角色 PIN 設定／重設的 challenge、API 與介面已完成；SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、OAuth、跨帳號分享、RLS、production GRANT、正式角色授權、託管式物件儲存與真實兒童資料保存政策尚未完成。本輪不連接 production 資料庫、不執行 production migration、不部署到 Vercel。
+- 未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口使用，驗證帳號與自動化測試只使用隔離合成資料，不得因此清除已保存的資料。本機信箱驗證、密碼重設及角色 PIN 設定／重設的 challenge、API 與介面已完成；Google 快速註冊程式已完成，但 Google Cloud Web Client 與真實帳號往返尚未驗收。SMTP 真實投遞、公開／production HTTPS、公開登入 rate limit、LINE／Facebook、帳號綁定、跨帳號分享、RLS、production GRANT、正式角色授權、託管式物件儲存與真實兒童資料保存政策尚未完成。本輪不連接 production 資料庫、不執行 production migration、不部署到 Vercel。
 - 完整啟動、匯入與重啟後持久性驗收步驟見 `docs/local-practice-pilot.md`。
 - `npm run db:test`、`npm run test:import-ownership` 與 `npm run test:local-practice` 預設在 `/tmp` 建立短命 cluster，也各自提供明確 opt-in 的 existing-local-server 模式。這些模式會核對本機 Unix socket、port、實際 data directory、目前作業系統使用者及 non-recovery 狀態，只建立具隨機名稱與本次 ownership comment 的隔離資料庫，清理前再次核對後只刪除該資料庫，不停止共用 server。兩種模式都不碰 `local-data`，也不得指向 production。
 
@@ -115,9 +115,9 @@
 - 產出：`docs/question-database-design.md`，涵蓋題目身份與版本、標準題型、內容、答案、分類、來源、題庫、相近題群組、逐次作答、日期彙總、錯題排行、搬移規則及施工順序；`docs/database-completion-matrix.md` 對照需求、資料表、正式 API／表單、完成狀態與安全切換邊界。
 - 完成條件：目前八種題型、音訊與動態欄位都有單一搬移來源；題目可跨版本歸入多個教材單元，正式課綱代碼與平台知識點分開保存；歷史作答固定引用題目版本且每次送出不可覆寫；每題作答及答錯次數可依學習者與日期查詢；相近題群組與相同題型分開建模；統計及排行榜可由明細重建；未來多帳號共享、家教題庫、OCR、AI 類題與手寫答案不需另建平行題目模型。排序、拖曳配對、圖片熱區、繪圖、錄音作答及通用版面系統不列入首版，需在產品確認後另以 migration 擴充。
 - 驗證：對照目前 TypeScript 型別、匯入 API、題庫查詢及管理員權限規劃；執行 `git diff --check`。
-- 實作結果：`0001` 至 `0020` 已以原生 SQL 完成，合計 122 張業務資料表；`0020` 尚未套用持久本機資料庫。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
+- 實作結果：`0001` 至 `0021` 已以原生 SQL 完成，合計 123 張業務資料表；`0020` 與 `0021` 尚未套用持久本機資料庫。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
 - 回滾點：刪除本規劃與本任務段落，不修改既有 JSON、API 或介面。
-- 狀態：已確認；二十個 migration 已依本文件施工並通過隔離資料庫往返驗證。`/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL；收藏尚未切換
+- 狀態：已確認；二十一個 migration 已依本文件施工並通過隔離資料庫往返驗證。`/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL；收藏尚未切換
 
 ### 建立身份與目錄 migration
 
@@ -241,7 +241,7 @@
 ### 串接正式後端與安全切換 PostgreSQL
 
 - 角色：後端工程師、安全審查員、驗收員。
-- 輸入：`0001` 至 `0020` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
+- 輸入：`0001` 至 `0021` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
 - 產出：正式 repository 與交易服務、依資源拆分的 `/api/v1`、可重跑的 JSON 搬移工具，以及 PostgreSQL 單一寫入來源的切換程序。
 - 完成條件：伺服器從可信 session 決定帳號、角色與學習者權限；題目查詢、匯入、考試、計畫、作答、審核、附件與統計均讀寫 PostgreSQL；搬移工具輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告；JSON 與 PostgreSQL 不同時接受寫入。
 - 驗證：空庫與既有資料升級、正式 API 授權和表單讀寫、跨帳號拒絕、併發衝突、附件權限、作答不可變性、型別檢查、lint、build 及桌面／手機核心流程。

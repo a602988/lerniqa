@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
                 destination: "/",
             },
             {
-                source: "/:path(login|register|logout|quick-register|account-link)",
+                source: "/:path(login|register|logout|account-link)",
                 destination: "/",
             },
         ];

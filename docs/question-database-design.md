@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0020` 共二十個 migration（資料庫遷移），涵蓋身份與目錄、題目核心、匯入與收藏、練習與作答、相近題與統計、Word 來源、答案與文件完整性、session／匯入完整性、自動判分答案完整性、一般帳號角色與 self learner 完整性、`score` session 的彙總與逐題資料隱私、管理目錄與題庫補全 sidecar、十二年國教年級目錄、可審核的題目關聯、出版社版本與冊次分離、學習本版本及分享、經來源核准的文字答案欄位數，以及補充教材來源證據。二十個 migration 的隔離資料庫往返驗證已通過；`0020` 尚未套用持久本機資料庫。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0021` 共二十一個 migration（資料庫遷移），新增 Google 快速註冊短效狀態。二十一個 migration 的隔離資料庫往返驗證已通過；`0020` 與 `0021` 尚未套用持久本機資料庫。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -26,7 +26,7 @@
 
 題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。辨識方式由 `question_revisions.original_question_type_label` 的正式細題型契約決定：「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式；未設定的細題型不進入 worker。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
 
-二十個 migration 合計 122 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。瀏覽器只保存非識別性 UI 設定、尚未切換資料庫的收藏，以及明確搬移後保留的舊學習本原始備份；舊 JSON HTTP 端點固定回 `410`。`/local-practice` 僅供內部診斷與相容。
+二十一個 migration 合計 123 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。瀏覽器只保存非識別性 UI 設定、尚未切換資料庫的收藏，以及明確搬移後保留的舊學習本原始備份；舊 JSON HTTP 端點固定回 `410`。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -73,6 +73,23 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `verified_at` | `timestamptz` | 選填 | 身份驗證完成時間 | — |
 | `created_at` | `timestamptz` | 必填；目前時間 | 綁定時間 | — |
 | `revoked_at` | `timestamptz` | 選填 | 解除綁定時間 | — |
+
+Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 已存在時可登入原帳號；只有電子郵件相同時回報衝突，要求使用者改用密碼登入。帳號綁定是另一項尚未交付的功能。
+
+### `google_quick_registrations` Google 快速註冊狀態
+
+| 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | 必填 | 快速註冊識別碼 | 主鍵 |
+| `token_hash` | `text` | 必填 | 瀏覽器短效 token 雜湊 | 唯一；原始 token 只存在 HttpOnly cookie |
+| `provider_subject` | `varchar(255)` | 必填 | Google `sub` | 完成註冊後寫入 `account_identities.provider_subject` |
+| `email_normalized` | `varchar(320)` | 必填 | Google 已驗證的電子郵件 | 完成前再次受正式 identity 唯一限制保護 |
+| `display_name` | `varchar(80)` | 必填 | Google 顯示名稱 | 作為帳號與本人學習者的初始名稱 |
+| `expires_at` | `timestamptz` | 必填 | 到期時間 | 十分鐘內需完成註冊 |
+| `consumed_at` | `timestamptz` | 選填 | 使用完成或被新流程取代的時間 | 有值後不得建立帳號 |
+| `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
+
+後端先驗證 Google ID token 的簽章、`aud`、`iss`、`exp` 與 `email_verified`，再建立這筆短效狀態。完成表單時以 `FOR UPDATE` 鎖定狀態，並在同一交易建立帳號資料與標記 `consumed_at`。資料表不保存 Google ID token、access token 或 refresh token。
 
 ### `auth_sessions` 登入工作階段
 

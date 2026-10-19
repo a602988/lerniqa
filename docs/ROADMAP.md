@@ -20,7 +20,9 @@ Lerniqa 是持續開發中的多科目正式產品。892 題正式發布內容�
 - [x] 整合 `0012` 的復原 challenge identity binding，並完成空庫、既有資料升級、migration 往返與帳號復原 DB E2E
 - [ ] 另建不屬於 `0012` 的 SMTP outbox／等時回應，消除同步寄信對已知／未知帳號造成的 timing enumeration
 - [x] 合成資料驗證的私有 tailnet HTTPS 入口
-- [ ] 實際 SMTP 執行環境設定、真實寄送驗證、公開／production HTTPS、登入 rate limit 及 LINE／Facebook／Google 綁定
+- [x] Google 快速註冊程式、短效 PostgreSQL 狀態、Google 身份重登入與既有電子郵件衝突保護
+- [ ] Google Cloud Web Client 設定與真實帳號往返驗收
+- [ ] 實際 SMTP 執行環境設定、真實寄送驗證、公開／production HTTPS、登入 rate limit、LINE／Facebook 及帳號綁定
 - [ ] 讓角色 PIN 參與成人角色切換；完成前仍使用帳號密碼重新確認
 - [ ] 後端預設系統管理員、MFA 與 Secret 輪替
 - [ ] 系統管理員授權、稽核紀錄與帳號管理介面
@@ -36,7 +38,7 @@ Lerniqa 是持續開發中的多科目正式產品。892 題正式發布內容�
 - [x] 學習本跨帳號分享：一次性網址、登入後選擇有權限的學習者領取、撤銷、版本同步、分叉、站內通知與稽核；不授予成果查看權
 - [ ] 家長／學習者／家教／審核者角色
 - [ ] 將成果統計併入總覽，移除獨立成果導覽，並把舊 `/results` 轉址到總覽
-- [x] PostgreSQL schema 與 `0001` 至 `0020` 共二十個原生 SQL migration；合計 122 張業務資料表，隔離資料庫往返驗證已通過，`0020` 尚未套用持久本機資料庫
+- [x] PostgreSQL schema 與 `0001` 至 `0021` 共二十一個原生 SQL migration；合計 123 張業務資料表，隔離資料庫往返驗證已通過，`0020` 與 `0021` 尚未套用持久本機資料庫
 - [x] 相同／相近題的可審核模板與關鍵字 schema、正式關聯推薦層級、來源證據及錯題頁提示
 - [ ] 對 279 題執行關聯分析、人工審核並寫入已確認模板與關鍵字關聯
 - [x] `0009` 限制 published／superseded 的自動判分小題必須有可用參考答案，升級前發現缺漏就停止，不補造資料
@@ -101,4 +103,4 @@ Lerniqa 是持續開發中的多科目正式產品。892 題正式發布內容�
 
 決策原則：避免過早綁定特定雲端供應商；所有 AI 與 OCR 服務經由可替換的 adapter。
 
-勾選 schema／migration 代表程式庫已具備對應結構與限制，不代表同列的全部表單、production 權限或部署已完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 的正式主流程已改用本機 PostgreSQL，不保留瀏覽器學習者快照，也不在登入失效時回退到 fixture。學習本、版本、分享、排程、通知與稽核已由 PostgreSQL 保存；瀏覽器只保留非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後的舊學習本原始備份。目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入 PostgreSQL；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊正式寫入 API。本機信箱驗證、密碼重設及角色 PIN 設定／重設的 challenge、API 與介面已完成；真實匯入、SMTP 真實投遞、OAuth、角色 PIN 切換、正式相近題關聯與查詢、`practice_session_item_origins` 完整來源、production 權限與部署仍未完成；正式切換條件見 `docs/database-completion-matrix.md`。
+勾選 schema／migration 代表程式庫已具備對應結構與限制，不代表同列的全部表單、production 權限或部署已完成。`/account`、`/system-settings`、`/settings` 與 `/practice` 的正式主流程已改用本機 PostgreSQL，不保留瀏覽器學習者快照，也不在登入失效時回退到 fixture。學習本、版本、分享、排程、通知與稽核已由 PostgreSQL 保存；瀏覽器只保留非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後的舊學習本原始備份。目前學習者的顯示名稱、年級、學期與各科書籍版本可寫入 PostgreSQL；就學狀態、學校、代表圖片、練習偏好與考試仍待補齊正式寫入 API。本機信箱驗證、密碼重設及角色 PIN 設定／重設的 challenge、API 與介面已完成；Google 快速註冊程式已完成，但 Google Cloud Web Client 與真實帳號往返尚未驗收。真實匯入、SMTP 真實投遞、LINE／Facebook、帳號綁定、角色 PIN 切換、正式相近題關聯與查詢、`practice_session_item_origins` 完整來源、production 權限與部署仍未完成；正式切換條件見 `docs/database-completion-matrix.md`。

@@ -15,6 +15,18 @@ export interface RegisterAccountInput {
     semesterCode: string | null;
 }
 
+export interface GoogleQuickRegistrationInput {
+    learnerName: string;
+    role: AccountRole;
+    educationStatus: LearnerEducationStatus;
+    gradeCode: string | null;
+    semesterCode: string | null;
+}
+
+export type GoogleQuickRegistrationRequest =
+    | Readonly<{ action: "credential"; credential: string }>
+    | Readonly<{ action: "complete"; registration: GoogleQuickRegistrationInput }>;
+
 export interface LoginAccountInput {
     email: string;
     password: string;
@@ -334,6 +346,42 @@ export function parseRegisterAccountInput(value: unknown): RegisterAccountInput 
         role,
         ...education,
     };
+}
+
+export function parseGoogleQuickRegistrationInput(value: unknown): GoogleQuickRegistrationInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "快速註冊資料格式不正確。");
+    }
+    const role = parseRole(value.role);
+    const education = parseLearnerEducationFields(value);
+    return {
+        learnerName: role === "learner"
+            ? ""
+            : normalizeName(value.learnerName, "學習者稱呼"),
+        role,
+        ...education,
+    };
+}
+
+export function parseGoogleQuickRegistrationRequest(
+    value: unknown,
+): GoogleQuickRegistrationRequest {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "快速註冊資料格式不正確。");
+    }
+    if (value.action === "credential") {
+        if (typeof value.credential !== "string" || value.credential.length > 16_384) {
+            throw new AuthInputError("GOOGLE_CREDENTIAL_INVALID", "Google 驗證資料格式不正確。");
+        }
+        return { action: "credential", credential: value.credential };
+    }
+    if (value.action === "complete") {
+        return {
+            action: "complete",
+            registration: parseGoogleQuickRegistrationInput(value.registration),
+        };
+    }
+    throw new AuthInputError("INVALID_ACCOUNT_INPUT", "快速註冊動作不正確。");
 }
 
 export function parseLoginAccountInput(value: unknown): LoginAccountInput {

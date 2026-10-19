@@ -16,6 +16,7 @@ import {
     isCredentialRequestTransportAllowed,
     normalizeAccountEmail,
     parseCreateAccountLearnerInput,
+    parseGoogleQuickRegistrationRequest,
     parseLoginAccountInput,
     parseRegisterAccountInput,
     parseSwitchAccountRoleInput,
@@ -60,6 +61,10 @@ const educationCatalogSource = await readFile(
 );
 const educationCatalogRouteSource = await readFile(
     new URL("../app/api/v1/auth/catalog/route.ts", import.meta.url),
+    "utf8",
+);
+const googleQuickRegisterRouteSource = await readFile(
+    new URL("../app/api/v1/auth/google/quick-register/route.ts", import.meta.url),
     "utf8",
 );
 
@@ -108,32 +113,30 @@ test("uses one account reader for newly issued and restored sessions", () => {
 
 test("grants every registration an active learner role without replacing the selected role", () => {
     const registrationSource = authServiceSource.match(
-        /export async function registerAccount[\s\S]*?export async function loginAccount/u,
+        /async function createRegisteredAccount[\s\S]*?async function readLoginCandidate/u,
     )?.[0];
 
-    assert.ok(registrationSource, "registerAccount source should remain present");
+    assert.ok(registrationSource, "shared registration source should remain present");
     assert.match(
         registrationSource,
-        /const grantedRoles:[\s\S]*?input\.role === "learner"[\s\S]*?\["learner"\][\s\S]*?\["learner", input\.role\]/u,
+        /const grantedRoles:[\s\S]*?profile\.role === "learner"[\s\S]*?\["learner"\][\s\S]*?\["learner", profile\.role\]/u,
     );
     assert.match(registrationSource, /SELECT lerniqa_lock_auth_user\(\$1::uuid\)/u);
     assert.match(registrationSource, /for \(const role of grantedRoles\)[\s\S]*?INSERT INTO user_roles/u);
     assert.match(
         registrationSource,
-        /issueSession\(client, \{ userId, role: input\.role, learnerId \}\)/u,
+        /issueSession\(client, \{ userId, role: profile\.role, learnerId \}\)/u,
     );
     assert.match(registrationSource, /INSERT INTO users \(id, display_name, account_role, status\)/u);
-    assert.match(registrationSource, /input\.role === "learner"\s+\? input\.displayName\s+: input\.learnerName/u);
+    assert.match(registrationSource, /profile\.role === "learner"\s+\? profile\.displayName\s+: profile\.learnerName/u);
 });
 
 test("selects login role deterministically from learner access without coupling session validity", () => {
     const loginSource = authServiceSource.match(
-        /export async function loginAccount[\s\S]*?export async function logoutAccount/u,
+        /async function readLoginCandidate[\s\S]*?export async function registerAccount/u,
     )?.[0];
 
-    assert.ok(loginSource, "loginAccount source should remain present");
-    assert.match(loginSource, /return withLocalPostgresTransaction/u);
-    assert.match(loginSource, /SELECT lerniqa_lock_auth_user\(\$1::uuid\)/u);
+    assert.ok(loginSource, "shared login candidate source should remain present");
     assert.match(loginSource, /CASE WHEN role\.role = app_user\.account_role THEN 0 ELSE 1 END/u);
     assert.match(loginSource, /CASE WHEN access\.access_role = app_user\.account_role THEN 0 ELSE 1 END/u);
     assert.match(loginSource, /CASE WHEN role\.role = access\.access_role THEN 0 ELSE 1 END/u);
@@ -141,6 +144,50 @@ test("selects login role deterministically from learner access without coupling 
         loginSource,
         /JOIN learner_access AS access[\s\S]*?ON[\s\S]*?AND\s+(?:access\.access_role\s*=\s*role\.role|role\.role\s*=\s*access\.access_role)/u,
     );
+});
+
+test("parses Google quick registration as a two-step discriminated request", () => {
+    assert.deepEqual(
+        parseGoogleQuickRegistrationRequest({ action: "credential", credential: "signed-google-id-token" }),
+        { action: "credential", credential: "signed-google-id-token" },
+    );
+    assert.deepEqual(
+        parseGoogleQuickRegistrationRequest({
+            action: "complete",
+            registration: {
+                role: "parent",
+                learnerName: "小明",
+                educationStatus: "enrolled",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            },
+        }),
+        {
+            action: "complete",
+            registration: {
+                role: "parent",
+                learnerName: "小明",
+                educationStatus: "enrolled",
+                gradeCode: "junior-high-1",
+                semesterCode: "semester-1",
+            },
+        },
+    );
+    assertAuthInputError(
+        () => parseGoogleQuickRegistrationRequest({ action: "link", credential: "token" }),
+        "INVALID_ACCOUNT_INPUT",
+    );
+});
+
+test("keeps Google quick registration separate from account linking", () => {
+    assert.match(googleQuickRegisterRouteSource, /verifyGoogleCredential/u);
+    assert.match(googleQuickRegisterRouteSource, /beginGoogleQuickRegistration/u);
+    assert.match(googleQuickRegisterRouteSource, /completeGoogleQuickRegistration/u);
+    assert.match(googleQuickRegisterRouteSource, /requireSafeCredentialTransport\(request\)/u);
+    assert.doesNotMatch(googleQuickRegisterRouteSource, /account-link|updateAccountIdentity/u);
+    assert.match(authServiceSource, /provider = 'google'[\s\S]*?provider_subject = \$1/u);
+    assert.match(authServiceSource, /GOOGLE_EMAIL_ALREADY_REGISTERED/u);
+    assert.match(authServiceSource, /provider: "google"[\s\S]*?passwordHash: null[\s\S]*?verified: true/u);
 });
 
 test("attaches only the approved system-owned Hanlin question bank", () => {

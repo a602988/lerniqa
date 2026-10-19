@@ -38,6 +38,8 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0017", "learning_book_plans"],
     ["0018", "question_answer_field_count"],
     ["0019", "question_identifier_question_lookup"],
+    ["0020", "teaching_source_evidence"],
+    ["0021", "google_quick_registration"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
