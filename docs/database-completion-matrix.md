@@ -6,7 +6,7 @@
 
 這份文件把目前已核准的產品需求，對照到正式 PostgreSQL 的資料表、關鍵欄位與關聯，再標示正式 API／表單是否已經接上。範圍以 `docs/PRODUCT_SPEC.md`、`docs/question-database-design.md` 與現有前端流程為準；不把未決定的產品功能或未完成的應用程式串接算成完成。
 
-目前十八個 migration 共涵蓋 117 張業務資料表，另有一張只供 migration 工具使用的 `schema_migrations`。`0016` 將出版社版本與冊次分開；`0017` 新增學習本不可變版本、跨帳號分享、通知、稽核與冪等收據；`0018` 為文字小題保存經來源核准的答案欄位數。`0001` 至 `0018` 已通過空庫、既有資料升級、逐層回滾、再次前進與 schema parity。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
+目前二十個 migration 共涵蓋 122 張業務資料表，另有一張只供 migration 工具使用的 `schema_migrations`。`0016` 將出版社版本與冊次分開，`0017` 新增學習本版本與分享契約，`0018` 保存文字小題的答案欄位數，`0019` 加速每題首選題號查詢，`0020` 新增教材目錄、處理批次、頁面、OCR 區塊與題目版本證據。`0001` 至 `0020` 已通過隔離資料庫往返驗證；`0020` 尚未套用持久本機資料庫。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
 
 ## 狀態定義
 
@@ -31,7 +31,7 @@
 | 題幹、小題、選項、答案、解析與音訊 | `question_parts`、`question_options`、`question_content_blocks`、`question_answers`；每次練習固定引用 revision；選擇類題目的答案鍵值必須屬於同一小題的選項；`answer_field_count` 保存經來源核准的文字答案欄位數 | 編輯與匯入表單依作答方式驗證內容、選項與答案；正式 API 可回傳答案欄位數，但不應把無權查看的答案送到作答端 | `0007` 檢查答案鍵與同一小題選項；`0009` 進一步要求 published／superseded 的自動判分選擇類小題至少有一個有效答案鍵，自動判分文字題至少有一個非空白可接受答案。`0018` 限制多欄只適用於人工批改文字小題，送出時由伺服器檢查欄位數及非空白值。欄位數不從逗號、空白或參考答案推測。`/practice` 作答前只取得題幹、小題、選項與公開欄位數 |
 | 單元、主題、知識點與課綱代碼 | `curriculum_units`、`topics`、`knowledge_points`、`curriculum_codes` 及四組 revision 關聯表；自訂單元、主題與知識點有帳號所有權 | 匯入與編輯只把核准對照寫入正式分類；跨版本歸檔與原生教材位置分開保存 | Schema 已驗證；`/practice` 題庫 API 會從 `question_revision_knowledge_points` 與 `knowledge_points` 讀取正式知識點，不再把題型名稱當成知識點。自訂目錄與完整對照 API 待建 |
 | 題目來源與來源專屬篩選 | `source_categories`、`source_category_dimensions`、`filter_fields`、scope／option／value 關聯；自訂來源有帳號所有權 | 依來源、科目、年級、版本與考試級別產生可用欄位；只允許核准欄位成為可搜尋資料 | Schema 已驗證；自訂來源所有權由 `0005` 補齊。現有 publisher 題庫只設定已確認的 4 組來源維度規則，其餘維度需先有產品規格；正式查詢服務待建 |
-| 圖片、掃描 PDF、舊版 Word、文字貼上與逐題校正 | `assets`、`source_documents`、`source_document_classification_candidates`、`import_batches`、`import_batch_documents`、`import_items`、`question_revision_sources`；`0012` 已建立 `question_enrichment_runs` 與 revision pending suggestions | 上傳、掃描、OCR／拆題、人工校正與確認分階段處理；每題保存正確文件、頁碼、裁切圖、題號及冪等鍵。補全建議只能先進 pending sidecar，核准前不得改寫已發布 revision | Schema `0001`–`0018` 已驗證；Hanlin CLI 的 279 題已匯入。題庫補全 CLI、dry-run／checkpoint 與針對性測試已完成，`0012` 已整合，但 279 題尚未 apply；必須先做品質抽檢與人工核准。正式 PostgreSQL 匯入 API／介面、OCR／AI 拆題與受權 apply 流程待建 |
+| 圖片、掃描 PDF、舊版 Word、文字貼上與逐題校正 | `assets`、`source_documents`、`source_document_classification_candidates`、`import_batches`、`import_batch_documents`、`import_items`、`question_revision_sources`；`0012` 已建立 `question_enrichment_runs` 與 revision pending suggestions；`0020` 建立補充教材的目錄、處理批次、頁面、OCR 區塊與題目版本證據 | 上傳、掃描、OCR／拆題、人工校正與確認分階段處理；每題保存正確文件、頁碼、裁切圖、題號及冪等鍵。補全建議只能先進 pending sidecar，核准前不得改寫已發布 revision | Schema `0001`–`0020` 已在隔離資料庫通過往返驗證；`0020` 尚未套用持久本機資料庫。Hanlin CLI 題庫已匯入；第四課自修 PDF 的 22 頁 OCR、private 頁面 asset 與 manifest 已完成，`apply` 仍關閉。題庫補全結果也尚未 apply；正式匯入 API／介面與受權 apply 流程待建 |
 | 一般作答附件與手寫內容 | `answer_part_assets` 關聯 `assets`；`assets.purpose` 分成 `handwriting` 與 `answer_attachment`；被作答引用期間凍結檔案內容與上傳證據 | 附件必須是 `private`、格式驗證通過且未刪除；讀取時從作答關聯反查權限。缺文字答案時手寫小題保持 pending／manual；已有完整答案時手寫只作為第一小題的計算過程附件，不改變判分。`score` 不建立逐題附件 | `instant`／`complete` private PNG 的驗證、冪等儲存、受權讀取與 UI 串接程式已通過針對性測試；完整 DB E2E 仍需涵蓋 private PNG 路徑。一般附件、刪除政策與 production 物件儲存待建 |
 | 收藏與題目清單 | `question_collections`、`question_collection_items`；收藏依學習者隔離並保存穩定的 `question_id` | 收藏表單以交易移動項目；收藏跟隨題目的目前發布版本，真正建立固定計畫、排程或 session 時才保存當時的 revision | Schema 已驗證；`/practice` 的收藏目前依學習者存在 `localStorage`，尚未寫入正式收藏表 |
 | 題目總覽、錯題榜與開始練習共用查詢 | 題目 revision、分類、來源、收藏、`learner_question_stats`、`learner_part_stats`；權限從帳號與學習者關聯進入 | 三個入口共用同一個篩選元件與伺服器查詢規則。服務先授權再查詢；工作區啟動由資料庫依 active learner 的有效題庫、年級、enabled 科目與已選書籍版本建立可用範圍，不接受前端課次清單。完整分類查詢保留最多 500 題一頁；部分分類一律拒絕 | `/practice` 初次載入已改為一個不帶分類的受權限題庫請求，不再逐一請求 73 組課次；公開 payload 仍不含答案與解析。完成練習後只更新 history／wrong-review，不重抓題庫。完整題庫回應已加入保留 `private, no-store` 的 gzip 協商；五次本機實測中位數由 11,022 ms 降為 4,857 ms，但仍高於三秒門檻，因此路由範圍摘要、題目總覽分頁與 detail hydration 仍是下一階段，不得以提早關閉載入畫面取代 |
@@ -47,7 +47,7 @@
 | 管理員稽核與資料刪除／去識別化 | `admin_audit_logs`、`data_erasure_requests`；要求只能以 `pending` 建立並單向推進，身份／目標不可改、不可刪、終態不可變，完成需同交易管理員稽核 | 高權限變更與搬移寫不可變稽核；正式 worker 依核准保存政策真正刪除或去識別化，並留下不含個資的摘要 | 要求 ledger 與流程 Schema 已驗證（`0005`）；真正資料／物件刪除、保存政策與管理 API 待決策 |
 | 正式目錄與 fixture 搬移 | `seed_manifests` 加上全部目標表；每批記錄來源版本、雜湊、筆數與 migration | 搬移工具保持 fixture 唯讀，可重跑，輸出舊 ID 對新 UUID、各表筆數、衝突與隔離報告 | Schema 已驗證；Hanlin 單檔匯入器已可重跑並驗證不建立固定合成身份，但通用 fixture／JSON 搬移工具與 production 資料搬移尚未完成 |
 
-## 117 張業務資料表
+## 122 張業務資料表
 
 | Migration | 數量 | 資料表 |
 | --- | ---: | --- |
@@ -69,8 +69,10 @@
 | `0016_book_version_volume_boundary` | 0 | 修正既有教材版本名稱；出版社版本與 `curriculum_units.volume` 冊次分開保存，不變更題目及關聯識別碼 |
 | `0017_learning_book_plans` | 7 | `practice_plan_revisions`、`practice_plan_revision_items`、`practice_plan_share_invites`、`practice_plan_subscriptions`、`practice_plan_notifications`、`practice_plan_audit_events`、`practice_plan_mutation_receipts`；另讓學習本、排程與 session 固定版本，並加入分享生命週期與稽核限制 |
 | `0018_question_answer_field_count` | 0 | 為 `question_parts` 加入 `answer_field_count` 及文字／人工批改限制，不新增資料表 |
+| `0019_question_identifier_question_lookup` | 0 | 為每題首選題號查詢新增複合索引，不新增資料表 |
+| `0020_teaching_source_evidence` | 5 | `source_document_catalog_profiles`、`source_document_processing_runs`、`source_document_pages`、`source_document_blocks`、`question_revision_source_evidence`；另加入 private `source_page` asset purpose |
 
-`schema_migrations` 是技術性版本紀錄，不列入 117 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
+`schema_migrations` 是技術性版本紀錄，不列入 122 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
 
 ## 目前網站的實際資料來源
 
@@ -162,7 +164,7 @@ npm run test:question-enrichment
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-最近一次完整 `npm run db:test` 使用隔離 PostgreSQL 通過十八個 migration。範圍包括首次前進、既有完整性與併發回歸、`0014`／`0015` 的題目關聯限制、`0016` 的版本／冊次分離、`0017` 的學習本版本／分享／排程固定限制、`0018` 的答案欄位數限制、逐層 down、第二次前進與 schema parity。完成後沒有留下 `lerniqa_schema_test_%` 資料庫或測試 session。
+最近一次完整 `npm run db:test` 已在隔離 PostgreSQL 通過 `0001` 至 `0020` 的首次前進、限制測試、逐層 down、第二次前進與 schema parity。完成後沒有修改持久的 `lerniqa_local`。
 
 驗證預設自行在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP、使用私有 Unix socket，並對每個資料庫指令明確指定 host、port、user 與 database；同時以 `PSQLRC=/dev/null` 避免本機設定改變測試行為。`db:test`、import ownership 與 local practice runner 也分別提供 `LERNIQA_DB_TEST_*`、`LERNIQA_IMPORT_OWNERSHIP_TEST_*`、`LERNIQA_PRACTICE_TEST_*` 的 existing-local-server 明確 opt-in。這些模式都要提供本機 Unix socket、port 及預期 data directory，並核對目前作業系統使用者與 non-recovery 狀態；runner 只建立具隨機名稱及本次 ownership comment 的隔離資料庫，清理前再次核對身分，不停止共用 server，也不得連接 production。import ownership 測試只檢查隔離匯入後的資料所有權；local practice 測試使用 279 題規模的合成題庫完成註冊、登入、session 恢復、三種模式的保存與答案揭露、歷程、錯題及 PostgreSQL／Next.js 重啟驗證。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 檢查程式、輸入限制、安全邊界與 repository／route 契約；migration 契約另由 `db:test` 驗證。現有階段性推薦案例由整體 `npm test` 執行，但不代表文字骨架、可變值與正式關鍵字關係已完成。`practice-catalog-integration` 另檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯及 learner-keyed `localStorage` 邊界。完成後再執行：
 

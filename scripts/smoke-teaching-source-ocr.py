@@ -21,7 +21,7 @@ with contextlib.redirect_stdout(sys.stderr):
     from paddleocr import PaddleOCR
 
 
-PARSER_VERSION = "teaching-source-ocr-smoke-v1"
+PARSER_VERSION = "teaching-source-ocr/v1"
 DETECTION_MODEL = "PP-OCRv5_mobile_det"
 RECOGNITION_MODEL = "PP-OCRv6_medium_rec"
 RENDER_DPI = 150
@@ -181,11 +181,84 @@ def annotate_page(image_path: Path, polygons: list[list[list[int]]], destination
         raise RuntimeError("ANNOTATED_PAGE_WRITE_FAILED")
 
 
+def write_json_atomic(path: Path, value: dict[str, object]) -> None:
+    """以原子替換保存 JSON checkpoint。
+
+    Args:
+        path: JSON 目標路徑。
+        value: 可序列化的報告內容。
+
+    Returns:
+        無。
+    """
+    temporary_path = path.with_suffix(f"{path.suffix}.part")
+    with temporary_path.open("w", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    temporary_path.replace(path)
+
+
+def load_checkpoint(
+    report_path: Path,
+    source_checksum: str,
+    pages: list[int],
+    printed_offset: int,
+    output: Path,
+) -> dict[int, dict[str, object]]:
+    """載入設定完全相符且檔案 checksum 仍有效的頁面 checkpoint。
+
+    Args:
+        report_path: 既有 OCR 報告路徑。
+        source_checksum: 目前來源 PDF 的 SHA-256。
+        pages: 本次要求的 PDF 頁碼。
+        printed_offset: PDF 與印刷頁碼的換算值。
+        output: 報告內相對路徑的基準目錄。
+
+    Returns:
+        以 PDF 頁碼索引的有效既有頁面報告。
+    """
+    if not report_path.is_file():
+        return {}
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    expected_engine = {
+        "name": "PaddleOCR",
+        "packageVersion": paddleocr.__version__,
+        "detectionModel": DETECTION_MODEL,
+        "recognitionModel": RECOGNITION_MODEL,
+        "renderDpi": RENDER_DPI,
+    }
+    if (
+        report.get("parserVersion") != PARSER_VERSION
+        or report.get("source", {}).get("sha256") != source_checksum
+        or report.get("request", {}).get("pages") != pages
+        or report.get("request", {}).get("printedOffset") != printed_offset
+        or report.get("engine") != expected_engine
+    ):
+        return {}
+
+    checkpoints = {}
+    for page_report in report.get("pages", []):
+        rendered_path = output / str(page_report.get("renderedFile", ""))
+        annotated_path = output / str(page_report.get("annotatedFile", ""))
+        if (
+            rendered_path.is_file()
+            and annotated_path.is_file()
+            and checksum_file(rendered_path) == page_report.get("renderedSha256")
+            and checksum_file(annotated_path) == page_report.get("annotatedSha256")
+        ):
+            checkpoints[int(page_report["pdfPageNumber"])] = page_report
+    return checkpoints
+
+
 def run_smoke(
     source: Path,
     pages: list[int],
     printed_offset: int,
     output: Path,
+    report_path: Path,
 ) -> dict[str, object]:
     """使用本機模型渲染並辨識代表頁面。
 
@@ -194,6 +267,7 @@ def run_smoke(
         pages: 從 1 起算的 PDF 抽樣頁碼。
         printed_offset: PDF 頁碼換算印刷頁碼時要加上的值。
         output: 渲染頁面、標示圖與報告的輸出目錄。
+        report_path: 每頁完成後原子更新的 checkpoint 報告。
 
     Returns:
         可序列化的 smoke test 報告。
@@ -212,21 +286,80 @@ def run_smoke(
     if any(page > total_pages for page in pages):
         raise ValueError("REQUESTED_PAGE_OUT_OF_RANGE")
 
-    with contextlib.redirect_stdout(sys.stderr):
-        engine = PaddleOCR(
-            text_detection_model_name=DETECTION_MODEL,
-            text_detection_model_dir=str(detection_directory),
-            text_recognition_model_name=RECOGNITION_MODEL,
-            text_recognition_model_dir=str(recognition_directory),
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=False,
-        )
-
+    source_checksum = checksum_file(source)
+    page_reports_by_number = load_checkpoint(
+        report_path,
+        source_checksum,
+        pages,
+        printed_offset,
+        output,
+    )
+    engine = None
     rendered_directory = output / "rendered"
     annotated_directory = output / "annotated"
-    page_reports = []
+
+    def build_report(status: str) -> dict[str, object]:
+        """建立目前 checkpoint 的完整報告。
+
+        Args:
+            status: `processing` 或 `completed`。
+
+        Returns:
+            可序列化報告。
+        """
+        ordered_reports = [
+            page_reports_by_number[page]
+            for page in pages
+            if page in page_reports_by_number
+        ]
+        return {
+            "schemaVersion": 2,
+            "status": status,
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "parserVersion": PARSER_VERSION,
+            "source": {
+                "fileName": source.name,
+                "sha256": source_checksum,
+                "byteSize": source.stat().st_size,
+                "totalPages": total_pages,
+            },
+            "request": {
+                "pages": pages,
+                "printedOffset": printed_offset,
+            },
+            "engine": {
+                "name": "PaddleOCR",
+                "packageVersion": paddleocr.__version__,
+                "detectionModel": DETECTION_MODEL,
+                "recognitionModel": RECOGNITION_MODEL,
+                "renderDpi": RENDER_DPI,
+            },
+            "review": {
+                "status": "requires_human_correction",
+                "findings": [
+                    "直排正文與題目欄位可被偵測並保留座標。",
+                    "注音、小字註解、標點與插圖文字可能混入正文或降低信心值。",
+                    "偵測順序不能直接視為直排文章的閱讀順序。",
+                    "OCR 結果只可建立 pending 區塊，人工校正後才能核准。",
+                ],
+            },
+            "pages": ordered_reports,
+        }
+
     for page in pages:
+        if page in page_reports_by_number:
+            continue
+        if engine is None:
+            with contextlib.redirect_stdout(sys.stderr):
+                engine = PaddleOCR(
+                    text_detection_model_name=DETECTION_MODEL,
+                    text_detection_model_dir=str(detection_directory),
+                    text_recognition_model_name=RECOGNITION_MODEL,
+                    text_recognition_model_dir=str(recognition_directory),
+                    use_doc_orientation_classify=False,
+                    use_doc_unwarping=False,
+                    use_textline_orientation=False,
+                )
         rendered_path = rendered_directory / f"pdf-{page}.png"
         annotated_path = annotated_directory / f"pdf-{page}.png"
         render_page(source, page, rendered_path)
@@ -255,7 +388,7 @@ def run_smoke(
             }
             for index, (text, score, polygon) in enumerate(zip(texts, scores, polygons, strict=True))
         ]
-        page_reports.append({
+        page_reports_by_number[page] = {
             "pdfPageNumber": page,
             "printedPageNumber": page + printed_offset,
             "width": width,
@@ -265,38 +398,16 @@ def run_smoke(
             "averageConfidence": round(sum(scores) / len(scores), 6) if scores else 0,
             "lowConfidenceCount": sum(score < 0.8 for score in scores),
             "renderedFile": str(rendered_path.relative_to(output)),
+            "renderedSha256": checksum_file(rendered_path),
             "annotatedFile": str(annotated_path.relative_to(output)),
+            "annotatedSha256": checksum_file(annotated_path),
             "detections": detections,
-        })
+        }
+        write_json_atomic(report_path, build_report("processing"))
 
-    return {
-        "schemaVersion": 1,
-        "generatedAt": datetime.now(UTC).isoformat(),
-        "parserVersion": PARSER_VERSION,
-        "source": {
-            "fileName": source.name,
-            "sha256": checksum_file(source),
-            "byteSize": source.stat().st_size,
-            "totalPages": total_pages,
-        },
-        "engine": {
-            "name": "PaddleOCR",
-            "packageVersion": paddleocr.__version__,
-            "detectionModel": DETECTION_MODEL,
-            "recognitionModel": RECOGNITION_MODEL,
-            "renderDpi": RENDER_DPI,
-        },
-        "review": {
-            "status": "requires_human_correction",
-            "findings": [
-                "直排正文與題目欄位可被偵測並保留座標。",
-                "注音、小字註解、標點與插圖文字可能混入正文或降低信心值。",
-                "偵測順序不能直接視為直排文章的閱讀順序。",
-                "OCR 結果只可建立 pending 區塊，人工校正後才能核准。",
-            ],
-        },
-        "pages": page_reports,
-    }
+    report = build_report("completed")
+    write_json_atomic(report_path, report)
+    return report
 
 
 def main() -> int:
@@ -317,13 +428,14 @@ def main() -> int:
         parser.error("--pdf 必須指向可讀取的 PDF 檔案。")
     output = arguments.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    report = run_smoke(source, arguments.pages, arguments.printed_offset, output)
     report_path = output / "ocr-smoke.json"
-    temporary_path = report_path.with_suffix(".json.part")
-    with temporary_path.open("w", encoding="utf-8") as stream:
-        json.dump(report, stream, ensure_ascii=False, indent=2)
-        stream.write("\n")
-    temporary_path.replace(report_path)
+    report = run_smoke(
+        source,
+        arguments.pages,
+        arguments.printed_offset,
+        output,
+        report_path,
+    )
     print(json.dumps({
         "report": str(report_path),
         "pages": len(report["pages"]),

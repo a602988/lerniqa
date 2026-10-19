@@ -4,7 +4,7 @@
 
 ## 範圍與交付邊界
 
-第一階段只解析 `115上[翰林]國中新無敵國文自修(1).pdf` 的第四課〈論語選〉。教材印刷頁碼為第 93 至 114 頁，對應 PDF 第 95 至 116 頁，共 22 頁。來源教材範圍為 115 學年度、國一、國文、翰林版、上學期、第一冊、第四課。
+第一階段只解析 `115上[翰林]國中新無敵國文自修(1).pdf` 的第四課〈論語選〉。教材印刷頁碼為第 93 至 114 頁，對應 PDF 第 95 至 116 頁，共 22 頁。來源名稱保留「國文」；正式目錄對應 115 學年度、國一、系統科目「國語」（來源別名「國文」）、翰林版、上學期、第一冊、第四課。
 
 本階段建立可重跑的解析流程、受保護頁面影像、OCR 區塊及校對資料，不改寫 279 題正式題目、題目版本、既有解析或作答紀錄，也不部署至 Vercel。學生閱讀流程的目標是從題目解析直接跳到被引用的教材頁，不提供整本 PDF、跨課瀏覽或重新編排的網頁教材。
 
@@ -71,6 +71,8 @@ OCR 保存原始辨識文字、頁面座標、引擎版本、模型版本及信�
 
 `source_document_catalog_profiles` 必須檢查年級、科目、版本與冊次屬於同一條正式教材目錄。來源檔名保留作為證據，但不能代替這些外鍵。頁面所屬課次由頁面資料另行保存，因此整本來源可以涵蓋多課，不會被錯誤綁成單一課。
 
+`source_document_processing_runs` 保存每次解析的來源 checksum、設定 checksum、parser version、OCR 引擎與模型。批次從 `pending` 單向進入 `processing`，最後成為 `completed` 或 `failed`；完成或失敗後不可覆寫。相同來源、設定與 parser version 只能建立一筆，供重跑時辨識既有結果。
+
 `source_document_pages` 保存來源文件內可閱讀的頁面：
 
 | 欄位 | 用途 |
@@ -94,13 +96,14 @@ OCR 保存原始辨識文字、頁面座標、引擎版本、模型版本及信�
 | `id` | 區塊識別碼 |
 | `source_document_page_id` | 所屬頁面 |
 | `block_type` | 標題、正文、注釋、翻譯、圖表、練習、解答解析或其他 |
-| `bounds` | 0 至 1 的正規化矩形座標 |
+| `bounds_left`、`bounds_top`、`bounds_width`、`bounds_height` | 0 至 1 的正規化矩形座標 |
 | `raw_text` | 不可覆寫的 OCR 原始文字 |
 | `corrected_text` | 人工校正文字 |
 | `ocr_engine`、`ocr_version` | OCR 可追溯資訊 |
 | `confidence` | OCR 信心值 |
 | `review_status` | `pending`、`approved` 或 `rejected` |
 | `reviewed_by_user_id`、`reviewed_at` | 審核者與時間 |
+| `revoked_by_user_id`、`revoked_at` | 已核准區塊後續撤回的管理員與時間；不覆蓋原審核紀錄 |
 
 `question_revision_source_evidence` 保存補充教材證據：
 
@@ -113,8 +116,9 @@ OCR 保存原始辨識文字、頁面座標、引擎版本、模型版本及信�
 | `position` | 同一題的來源顯示順序 |
 | `review_status` | `pending`、`approved` 或 `rejected` |
 | `linked_by_user_id`、`reviewed_by_user_id`、`reviewed_at` | 建立與審核證據 |
+| `revoked_by_user_id`、`revoked_at` | 已核准證據後續撤回的管理員與時間 |
 
-只允許核准的區塊被核准為正式證據。同一題目版本、區塊及證據用途不可重複。第一階段不新增 AI 生成解析表；先證明教材解析及題目證據能正確追溯，之後才以獨立 migration 加入模型輸出、prompt 版本與審核狀態。
+只允許有效且已核准的目錄範圍與區塊被核准為正式證據。同一題目版本、區塊及證據用途不可重複。已核准資料不可原地改寫；需要停用時另記撤回者與時間。第一階段不新增 AI 生成解析表；先證明教材解析及題目證據能正確追溯，之後才以獨立 migration 加入模型輸出、prompt 版本與審核狀態。
 
 ## 目錄與元件邊界
 

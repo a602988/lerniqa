@@ -4,12 +4,12 @@
 
 信箱驗證、密碼重設與角色 PIN 設定／重設的 API、帳號介面與不連網測試已完成。ERP 現行 SMTP 的非機密 host、port 與 TLS 模式已核實，但 Lerniqa 尚未設定自己的憑證、outbox 與實際 SMTP handshake，不可讀取或複製 ERP secret 來當作完成。`0012` 已整合 challenge 固定綁定電子郵件 identity 的資料庫契約；SMTP outbox 不在 `0012`。目前同步寄信仍可能讓已知與未知帳號產生 timing enumeration，outbox／等時回應與真實寄送驗證是獨立的上線阻擋。成人角色切換仍使用帳號密碼重新確認，角色 PIN 尚不參與角色切換。OCR 與 AI 拆題仍未串接；本地 AI 手寫分析已接上 sidecar worker，但真實筆跡品質與人工審核介面仍待驗收。
 
-狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0015` 共十五個 migration 已建立 PostgreSQL schema，合計 110 張業務資料表；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、session、作答、歷程和錯題流程已接上本機 PostgreSQL。`/practice` 不保留瀏覽器學習者快照；瀏覽器只保存非識別性的練習 UI 設定，以及尚未切換資料庫的計畫、排程與收藏。舊 JSON API 已封閉。279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
+狀態：施工中。Lerniqa 是持續開發中的多科目正式產品。`0001` 至 `0020` 共二十個 migration 已建立 PostgreSQL schema，合計 122 張業務資料表，並通過隔離資料庫往返驗證；`0020` 尚未套用持久本機資料庫。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程和錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的練習 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。舊 JSON API 已封閉。第四課 279 題正式題庫接入既有 `/practice` 的「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容，不取代首頁或多科目流程。production 帳號生命週期與完整授權仍未完成。介面改動需通過本機驗證，只有當次取得明確指示時才部署至 Vercel production。
 
 ### 本輪資料庫擴充狀態
 
 - 階段性相關題目推薦、private 手寫 PNG、帳號復原與題庫補全的程式／針對性測試已完成。這些結果屬於靜態、單元或契約層，不表示完整產品規則與正式資料已交付。
-- `0012` 已整合帳號復原 identity binding、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄；`0014` 建立可審核的題目模板、可變值與正式關鍵字關聯；`0015` 補上 AI／規則關鍵字目錄的 pending 與審核證據。空庫、既有資料升級、down／up 與 schema parity 已通過。
+- `0012` 已整合帳號復原 identity binding、題庫補全 pending suggestion 與手寫 AI sidecar；`0013` 建立十二年國教年級與上下學期正式目錄；`0014`、`0015` 建立可審核的題目關聯；`0016` 至 `0019` 分別建立版本與冊次邊界、學習本版本與分享、文字答案欄位數，以及題號查詢索引；`0020` 建立教材目錄、處理批次、逐頁影像、OCR 區塊與題目版本證據。二十個 migration 的隔離資料庫往返驗證已通過；`0020` 尚未套用持久本機資料庫。
 - 推薦程式已依已確認模板、相似群組、共同正式關鍵字與共同主題逐層選題，保存方法版本與命中證據，不再把來源題型或同單元當成相同題。離線分析、pending 匯入與管理員核准／退回流程已接上；279 題尚未完成全量分析與人工核准，目前只有一題煙霧測試待審，confirmed 關聯仍為 0。`score` 禁止逐題推薦與手寫附件。
 - `instant`／`complete` 的手寫圖儲存為 private PNG。缺文字答案時保持 pending／manual；已有完整答案時只作為計算過程附件，不改變判分。
 - 題庫補全預設 dry-run，只能先建立 pending suggestion；279 題尚未 apply，必須先通過品質抽檢與人工核准。
@@ -115,9 +115,9 @@
 - 產出：`docs/question-database-design.md`，涵蓋題目身份與版本、標準題型、內容、答案、分類、來源、題庫、相近題群組、逐次作答、日期彙總、錯題排行、搬移規則及施工順序；`docs/database-completion-matrix.md` 對照需求、資料表、正式 API／表單、完成狀態與安全切換邊界。
 - 完成條件：目前八種題型、音訊與動態欄位都有單一搬移來源；題目可跨版本歸入多個教材單元，正式課綱代碼與平台知識點分開保存；歷史作答固定引用題目版本且每次送出不可覆寫；每題作答及答錯次數可依學習者與日期查詢；相近題群組與相同題型分開建模；統計及排行榜可由明細重建；未來多帳號共享、家教題庫、OCR、AI 類題與手寫答案不需另建平行題目模型。排序、拖曳配對、圖片熱區、繪圖、錄音作答及通用版面系統不列入首版，需在產品確認後另以 migration 擴充。
 - 驗證：對照目前 TypeScript 型別、匯入 API、題庫查詢及管理員權限規劃；執行 `git diff --check`。
-- 實作結果：`0001` 至 `0015` 已以原生 SQL 完成，合計 110 張業務資料表。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
+- 實作結果：`0001` 至 `0020` 已以原生 SQL 完成，合計 122 張業務資料表；`0020` 尚未套用持久本機資料庫。日後選定 ORM 或查詢層時，必須映射既有 schema，不得另建一套平行資料模型。
 - 回滾點：刪除本規劃與本任務段落，不修改既有 JSON、API 或介面。
-- 狀態：已確認；十五個 migration 已依本文件施工。`/practice` 的題庫、session、作答、歷程與錯題流程已接上本機 PostgreSQL；計畫、排程與收藏尚未切換
+- 狀態：已確認；二十個 migration 已依本文件施工並通過隔離資料庫往返驗證。`/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL；收藏尚未切換
 
 ### 建立身份與目錄 migration
 
@@ -241,7 +241,7 @@
 ### 串接正式後端與安全切換 PostgreSQL
 
 - 角色：後端工程師、安全審查員、驗收員。
-- 輸入：`0001` 至 `0015` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
+- 輸入：`0001` 至 `0020` PostgreSQL schema、已封閉的歷史 JSON 契約、本機 session 與資料隔離驗證結果、production 登入與權限政策、物件儲存及資料保存期限。
 - 產出：正式 repository 與交易服務、依資源拆分的 `/api/v1`、可重跑的 JSON 搬移工具，以及 PostgreSQL 單一寫入來源的切換程序。
 - 完成條件：伺服器從可信 session 決定帳號、角色與學習者權限；題目查詢、匯入、考試、計畫、作答、審核、附件與統計均讀寫 PostgreSQL；搬移工具輸出舊 ID 對新 UUID、筆數、雜湊、衝突與隔離報告；JSON 與 PostgreSQL 不同時接受寫入。
 - 驗證：空庫與既有資料升級、正式 API 授權和表單讀寫、跨帳號拒絕、併發衝突、附件權限、作答不可變性、型別檢查、lint、build 及桌面／手機核心流程。
@@ -412,14 +412,14 @@
 - Repository 可查證：第四課有 279 題已發布題目，全部目前使用 revision 2；195 題有文字解析，84 題沒有解析。正式題目來源是 Word 文件，自修 PDF 只能建立補充教材證據，不得改寫 `question_revision_sources` 的主要出處。
 - Repository 可查證：本機 `system_admin` session、管理 API、題目審核、資產讀取與同交易稽核已接線。教材校對沿用這套授權，不建立第二套管理身分。
 - 正式來源：Google Drive 檔案 `115上[翰林]國中新無敵國文自修(1).pdf`，Drive ID 為 `1i4c-4T1_NAIhHVOkKUPDqtbJtoUsI0aE`。下載後必須驗證 MIME type、檔名、檔案大小、頁數與 SHA-256；教材內容不得依 Google Drive 網址作為執行期依賴。
-- 已確認產品決策：教材範圍為 115 學年度、國一、國文、翰林版、上學期、第一冊、第四課〈論語選〉；印刷頁碼 93 至 114 對應 PDF 第 95 至 116 頁。來源顯示只使用檔名與印刷頁碼。
+- 已確認產品決策：來源名稱為國文，正式目錄科目使用系統既有「國語」並保留「國文」別名；教材範圍為 115 學年度、國一、翰林版、上學期、第一冊、第四課〈論語選〉。印刷頁碼 93 至 114 對應 PDF 第 95 至 116 頁。來源顯示只使用檔名與印刷頁碼。
 - 需要具名權利責任人核准：這份教材局部頁面可否提供學生線上查看。未完成時，所有真實頁面影像只限本機匯入與管理員校對；學生流程固定拒絕。
 - 需要 production 證據：預設管理員、MFA、Secret Manager、受限資料庫角色、物件儲存與正式部署環境。這些條件不阻擋本機施工，但阻擋 production 驗收。
 
 ### 固定資料契約
 
 - 原始 PDF 與頁面影像保存在 `local-data` 或日後的 private object storage；PostgreSQL 只保存相對 storage key、checksum、尺寸、頁碼、座標、OCR 內容及審核證據。
-- `source_documents.original_file_name` 完整保存來源檔名。`source_document_catalog_profiles` 保存學年度、年級、科目、學期、版本與冊次的正式關聯；`source_document_pages.curriculum_unit_id` 保存頁面所屬課次。
+- `source_documents.original_file_name` 完整保存來源檔名。`source_document_catalog_profiles` 保存學年度、年級、科目、學期、版本與冊次的正式關聯；`source_document_processing_runs` 保存來源與設定 checksum、parser／OCR 身分及單向處理狀態；`source_document_pages.curriculum_unit_id` 保存頁面所屬課次。
 - `question_revision_sources` 繼續表示題目原始匯入出處。補充教材使用獨立的 `question_revision_source_evidence`，且固定連到 `question_revision_id`。
 - OCR 原始文字不可覆寫。人工校正文字、審核狀態、審核者與時間另存；只有核准區塊及核准題目關聯可以進入學生查詢。
 - 相同來源 checksum、頁面範圍與 parser version 重跑不得產生重複文件、頁面或區塊。任一頁失敗時不得把文件標成 ready。
@@ -445,6 +445,8 @@
 - 回滾點：隔離資料庫使用 down migration；持久資料庫若已寫入正式資料，只能向前修正或使用經核准備份，不直接 down。
 
 ### T3：建立可重跑的第四課匯入工具
+
+施工進度：`inspect`、來源設定、22 頁 OCR checkpoint、lossless WebP 與 manifest 已完成；相同輸入重跑會驗證並重用既有 OCR 與頁面 asset。`apply` 仍固定拒絕，等待持久資料庫寫入確認。
 
 - 角色：工程師。
 - 輸入與產出：建立 parser 與 `inspect`／`apply` 命令。設定檔保存來源 checksum、115 學年度、正式目錄 ID、PDF 頁序、印刷頁碼、課次、parser version 與 OCR adapter；不把本次對照散落在程式分支。

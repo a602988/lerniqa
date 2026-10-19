@@ -2,7 +2,7 @@
 
 正式匯入的題目、帳號、角色、學習者、練習與作答紀錄屬持久資料，不得用 seed、reset、fixture 還原或測試 cleanup 覆蓋。合成 fixture 只用於明確隔離的測試資料庫；資料量少不會改變持久資料的性質。
 
-Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0019` 共十九個 migration 定義 117 張業務資料表，另有技術性的 `schema_migrations`。`0016` 將出版社版本與冊次分開；`0017` 新增學習本不可變版本、分享訂閱、通知、稽核與冪等收據；`0018` 為文字小題保存經來源核准的答案欄位數；`0019` 加速每題首選題號的查詢。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
+Lerniqa 是持續開發中的多科目正式產品。PostgreSQL 的 `0001` 至 `0020` 共二十個 migration 定義 122 張業務資料表，另有技術性的 `schema_migrations`。`0016` 將出版社版本與冊次分開，`0017` 新增學習本版本與分享契約，`0018` 保存文字小題的答案欄位數，`0019` 加速每題首選題號查詢，`0020` 建立補充教材來源證據。二十個 migration 的隔離資料庫往返驗證已通過；`0020` 尚未套用持久本機資料庫。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已接上本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。production 後端與完整授權尚未完成；`/local-practice` 是內部診斷與相容入口。
 
 ## 本機驗證
 
@@ -32,9 +32,9 @@ macOS 的 SysV shared-memory 額度無法再建立短命 cluster 時，可明確
 
 腳本會自動找出每組 migration，依序執行前進與限制測試，再逐階段回滾、檢查 migration 紀錄／資料表／schema 回復，最後再次前進並比對 schema。預設模式結束時停止 cluster 並刪除整個暫存目錄；existing-local-server 模式則刪除本次建立的所有測試資料庫與 session，不停止既有 server。兩種模式都不得沿用未經明確核對的 `PGHOST` 或 production 連線。
 
-`db:test` 會驗證 `0001` 至 `0019` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前十九個 migration 的驗收。
+`db:test` 會驗證 `0001` 至 `0020` 的兩次前進、限制案例、逐階段反向回滾、migration 紀錄／資料表／schema 回復及最終 schema parity。`test:import-ownership` 驗證匯入器不會建立固定的合成帳號、角色或學習者；`test:local-practice` 驗證 279 題規模的合成題庫、註冊、登入、作答、歷程、錯題、`score` aggregate／收據邊界及 PostgreSQL／Next.js 重啟後持久性。驗證只使用隔離合成資料，不會清理 `local-data` 的持久資料；預設模式會為各項驗證建立 `/tmp` 私有短命 cluster。`practice-catalog-integration` 另檢查 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯、session 恢復、三種檢核方式和 learner-keyed 瀏覽器設定邊界；不能用只涵蓋較早 migration 的結果代替目前二十個 migration 的驗收。
 
-最近一次完整 `db:test` 已在明確 opt-in 的本機 Unix-socket PostgreSQL 隔離資料庫模式通過。它涵蓋 `0007` 到 `0008` 安裝窗口的 archive race、`0009` preflight 與子資料發布併發、`0010` 的 `account_role`／grant 撤銷及 self access／learner rename 雙連線回歸，以及 `0011` 的舊版 `score` 明細清除、統計重建、資產清理排程、彙總與收據完整性、逐層 down、第二次 up 和 schema parity；完成後 `lerniqa_schema_test_%` 資料庫與測試 session 均為 0。
+最近一次完整 `db:test` 已在隔離 PostgreSQL 通過二十個 migration。範圍包括首次前進、各 migration 限制測試、逐層 down、第二次前進與 schema parity；正式 `lerniqa_local` 未被修改。
 
 ## 持久的本機資料庫
 
@@ -169,6 +169,14 @@ down 可回到 `0010` 的 schema，但無法也不應虛構已由這次隱私修
 ### `0019_question_identifier_question_lookup`
 
 `0019` 為題目清單的首選題號查詢新增複合索引。索引先依 `question_id` 找出同一題的題號，再優先選擇 `publisher_question`，最後依 `value` 排序。這個索引不改變題號內容、優先順序或公開回傳契約，也不新增資料表。
+
+### `0014_question_relation_profiles` 與 `0015_relation_keyword_review`
+
+`0014` 建立可審核的題目模板、模板成員、正式關鍵字及題目版本關鍵字關聯，並擴充推薦來源證據。`0015` 要求 AI／規則建立的關鍵字先保持 `pending`，保存方法版本與證據，再由人工核准或退回。
+
+### `0020_teaching_source_evidence`
+
+`0020` 新增教材目錄範圍、可重跑處理批次、逐頁 private `source_page` asset、OCR 區塊與題目版本補充證據。來源檔名與 OCR 原文保留不變；正式目錄以學年度及既有年級、科目、學期、書籍版本、冊次外鍵表示。核准與撤回要求有效 `system_admin`，題目證據必須與教材的年級、科目、學期及版本完全一致。down 只供尚未承載 `source_page` asset 的隔離資料庫往返驗證；持久資料庫套用後應以向前修正處理。
 
 ## 尚未完成的 production 串接
 

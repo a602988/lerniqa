@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "sourceDocumentId": "be7f76c4-ac27-4d28-86da-c969d4d881ec",
+  "sourceFileName": "115上[翰林]國中新無敵國文自修(1).pdf",
+  "sourceSha256": "f17aa066713cf1476a7b50ab11150eea2c0395609b1b854092886c35c6db7aad",
+  "sourceByteSize": 200002550,
+  "sourceTotalPages": 364,
+  "catalog": {
+    "academicYear": 115,
+    "gradeId": "f5cc7d9c-6cb4-5774-803f-02fc0f1ca514",
+    "subjectId": "e5180ef0-21d7-53b6-9d8b-e4e1115050c0",
+    "sourceSubjectName": "國文",
+    "canonicalSubjectName": "國語",
+    "semesterId": "bf139382-7968-5546-b7d0-0f7e7779c72b",
+    "publisherId": "dc8b84bf-0a1f-5e24-95b0-794e5bf0e0f3",
+    "bookVersionId": "4a246458-5e95-51df-b4f2-fd767f6dbb36",
+    "volumeUnitId": "99171828-8027-5551-ad4d-b048d68d0395",
+    "curriculumUnitId": "cf2b606d-169d-594c-98ec-39436776427d"
+  },
+  "pages": {
+    "pdfStart": 95,
+    "pdfEnd": 116,
+    "printedOffset": -2
+  },
+  "parser": {
+    "version": "teaching-source-ocr/v1",
+    "renderDpi": 150,
+    "ocrEngine": "PaddleOCR",
+    "ocrVersion": "3.7.0",
+    "detectionModel": "PP-OCRv5_mobile_det",
+    "recognitionModel": "PP-OCRv6_medium_rec",
+    "pageFormat": "webp-lossless"
+  },
+  "rights": {
+    "studentPageAccess": false,
+    "reason": "教材局部頁面的線上顯示授權尚未確認"
+  }
+}
