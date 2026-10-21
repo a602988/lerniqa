@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@keel-design/ui";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAppRouter } from "../../navigation-feedback";
 
 interface QuestionRelationReviewActionsProps {
     kind: "template" | "keyword";
@@ -15,7 +15,7 @@ export function QuestionRelationReviewActions({
     targetId,
     revisionId,
 }: QuestionRelationReviewActionsProps) {
-    const router = useRouter();
+    const router = useAppRouter();
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 

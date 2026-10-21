@@ -339,14 +339,6 @@
 
 .selectionTools select {
     min-width: 6rem;
-    min-height: 2.5rem;
-    border: 1px solid #d7d7e5;
-    border-radius: 0.72rem;
-    background: #fff;
-    padding: 0 2rem 0 0.75rem;
-    color: var(--pilot-ink);
-    font: inherit;
-    font-size: 0.86rem;
 }
 
 .loadingPanel,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "katex/dist/katex.min.css";
+import { NavigationFeedbackProvider } from "./components/navigation-feedback";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ export default function RootLayout({
             data-radius="lg"
             data-skin="green"
         >
-            <body>{children}</body>
+            <body><NavigationFeedbackProvider>{children}</NavigationFeedbackProvider></body>
         </html>
     );
 }

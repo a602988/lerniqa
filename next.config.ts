@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
         return [
             { source: "/local-practice", destination: "/practice", permanent: false },
             { source: "/forgot-password", destination: "/account/forgot-password", permanent: false },
+            { source: "/account-link", destination: "/account", permanent: false },
         ];
     },
     async headers() {
@@ -53,7 +54,7 @@ const nextConfig: NextConfig = {
                 destination: "/",
             },
             {
-                source: "/:path(login|register|logout|account-link)",
+                source: "/:path(login|register)",
                 destination: "/",
             },
         ];

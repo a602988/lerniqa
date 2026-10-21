@@ -13,9 +13,7 @@ import {
     DialogTrigger,
     FormField,
     Input,
-    NativeSelect,
 } from "@keel-design/ui";
-import { useRouter } from "next/navigation";
 import {
     type FormEvent,
     useCallback,
@@ -25,6 +23,9 @@ import {
 } from "react";
 
 import { AdminNotice } from "../admin-notice";
+import { AppSelect as NativeSelect } from "../../app-select";
+import { useAppRouter } from "../../navigation-feedback";
+import { invalidatePersistedPracticeCatalog } from "../../../lib/practice-client";
 import {
     buildQuestionDraftContentPatch,
     EDITABLE_TEXT_CONTENT_TYPES,
@@ -87,7 +88,7 @@ export function QuestionMutationWorkflow({
     detail,
     accessPolicy,
 }: QuestionMutationWorkflowProps) {
-    const router = useRouter();
+    const router = useAppRouter();
     const retryEvidence = useRef<RetryEvidence | null>(null);
     const dirtyRef = useRef(false);
     const errorRef = useRef<HTMLDivElement | null>(null);
@@ -178,6 +179,7 @@ export function QuestionMutationWorkflow({
             );
         }
         retryEvidence.current = null;
+        invalidatePersistedPracticeCatalog();
         return payload.data;
     }
 

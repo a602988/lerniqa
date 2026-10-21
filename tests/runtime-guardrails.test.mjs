@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -10,10 +10,31 @@ async function repositoryFile(relativePath) {
     return readFile(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-test("the long-running dev site and validation build never share Next output", async () => {
-    const [packageJson, nextConfig] = await Promise.all([
+async function interfaceSourceFiles(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    const files = await Promise.all(entries.map(async (entry) => {
+        const target = path.join(directory, entry.name);
+        if (entry.isDirectory()) return interfaceSourceFiles(target);
+        return /\.tsx$/u.test(entry.name) ? [target] : [];
+    }));
+    return files.flat();
+}
+
+test("the interface never exposes development-status copy", async () => {
+    const sourceFiles = await interfaceSourceFiles(path.join(repositoryRoot, "app"));
+    const prohibited = /開發中|準備中|尚未開放|尚未串接|仍未連接|模擬辨識|模擬 AI|正式版本會|catalog-only|資料表尚待整合/iu;
+
+    for (const sourceFile of sourceFiles) {
+        const source = await readFile(sourceFile, "utf8");
+        assert.doesNotMatch(source, prohibited, path.relative(repositoryRoot, sourceFile));
+    }
+});
+
+test("the long-running site uses port 3500 while validation builds keep a separate Next output", async () => {
+    const [packageJson, nextConfig, localWebRunner] = await Promise.all([
         repositoryFile("package.json").then(JSON.parse),
         repositoryFile("next.config.ts"),
+        repositoryFile("scripts/run-local-web.mjs"),
     ]);
     const devOutput = packageJson.scripts.dev.match(/LERNIQA_NEXT_DIST_DIR=([^ ]+)/u)?.[1];
     const buildOutput = packageJson.scripts.build.match(/LERNIQA_NEXT_DIST_DIR=([^ ]+)/u)?.[1];
@@ -25,6 +46,7 @@ test("the long-running dev site and validation build never share Next output", a
     assert.notEqual(devOutput, buildOutput);
     assert.match(packageJson.scripts.dev, /next dev -p 3500 --hostname 127\.0\.0\.1/u);
     assert.match(packageJson.scripts.start, /next start --hostname 127\.0\.0\.1/u);
+    assert.match(localWebRunner, /\[nextCli, "start", "-p", "3500", "--hostname", "127\.0\.0\.1"\]/u);
     assert.doesNotMatch(packageJson.scripts.dev, /--hostname 0\.0\.0\.0/u);
     assert.doesNotMatch(packageJson.scripts.start, /--hostname 0\.0\.0\.0/u);
     assert.match(nextConfig, /distDir:\s*process\.env\.LERNIQA_NEXT_DIST_DIR\s*\?\?\s*"\.next"/u);
@@ -63,10 +85,13 @@ test("legacy fixture data cannot be read, overwritten, imported, or reset over H
 
     assert.match(guard, /status: 410/u);
     assert.match(guard, /"Cache-Control": "private, no-store"/u);
-    for (const route of [bootstrap, state, reset, questions, imports, assets]) {
+    for (const route of [bootstrap, state, reset, questions, assets]) {
         assert.match(route, /legacyFixtureApiGone\(\)/u);
         assert.doesNotMatch(route, /readDatabase|updateDatabase|resetDatabase|readFile|writeDataImage/u);
     }
+    assert.match(imports, /getAuthenticatedAccount\(request\)/u);
+    assert.match(imports, /withLocalPostgresTransaction/u);
+    assert.doesNotMatch(imports, /readDatabase|updateDatabase|resetDatabase|readFile|writeDataImage/u);
 
     const workspace = await repositoryFile("app/page.tsx");
     assert.doesNotMatch(workspace, /\/api\/v1\/(?:bootstrap|state)/u);

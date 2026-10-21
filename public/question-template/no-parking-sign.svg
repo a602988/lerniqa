@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title description">
+  <title id="title">禁止停車</title>
+  <desc id="description">紅色圓框與斜線覆蓋英文字母 P</desc>
+  <rect width="320" height="180" rx="20" fill="#f7f7fb"/>
+  <circle cx="160" cy="90" r="62" fill="#ffffff" stroke="#d63f4f" stroke-width="12"/>
+  <path d="M135 128V52h29c22 0 36 12 36 32 0 21-14 33-37 33h-9" fill="none" stroke="#263238" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m116 46 88 88" stroke="#d63f4f" stroke-width="13" stroke-linecap="round"/>
+</svg>

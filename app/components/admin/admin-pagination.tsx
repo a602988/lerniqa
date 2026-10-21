@@ -5,7 +5,8 @@ import {
     type PaginationLabels,
     type PaginationProps,
 } from "@keel-design/ui";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "../navigation-feedback";
 
 import styles from "./admin-components.module.css";
 
@@ -35,7 +36,7 @@ export function AdminPagination({
     ...props
 }: AdminPaginationProps) {
     const pathname = usePathname();
-    const router = useRouter();
+    const router = useAppRouter();
     const searchParams = useSearchParams();
 
     function updateUrl(updates: Record<string, string>) {

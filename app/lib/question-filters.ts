@@ -259,7 +259,7 @@ function matchesVersion(question: Question, version: string) {
 }
 
 /**
- * 建立題目總覽與錯題英雄榜共用的篩選選項。
+ * 建立題目總覽與錯題排行榜共用的篩選選項。
  * @param questions 目前頁面可供篩選的候選題目。
  * @param filters 目前套用的篩選條件。
  * @param collections 目前學習者的收藏清單。

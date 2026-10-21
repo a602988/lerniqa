@@ -93,13 +93,13 @@ export async function assertHandwritingDatabaseFilesystem(configuration) {
     return Object.freeze({ dataRealpath });
 }
 
-export function createHandwritingDatabaseClient(configuration) {
+export function createHandwritingDatabaseClient(configuration, applicationName = "lerniqa-handwriting-analysis-worker") {
     const { localDataDirectory: _localDataDirectory, expectedDataDirectory: _expectedDataDirectory, ...connection } = configuration;
     return new Client({
         ...connection,
         password: async () => fail("UNSAFE_DATABASE_CONFIG", "本機手寫 worker 資料庫不應要求密碼。 "),
         ssl: false,
-        application_name: "lerniqa-handwriting-analysis-worker",
+        application_name: applicationName,
         options: "-c search_path=pg_catalog,public -c statement_timeout=30000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000",
         connectionTimeoutMillis: 5_000,
         query_timeout: 35_000,

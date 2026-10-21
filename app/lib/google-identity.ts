@@ -15,7 +15,7 @@ export function googleOAuthClientId(): string {
     if (!clientId) {
         throw new AuthServiceError(
             "GOOGLE_QUICK_REGISTRATION_UNAVAILABLE",
-            "Google 快速註冊尚未完成設定。",
+            "Google 登入暫時無法使用，請稍後再試。",
             503,
         );
     }

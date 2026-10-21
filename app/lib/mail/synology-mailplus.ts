@@ -103,7 +103,7 @@ export class MailServiceError extends Error {
 function configurationError(name: string): MailServiceError {
   return new MailServiceError(
     "MAIL_NOT_CONFIGURED",
-    `郵件服務尚未完成設定（${name}）。`,
+    `郵件服務目前無法使用（${name}）。`,
     503,
   );
 }
@@ -165,7 +165,7 @@ function normalizeEmailAddress(
     throw new MailServiceError(
       errorCode,
       errorCode === "MAIL_NOT_CONFIGURED"
-        ? `郵件服務尚未完成設定（${MAIL_ENV_NAMES.fromAddress}）。`
+        ? `郵件服務目前無法使用（${MAIL_ENV_NAMES.fromAddress}）。`
         : "收件信箱格式不正確。",
       errorCode === "MAIL_NOT_CONFIGURED" ? 503 : 400,
     );

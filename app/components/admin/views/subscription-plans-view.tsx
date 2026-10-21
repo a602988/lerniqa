@@ -83,33 +83,23 @@ export function SubscriptionPlansView({
         )
     );
     const emptyTitle = !catalogReady
-        ? "方案目錄尚未串接"
+        ? "沒有方案資料"
         : hasActiveFilters
             ? "找不到符合條件的方案"
             : "尚未建立方案";
     const emptyDescription = !catalogReady
-        ? "資料表與服務契約完成前，不會顯示合成方案、價格或功能限制。"
+        ? "目前沒有可顯示的方案、價格或功能限制。"
         : hasActiveFilters
             ? "請調整搜尋字詞或狀態篩選條件。"
-            : "正式方案值尚未確認時，系統不會自動建立示意方案或價格。";
+            : "建立方案後，方案資料會顯示在這裡。";
 
     return (
         <AdminPage
             title="訂閱方案目錄"
             eyebrow="Subscription catalog"
-            description="管理未來方案、價格週期、幣別與功能限制的目錄資料。方案狀態不代表可付款。"
+            description="管理方案、價格週期、幣別與功能限制。"
         >
             <div className={styles.viewStack}>
-                <AdminNotice title="支付尚未串接" tone="warning">
-                    目前沒有 checkout、扣款、付款資料、帳號訂閱、發票或收入串接；本頁不顯示付費人數或營收。
-                </AdminNotice>
-
-                {catalogState === "schema_pending" ? (
-                    <AdminNotice title="目錄資料表尚待整合" tone="info">
-                        目前只能驗收介面契約，不會把空畫面或合成 fixture 視為已完成的正式方案串接。
-                    </AdminNotice>
-                ) : null}
-
                 <div className={styles.policyPanel}>
                     <ActionPolicyControl title="方案目錄異動" policy={catalogPolicy} />
                 </div>
@@ -280,16 +270,12 @@ export function SubscriptionPlansView({
                     closeHref={detailCloseHref}
                     title={detail?.name ?? "方案詳情"}
                     description={detail
-                        ? `${detail.code}；catalog-only，支付尚未串接。`
+                        ? detail.code
                         : "方案詳情"}
                     size="xl"
                 >
                     {detail ? (
                         <div className={styles.drawerStack}>
-                            <AdminNotice title="Catalog-only" tone="warning">
-                                啟用方案或價格只會更新未來商品目錄；不會建立帳號訂閱、checkout、付款、發票或收入。
-                            </AdminNotice>
-
                             <ViewSection title="方案資料">
                                 <DetailList
                                     items={[

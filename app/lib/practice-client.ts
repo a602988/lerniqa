@@ -386,6 +386,7 @@ async function readPracticeApiEnvelope<T>(response: Response, fallbackMessage: s
         const code = typeof payload?.error?.code === "string" ? payload.error.code : null;
         const message = typeof payload?.error?.message === "string" ? payload.error.message : fallbackMessage;
         if (response.status === 401 && typeof window !== "undefined") {
+            invalidatePersistedPracticeCatalog();
             broadcastAuthSessionExpired();
         }
         throw new PracticeApiError(response.status, code, message);
@@ -447,6 +448,60 @@ export interface PracticeAccount {
     learner: PracticeAccountLearner | null;
     learners: PracticeAccountLearner[];
     expiresAt: string;
+}
+
+type PracticeCatalogCacheEntry = {
+    contextKey: string;
+    questions: LocalPracticeQuestion[];
+};
+
+type PracticeCatalogRequest = {
+    contextKey: string;
+    generation: number;
+    promise: Promise<LocalPracticeQuestion[]>;
+};
+
+let practiceCatalogCache: PracticeCatalogCacheEntry | undefined;
+let practiceCatalogRequest: PracticeCatalogRequest | undefined;
+let practiceCatalogGeneration = 0;
+
+/**
+ * 建立目前授權題庫範圍的穩定識別碼。
+ *
+ * @param account 伺服器重新確認的帳號資料。
+ * @returns 可安全共用同一份題庫的工作階段識別碼。
+ */
+function getPracticeCatalogContextKey(account: PracticeAccount): string | null {
+    const learner = account.learner;
+    if (!learner) return null;
+
+    const subjects = learner.subjectSettings
+        .map((setting) => ({
+            bookVersionId: setting.bookVersion?.id ?? null,
+            lockVersion: setting.lockVersion,
+            subjectCode: setting.subject.code,
+        }))
+        .sort((left, right) => left.subjectCode.localeCompare(right.subjectCode));
+
+    return JSON.stringify({
+        activeRole: account.activeRole,
+        email: account.email,
+        expiresAt: account.expiresAt,
+        gradeCode: learner.gradeCode,
+        learnerId: learner.id,
+        subjects,
+    });
+}
+
+/**
+ * 清除目前分頁記憶體內的正式題庫。
+ *
+ * @returns 無回傳值。
+ */
+export function invalidatePersistedPracticeCatalog(): void {
+    practiceCatalogGeneration += 1;
+    practiceCatalogCache = undefined;
+    practiceCatalogRequest = undefined;
 }
 
 /** 讀取註冊與學習者設定共用的正式教育目錄。 */
@@ -669,10 +724,10 @@ export function updatePracticeLearnerSubjectSetting(input: {
     });
 }
 
-export function enablePracticeLearnerSubject(input: {
-    learnerId: string;
-    subjectCode: string;
-}) {
+export function enablePracticeLearnerSubject(input:
+    | Readonly<{ action: "enable"; learnerId: string; subjectCode: string }>
+    | Readonly<{ action: "create"; learnerId: string; subjectName: string }>
+) {
     return practiceApi<{ account: PracticeAccount }>("/api/v1/auth/learners/subject-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -717,21 +772,34 @@ export async function loadPersistedPracticeHistory() {
 
 export async function loadPersistedPractice() {
     const { account } = await practiceApi<{ account: PracticeAccount }>("/api/v1/auth/me");
-    if (!account.learner) return {
-        account,
-        questions: [],
-        attempts: [],
-        sessions: [],
-        wrongReviewQueue: { pendingCount: 0, items: [] },
-    };
-    const [catalog, history] = await Promise.all([
-        practiceApi<{ questions: LocalPracticeQuestion[] }>("/api/v1/local-practice/questions"),
-        loadPersistedPracticeHistory(),
-    ]);
+    const contextKey = getPracticeCatalogContextKey(account);
+    if (!contextKey) {
+        invalidatePersistedPracticeCatalog();
+        return { account, questions: [] };
+    }
+    if (practiceCatalogCache?.contextKey === contextKey) {
+        return { account, questions: practiceCatalogCache.questions };
+    }
+    if (practiceCatalogRequest?.contextKey === contextKey) {
+        return { account, questions: await practiceCatalogRequest.promise };
+    }
+
+    const generation = ++practiceCatalogGeneration;
+    const promise = practiceApi<{ questions: LocalPracticeQuestion[] }>("/api/v1/local-practice/questions")
+        .then((catalog) => {
+            if (practiceCatalogGeneration === generation) {
+                practiceCatalogCache = { contextKey, questions: catalog.questions };
+            }
+            return catalog.questions;
+        });
+    const request = { contextKey, generation, promise };
+    practiceCatalogRequest = request;
+    const questions = await promise.finally(() => {
+        if (practiceCatalogRequest === request) practiceCatalogRequest = undefined;
+    });
     return {
         account,
-        questions: catalog.questions,
-        ...history,
+        questions,
     };
 }
 

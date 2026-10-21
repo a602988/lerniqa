@@ -36,7 +36,7 @@ export function PolicyDialog({
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        這項操作目前未開放，介面不會送出任何資料異動。
+                        此處只顯示操作限制，不會送出資料異動。
                     </DialogDescription>
                 </DialogHeader>
                 <DialogBody>{description}</DialogBody>

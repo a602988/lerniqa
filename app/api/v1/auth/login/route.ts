@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         requireSafeCredentialTransport(request);
         const input = parseLoginAccountInput(await readJsonBody(request));
         const issued = await loginAccount(input);
-        return authenticatedResponse(request, issued.account, issued.token);
+        return await authenticatedResponse(request, issued.account, issued.token);
     }
     catch (error) {
         return handleAuthError(error);

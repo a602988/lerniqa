@@ -67,6 +67,17 @@ function OrderedPublicContent({ blocks, fallbackText, layout = "default" }: {
         })}</>;
 }
 
+/**
+ * Renders ordered persisted content without projecting it into a plain-text label.
+ *
+ * @param props - Content blocks and optional wrapper class.
+ * @returns Rich text, formula, table, image, and audio content in saved order.
+ */
+export function PersistedContentBlocks({ blocks, className = "" }: { blocks: LocalPracticeContentBlock[]; className?: string }) {
+    if (blocks.length === 0) return null;
+    return <div className={className}><OrderedPublicContent blocks={blocks} /></div>;
+}
+
 export function PersistedQuestionPromptContent({ question, id, className = "", title = false }: {
     question: LocalPracticeQuestion;
     id?: string;
@@ -116,6 +127,10 @@ function countPromptBlanks(prompt: string) {
         + (prompt.match(/(?:_{3,}|＿{3,})/gu)?.length ?? 0);
 }
 
+function hasStructuredContent(blocks: LocalPracticeContentBlock[]) {
+    return blocks.some((block) => block.contentType !== "text" && block.contentType !== "transcript");
+}
+
 export function PersistedQuestionFields({ question, answer, disabled = false, handwritingOnly = false, submitted = false, recognizedAnswers, partIds, hidePromptContent = false, onAnswer }: {
     question: LocalPracticeQuestion;
     answer: string;
@@ -128,6 +143,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
     onAnswer: (answer: string) => void;
 }) {
     const [activeIndex, setActiveIndex] = useState(0);
+    const [revealedHints, setRevealedHints] = useState<Record<string, number>>({});
     const values = Object.fromEntries(parsePracticeAnswers(answer).map((entry) => [entry.partId, entry.value]));
     const update = (partId: string, value: LocalPracticeAnswerValue) => onAnswer(JSON.stringify({ ...values, [partId]: value }));
     const targetIds = partIds?.length ? new Set(partIds) : undefined;
@@ -146,7 +162,10 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
     const currentIndex = Math.min(activeIndex, Math.max(parts.length - 1, 0));
     const visibleParts = usesStepNavigation ? parts.slice(currentIndex, currentIndex + 1) : parts;
 
-    useEffect(() => setActiveIndex(0), [question.id, question.revisionId, partIds?.join(",")]);
+    useEffect(() => {
+        setActiveIndex(0);
+        setRevealedHints({});
+    }, [question.id, question.revisionId, partIds?.join(",")]);
 
     if (!parts.length) {
         return <div className="grid gap-5">
@@ -174,8 +193,9 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
             const optionLabels = part.options.map((option) => option.label);
             const normalizedPrompt = part.prompt.normalize("NFKC").replace(/[\s。．.、；;]/g, "").toLocaleLowerCase();
             const normalizedOptions = optionLabels.join("").normalize("NFKC").replace(/[\s。．.、；;]/g, "").toLocaleLowerCase();
-            const showPrompt = Boolean(part.prompt && part.prompt !== question.prompt && normalizedPrompt !== normalizedOptions);
-            const hasInlineFormulaContent = part.promptBlocks.some((block) => block.contentType === "formula" || (block.contentType === "image" && block.altText === "來源數學公式"));
+            const hasStructuredPromptContent = hasStructuredContent(part.promptBlocks);
+            const showPrompt = hasStructuredPromptContent
+                || Boolean(part.prompt && part.prompt !== question.prompt && normalizedPrompt !== normalizedOptions);
             const usesDedicatedAnswerSlots = part.answerMode === "text" && part.answerFieldCount > 1;
             const answerColumnCount = getOptionColumnCount(part);
             const gradingNotice = part.gradingPolicy === "manual_review"
@@ -191,12 +211,13 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                 ? "手寫內容已保存；字跡無法清楚辨識時會等待檢視。"
                 : "停筆後會自動辨識，也可以立即分析或重新分析。";
             const recognitionDescriptionId = `handwriting-answer-description-${part.id}`;
+            const revealedHintCount = Math.min(revealedHints[part.id] ?? 0, part.hints.length);
             return <fieldset className={fieldsetClassName} data-answer-columns={part.answerMode === "text" ? undefined : answerColumnCount} disabled={disabled} key={part.id}>
                 <legend className={(usesDedicatedAnswerSlots || usesInlineBlankAnswerFields) ? "sr-only" : legendClassName}>
                     {usesDedicatedAnswerSlots
                         ? `第 ${sourceIndex + 1} 小題`
-                        : hasInlineFormulaContent
-                        ? <span className="question-inline-formula-flow"><OrderedPublicContent blocks={part.promptBlocks} fallbackText={part.prompt} /></span>
+                        : hasStructuredPromptContent
+                        ? question.parts.length > 1 ? `第 ${sourceIndex + 1} 小題` : "作答"
                         : repeatedNumberLabel
                         ? repeatedNumberLabel
                         : showPrompt
@@ -205,7 +226,17 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                     {part.answerMode === "multiple_choice" ? "（可複選）" : ""}
                     {!usesInlineBlankAnswerFields && !usesDedicatedAnswerSlots && gradingNotice && <span className="written-answer-notice">（{gradingNotice}）</span>}
                 </legend>
-                {!usesInlineBlankAnswerFields && !usesDedicatedAnswerSlots && !hasInlineFormulaContent && <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>}
+                {hasStructuredPromptContent && showPrompt && <PersistedContentBlocks blocks={part.promptBlocks} className="question-part-rich-content col-span-full" />}
+                {!hasStructuredPromptContent && !usesInlineBlankAnswerFields && !usesDedicatedAnswerSlots && <div className="col-span-full"><PublicContent blocks={part.promptBlocks} duplicateText={part.prompt} /></div>}
+                {part.hints.length > 0 && <div className="practice-question-hints col-span-full">
+                    {part.hints.slice(0, revealedHintCount).map((hint) => <section className="practice-question-hint" key={hint.position}>
+                        <strong>提示 {hint.position + 1}</strong>
+                        <PersistedContentBlocks blocks={hint.blocks} />
+                    </section>)}
+                    {revealedHintCount < part.hints.length && <Button type="button" appearance="outline" size="sm" onClick={() => setRevealedHints((current) => ({ ...current, [part.id]: revealedHintCount + 1 }))}>
+                        {revealedHintCount === 0 ? "查看提示" : "再看一個提示"}
+                    </Button>}
+                </div>}
                 {part.answerMode === "text"
                     ? handwritingOnly
                         ? <div className="practice-handwriting-answer-field">
@@ -263,7 +294,7 @@ export function PersistedQuestionFields({ question, answer, disabled = false, ha
                         {part.answerMode === "multiple_choice"
                             ? <Checkbox checked={Array.isArray(value) && value.includes(option.key)} onChange={(event) => update(part.id, event.target.checked ? [...(Array.isArray(value) ? value : []), option.key] : (Array.isArray(value) ? value : []).filter((key) => key !== option.key))} />
                             : <Radio name={`question-${question.id}-part-${part.id}`} value={option.key} checked={value === option.key} onChange={() => update(part.id, option.key)} />}
-                        {option.contentBlocks.some((block) => block.contentType === "image" && block.altText === "來源數學公式")
+                        {hasStructuredContent(option.contentBlocks)
                             ? <span className="question-inline-formula-flow"><OrderedPublicContent blocks={option.contentBlocks} fallbackText={option.label} /></span>
                             : <span><BopomofoText text={option.label} /><PublicContent blocks={option.contentBlocks} duplicateText={option.label} /></span>}
                     </label>)}

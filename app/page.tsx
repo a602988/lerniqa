@@ -6,20 +6,22 @@ import {
     DialogHeader, DialogTitle, DialogTrigger, Dropdown, DropdownCheckboxItem, DropdownContent, DropdownIndicator,
     DropdownItem, DropdownLabel, DropdownRadioGroup, DropdownRadioItem, DropdownSeparator,
     DropdownSub, DropdownSubContent, DropdownSubTrigger, DropdownTrigger, FormField, Input,
-    NativeSelect, Progress, Radio, Tabs, TabsContent, TabsList, TabsTrigger,
+    Progress, Radio, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@keel-design/ui";
 import {
     ArrowLeft, ArrowRight, BarChart3, BookOpen, Bookmark, CalendarDays, CheckCircle2, ClipboardCheck,
-    ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, FileUp, Flame, GraduationCap, Image as ImageIcon, Link2, LogIn, LogOut,
+    ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, FilePlus2, FileUp, Flame, GraduationCap, Image as ImageIcon, LogIn, LogOut,
     FolderInput, ListChecks, Menu, Pause, Pencil, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Sparkles, Target, Trash2, UploadCloud, UserCheck, UserPlus, Users, X, XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ChangeEvent, DragEvent, Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HandwritingPad } from "./components/handwriting-pad";
+import { AppSelect as NativeSelect } from "./components/app-select";
 import { hasCompleteAnswerSlots } from "./lib/answer-slots";
 import { BopomofoText } from "./components/bopomofo-text";
 import { LerniqaLogo, LerniqaMark } from "./components/lerniqa-mark";
+import { useAppRouter } from "./components/navigation-feedback";
 import { MathFormula } from "./components/math-formula";
 import { QuestionFilterPanel } from "./components/question-filter-panel";
 import { LearningBookWorkspace } from "./components/learning-book-workspace";
@@ -42,7 +44,7 @@ import { getSubjectUnitProgress } from "./lib/subject-progress";
 import { resolvePracticeReturnDestination, type PracticeReturnTarget } from "./lib/practice-return-navigation";
 import { formatNumberedReferenceAnswers, reflowNumberedExplanation, tokenizePromptBlanks } from "./lib/question-presentation";
 import {
-    findEducationStage,
+    findEducationStageByGradeCode,
     type EducationCatalog,
     type EducationStage,
 } from "./lib/education-catalog-contract";
@@ -51,8 +53,9 @@ import {
     broadcastAuthSessionExpired,
     isAuthSessionContextStorageEvent,
     isAuthSessionStorageEvent,
+    logoutAuthSession,
 } from "./lib/auth-session-client";
-import { PersistedQuestionFields, PersistedQuestionPromptContent } from "./components/persisted-question-fields";
+import { PersistedContentBlocks, PersistedQuestionFields, PersistedQuestionPromptContent } from "./components/persisted-question-fields";
 import { CORRECTION_ANSWER_HINT, CORRECTION_ANSWER_PLACEHOLDER, isCorrectionQuestion } from "./lib/question-answer-guidance";
 import { adaptPracticeAttempt, adaptPracticeQuestion, formatPracticeResponse, parsePracticeAnswers, practiceRouteId } from "./lib/practice-catalog-adapter";
 import { handwritingRecognitionModeForLabel } from "./lib/handwriting-recognition.mjs";
@@ -63,6 +66,7 @@ import {
     enablePracticeLearnerSubject,
     getPersistedQuestionReferenceAnswers,
     getPersistedPracticeSession,
+    invalidatePersistedPracticeCatalog,
     isDeterministicPracticeApiError,
     isPracticeSessionExpired,
     loadEducationCatalog,
@@ -112,6 +116,66 @@ type RecommendationPreviewState = {
     result?: LocalPracticeRecommendationResult;
     error?: string;
 };
+
+type BootstrapPhase = "account" | "workspace" | "session";
+type PracticeHistoryStatus = "idle" | "loading" | "ready" | "error";
+
+const BOOTSTRAP_PHASE_COPY: Record<BootstrapPhase, { title: string; description: string }> = {
+    account: { title: "正在確認登入狀態", description: "確認完成後會載入目前帳號可使用的學習資料。" },
+    workspace: { title: "正在準備學習總覽", description: "正在讀取學習者設定與正式題庫。" },
+    session: { title: "正在恢復練習進度", description: "正在確認上次練習固定的題目版本與作答位置。" },
+};
+
+/**
+ * 在正式資料完成前保留工作區輪廓，避免使用者失去頁面位置與產品識別。
+ * @param props 目前實際執行的啟動階段。
+ * @returns 與正式工作區尺寸接近的載入骨架。
+ */
+function WorkspaceLoadingScreen({ phase }: { phase: BootstrapPhase }) {
+    const [isSlow, setIsSlow] = useState(false);
+    const copy = BOOTSTRAP_PHASE_COPY[phase];
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => setIsSlow(true), 8_000);
+        return () => window.clearTimeout(timer);
+    }, []);
+
+    return (
+        <main className="bootstrap-page" aria-busy="true" aria-labelledby="bootstrap-title">
+            <div className="bootstrap-shell">
+                <aside className="bootstrap-sidebar" aria-label="正在載入主要選單">
+                    <div className="bootstrap-brand"><LerniqaLogo /><p>智慧題庫學習平台</p></div>
+                    <div className="bootstrap-profile"><Skeleton className="h-12 w-12 rounded-full" /><div><Skeleton className="h-4 w-28" /><Skeleton className="mt-2 h-3 w-36" /></div></div>
+                    <Skeleton className="mt-7 h-11 w-full rounded-xl" />
+                    <div className="bootstrap-nav-skeleton">{Array.from({ length: 5 }, (_, index) => <Skeleton className="h-10 w-full rounded-xl" key={index} />)}</div>
+                    <Skeleton className="bootstrap-tip-skeleton h-20 w-full rounded-2xl" />
+                </aside>
+                <section className="bootstrap-workspace">
+                    <header className="bootstrap-header">
+                        <div className="bootstrap-status" role="status" aria-live="polite">
+                            <span className="bootstrap-status-dot" aria-hidden="true" />
+                            <div><p>學習工作區</p><h1 id="bootstrap-title">{copy.title}</h1><span>{copy.description}</span></div>
+                        </div>
+                        {isSlow && <div className="bootstrap-slow"><p>載入時間比平常久，已保存的資料不會受到影響。</p><Button appearance="outline" size="sm" onClick={() => window.location.reload()}><RotateCcw />重新載入</Button></div>}
+                    </header>
+                    <div className="bootstrap-metrics">{Array.from({ length: 3 }, (_, index) => <div className="bootstrap-card" key={index}><Skeleton className="h-3 w-20" /><Skeleton className="mt-4 h-8 w-24" /><Skeleton className="mt-4 h-3 w-full" /></div>)}</div>
+                    <div className="bootstrap-card bootstrap-primary-card"><div><Skeleton className="h-5 w-36" /><Skeleton className="mt-3 h-3 w-64 max-w-full" /></div><div className="bootstrap-chart-skeleton"><Skeleton /><Skeleton /><Skeleton /><Skeleton /><Skeleton /><Skeleton /></div></div>
+                    <div className="bootstrap-card bootstrap-list-card"><Skeleton className="h-5 w-32" />{Array.from({ length: 3 }, (_, index) => <div className="bootstrap-list-row" key={index}><Skeleton className="h-9 w-9 rounded-xl" /><div><Skeleton className="h-3 w-40 max-w-full" /><Skeleton className="mt-2 h-3 w-28" /></div></div>)}</div>
+                </section>
+                <aside className="bootstrap-summary" aria-label="正在載入學習摘要">
+                    <div className="bootstrap-card"><Skeleton className="h-5 w-28" /><Skeleton className="mt-5 h-20 w-full rounded-2xl" /><Skeleton className="mt-3 h-20 w-full rounded-2xl" /></div>
+                    <div className="bootstrap-card"><Skeleton className="h-5 w-24" /><Skeleton className="mt-5 h-3 w-full" /><Skeleton className="mt-3 h-3 w-4/5" /></div>
+                </aside>
+            </div>
+        </main>
+    );
+}
+
+interface AccountPlanUsage {
+    plan: { code: string; name: string };
+    ownedQuestions: { used: number; limit: number | null };
+    dailyPractice: { used: number; limit: number | null; resetsAt: string };
+}
 
 interface QuestionFlowProps {
     serverQuestion?: LocalPracticeQuestion;
@@ -368,7 +432,7 @@ interface CreatableSelectFieldProps {
     onCustomChange: (value: string) => void;
 }
 
-type AuthMode = "login" | "register" | "logout" | "forgot-password" | "quick-register" | "account-link";
+type AuthMode = "login" | "register";
 
 type ImportDifficulty = "" | "易" | "中" | "難";
 interface DifficultyMix {
@@ -520,15 +584,11 @@ const QUESTION_OVERVIEW_PATH = "/questions";
 const AUTH_PATHS: Record<AuthMode, string> = {
     login: "/login",
     register: "/register",
-    logout: "/logout",
-    "forgot-password": "/forgot-password",
-    "quick-register": "/quick-register",
-    "account-link": "/account-link",
 };
 const CUSTOM_IMPORT_VALUE = "__custom__";
 const CUSTOM_SUBJECT_VALUE = "__custom_subject__";
 const IMPORT_DIFFICULTY_OPTIONS = [
-    { value: "", label: "交由 AI 分析" },
+    { value: "", label: "請選擇難易度" },
     { value: "易", label: "易" },
     { value: "中", label: "中" },
     { value: "難", label: "難" },
@@ -576,7 +636,7 @@ const IMPORT_DEMO_QUESTIONS = [
     { code: "05010001", prompt: "銀「ㄅㄧˋ」：", answer: "幣", subject: "國語" as const, version: "翰林", chapter: "第一課", unit: "夏夜", topic: "寫出國字、注音", difficulty: "易" as const, source: "翰林國語第一冊 · 夏夜 · 試題" },
 ];
 
-/** 建立可在確認後寫入 JSON 題庫的模擬辨識資料。 */
+/** 建立匯入前供使用者逐題確認的草稿。 */
 function createImportDrafts(images: Array<{ name: string; url: string }> = []): ImportQuestionDraft[] {
     return IMPORT_DEMO_QUESTIONS.map((question, index) => ({
         id: `import-${index + 1}`,
@@ -1212,6 +1272,11 @@ function formatReferenceExplanations(referenceAnswers: readonly LocalPracticeRef
         .join("\n\n"));
 }
 
+function referenceExplanationBlocks(referenceAnswers: readonly LocalPracticeReferenceAnswer[]) {
+    const blocks = new Map(referenceAnswers.flatMap((reference) => reference.explanationBlocks).map((block) => [block.id, block]));
+    return [...blocks.values()].sort((first, second) => first.position - second.position);
+}
+
 /** 顯示題目總覽與匯入紀錄共用的滿版只讀題目內容。 */
 function QuestionReview({ question, serverQuestion, index, total, title, headerActions, onStartPractice, serviceError, onBack, onPrevious, onNext }: QuestionReviewProps) {
     const [referenceAnswers, setReferenceAnswers] = useState<LocalPracticeReferenceAnswer[]>([]);
@@ -1219,6 +1284,7 @@ function QuestionReview({ question, serverQuestion, index, total, title, headerA
     const questionNumber = index >= 0 ? index + 1 : 1;
     const progress = total ? (questionNumber / total) * 100 : 0;
     const referenceExplanation = formatReferenceExplanations(referenceAnswers);
+    const explanationBlocks = referenceExplanationBlocks(referenceAnswers);
 
     useEffect(() => {
         let active = true;
@@ -1275,9 +1341,11 @@ function QuestionReview({ question, serverQuestion, index, total, title, headerA
                                 <strong><BopomofoText text={serverQuestion
                                     ? referenceAnswers.length ? formatNumberedReferenceAnswers(referenceAnswers) : referenceAnswerStatus
                                     : formatAnswer(question, question.sourceAnswer ?? question.answer)} /></strong>
-                                {serverQuestion && referenceExplanation && <div className="question-review-explanation">
+                                {serverQuestion && (explanationBlocks.length > 0 || referenceExplanation) && <div className="question-review-explanation">
                                     <p className="question-detail-label">解析</p>
-                                    <p className="question-review-explanation-text"><BopomofoText text={referenceExplanation} /></p>
+                                    {explanationBlocks.length > 0
+                                        ? <PersistedContentBlocks blocks={explanationBlocks} className="question-review-explanation-text" />
+                                        : <p className="question-review-explanation-text"><BopomofoText text={referenceExplanation} /></p>}
                                 </div>}
                                 <ContentImages blocks={question.blocks} placement="answer" />
                             </div>
@@ -1320,14 +1388,10 @@ function WorkspaceHeading({ icon: Icon, title, description }: WorkspaceHeadingPr
 
 /** 將舊工作區帳號路徑導向已連接 PostgreSQL 的正式帳號頁。 */
 function AuthScreen({ mode }: { mode: AuthMode }) {
-    const router = useRouter();
+    const router = useAppRouter();
     const titles: Record<AuthMode, { title: string; description: string }> = {
         login: { title: "登入 Lerniqa", description: "使用電子郵件與密碼登入，繼續目前的學習進度。" },
-        register: { title: "建立帳號", description: "建立帳號時會同步建立學習者資料並連到個人練習紀錄。" },
-        logout: { title: "登出帳號", description: "登出後，此裝置將回到登入頁。" },
-        "forgot-password": { title: "重設密碼", description: "郵件寄送尚未啟用，因此目前不能安全地重設密碼。" },
-        "quick-register": { title: "第三方登入尚未開放", description: "目前請使用電子郵件與密碼建立帳號。" },
-        "account-link": { title: "帳號綁定尚未開放", description: "目前只有電子郵件與密碼登入，不會建立假的第三方綁定。" },
+        register: { title: "建立帳號", description: "先使用電子郵件與密碼建立帳號，再依引導設定身分與學習者資料。" },
     };
     const current = titles[mode];
 
@@ -1349,10 +1413,10 @@ function AuthScreen({ mode }: { mode: AuthMode }) {
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6 sm:p-8">
                     <div className="grid gap-3 text-center">
-                        <div className="auth-logout-icon">{mode === "register" ? <UserPlus /> : mode === "logout" ? <LogOut /> : <LogIn />}</div>
+                        <div className="auth-logout-icon">{mode === "register" ? <UserPlus /> : <LogIn />}</div>
                         <div><CardTitle>{current.title}</CardTitle><CardDescription className="mt-2">{current.description}</CardDescription></div>
                     </div>
-                    <Button onClick={() => router.push("/account")}>{mode === "register" ? "前往建立帳號" : mode === "logout" ? "前往帳號中心登出" : "前往安全帳號頁"}<ArrowRight /></Button>
+                    <Button onClick={() => router.push("/account")}>{mode === "register" ? "前往建立帳號" : "前往安全帳號頁"}<ArrowRight /></Button>
                     <Button appearance="ghost" tone="muted" onClick={() => router.push(SECTION_PATHS.overview)}>返回學習工作區</Button>
                 </CardContent>
             </Card>
@@ -1416,6 +1480,9 @@ function QuestionFlow(props: QuestionFlowProps) {
     const referenceExplanation = feedback?.referenceAnswers?.length
         ? formatReferenceExplanations(feedback.referenceAnswers)
         : "";
+    const explanationBlocks = feedback?.referenceAnswers?.length
+        ? referenceExplanationBlocks(feedback.referenceAnswers)
+        : [];
     const canAnalyzeHandwriting = needsHandwritingRecognition && Boolean(serverQuestion && handwritingPart);
 
     handwritingRef.current = handwriting;
@@ -1519,7 +1586,7 @@ function QuestionFlow(props: QuestionFlowProps) {
                 status: "error",
                 message: error instanceof Error
                     ? error.message
-                    : "本機 AI 目前無法使用，可直接送出並等待人工批改。",
+                    : "手寫辨識失敗，可直接送出並等待人工批改。",
             });
         }
         finally {
@@ -1573,7 +1640,9 @@ function QuestionFlow(props: QuestionFlowProps) {
                         {feedbackAnswer && <p className="practice-feedback-answer"><span>{serverQuestion ? "參考答案" : "正確答案"}</span><strong><BopomofoText text={feedbackAnswer} /></strong></p>}
                         {feedback.correct !== null && <ContentImages blocks={question.blocks} placement="answer" />}
                         {feedback.correct !== null && (serverQuestion
-                            ? referenceExplanation ? <div className="practice-feedback-explanation"><span>解析</span><p><BopomofoText text={referenceExplanation} /></p></div> : null
+                            ? explanationBlocks.length > 0 || referenceExplanation ? <div className="practice-feedback-explanation"><span>解析</span>{explanationBlocks.length > 0
+                                ? <PersistedContentBlocks blocks={explanationBlocks} />
+                                : <p><BopomofoText text={referenceExplanation} /></p>}</div> : null
                             : <p className="practice-feedback-explanation"><BopomofoText text={question.explanation} /></p>)}
                     </aside>}
                     <div className="practice-question-meta"><QuestionConditions question={question} /></div>
@@ -1606,7 +1675,7 @@ function QuestionFlow(props: QuestionFlowProps) {
 /** Lerniqa 多科目學習工作區。 */
 export default function Home() {
     const pathname = usePathname();
-    const router = useRouter();
+    const router = useAppRouter();
     const [learners, setLearners] = useState<Learner[]>([]);
     const [activeLearnerId, setActiveLearnerId] = useState("");
     const [attemptsByLearner, setAttemptsByLearner] = useState<Record<string, Attempt[]>>({});
@@ -1617,6 +1686,9 @@ export default function Home() {
     const [learningBookBusy, setLearningBookBusy] = useState(false);
     const learningBookSaveRef = useRef<{ fingerprint: string; key: string; book?: LearningBookDto } | undefined>(undefined);
     const [wrongReviewQueue, setWrongReviewQueue] = useState<LocalPracticeWrongQueueItem[]>([]);
+    const [practiceHistoryStatus, setPracticeHistoryStatus] = useState<PracticeHistoryStatus>("idle");
+    const [practiceHistoryReloadToken, setPracticeHistoryReloadToken] = useState(0);
+    const practiceHistoryKeyRef = useRef("");
     const [recommendationQueueRefreshing, setRecommendationQueueRefreshing] = useState(false);
     const [recommendationPreviews, setRecommendationPreviews] = useState<Record<number, RecommendationPreviewState>>({});
     const [recommendationNotice, setRecommendationNotice] = useState("");
@@ -1632,6 +1704,7 @@ export default function Home() {
     const [practiceReloadToken, setPracticeReloadToken] = useState(0);
     const [practiceServiceError, setPracticeServiceError] = useState("");
     const [practiceBusy, setPracticeBusy] = useState(false);
+    const [accountPlanUsage, setAccountPlanUsage] = useState<AccountPlanUsage>();
     const practiceRequestRef = useRef(false);
     const sessionRequestRef = useRef<{ fingerprint: string; sessionId: string } | undefined>(undefined);
     const attemptRequestRef = useRef<{
@@ -1707,6 +1780,7 @@ export default function Home() {
     const [scheduleStatus, setScheduleStatus] = useState<"pending" | "completed">("pending");
     const [selectedPracticeRecordId, setSelectedPracticeRecordId] = useState("");
     const [isHydrated, setIsHydrated] = useState(false);
+    const [bootstrapPhase, setBootstrapPhase] = useState<BootstrapPhase>("account");
     const [storageError, setStorageError] = useState("");
     const [avatarError, setAvatarError] = useState("");
     const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
@@ -1729,6 +1803,7 @@ export default function Home() {
     const [subjectSettingStatus, setSubjectSettingStatus] = useState("");
     const createLearnerRequestRef = useRef<{ fingerprint: string; clientRequestId: string } | undefined>(undefined);
     const [roleSwitchBusy, setRoleSwitchBusy] = useState(false);
+    const [logoutBusy, setLogoutBusy] = useState(false);
     const [identityRole, setIdentityRole] = useState<PracticeAccountRole>("learner");
     const [identityPassword, setIdentityPassword] = useState("");
     const [identityStatus, setIdentityStatus] = useState("");
@@ -1749,6 +1824,7 @@ export default function Home() {
     const clearAuthenticatedWorkspace = useCallback((message: string) => {
         // Account, learner, questions, attempts, and the active session are one privacy boundary.
         // A 401 from any operation must purge all of them before redirecting a shared-device tab.
+        invalidatePersistedPracticeCatalog();
         setPracticeAccount(undefined);
         setPersistedQuestions(new Map());
         setSessionPinnedQuestions(new Map());
@@ -1851,6 +1927,22 @@ export default function Home() {
     const learnerQuestions = useMemo(() => baseQuestions.filter((question) => (!persistedQuestions.has(question.id) || activeLearnerId === persistedLearnerId)
         && (activeLearner.educationStatus !== "enrolled" || question.grade === activeLearner.grade)
         && availableSubjects.includes(question.subject)), [activeLearner.educationStatus, activeLearner.grade, activeLearnerId, persistedLearnerId, persistedQuestions, availableSubjects, baseQuestions]);
+
+    useEffect(() => {
+        let active = true;
+        if (!persistedLearnerId) {
+            setAccountPlanUsage(undefined);
+            return () => { active = false; };
+        }
+        void practiceApi<AccountPlanUsage>("/api/v1/account/plan")
+            .then((usage) => {
+                if (active) setAccountPlanUsage(usage);
+            })
+            .catch(() => {
+                if (active) setAccountPlanUsage(undefined);
+            });
+        return () => { active = false; };
+    }, [persistedLearnerId, practiceReloadToken]);
 
     useEffect(() => {
         let active = true;
@@ -2210,9 +2302,12 @@ export default function Home() {
         let active = true;
 
         async function loadBootstrap() {
+            setBootstrapPhase("account");
             try {
                 const persisted = await loadPersistedPractice();
                 if (!active) return;
+                setBootstrapPhase("workspace");
+                setPracticeHistoryStatus("idle");
                 setSessionPinnedQuestions(new Map());
                 const mapped = new Map(persisted.questions.map((question) => [practiceRouteId(question.id), question]));
                 if (mapped.size !== persisted.questions.length) throw new Error("題目路徑識別碼重複，請聯絡管理者。");
@@ -2272,13 +2367,12 @@ export default function Home() {
                 setQuestions(adaptedQuestions);
                 setLearners(accessibleLearners);
                 setActiveLearnerId(learner.id);
-                const adaptedAttempts = persisted.attempts.map((attempt) => adaptPracticeAttempt(attempt)).reverse();
-                setAttemptsByLearner({ [learner.id]: adaptedAttempts });
-                setPracticeSessionsByLearner({ [learner.id]: persisted.sessions });
+                setAttemptsByLearner({ [learner.id]: [] });
+                setPracticeSessionsByLearner({ [learner.id]: [] });
                 setPlansByLearner({ [learner.id]: normalizedPlan });
                 setSchedulesByLearner({ [learner.id]: [] });
                 setQuestionCollectionsByLearner({ [learner.id]: collections });
-                setWrongReviewQueue(persisted.wrongReviewQueue.items);
+                setWrongReviewQueue([]);
                 setRecommendationQueueRefreshing(false);
                 setRecommendationPreviews({});
                 setRecommendationNotice("");
@@ -2289,6 +2383,7 @@ export default function Home() {
                 setRecommendationSessionKind(null);
                 const resumeSessionId = readPracticeSessionHint(learner.id);
                 if (resumeSessionId) {
+                    setBootstrapPhase("session");
                     try {
                         const restoredResult = await getPersistedPracticeSession(resumeSessionId, true);
                         const restored = restoredResult.session;
@@ -2304,9 +2399,9 @@ export default function Home() {
                         ));
                         if (restorable && restoredQuestionIds.length && currentRevisionsMatch) {
                             setSessionPinnedQuestions(new Map(pinnedQuestions.map((question) => [practiceRouteId(question.id), question])));
-                            const disclosedAttempts = restoredResult.disclosure === "detailed"
+                            const disclosedAttempts: Attempt[] = restoredResult.disclosure === "detailed"
                                 ? restoredResult.attempts.map((attempt) => adaptPracticeAttempt(attempt))
-                                : adaptedAttempts.filter((attempt) => attempt.sessionId === restored.id);
+                                : [];
                             const disclosedByItem = new Map(disclosedAttempts.flatMap((attempt) => (
                                 attempt.sessionItemId ? [[attempt.sessionItemId, attempt] as const] : []
                             )));
@@ -2409,6 +2504,30 @@ export default function Home() {
         loadBootstrap();
         return () => { active = false; };
     }, [clearAuthenticatedWorkspace, practiceReloadToken]);
+
+    useEffect(() => {
+        if (!isHydrated || !persistedLearnerId || (section !== "overview" && section !== "mistakes")) return;
+        const historyKey = `${persistedLearnerId}:${practiceReloadToken}:${practiceHistoryReloadToken}`;
+        if (practiceHistoryKeyRef.current === historyKey) return;
+        practiceHistoryKeyRef.current = historyKey;
+        let active = true;
+        setPracticeHistoryStatus("loading");
+        void loadPersistedPracticeHistory()
+            .then((history) => {
+                if (!active) return;
+                const adaptedAttempts = history.attempts.map((attempt) => adaptPracticeAttempt(attempt)).reverse();
+                setAttemptsByLearner({ [persistedLearnerId]: adaptedAttempts });
+                setPracticeSessionsByLearner({ [persistedLearnerId]: history.sessions });
+                setWrongReviewQueue(history.wrongReviewQueue.items);
+                setPracticeHistoryStatus("ready");
+            })
+            .catch((error) => {
+                if (!active) return;
+                setPracticeHistoryStatus("error");
+                setRecommendationNotice(error instanceof Error ? error.message : "目前無法讀取練習紀錄。");
+            });
+        return () => { active = false; };
+    }, [isHydrated, persistedLearnerId, practiceHistoryReloadToken, practiceReloadToken, section]);
 
     useEffect(() => {
         if (!isHydrated || pathname !== "/results") return;
@@ -2794,7 +2913,7 @@ export default function Home() {
 
     function openCreateLearner() {
         if (!canCreateLearner) return;
-        const stage = findEducationStage(educationCatalog, activeAccountLearner?.gradeCode)
+        const stage = findEducationStageByGradeCode(educationCatalog, activeAccountLearner?.gradeCode)
             ?? educationCatalog?.stages[0];
         setLearnerProfileDraft({
             displayName: "",
@@ -2813,7 +2932,7 @@ export default function Home() {
 
     function openEditLearner(profile: PracticeAccountLearner) {
         if (!profile.canManageSettings) return;
-        const stage = findEducationStage(educationCatalog, profile.gradeCode)
+        const stage = findEducationStageByGradeCode(educationCatalog, profile.gradeCode)
             ?? educationCatalog?.stages[0];
         setLearnerProfileDraft({
             learnerId: profile.id,
@@ -2914,23 +3033,29 @@ export default function Home() {
         finally { setSubjectSettingBusyCode(""); }
     }
 
-    /** 將目錄中的科目加入目前學習者，成功後由伺服器資料建立對應版本列。 */
+    /** 將目錄科目或帳號自訂科目加入目前學習者。 */
     async function addPracticeLearnerSubject() {
         if (!activeAccountLearner?.canManageSettings || !subjectChoice || subjectSettingBusyCode) return;
+        const subjectName = normalizeSubjectLabel(subjectDraft);
+        if (subjectChoice === CUSTOM_SUBJECT_VALUE && !subjectName) {
+            setSubjectError("請輸入科目名稱。");
+            return;
+        }
         setSubjectSettingBusyCode("add-subject");
         setSubjectSettingStatus("");
         setSubjectError("");
         try {
-            const { account } = await enablePracticeLearnerSubject({
-                learnerId: activeAccountLearner.id,
-                subjectCode: subjectChoice,
-            });
+            const subjectInput = subjectChoice === CUSTOM_SUBJECT_VALUE
+                ? { action: "create" as const, learnerId: activeAccountLearner.id, subjectName }
+                : { action: "enable" as const, learnerId: activeAccountLearner.id, subjectCode: subjectChoice };
+            const { account } = await enablePracticeLearnerSubject(subjectInput);
             const subject = activeAccountLearner.availableSubjects.find((candidate) => candidate.code === subjectChoice);
             setPracticeAccount(account);
             broadcastAuthSessionContextChanged();
             setSubjectDialogOpen(false);
             setSubjectChoice("");
-            setSubjectSettingStatus(`${normalizeSubjectLabel(subject?.name ?? "科目")}已新增。`);
+            setSubjectDraft("");
+            setSubjectSettingStatus(`${subjectChoice === CUSTOM_SUBJECT_VALUE ? subjectName : normalizeSubjectLabel(subject?.name ?? "科目")}已新增。`);
             setPracticeServiceError("");
             setIsHydrated(false);
             setPracticeReloadToken((current) => current + 1);
@@ -2951,6 +3076,25 @@ export default function Home() {
         setRolePassword("");
         setRoleStatus("");
         setRoleDialogOpen(true);
+    }
+
+    /**
+     * 登出目前帳號，只有伺服器確認成功後才清除工作區並前往登入頁。
+     * @returns 登出流程結束後完成。
+     */
+    async function logoutWorkspace() {
+        if (logoutBusy) return;
+        setLogoutBusy(true);
+        setStorageError("");
+        try {
+            await logoutAuthSession();
+        }
+        catch (error) {
+            setStorageError(error instanceof Error ? error.message : "目前無法登出，請稍後再試。");
+        }
+        finally {
+            setLogoutBusy(false);
+        }
     }
 
     /** 以目前帳號密碼重新確認後，切換已授權的操作角色。 */
@@ -3868,6 +4012,7 @@ export default function Home() {
                     };
                 attemptRequestRef.current = snapshot;
                 const result = await submitPersistedPracticeAttempt(snapshot);
+                setPracticeReloadToken((current) => current + 1);
                 persistedCompletedAt = result.session.completedAt;
                 persistedSessionStatus = result.session.status;
                 const localAttempt: Attempt = {
@@ -4295,7 +4440,7 @@ export default function Home() {
         setFileNames(["貼上文字"]);
         setImportDrafts(createImportDrafts());
         setFileError("");
-        setImportStatus("已建立模擬辨識結果；正式版本會由 AI 依原文拆分全部題目。");
+        setImportStatus("已讀取題目，請確認內容與分類後再匯入。");
     }
 
     /** 更新單筆待校正題目的欄位。 */
@@ -4441,7 +4586,7 @@ export default function Home() {
             || !draft.difficulty
             || !(draft.source === CUSTOM_IMPORT_VALUE ? draft.customSource.trim() : draft.source));
         if (missingMetadata) {
-            setFileError("目前尚未串接 AI，請先確認每題的科目、版本、章節、單元、主題、難易度與來源。");
+            setFileError("請確認每題的科目、版本、章節、單元、主題、難易度與來源。");
             return;
         }
 
@@ -4497,11 +4642,10 @@ export default function Home() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
-            const result = await response.json() as { data?: { batch: ImportBatch; questions: Question[] }; error?: { message: string } };
+            const result = await response.json() as { data?: { importedCount: number }; error?: { message: string } };
             if (!response.ok || !result.data) throw new Error(result.error?.message ?? "題目寫入失敗。");
-            setQuestions((current) => [...current, ...result.data!.questions]);
-            setImports((current) => [...current, result.data!.batch]);
-            setImportStatus(`已將 ${result.data.questions.length} 題加入「${result.data.batch.bookName ?? "系統預設"}」。`);
+            setImportStatus(`已將 ${result.data.importedCount} 題加入「${selectedBook?.name ?? "系統預設"}」。`);
+            setPracticeReloadToken((current) => current + 1);
             setFileNames([]);
             setImportDrafts([]);
             setImportText("");
@@ -4549,7 +4693,11 @@ export default function Home() {
         setRecommendationQueueRefreshing(true);
         loadPersistedPracticeHistory().then((history) => {
             if (!active) return;
+            const adaptedAttempts = history.attempts.map((attempt) => adaptPracticeAttempt(attempt)).reverse();
+            setAttemptsByLearner({ [persistedLearnerId]: adaptedAttempts });
+            setPracticeSessionsByLearner({ [persistedLearnerId]: history.sessions });
             setWrongReviewQueue(history.wrongReviewQueue.items);
+            setPracticeHistoryStatus("ready");
         }).catch((error) => {
             if (active) setRecommendationNotice(error instanceof Error ? error.message : "目前無法更新錯題延伸來源。");
         }).finally(() => {
@@ -4679,6 +4827,18 @@ export default function Home() {
         return renderOverview();
     }
 
+    /** 顯示按需讀取練習紀錄時的狀態。 */
+    function renderPracticeHistoryStatus() {
+        if (practiceHistoryStatus === "ready") return null;
+        return <Card className="workspace-card border-border/80 shadow-sm">
+            <CardContent className="workspace-surface m-5 rounded-2xl p-8 text-center" aria-live="polite">
+                {practiceHistoryStatus === "error"
+                    ? <><p className="font-bold">目前無法讀取練習紀錄</p><p className="mt-1 text-sm text-muted-foreground">題庫與練習功能仍可使用，可重新讀取成果與錯題資料。</p><Button className="mt-4" appearance="outline" onClick={() => setPracticeHistoryReloadToken((current) => current + 1)}><RotateCcw />重新讀取</Button></>
+                    : <><p className="font-bold">正在讀取練習紀錄</p><p className="mt-1 text-sm text-muted-foreground">工作區已可使用，成果與錯題資料載入後會自動顯示。</p></>}
+            </CardContent>
+        </Card>;
+    }
+
     /** 顯示考前總覽。 */
     function renderOverview() {
         const subjectProgress = getSubjectUnitProgress(learnerQuestions, latestAttempts);
@@ -4704,7 +4864,8 @@ export default function Home() {
                         <LearningScene />
                     </div>
                 </section>
-                <Card className="workspace-card border-border/80 shadow-sm">
+                {practiceHistoryStatus !== "ready" && renderPracticeHistoryStatus()}
+                {practiceHistoryStatus === "ready" && <Card className="workspace-card border-border/80 shadow-sm">
                     <CardHeader><WorkspaceHeading icon={BarChart3} title="題庫作答進度" description="切換科目查看各單元進度，每題只採用最新一次作答。" /></CardHeader>
                     <CardContent>
                         {!subjectProgress.length && <p className="text-sm text-muted-foreground" role="status">目前沒有可統計的題庫科目。</p>}
@@ -4720,8 +4881,8 @@ export default function Home() {
                             </TabsContent>)}
                         </Tabs>}
                     </CardContent>
-                </Card>
-                {renderLearningHistory()}
+                </Card>}
+                {practiceHistoryStatus === "ready" && renderLearningHistory()}
             </div>
         );
     }
@@ -5227,7 +5388,7 @@ export default function Home() {
             ...availableImportBooks.map((book) => ({ value: book.id, label: book.name })),
         ];
         const importSubjectOptions = [
-            { value: "", label: "交由 AI 分析" },
+            { value: "", label: "請選擇難易度" },
             ...importSubjects.map((subject) => ({ value: subject, label: `${subject} · ${activeLearner.bookVersions[subject]}版` })),
         ];
 
@@ -5243,6 +5404,11 @@ export default function Home() {
             <Card className="workspace-card border-border/80 shadow-sm">
                 <CardHeader><WorkspaceHeading icon={FileUp} title="題目匯入" description="選擇題本並加入檔案或文字；逐題確認後才會寫入題庫。" /></CardHeader>
                 <CardContent>
+                    {accountPlanUsage && <div className="mb-4 flex flex-wrap gap-2" aria-label="目前方案額度">
+                        <Badge tone="primary">{accountPlanUsage.plan.name}</Badge>
+                        <Badge tone="muted">自建題目 {accountPlanUsage.ownedQuestions.used}／{accountPlanUsage.ownedQuestions.limit ?? "不限"}</Badge>
+                        <Badge tone="muted">今日作答 {accountPlanUsage.dailyPractice.used}／{accountPlanUsage.dailyPractice.limit ?? "不限"}</Badge>
+                    </div>}
                     <Tabs className="bank-view-tabs" appearance="line" value={bankView} onValueChange={(value) => setBankView(value as "create" | "history")}>
                         <TabsList className="bank-view-tab-list" aria-label="切換題目匯入功能">
                             <TabsTrigger value="create"><Plus />新增題目</TabsTrigger>
@@ -5281,7 +5447,7 @@ export default function Home() {
                                 </label>
                             </TabsContent>
                             <TabsContent value="text" className="mt-4">
-                                <FormField label="題目文字" description="可一次貼上多題；正式版本會依原文順序拆題。">
+                                <FormField label="題目文字" description="可一次貼上多題，匯入前請逐題確認內容與順序。">
                                     <textarea className="keel-textarea" rows={7} value={importText} placeholder="貼上題目、選項與答案；沒有標示科目或章節也可以。" onChange={(event) => setImportText(event.target.value)} />
                                 </FormField>
                                 <div className="mt-3 flex justify-end"><Button appearance="outline" disabled={!importText.trim()} onClick={analyzeImportText}><Sparkles />解析文字</Button></div>
@@ -5294,14 +5460,10 @@ export default function Home() {
                         <div className="workspace-surface grid gap-4 rounded-2xl p-5">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div><p className="font-bold">題目校正</p><p className="text-xs text-muted-foreground">{fileNames.join("、")}</p></div>
-                                <div className="flex items-center gap-2"><Badge tone="warning">模擬辨識</Badge><Badge tone="primary">共 {importDrafts.length} 題</Badge></div>
+                                <div className="flex items-center gap-2"><Badge tone="primary">共 {importDrafts.length} 題</Badge></div>
                             </div>
                             <div className="rounded-xl border border-border bg-white p-4">
                                 <FormField label="適用年級" description="自動帶入目前學習者年級，仍可在寫入前修改。"><NativeSelect options={educationCatalog?.stages.flatMap((stage) => stage.grades.map((grade) => ({ value: grade.name, label: `${stage.name} · ${grade.name}` }))) ?? GRADE_OPTIONS} value={importGrade} onChange={(event) => changeImportGrade(event.target.value)} /></FormField>
-                            </div>
-                            <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
-                                <Sparkles className="mt-0.5 shrink-0 text-primary" size={17} />
-                                <p>目前先帶入模擬 AI 建議。科目、版本、章節、單元、主題、難易度與來源都必須確認後才可寫入；各分類選單底部都能新增項目。</p>
                             </div>
                             <div className="grid gap-4">
                                 {importDrafts.map((draft, index) => {
@@ -5358,7 +5520,7 @@ export default function Home() {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <FormField label="題目附圖（選填）" description="若 AI 沒有配對圖片，可在這裡補上。"><Input type="file" accept=".jpg,.jpeg,.png" onChange={(event) => replaceImportImage(draft.id, event)} /></FormField>
+                                                        <FormField label="題目附圖（選填）" description="需要補充題目圖片時，可在這裡加入。"><Input type="file" accept=".jpg,.jpeg,.png" onChange={(event) => replaceImportImage(draft.id, event)} /></FormField>
                                                     )}
                                                 </div>
                                                 <div className="sm:col-span-2">
@@ -5383,9 +5545,8 @@ export default function Home() {
                                 })}
                             </div>
                             <div className="border-t border-border pt-4">
-                                <Button className="w-full" disabled title="正式匯入需先完成帳號授權與來源檔案管線">正式匯入尚未開放</Button>
-                                <p className="text-sm text-muted-foreground">目前可校正預覽，但不會把題目寫入未隔離的 JSON。既有 PostgreSQL 題庫與作答不受影響。</p>
-                                <p className="mt-2 text-center text-xs text-muted-foreground">這項匯入工具將資料寫入本機 JSON，尚未接入正式 PostgreSQL 題庫；OCR 與 AI 分析仍未連接。</p>
+                                <Button className="w-full" disabled={isImporting || !importDrafts.length} onClick={() => void finishImportDemo()}>{isImporting ? "正在匯入…" : "確認並匯入題目"}</Button>
+                                <p className="mt-2 text-center text-xs text-muted-foreground">免費方案最多保留 100 題自建題目；封存題目後會釋出額度。</p>
                             </div>
                         </div>
                     )}
@@ -5461,6 +5622,7 @@ export default function Home() {
 
     /** 顯示個人與社群錯題排行。 */
     function renderMistakes() {
+        if (practiceHistoryStatus !== "ready") return renderPracticeHistoryStatus();
         /** 套用錯題篩選並清除隱藏題目的勾選狀態。 */
         function changeMistakeFilters(filters: QuestionFilters) {
             setMistakeFilters(filters);
@@ -5468,7 +5630,7 @@ export default function Home() {
             setSelectedMistakes([]);
         }
 
-        /** 清除錯題英雄榜的所有篩選與勾選狀態。 */
+        /** 清除錯題排行榜的所有篩選與勾選狀態。 */
         function resetMistakeFilters() {
             setMistakeFilters(normalizeQuestionFilters(questionFilterBaseline, rankingQuestions, activeQuestionCollections));
             setMistakePage(1);
@@ -5499,7 +5661,7 @@ export default function Home() {
         return (
             <Card className="workspace-card border-border/80 shadow-sm">
                 <CardHeader>
-                    <WorkspaceHeading icon={Target} title="錯題英雄榜" description="查看目前學習者的累計錯題，或比較系統內全部學習者的社群錯題排行。" />
+                    <WorkspaceHeading icon={Target} title="錯題排行榜" description="查看目前學習者的累計錯題，或比較系統內全部學習者的社群錯題排行。" />
                 </CardHeader>
                 <CardContent className="mistake-content grid gap-5 p-5 sm:p-7">
                     {recommendationNotice && <p className="rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="status">{recommendationNotice}</p>}
@@ -5753,30 +5915,32 @@ export default function Home() {
                         </section>
                         {practiceAccount ? <section className="settings-section">
                             <div className="settings-section-heading">
-                                <div><h3>科目與版本</h3><p>新增科目後，每個科目會各自顯示一列版本設定。</p></div>
-                                <div className="settings-section-actions"><Badge tone="muted">資料庫設定</Badge>{activeAccountLearner?.canManageSettings && <Button appearance="outline" onClick={() => { setSubjectChoice(""); setSubjectError(""); setSubjectDialogOpen(true); }}><Plus />新增科目</Button>}</div>
+                                <div><h3>科目與版本</h3><p>可加入目錄科目或建立自己的科目；每科會分開保存版本設定。</p></div>
+                                <div className="settings-section-actions"><Badge tone="muted">資料庫設定</Badge>{activeAccountLearner?.canManageSettings && <Button appearance="outline" onClick={() => { setSubjectChoice(""); setSubjectDraft(""); setSubjectError(""); setSubjectDialogOpen(true); }}><Plus />新增科目</Button>}</div>
                             </div>
                             <Dialog open={subjectDialogOpen} onOpenChange={(open) => {
                                 setSubjectDialogOpen(open);
-                                if (!open) { setSubjectChoice(""); setSubjectError(""); }
+                                if (!open) { setSubjectChoice(""); setSubjectDraft(""); setSubjectError(""); }
                             }}>
                                 <DialogContent size="sm" closeLabel="關閉新增科目">
-                                    <DialogHeader><DialogTitle>新增科目</DialogTitle><DialogDescription>選擇一個尚未啟用、且適用於目前年級的科目。</DialogDescription></DialogHeader>
+                                    <DialogHeader><DialogTitle>新增科目</DialogTitle><DialogDescription>加入尚未啟用的目錄科目，或建立自己的科目。</DialogDescription></DialogHeader>
                                     <DialogBody className="grid gap-4">
-                                        {activeAccountLearner?.availableSubjects.length ? <FormField label="科目">
+                                        <FormField label="科目">
                                             <NativeSelect
                                                 autoFocus
                                                 options={[
                                                     { value: "", label: "請選擇科目" },
-                                                    ...activeAccountLearner.availableSubjects.map((subject) => ({ value: subject.code, label: normalizeSubjectLabel(subject.name) })),
+                                                    ...(activeAccountLearner?.availableSubjects ?? []).map((subject) => ({ value: subject.code, label: normalizeSubjectLabel(subject.name) })),
+                                                    { value: CUSTOM_SUBJECT_VALUE, label: "自行建立科目" },
                                                 ]}
                                                 value={subjectChoice}
-                                                onChange={(event) => { setSubjectChoice(event.target.value); setSubjectError(""); }}
+                                                onChange={(event) => { setSubjectChoice(event.target.value); setSubjectDraft(""); setSubjectError(""); }}
                                             />
-                                        </FormField> : <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground" role="status">目前年級可用的科目都已加入。</p>}
+                                        </FormField>
+                                        {subjectChoice === CUSTOM_SUBJECT_VALUE && <FormField label="科目名稱"><Input maxLength={80} placeholder="例如：程式設計" value={subjectDraft} onChange={(event) => { setSubjectDraft(event.target.value); setSubjectError(""); }} onKeyDown={(event) => { if (event.key === "Enter") void addPracticeLearnerSubject(); }} /></FormField>}
                                         {subjectError && <p className="text-sm font-semibold text-danger" role="alert">{subjectError}</p>}
                                     </DialogBody>
-                                    <DialogFooter><DialogClose asChild><Button appearance="ghost" tone="muted">取消</Button></DialogClose><Button disabled={!subjectChoice || Boolean(subjectSettingBusyCode)} onClick={() => void addPracticeLearnerSubject()}><Plus />{subjectSettingBusyCode === "add-subject" ? "新增中…" : "新增"}</Button></DialogFooter>
+                                    <DialogFooter><DialogClose asChild><Button appearance="ghost" tone="muted">取消</Button></DialogClose><Button disabled={!subjectChoice || (subjectChoice === CUSTOM_SUBJECT_VALUE && !subjectDraft.trim()) || Boolean(subjectSettingBusyCode)} onClick={() => void addPracticeLearnerSubject()}><Plus />{subjectSettingBusyCode === "add-subject" ? "新增中…" : "新增"}</Button></DialogFooter>
                                 </DialogContent>
                             </Dialog>
                             {!activeAccountLearner?.subjectSettings.length ? <div className="workspace-surface rounded-2xl p-4 text-sm text-muted-foreground"><p>目前尚未新增科目。</p><p className="mt-1">請按「新增科目」選擇要使用的科目。</p></div> : <div className="subject-setting-list">
@@ -6036,7 +6200,7 @@ export default function Home() {
     const authMode = getAuthMode(pathname);
     if (authMode) return <AuthScreen mode={authMode} />;
 
-    if (!isHydrated) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">正在讀取學習資料</p><p className="mt-2 text-sm text-muted-foreground">正在載入學習設定、正式題庫與已保存的作答紀錄。</p></CardContent></Card></main>;
+    if (!isHydrated) return <WorkspaceLoadingScreen phase={bootstrapPhase} />;
     if (!learners.length && !practiceAccount) return <main className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md border-border/80 shadow-sm"><CardContent className="p-8 text-center"><p className="font-bold">無法顯示學習資料</p><p className="mt-2 text-sm text-muted-foreground">{storageError || "尚無可用的學習者資料。"}</p></CardContent></Card></main>;
 
     if (section === "questions" && getOverviewQuestionId(pathname) !== undefined) return renderQuestionOverviewDetail();
@@ -6174,21 +6338,21 @@ export default function Home() {
                                     </DropdownSubContent>
                                 </DropdownSub>}
                                 <DropdownSeparator />
-                                <DropdownItem onSelect={() => router.push(AUTH_PATHS["account-link"])}><Link2 />帳號綁定</DropdownItem>
-                                <DropdownItem onSelect={() => router.push(AUTH_PATHS.login)}><LogIn />切換帳號</DropdownItem>
-                                <DropdownItem tone="danger" onSelect={() => router.push(AUTH_PATHS.logout)}><LogOut />登出</DropdownItem>
+                                <DropdownItem onSelect={() => router.push("/account?switch=1")}><LogIn />切換帳號</DropdownItem>
+                                <DropdownItem disabled={logoutBusy} tone="danger" onSelect={() => void logoutWorkspace()}><LogOut />{logoutBusy ? "登出中…" : "登出"}</DropdownItem>
                             </DropdownContent>
                         </Dropdown>
                     </div>
                 </div>
             </div>
             <div className="sidebar-action-scroll" tabIndex={0} aria-label="主要功能選單，可左右捲動">
-                <Button className="sidebar-practice-button mt-6 w-full" data-section="practice" aria-current={section === "practice" && !isScheduleListPage ? "page" : undefined} onClick={sessionPaused ? resumeSession : () => navigateToSection("practice")}><BookOpen />{sessionPaused ? "繼續練習" : "開始練習"}</Button>
+                <Button className="sidebar-practice-button mt-6 w-full" data-section="practice" appearance="ghost" tone="muted" aria-current={section === "practice" && !isScheduleListPage ? "page" : undefined} onClick={sessionPaused ? resumeSession : () => navigateToSection("practice")}><span className="sidebar-nav-icon sidebar-nav-icon-practice"><BookOpen /></span>{sessionPaused ? "繼續練習" : "開始練習"}</Button>
                 <nav className="sidebar-nav mt-4 grid gap-1" aria-label="主要導覽">
                     <Button data-section="practice-schedules" appearance="ghost" tone="muted" aria-current={isScheduleListPage ? "page" : undefined} onClick={openScheduleList}><span className="sidebar-nav-icon sidebar-nav-icon-schedules"><ClipboardCheck /></span>學習本計畫</Button>
+                    <Button data-section="question-create" appearance="ghost" tone="muted" onClick={() => router.push("/questions/new/upload")}><span className="sidebar-nav-icon sidebar-nav-icon-questions"><FilePlus2 /></span>新增題目</Button>
                     {NAV_ITEMS.filter((item) => item.id !== "practice" && item.id !== "settings" && item.id !== "system-settings").map((item) => {
                         const Icon = item.icon;
-                        const sidebarLabel = item.id === "overview" ? "學習總覽" : item.id === "questions" ? "題目總覽" : item.id === "mistakes" ? "錯題英雄榜" : "學習成果";
+                        const sidebarLabel = item.id === "overview" ? "學習總覽" : item.id === "questions" ? "題目總覽" : item.id === "mistakes" ? "錯題排行榜" : "學習成果";
                         return <Button key={item.id} data-section={item.id} appearance="ghost" tone="muted" aria-current={section === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><span className={`sidebar-nav-icon sidebar-nav-icon-${item.id}`}><Icon /></span>{sidebarLabel}</Button>;
                     })}
                 </nav>
@@ -6198,7 +6362,7 @@ export default function Home() {
             <div className="sidebar-tip mt-6"><Sparkles size={18} /><p>每天 15 分鐘，穩定累積練習進度。</p></div>
             </div>
         </aside>
-        <section className="workspace min-w-0 p-5 sm:p-7 lg:p-9" data-workspace={section}>{section !== "practice" && <header className="mb-7 flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold tracking-[0.15em] text-primary">{activeLearner.school}</p><h1 ref={headingRef} data-focus-heading tabIndex={-1} className="mt-1 text-2xl font-bold">{NAV_ITEMS.find((item) => item.id === section)?.label}</h1></div><div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays size={17} /><span>{activeExam.name}</span>{examCountdownLabel && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{examCountdownLabel}</span>}</div></header>}{storageError && <p className="mb-5 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{storageError}</p>}{renderSection()}</section>
+        <section className="workspace min-w-0 p-5 sm:p-7 lg:p-9" data-workspace={section}>{section !== "practice" && <header className="mb-7 flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold tracking-[0.15em] text-primary">{activeLearner.school}</p><h1 ref={headingRef} data-focus-heading tabIndex={-1} className="mt-1 text-2xl font-bold">{NAV_ITEMS.find((item) => item.id === section)?.label}</h1></div><div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays size={17} /><span>{activeExam.name}</span>{examCountdownLabel && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{examCountdownLabel}</span>}</div></header>}{storageError && <p className="mb-5 rounded-xl border border-warning/30 bg-amber-50 p-3 text-sm" role="alert">{storageError}</p>}<div className="workspace-section-transition" key={`${section}:${pathname}`}>{renderSection()}</div></section>
         {section !== "questions" && <aside className="summary-panel" data-mobile-open={mobileSummaryOpen} data-practice-list-page={isScheduleListPage} data-section={section}>
             <Button
                 className="mobile-panel-toggle"
@@ -6273,13 +6437,6 @@ export default function Home() {
                         </div>
                     </div>
                 </section>
-                <div className="summary-note">
-                    <div className="flex items-center gap-2 font-semibold text-foreground"><UserCheck size={16} />資料說明</div>
-                    <p>{persistedLearnerId
-                        ? "帳號、正式匯入題庫、學習本、排程、分享與作答紀錄已連接 PostgreSQL；OCR 與 AI 題目生成尚未開放。"
-                        : "登入後可讀取正式匯入題庫並保存作答；OCR、AI 題目生成與跨帳號分享仍未開放。"}</p>
-                    <div className="flex items-center gap-2"><Clock3 size={15} />{persistedLearnerId ? "作答紀錄保存於 PostgreSQL" : "登入後可讀取正式題庫與作答紀錄"}</div>
-                </div>
                 </>}
             </div>
         </aside>}

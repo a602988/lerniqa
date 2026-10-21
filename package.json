@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "npm run test:runtime-guardrails",
-    "dev": "LERNIQA_NEXT_DIST_DIR=.next-dev next dev -p 3500 --hostname 127.0.0.1",
+    "dev": "LERNIQA_NEXT_DIST_DIR=.next-dev node scripts/run-local-web.mjs dev -- next dev -p 3500 --hostname 127.0.0.1",
     "prebuild": "npm run test:runtime-guardrails",
     "build": "LERNIQA_NEXT_DIST_DIR=.next-build next build",
     "preadmin:dev": "npm run test:runtime-guardrails && npm run admin:db:status",
@@ -43,6 +43,7 @@
     "teaching-source:smoke": "local-data/handwriting-python/bin/python scripts/smoke-teaching-source-ocr.py",
     "test:teaching-source": "node --test tests/teaching-source-import.test.mjs",
     "test:question-enrichment": "node --test tests/question-enrichment.test.mjs tests/question-relation-analysis.test.mjs",
+    "test:question-import": "node --no-warnings --experimental-strip-types --test tests/question-import-contract.test.ts tests/question-exchange-contract.test.ts tests/question-classification-ai.test.ts tests/question-source-analysis.test.ts tests/question-source-catalog.test.ts tests/question-source-upload.test.ts tests/file-source-selection.test.ts",
     "handwriting:worker": "node scripts/process-handwriting-analysis.mjs",
     "handwriting:setup": "sh scripts/setup-handwriting-ocr.sh",
     "handwriting:smoke": "node scripts/smoke-handwriting-analysis.mjs --manifest tests/fixtures/handwriting-ai-synthetic/manifest.json --png-dir tests/fixtures/handwriting-ai-synthetic/png",
@@ -56,7 +57,8 @@
     "test:learning-books:db": "node scripts/with-local-postgres-test-lock.mjs -- node --test tests/learning-book-postgres.test.mjs",
     "test:runtime-guardrails": "node --test tests/runtime-guardrails.test.mjs tests/local-postgres-test-lock.test.mjs tests/local-postgres-lifecycle-lock.test.mjs tests/hanlin-import-ownership-runner-signal.test.mjs tests/local-practice-spawn-error.test.mjs",
     "test": "node scripts/verify-question-fixtures.mjs",
-    "start": "LERNIQA_NEXT_DIST_DIR=.next-build next start --hostname 127.0.0.1",
+    "start": "LERNIQA_NEXT_DIST_DIR=.next-build node scripts/run-local-web.mjs start -- next start --hostname 127.0.0.1",
+    "questions:worker": "node --no-warnings --experimental-transform-types scripts/process-question-source-analysis.ts --continuous --execute",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -73,7 +75,8 @@
     "nodemailer": "^10.1.2",
     "pg": "^8.23.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
@@ -81,8 +84,11 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.23",
     "tailwindcss": "^4.3.2",
     "typescript": "^5.9.2"
+  },
+  "overrides": {
+    "postcss": "$postcss"
   }
 }

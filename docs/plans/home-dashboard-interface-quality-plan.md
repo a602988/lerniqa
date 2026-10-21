@@ -109,8 +109,21 @@
 - 回退方式：若驗證失敗，只撤回本輪無效調整，不動審查前指紋所代表的既有成果。
 - 狀態：已完成並驗證
 
+### 修正登入後品牌字樣變形
+
+- 解決問題：登入頁深色區塊使用正式品牌圖檔，登入後側欄卻用系統字型與自製路徑重畫字樣，造成不同裝置與畫面上的 Logo 幾何不一致。
+- 影響位置：`app/components/lerniqa-mark.tsx` 與 `app/globals.css`。
+- 預期行為：淺色與深色背景都使用相同的正式 Logo 幾何，只切換適合背景的色彩版本；任何容器尺寸都維持原始比例。
+- 驗證方式：比對登入頁、登入後側欄與載入畫面的圖形比例；執行來源契約測試、型別檢查與 production build。
+- 版本影響：patch
+- 回退方式：恢復舊版 `LerniqaLogo` 與 `.lerniqa-wordmark` 圖片規則。
+- 狀態：已完成並驗證
+
 ## 驗證紀錄
 
+- 登入後品牌字樣：移除依賴系統字型的重畫版本，淺色背景改用正式 `/logo.png`，深色背景維持正式 `/Lerniqa_logo.svg`。桌面量測原圖為 `975 × 295`，以 `object-fit: contain` 顯示為 `168 × 48`；`390 × 844` 手機版顯示為 `136 × 38.4`，頁面 `scrollWidth` 等於 `innerWidth`。兩種尺寸都沒有拉伸、裁切或水平溢位。
+- 品牌回歸測試：修改前以正式品牌資產契約失敗；修改後 `workspace wordmark keeps the official logo geometry on light and dark backgrounds` 通過。
+- `node --test tests/practice-catalog-integration.test.mjs`：29 項全數通過。
 - 專注練習標題：本機與 Vercel production 均在 1280×620 可視區域驗證；文件尺寸等於 viewport，無水平或垂直頁面捲軸，且手寫板維持 384 px 高。390 px 手機版無水平溢位，順序為題目、手寫板、送出操作。
 - 左側導覽間距：1280×800 下導覽項目與設定入口間距為 8 px，設定入口與提示卡為 24 px；390、1440 px 無水平溢位。Vercel production 已用相同尺寸複驗。
 - `npm run lint`：通過。

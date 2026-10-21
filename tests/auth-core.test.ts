@@ -15,7 +15,9 @@ import {
     AuthInputError,
     isCredentialRequestTransportAllowed,
     normalizeAccountEmail,
+    parseCompleteEmailRegistrationInput,
     parseCreateAccountLearnerInput,
+    parseEnableLearnerSubjectInput,
     parseGoogleQuickRegistrationRequest,
     parseLoginAccountInput,
     parseRegisterAccountInput,
@@ -27,7 +29,8 @@ import {
 } from "../app/lib/auth-input.ts";
 import {
     EDUCATION_STAGE_LABELS,
-    findEducationStage,
+    findEducationStageByCode,
+    findEducationStageByGradeCode,
     type EducationCatalog,
 } from "../app/lib/education-catalog-contract.ts";
 
@@ -67,6 +70,30 @@ const googleQuickRegisterRouteSource = await readFile(
     new URL("../app/api/v1/auth/google/quick-register/route.ts", import.meta.url),
     "utf8",
 );
+const accountPageSource = await readFile(
+    new URL("../app/account/page.tsx", import.meta.url),
+    "utf8",
+);
+const socialAuthorizeRouteSource = await readFile(
+    new URL("../app/api/v1/auth/social/[provider]/authorize/route.ts", import.meta.url),
+    "utf8",
+);
+const socialCallbackRouteSource = await readFile(
+    new URL("../app/api/v1/auth/social/[provider]/callback/route.ts", import.meta.url),
+    "utf8",
+);
+const socialIdentitySource = await readFile(
+    new URL("../app/lib/social-identity.ts", import.meta.url),
+    "utf8",
+);
+const rememberedAccountsRouteSource = await readFile(
+    new URL("../app/api/v1/auth/remembered-accounts/route.ts", import.meta.url),
+    "utf8",
+);
+const rememberedAccountRouteSource = await readFile(
+    new URL("../app/api/v1/auth/remembered-accounts/[accountId]/route.ts", import.meta.url),
+    "utf8",
+);
 
 function assertAuthInputError(action: () => unknown, expectedCode: string): void {
     assert.throws(action, (error: unknown) => {
@@ -87,8 +114,10 @@ test("publishes the database-backed twelve-year education catalog", () => {
         semesters: [{ code: "semester-1", name: "上學期" }],
     };
 
-    assert.equal(findEducationStage(catalog, "senior-high-1")?.code, "senior_high");
-    assert.equal(findEducationStage(catalog, "missing"), undefined);
+    assert.equal(findEducationStageByCode(catalog, "senior_high")?.name, "高中／高職");
+    assert.equal(findEducationStageByCode(catalog, "elementary"), undefined);
+    assert.equal(findEducationStageByGradeCode(catalog, "senior-high-1")?.code, "senior_high");
+    assert.equal(findEducationStageByGradeCode(catalog, "missing"), undefined);
     assert.match(educationCatalogSource, /FROM grades[\s\S]*?status = 'active'/u);
     assert.match(educationCatalogSource, /stage IN \('elementary', 'junior_high', 'senior_high'\)/u);
     assert.match(educationCatalogSource, /FROM semesters[\s\S]*?status = 'active'/u);
@@ -133,7 +162,7 @@ test("grants every registration an active learner role without replacing the sel
 
 test("selects login role deterministically from learner access without coupling session validity", () => {
     const loginSource = authServiceSource.match(
-        /async function readLoginCandidate[\s\S]*?export async function registerAccount/u,
+        /async function readLoginCandidate[\s\S]*?export async function beginEmailRegistration/u,
     )?.[0];
 
     assert.ok(loginSource, "shared login candidate source should remain present");
@@ -179,15 +208,77 @@ test("parses Google quick registration as a two-step discriminated request", () 
     );
 });
 
-test("keeps Google quick registration separate from account linking", () => {
+test("keeps social quick registration separate from account linking", () => {
     assert.match(googleQuickRegisterRouteSource, /verifyGoogleCredential/u);
-    assert.match(googleQuickRegisterRouteSource, /beginGoogleQuickRegistration/u);
-    assert.match(googleQuickRegisterRouteSource, /completeGoogleQuickRegistration/u);
+    assert.match(googleQuickRegisterRouteSource, /beginSocialQuickRegistration\("google"/u);
+    assert.doesNotMatch(googleQuickRegisterRouteSource, /completeSocialQuickRegistration/u);
     assert.match(googleQuickRegisterRouteSource, /requireSafeCredentialTransport\(request\)/u);
     assert.doesNotMatch(googleQuickRegisterRouteSource, /account-link|updateAccountIdentity/u);
-    assert.match(authServiceSource, /provider = 'google'[\s\S]*?provider_subject = \$1/u);
-    assert.match(authServiceSource, /GOOGLE_EMAIL_ALREADY_REGISTERED/u);
-    assert.match(authServiceSource, /provider: "google"[\s\S]*?passwordHash: null[\s\S]*?verified: true/u);
+    assert.match(authServiceSource, /WHERE identity\.provider = \$1[\s\S]*?identity\.provider_subject = \$2/u);
+    assert.match(authServiceSource, /SOCIAL_EMAIL_ALREADY_REGISTERED/u);
+    assert.match(authServiceSource, /provider: registration\.provider[\s\S]*?passwordHash: null[\s\S]*?verified: true/u);
+    assert.doesNotMatch(socialCallbackRouteSource, /account-link|updateAccountIdentity/u);
+});
+
+test("starts every social login directly from the account page", () => {
+    assert.match(accountPageSource, /accounts\.google\.com\/gsi\/client/u);
+    assert.match(accountPageSource, /google\.accounts\.id\.renderButton/u);
+    assert.match(accountPageSource, /href="\/api\/v1\/auth\/social\/line\/authorize"/u);
+    assert.match(accountPageSource, /href="\/api\/v1\/auth\/social\/facebook\/authorize"/u);
+    assert.doesNotMatch(accountPageSource, /<Link href="\/quick-register">/u);
+    assert.match(
+        accountPageSource,
+        /const loginFormVisible = showLoginForm && \(!account \|\| switchRequested\)/u,
+    );
+    assert.match(
+        accountPageSource,
+        /if \(!loginFormVisible \|\| transportAllowed === false\) return;/u,
+    );
+    assert.match(
+        accountPageSource,
+        /if \(!loginFormVisible \|\| !googleScriptReady \|\| !googleClientId \|\| !target \|\| !google\) return;/u,
+    );
+});
+
+test("redirects a successful email login to the requested page or overview", () => {
+    assert.match(
+        accountPageSource,
+        /const destination = resolveAccountReturnPath\(rawReturnPath\) \?\? "\/overview";[\s\S]*?window\.location\.replace\(destination\)/u,
+    );
+    assert.match(
+        accountPageSource,
+        /if \(!isAuthSessionExpired\(expiresAt\)\) return false;\s+broadcastAuthSessionExpired\(\)/u,
+    );
+    assert.match(
+        accountPageSource,
+        /async function switchRememberedAccount[\s\S]*?broadcastAuthSessionContextChanged\(\);[\s\S]*?window\.location\.replace\("\/overview"\)/u,
+    );
+});
+
+test("keeps remembered account credentials server-side and exposes one account picker", () => {
+    assert.match(authServiceSource, /export const AUTH_DEVICE_COOKIE = "lerniqa_device"/u);
+    assert.match(authServiceSource, /INSERT INTO auth_devices/u);
+    assert.match(authServiceSource, /INSERT INTO auth_device_accounts/u);
+    assert.match(authServiceSource, /hashOpaqueToken\(deviceToken\)/u);
+    assert.match(rememberedAccountsRouteSource, /listRememberedAccounts/u);
+    assert.match(rememberedAccountRouteSource, /switchRememberedAccount/u);
+    assert.match(rememberedAccountRouteSource, /removeRememberedAccount/u);
+    assert.doesNotMatch(accountPageSource, /localStorage.*(?:account|email|token)/u);
+    assert.match(accountPageSource, /登入其他帳號/u);
+    assert.match(accountPageSource, /rememberedAccounts/u);
+});
+
+test("validates LINE and Facebook authorization at the server boundary", () => {
+    assert.match(socialAuthorizeRouteSource, /createSocialOAuthAttempt/u);
+    assert.match(socialAuthorizeRouteSource, /requireSafeCredentialTransport\(request\)/u);
+    assert.match(socialCallbackRouteSource, /consumeSocialOAuthAttempt/u);
+    assert.match(socialCallbackRouteSource, /verifySocialAuthorization/u);
+    assert.match(socialIdentitySource, /https:\/\/api\.line\.me\/oauth2\/v2\.1\/verify/u);
+    assert.match(socialIdentitySource, /profile\.iss !== "https:\/\/access\.line\.me"/u);
+    assert.match(socialIdentitySource, /https:\/\/graph\.facebook\.com\/debug_token/u);
+    assert.match(socialIdentitySource, /debugRecord\.is_valid !== true/u);
+    assert.match(socialIdentitySource, /debugRecord\.app_id !== config\.clientId/u);
+    assert.match(socialIdentitySource, /profile\.id !== debugRecord\.user_id/u);
 });
 
 test("attaches only the approved system-owned Hanlin question bank", () => {
@@ -248,7 +339,7 @@ test("publishes only the learner profile display contract", () => {
         /export interface PublicLearnerProfile[\s\S]*?export function publicAccount/u,
     )?.[0];
     const publicAccountSource = authSharedSource.match(
-        /function publicLearnerProfile[\s\S]*?export function authenticatedResponse/u,
+        /function publicLearnerProfile[\s\S]*?export async function authenticatedResponse/u,
     )?.[0];
 
     assert.ok(publicContractSource, "public learner profile contract should remain present");
@@ -291,7 +382,7 @@ test("sets a host-only no-store session cookie for both login and logout", () =>
         /export function secureCookieForRequest[\s\S]*?export async function getAuthenticatedAccount/u,
     )?.[0];
     const authenticatedResponseSource = authSharedSource.match(
-        /export function authenticatedResponse[\s\S]*?export function clearSessionCookie/u,
+        /export async function authenticatedResponse[\s\S]*?export function clearSessionCookie/u,
     )?.[0];
     const clearCookieSource = authSharedSource.match(
         /export function clearSessionCookie[\s\S]*?\n\}/u,
@@ -498,14 +589,23 @@ test("rejects whitespace-only, edge-space, and common weak new passwords", () =>
     assert.equal(validateAccountPassword(" password"), " password");
 });
 
-test("parses and normalizes registration input while limiting self-selected roles", () => {
+test("keeps account creation minimal and validates onboarding separately", () => {
     assert.deepEqual(ACCOUNT_ROLES, ["parent", "learner", "tutor"]);
     assert.deepEqual(
         parseRegisterAccountInput({
-            displayName: "  Ａlice   Parent  ",
-            learnerName: "  小明   同學  ",
             email: "  FAMILY@EXAMPLE.INVALID ",
             password: "family passphrase",
+        }),
+        {
+            email: "family@example.invalid",
+            password: "family passphrase",
+        },
+    );
+
+    assert.deepEqual(
+        parseCompleteEmailRegistrationInput({
+            displayName: "  Ａlice   Parent  ",
+            learnerName: "  小明   同學  ",
             role: "parent",
             educationStatus: "enrolled",
             gradeCode: " JUNIOR-HIGH-1 ",
@@ -514,8 +614,6 @@ test("parses and normalizes registration input while limiting self-selected role
         {
             displayName: "Alice Parent",
             learnerName: "小明 同學",
-            email: "family@example.invalid",
-            password: "family passphrase",
             role: "parent",
             educationStatus: "enrolled",
             gradeCode: "junior-high-1",
@@ -524,18 +622,14 @@ test("parses and normalizes registration input while limiting self-selected role
     );
 
     assert.deepEqual(
-        parseRegisterAccountInput({
+        parseCompleteEmailRegistrationInput({
             displayName: "  本人學習者  ",
-            email: "self@example.invalid",
-            password: "self passphrase",
             role: "learner",
             educationStatus: "not_enrolled",
         }),
         {
             displayName: "本人學習者",
             learnerName: "本人學習者",
-            email: "self@example.invalid",
-            password: "self passphrase",
             role: "learner",
             educationStatus: "not_enrolled",
             gradeCode: null,
@@ -544,11 +638,9 @@ test("parses and normalizes registration input while limiting self-selected role
     );
 
     assertAuthInputError(
-        () => parseRegisterAccountInput({
+        () => parseCompleteEmailRegistrationInput({
             displayName: "家長",
             learnerName: "學習者",
-            email: "family@example.invalid",
-            password: "family passphrase",
             role: "system_admin",
             educationStatus: "enrolled",
             gradeCode: "junior-high-1",
@@ -558,14 +650,8 @@ test("parses and normalizes registration input while limiting self-selected role
     );
     assertAuthInputError(
         () => parseRegisterAccountInput({
-            displayName: "家長",
-            learnerName: "學習者",
             email: "family@example.invalid",
             password: "password",
-            role: "parent",
-            educationStatus: "enrolled",
-            gradeCode: "junior-high-1",
-            semesterCode: "semester-1",
         }),
         "INVALID_PASSWORD",
     );
@@ -575,8 +661,6 @@ test("rejects invalid display names, learner names, and non-object auth payloads
     const validRegistration = {
         displayName: "家長",
         learnerName: "學習者",
-        email: "family@example.invalid",
-        password: "family passphrase",
         role: "parent",
         educationStatus: "enrolled",
         gradeCode: "junior-high-1",
@@ -586,11 +670,11 @@ test("rejects invalid display names, learner names, and non-object auth payloads
     assertAuthInputError(() => parseRegisterAccountInput(null), "INVALID_ACCOUNT_INPUT");
     assertAuthInputError(() => parseRegisterAccountInput([]), "INVALID_ACCOUNT_INPUT");
     assertAuthInputError(
-        () => parseRegisterAccountInput({ ...validRegistration, displayName: "\n" }),
+        () => parseCompleteEmailRegistrationInput({ ...validRegistration, displayName: "\n" }),
         "INVALID_ACCOUNT_INPUT",
     );
     assertAuthInputError(
-        () => parseRegisterAccountInput({ ...validRegistration, learnerName: "x".repeat(81) }),
+        () => parseCompleteEmailRegistrationInput({ ...validRegistration, learnerName: "x".repeat(81) }),
         "INVALID_ACCOUNT_INPUT",
     );
 });
@@ -757,6 +841,43 @@ test("updates only the active authorized learner's compatible subject version", 
     assert.match(learnerSubjectSettingsRouteSource, /updateLearnerSubjectSetting/u);
     assert.match(learnerSubjectSettingsRouteSource, /accountResponse\(account\)/u);
     assert.match(learnerSubjectSettingsRouteSource, /handleAuthError\(error\)/u);
+});
+
+test("parses catalog and custom subject creation as distinct actions", () => {
+    const learnerId = "10000000-0000-4000-8000-000000000001";
+    assert.deepEqual(
+        parseEnableLearnerSubjectInput({ action: "enable", learnerId, subjectCode: "CHINESE" }),
+        { action: "enable", learnerId, subjectCode: "chinese" },
+    );
+    assert.deepEqual(
+        parseEnableLearnerSubjectInput({ action: "create", learnerId, subjectName: "  程式   設計  " }),
+        { action: "create", learnerId, subjectName: "程式 設計" },
+    );
+    for (const body of [
+        { learnerId, subjectCode: "chinese" },
+        { action: "create", learnerId, subjectName: "" },
+        { action: "enable", learnerId, subjectCode: "bad code" },
+    ]) {
+        assertAuthInputError(
+            () => parseEnableLearnerSubjectInput(body),
+            "INVALID_ACCOUNT_INPUT",
+        );
+    }
+});
+
+test("creates account subjects at the service boundary before enabling them", () => {
+    const enableSource = authServiceSource.match(
+        /export async function enableLearnerSubject[\s\S]*$/u,
+    )?.[0];
+
+    assert.ok(enableSource, "subject enable service should remain present");
+    assert.match(enableSource, /input\.action === "enable"/u);
+    assert.match(enableSource, /pg_advisory_xact_lock/u);
+    assert.match(enableSource, /lower\(subject\.normalized_name\) = \$1/u);
+    assert.match(enableSource, /lower\(alias\.normalized_alias\) = \$1/u);
+    assert.match(enableSource, /'leaf', 'account', \$5, 'active'/u);
+    assert.match(enableSource, /`custom-\$\{subjectId\}`/u);
+    assert.match(enableSource, /subject\.origin = 'account'/u);
 });
 
 test("parses login input with the same email and password rules", () => {

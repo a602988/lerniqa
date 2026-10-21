@@ -79,6 +79,11 @@ export interface LocalPracticeOption {
     contentBlocks: LocalPracticeContentBlock[];
 }
 
+export interface LocalPracticeHint {
+    position: number;
+    blocks: LocalPracticeContentBlock[];
+}
+
 export interface LocalPracticeQuestionPart {
     id: string;
     stableKey: string;
@@ -89,6 +94,7 @@ export interface LocalPracticeQuestionPart {
     isIndependentlyGradable: boolean;
     prompt: string;
     promptBlocks: LocalPracticeContentBlock[];
+    hints: LocalPracticeHint[];
     options: LocalPracticeOption[];
 }
 
@@ -221,6 +227,7 @@ export interface LocalPracticeReferenceAnswer {
     options: Array<{ key: string; label: string }>;
     /** The revision may have no authored explanation. */
     explanation: string | null;
+    explanationBlocks: LocalPracticeContentBlock[];
 }
 
 export interface LocalPracticeAttempt {

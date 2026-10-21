@@ -78,7 +78,7 @@ async function storeWith(options = {}) {
         if (sql.includes("FROM question_content_blocks AS block") && options.blocks) return { rows: options.blocks };
         if (sql.includes("FROM question_content_blocks AS block") && options.media) return { rows: [{
             id: "block", question_revision_id: ids.questionRevision, question_part_id: null, question_option_id: null,
-            content_type: "image", position: 0, text_content: null, asset_id: ids.question, mime_type: "image/png",
+            placement: "prompt", hint_index: null, content_type: "image", position: 0, text_content: null, asset_id: ids.question, mime_type: "image/png",
             width: 100, height: 100, alt_text: "pinned image",
         }] };
         return { rows: [] };
@@ -200,8 +200,11 @@ test("session media authorization pins revision, owner, learner access and promp
     assert.match(query.sql, /session.created_by_user_id = \$3/u);
     assert.match(query.sql, /session.learner_id = \$2/u);
     assert.match(query.sql, /access.accepted_at IS NOT NULL AND access.revoked_at IS NULL/u);
-    assert.match(query.sql, /block.placement IN \('prompt', 'option'\)/u);
-    assert.doesNotMatch(query.sql, /current_revision_id|question_bank_learners|placement = 'explanation'/u);
+    assert.match(query.sql, /block.placement IN \('prompt', 'option', 'hint'\)/u);
+    assert.match(query.sql, /block.placement = 'explanation'/u);
+    assert.match(query.sql, /session.check_mode = 'instant'[\s\S]*FROM answer_attempts AS disclosed_attempt/u);
+    assert.match(query.sql, /session.check_mode = 'complete'[\s\S]*session.status = 'completed'/u);
+    assert.doesNotMatch(query.sql, /current_revision_id|question_bank_learners/u);
     const hidden = await storeWith({ noAsset: true });
     assert.equal(await hidden.store.findLocalPracticeSessionAsset(ids.question, ids.session, actor), null);
 });
@@ -215,7 +218,8 @@ test("recipient session discloses only the shared part and its options while pre
     const part = (id, position) => ({ id, question_revision_id: ids.questionRevision, stable_key: id,
         position, answer_mode: "single_choice", grading_policy: "automatic", is_independently_gradable: true });
     const block = (id, partId, optionId, text) => ({ id, question_revision_id: ids.questionRevision,
-        question_part_id: partId, question_option_id: optionId, position: 0, content_type: "text", text_content: text,
+        question_part_id: partId, question_option_id: optionId, placement: optionId ? "option" : "prompt",
+        hint_index: null, position: 0, content_type: "text", text_content: text,
         alt_text: null, asset_id: null, mime_type: null });
     const fixture = {
         existing,
@@ -227,6 +231,7 @@ test("recipient session discloses only the shared part and its options while pre
         blocks: [
             block("root", null, null, "共同題幹"),
             block("selected-prompt", selected, null, "分享的小題"),
+            { ...block("selected-hint", selected, null, "先排除不合理的選項"), placement: "hint", hint_index: 0 },
             block("unshared-sibling-prompt", sibling, null, "未分享的內容"),
             block("selected-label", null, "selected-option", "分享的選項"),
             block("unshared-sibling-label", null, "unshared-sibling-option", "未分享的選項"),
@@ -238,6 +243,7 @@ test("recipient session discloses only the shared part and its options while pre
     assert.equal(questions[0].parts.length, 1);
     assert.equal(questions[0].parts[0].id, selected);
     assert.equal(questions[0].parts[0].prompt, "分享的小題");
+    assert.equal(questions[0].parts[0].hints[0].blocks[0].text, "先排除不合理的選項");
     assert.equal(questions[0].parts[0].options[0].label, "分享的選項");
     assert.doesNotMatch(JSON.stringify(questions), /unshared-sibling|未分享/u);
     const read = calls.find((call) => call.sql.includes("AS scoped_part_id"));
@@ -268,9 +274,9 @@ test("two shared parts produce one question with their authorized union and excl
         options: partIds.map((id, position) => ({ id: `${id}-option`, question_part_id: id, option_key: "A", position })),
         blocks: partIds.flatMap((id) => [
             { id: `${id}-prompt`, question_revision_id: ids.questionRevision, question_part_id: id,
-                question_option_id: null, position: 0, content_type: "text", text_content: `${id} prompt`, alt_text: null, asset_id: null, mime_type: null },
+                question_option_id: null, placement: "prompt", hint_index: null, position: 0, content_type: "text", text_content: `${id} prompt`, alt_text: null, asset_id: null, mime_type: null },
             { id: `${id}-label`, question_revision_id: ids.questionRevision, question_part_id: null,
-                question_option_id: `${id}-option`, position: 0, content_type: "text", text_content: `${id} choice`, alt_text: null, asset_id: null, mime_type: null },
+                question_option_id: `${id}-option`, placement: "option", hint_index: null, position: 0, content_type: "text", text_content: `${id} choice`, alt_text: null, asset_id: null, mime_type: null },
         ]),
     };
     const { store } = await storeWith(fixture);

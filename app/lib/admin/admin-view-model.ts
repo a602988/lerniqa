@@ -491,7 +491,7 @@ export function mapAccountDetail(account: AdminAccountDetail): AccountDetailDto 
         statusPolicy: {
             mode: "locked",
             label: "需要當次確認",
-            reason: "正式帳號狀態異動未在本頁開放；須另行確認目標、原因與影響。",
+            reason: "此頁只提供帳號狀態檢視。",
         },
         rolePolicy: {
             mode: "locked",
@@ -1374,19 +1374,12 @@ export function buildDashboardViewModel({
     return {
         state: errorMessage ? { kind: "error", message: errorMessage, retryHref: "/admin" } : { kind: "ready" },
         metrics,
-        notices: [
-            {
-                key: "payments-not-integrated",
-                title: "支付尚未串接",
-                message: "方案目錄只描述未來設定，不代表可付款、已訂閱或已有收入。",
-                tone: "warning",
-            },
-        ],
+        notices: [],
         activity: errorMessage ? [] : recentAudit.map(auditActivity),
         quickLinks: [
             { href: "/admin/accounts", label: "查詢帳號", description: "檢視帳號、身份與學習者存取。" },
             { href: "/admin/questions", label: "檢視題庫", description: "篩選題目並查看版本、答案與來源。" },
-            { href: "/admin/reports", label: "查看報表", description: "確認已串接與尚未蒐集的統計。" },
+            { href: "/admin/reports", label: "查看報表", description: "查看學習與題庫統計。" },
         ],
     };
 }

@@ -6,18 +6,22 @@ interface LerniqaMarkProps {
 interface LerniqaLogoProps {
     /** 額外尺寸或版面樣式。 */
     className?: string;
+    /** 深色背景使用反白字樣，淺色背景沿用品牌原色。 */
+    tone?: "default" | "inverse";
 }
 
 /**
  * 顯示完整的 Lerniqa 品牌字樣。
  *
- * @param props 圖片外框的版面樣式。
- * @returns 使用品牌原圖的完整 Logo。
+ * @param props Logo 的版面樣式與背景色調。
+ * @returns 保留品牌書本配色的向量 Logo。
  */
-export function LerniqaLogo({ className }: LerniqaLogoProps) {
+export function LerniqaLogo({ className, tone = "default" }: LerniqaLogoProps) {
+    const source = tone === "inverse" ? "/Lerniqa_logo.svg" : "/logo.png";
+
     return (
         <span className={`lerniqa-wordmark ${className ?? ""}`.trim()}>
-            <img alt="Lerniqa" src="/lerniqa-logo.jpg" />
+            <img alt="Lerniqa" src={source} />
         </span>
     );
 }

@@ -80,7 +80,7 @@ export function handleLocalPracticeError(error: unknown) {
     if (error instanceof LocalPostgresUnavailableError) {
         return errorResponse(
             "LOCAL_POSTGRES_UNAVAILABLE",
-            "本機 PostgreSQL 題庫尚未啟動，請先啟動本機資料庫。",
+            "題庫服務目前無法使用，請稍後再試。",
             503,
         );
     }

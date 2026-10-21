@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title description">
+  <title id="title">小心斜坡</title>
+  <desc id="description">黃色三角警告牌中有向下傾斜的坡道圖案</desc>
+  <rect width="320" height="180" rx="20" fill="#f7f7fb"/>
+  <path d="M160 25 245 154H75Z" fill="#f8c84a" stroke="#263238" stroke-width="10" stroke-linejoin="round"/>
+  <path d="m122 82 75 52" fill="none" stroke="#263238" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="141" cy="111" r="8" fill="#263238"/>
+  <circle cx="178" cy="137" r="8" fill="#263238"/>
+</svg>

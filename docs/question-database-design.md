@@ -4,7 +4,7 @@
 
 279 題的 parser v2 confirmed 批次為 `2d1ff794-f6f4-5e59-baaa-8d1c767438be`，來源 SHA-256 為 `c2b09d04ef9e0a32a2fbe71a8f8e930d2061fb87e78bb6bc60f694df6be8cfb2`。相同輸入重跑應重用批次，不重建或清空既有題目。
 
-狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0021` 共二十一個 migration（資料庫遷移），新增 Google 快速註冊短效狀態。二十一個 migration 的隔離資料庫往返驗證已通過；`0020` 與 `0021` 尚未套用持久本機資料庫。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
+狀態：正式 schema（資料庫結構）基底。程式庫包含 `0001` 至 `0024` 共二十四個 migration（資料庫遷移），其中 `0021`、`0022` 建立三家社群快速註冊狀態，`0023` 建立免費方案額度，`0024` 建立電子郵件註冊的短效引導狀態。應用程式切換與正式環境部署仍須先確認後端、登入服務、物件儲存、ORM（物件關聯對映工具）及資料保存期限。
 
 ## 評估結論
 
@@ -26,7 +26,7 @@
 
 題庫補全以 dry-run 為預設，寫入也只能建立 pending suggestion，核准前不改寫已發布題目。手寫 AI 只能分析 payload 為空且結果為 pending／manual 的手寫小題；計算過程附件不進入 job。辨識方式由 `question_revisions.original_question_type_label` 的正式細題型契約決定：「寫出國字、注音」使用單一字元模式，「注釋」使用單行多字模式；未設定的細題型不進入 worker。模型輸出是建議，不得直接改寫 `current_result`、錯題佇列或統計，只有授權審核者新增的 `answer_reviews` 能改判。
 
-二十一個 migration 合計 123 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。瀏覽器只保存非識別性 UI 設定、尚未切換資料庫的收藏，以及明確搬移後保留的舊學習本原始備份；舊 JSON HTTP 端點固定回 `410`。`/local-practice` 僅供內部診斷與相容。
+二十二個 migration 合計 124 張業務資料表；技術性的 `schema_migrations` 不列入。Lerniqa 是持續開發中的多科目正式產品。帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已讀寫本機 PostgreSQL。`/system-settings` 處理帳號身分、有效角色與學習者關係，`/settings` 獨立處理目前學習者。公開契約分開一般帳號的 `accountRole`、session 目前角色／學習者與 `system_admin` 授權。瀏覽器只保存非識別性 UI 設定、尚未切換資料庫的收藏，以及明確搬移後保留的舊學習本原始備份；舊 JSON HTTP 端點固定回 `410`。`/local-practice` 僅供內部診斷與相容。
 
 Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM 會在後端服務技術選型確認後接入，不能反過來改變已核准的資料模型。
 
@@ -74,22 +74,31 @@ Migration 層以 PostgreSQL 原生 SQL 保存 schema，不先綁定 ORM。ORM �
 | `created_at` | `timestamptz` | 必填；目前時間 | 綁定時間 | — |
 | `revoked_at` | `timestamptz` | 選填 | 解除綁定時間 | — |
 
-Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 已存在時可登入原帳號；只有電子郵件相同時回報衝突，要求使用者改用密碼登入。帳號綁定是另一項尚未交付的功能。
+社群快速註冊不會用電子郵件自動合併既有帳號。供應商不可變身份已存在時可登入原帳號；只有電子郵件相同時回報衝突，要求使用者改用原本方式登入。帳號綁定是另一項尚未交付的功能。
 
-### `google_quick_registrations` Google 快速註冊狀態
+### `social_quick_registrations` 社群快速註冊狀態
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | 必填 | 快速註冊識別碼 | 主鍵 |
 | `token_hash` | `text` | 必填 | 瀏覽器短效 token 雜湊 | 唯一；原始 token 只存在 HttpOnly cookie |
-| `provider_subject` | `varchar(255)` | 必填 | Google `sub` | 完成註冊後寫入 `account_identities.provider_subject` |
-| `email_normalized` | `varchar(320)` | 必填 | Google 已驗證的電子郵件 | 完成前再次受正式 identity 唯一限制保護 |
-| `display_name` | `varchar(80)` | 必填 | Google 顯示名稱 | 作為帳號與本人學習者的初始名稱 |
+| `provider` | `varchar(30)` | 必填 | 社群供應商 | `google`、`line` 或 `facebook` |
+| `provider_subject` | `varchar(255)` | 必填 | 供應商不可變身份 | 完成註冊後寫入 `account_identities.provider_subject` |
+| `email_normalized` | `varchar(320)` | 必填 | 供應商回傳的電子郵件 | 完成前再次受正式 identity 唯一限制保護 |
+| `display_name` | `varchar(80)` | 必填 | 供應商顯示名稱 | 作為帳號與本人學習者的初始名稱 |
 | `expires_at` | `timestamptz` | 必填 | 到期時間 | 十分鐘內需完成註冊 |
 | `consumed_at` | `timestamptz` | 選填 | 使用完成或被新流程取代的時間 | 有值後不得建立帳號 |
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
 
-後端先驗證 Google ID token 的簽章、`aud`、`iss`、`exp` 與 `email_verified`，再建立這筆短效狀態。完成表單時以 `FOR UPDATE` 鎖定狀態，並在同一交易建立帳號資料與標記 `consumed_at`。資料表不保存 Google ID token、access token 或 refresh token。
+後端先驗證供應商身份與電子郵件，再建立這筆短效狀態。完成表單時以 `FOR UPDATE` 鎖定狀態，並在同一交易建立帳號資料與標記 `consumed_at`。資料表不保存 ID token、access token 或 refresh token。
+
+### `email_registration_onboarding` 電子郵件註冊引導狀態
+
+電子郵件註冊頁只收電子郵件與密碼。後端完成格式及密碼強度檢查後，保存正規化電子郵件、scrypt 密碼雜湊、不透明 token 雜湊與十分鐘到期時間；瀏覽器只持有 HttpOnly token。使用者在 `/quick-register` 完成帳號身分與第一位學習者資料後，後端以 `FOR UPDATE` 鎖定這筆狀態，在同一交易建立正式帳號、登入身份、角色、學習者關係與 session，並寫入 `consumed_at`。未完成或已逾時的引導狀態不具有一般帳號權限。
+
+### `social_oauth_attempts` 社群授權嘗試
+
+此表只保存 LINE 與 Facebook authorization code flow 的 provider、瀏覽器 token 雜湊、`state` 雜湊、LINE `nonce` 雜湊、到期與使用時間。原始值只存在短效 HttpOnly cookie 或授權要求中；callback 必須以 `FOR UPDATE` 鎖定並一次性消耗嘗試，避免重放。
 
 ### `auth_sessions` 登入工作階段
 
@@ -626,7 +635,8 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `question_part_id` | `uuid` | 選填 | 對應小題 | 共用大題內容可為空 |
 | `question_option_id` | `uuid` | 選填 | 對應選項 | 只有選項內容使用 |
 | `parent_block_id` | `uuid` | 選填 | 所屬內容區塊 | 錄音稿連到對應音訊；外鍵至同表 `id` |
-| `placement` | `varchar(20)` | 必填 | 顯示位置 | `prompt`、`option`、`answer`、`explanation`、`transcript` |
+| `placement` | `varchar(20)` | 必填 | 顯示位置 | `prompt`、`option`、`answer`、`explanation`、`transcript`、`hint` |
+| `hint_index` | `smallint` | 選填 | 同一小題中的提示順序 | `placement=hint` 時必填且由 0 起算；其他位置必須為空 |
 | `content_type` | `varchar(20)` | 必填 | 內容格式 | `text`、`image`、`audio`、`transcript`、`formula`、`table`、`page_crop` |
 
 `table` block 的 `text_content` 使用 tab 分隔欄、換行分隔列；空字串儲存格仍須保留，顯示層依此契約產生真正的 table、row 與 cell 結構。題目總覽與正式練習共用同一個表格 renderer，顯示格線並在窄螢幕限制水平捲動於表格容器內，不得把 `table` block 放進 `pre` 當成純文字。舊版 Word 原生表格匯入時，核准契約必須包含來源檔 SHA-256、題號、來源頁碼、表格順序、原始表格 XML SHA-256、標準化逐格文字 SHA-256 與逐格文字；匯入器以來源 SHA、表格順序及逐格文字 checksum 驗證可重現內容，原 XML checksum 供稽核而不依賴轉檔器的揮發性屬性。驗證後再移除題幹中由轉檔產生的同一組逐行文字，避免表格與扁平文字重複。若轉檔只留下部分儲存格，只能移除與核准儲存格完整相等的獨立行；來源漂移、模糊吻合或缺少 Word PDF 畫面證據時，該題維持待檢，不得猜測欄列關係。
@@ -638,6 +648,8 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `alt_text` | `varchar(300)` | 選填 | 替代文字 | 圖片發布前必填；音訊以錄音稿提供等價內容 |
 
 填空位置需在文字內容中使用經驗證的結構化標記，例如 `{{blank:part-1}}`，顯示時轉成底線或答案欄，不以連續空白推測。`audio` 必須使用 `asset_id`；錄音稿建立 `transcript` 區塊並以 `parent_block_id` 連到音訊區塊。發布英聽題前必須有錄音稿，除非正式無障礙政策核准其他等價方式。
+
+作答前提示沿用 `question_content_blocks`，不得建立平行提示內容表。每個 `hint_index` 表示一組有序內容區塊，可包含文字、圖片、公式與表格；同組內以 `position` 排序。提示必須連到一個 `question_part_id`，不得連到選項，也不屬於答案或解析。作答 API 可在題目載入時回傳提示，但練習介面預設收合並逐組展開；解析區塊及其資產仍須等答案揭露條件成立後才可取得。
 
 多小題來源圖片以 `partStableKey` 對應 `question_parts.stable_key`，writer 再把內容區塊的 `question_part_id` 寫成實際小題 ID。同一題可能在 Word 中重複使用完全相同的圖片 bytes，因此 checksum 與 `asset_id` 只代表資產身分，不代表來源中的單一出現位置。匯入 registry 使用以 1 起算的 `sourceOccurrence` 區分同一正規化題號與 checksum 的多次出現；同組序號必須完整、不重複並連續為 `1..N`。匯入器依來源出現順序選擇 mapping，不依 registry 陣列順序。相同 `asset_id` 可以產生數個內容區塊，但每個區塊必須保留各自的 `question_part_id`、placement 與 position。單一 checksum 的既有 mapping 可以省略 `sourceOccurrence`。
 
@@ -830,6 +842,26 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | — |
 | `confirmed_at` | `timestamptz` | 選填 | 全批確認時間 | 確認後才建立正式題目版本 |
 
+帳號個人草稿沿用 `import_batches`，不另建平行題目模型。`created_by_user_id` 是草稿擁有權的權威來源；`status` 為 `draft`、`review` 或 `failed` 時仍不是正式題目。現有 schema 要求批次具有 `question_bank_id`，並由流程保存可存取的 `learner_id`，因此草稿建立時由後端連到帳號預設題庫與 self learner。這兩個內部外鍵不代表使用者已選擇正式分類，也不得讓草稿出現在題庫或練習查詢中。
+
+正式發布時只要求科目。年級、學期、版本、難易度、來源與帳號自訂分類均可留空；標準題型由小題的作答方式及是否含子題選用既有有效 `question_types`。發布會刪除該批次原有的 `pending` 項目，在同一交易建立 `questions`、`question_revisions`、使用者確認的 `question_revision_filter_values` 與 `approved` 匯入項目，最後把批次改為 `confirmed`。取消草稿只把批次改為 `cancelled`；來源資產的實體清理由保存政策與物件清理工作處理。
+
+### `question_source_analysis_jobs` 題目來源分析工作
+
+| 欄位群組 | 主要欄位 | 規則 |
+| --- | --- | --- |
+| 工作身分 | `id`、`import_batch_id` | 工作屬於一個匯入批次；同一批次同時只能有一筆 `queued`、`retry` 或 `running` 工作 |
+| 輸入設定 | `analyze_questions`、`settings` | 保存去彎曲與四角設定；檔案路徑與模型名稱不得由前端提供 |
+| 排程與租約 | `status`、`available_at`、`lease_owner`、`lease_expires_at` | `running` 必須具有租約；worker 定期延長租約，中斷後才能由其他執行者重試 |
+| 重試 | `attempt_count`、`max_attempts`、`last_error_code` | 嘗試次數不得超過上限；錯誤欄只保存穩定錯誤碼，不保存題目內容或個資 |
+| 完成結果 | `result_payload`、`finished_at` | 只有 `completed` 可保存頁面資產與目錄建議；題目候選仍以 `import_items` 為權威來源 |
+
+狀態為 `queued`、`retry`、`running`、`completed`、`failed` 或 `cancelled`。API 建立工作後立即回應，不在請求生命週期內執行 OCR 或本機模型。worker 使用 `FOR UPDATE SKIP LOCKED` 領取工作；題目候選、處理後資產、來源與批次狀態及工作完成結果在同一交易提交。失敗或逾時不得刪除原始來源，也不得部分替換既有候選。
+
+### `question_source_analysis_runs` 題目來源分析執行紀錄
+
+每次領取工作建立一筆不可覆寫身分的執行紀錄，保存工作、嘗試序號、worker、狀態、處理器版本、穩定錯誤碼及開始／完成時間。同一工作與嘗試序號唯一。租約逾時時，仍為 `running` 的執行紀錄改為 `failed` 並記錄 `WORKER_LEASE_EXPIRED`；工作可依上限回到 `retry`，但舊執行紀錄不得冒充完成。
+
 ### `import_batch_documents` 匯入批次來源文件
 
 | 欄位 | 型別 | 必填／預設 | 中文說明 | 備註 |
@@ -837,8 +869,14 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `import_batch_id` | `uuid` | 必填 | 匯入批次 | 外鍵至 `import_batches.id` |
 | `source_document_id` | `uuid` | 必填 | 來源文件 | 外鍵至 `source_documents.id` |
 | `position` | `integer` | 必填 | 檔案順序 | 同一批次內唯一 |
+| `document_role` | `varchar(20)` | 必填；`auto` | 檔案用途 | `auto`、`question`、`answer`、`explanation`、`supplement` |
+| `role_source` | `varchar(20)` | 必填；`pending` | 用途判定來源 | `pending`、`ai`、`user` |
+| `role_confidence` | `numeric(5,4)` | 選填 | AI 判定信心值 | `ai` 時必填，範圍 0 至 1 |
+| `role_reason` | `varchar(500)` | 選填 | AI 判定理由 | `ai` 時必填；使用者設定時留空 |
 
-前兩欄為主鍵。單一批次可包含多份圖片或 PDF；不得只把第一個檔案連到批次。
+前兩欄為主鍵。單一批次可包含多份圖片或 PDF；不得只把第一個檔案連到批次。`pending` 只允許 `auto` 且不得有 AI 證據；`ai` 必須是已判定用途並保存信心值與理由；`user` 必須是使用者明確選擇的用途，不保留舊的 AI 證據。
+
+背景工作結果可保存答案建議、信心值，以及指向同一批次來源文件和頁碼的證據。答案建議不是 `import_items.draft_payload` 的一部分。使用者確認後，才由既有草稿更新 API 將答案與解析寫入待確認題目；略過建議不會改變草稿。
 
 ### `import_items` 匯入題目草稿
 
@@ -857,6 +895,14 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `question_revision_id` | `uuid` | 選填 | 確認後建立的版本 | 外鍵至 `question_revisions.id` |
 | `reviewed_by_user_id` | `uuid` | 選填 | 完成人工校正的帳號 | — |
 | `reviewed_at` | `timestamptz` | 選填 | 校正完成時間 | — |
+
+每個 `pending` 項目的 `draft_payload` 儲存一題完整的 `ImportQuestionDraft`，包含穩定 `draftKey`、共用題目內容、小題樹、內容區塊、選項、答案、作答前提示、解析與選填的帳號分類 ID，但不包含學習者或題庫。每個小題的 `hints` 是內容區塊陣列的陣列，外層順序對應 `hint_index`。草稿更新以批次為單位取代所有 `pending` 項目，保留來源文件與資產關聯；已 `approved` 的項目不可由草稿 API 改寫。v1 草稿及沒有 `hints` 的既有 v2 草稿載入時由伺服器正規化，後續儲存與匯出一律使用含 `hints` 的 v2。
+
+### 帳號自訂科目分類
+
+`0025_account_question_taxonomy` 讓 `filter_fields` 使用與科目、題目相同的 `origin + owner_user_id` 擁有權契約。系統欄位的 `key` 全域唯一；帳號欄位的 `key` 只需在同一擁有者內唯一。每個帳號欄位使用 `filter_field_scopes` 與 `filter_field_scope_subjects` 明確限制到一個科目，選項沿用 `filter_field_options`。因此正式練習與題目篩選可直接讀取同一組 `question_revision_filter_values`，不另建只供匯入使用的分類表。
+
+帳號可在系統科目或自己的自訂科目下建立分類欄位。欄位與選項由帳號共用，不綁單一 learner；其他帳號的目錄查詢、AI 分類與發布請求都不得看見或引用。分類可為 `single` 或 `multiple`，且永遠不是發布必填欄位。AI 只能提出目前有效選項的候選；使用者接受後，草稿保存選項 ID，正式發布才以 `value_source='user'` 寫入題目版本。
 
 ### `question_revision_sources` 題目版本來源位置
 
@@ -888,7 +934,7 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 | `created_at` | `timestamptz` | 必填；目前時間 | 建立時間 | `learner_id + subject_id` 唯一 |
 | `updated_at` | `timestamptz` | 必填；目前時間 | 最近更新時間 | — |
 
-`enabled=true` 且 `book_version_id` 為空是合法狀態，表示學習者使用此科目，但沒有指定教材版本。`enabled=false` 時科目不出現在一般題目與練習入口，既有版本設定保留，重新啟用時可繼續使用。歷史作答、錯題與成果不受目前啟用狀態限制。在學學習者由 `grade_subjects` 建立系統預設設定；不在學學習者不建立年級預設，可從有效系統 `leaf` 與帳號自訂科目中加入設定。系統預設科目可以停用但不能刪除設定；自訂科目可在沒有歷史引用時刪除，有引用時只能停用或封存。
+`enabled=true` 且 `book_version_id` 為空是合法狀態，表示學習者使用此科目，但沒有指定教材版本。`enabled=false` 時科目不出現在一般題目與練習入口，既有版本設定保留，重新啟用時可繼續使用。歷史作答、錯題與成果不受目前啟用狀態限制。在學學習者由 `grade_subjects` 建立系統預設設定；不在學學習者不建立年級預設。所有學習者都可加入目前適用的有效系統 `leaf`，也可加入帳號自訂科目；自訂科目不受年級目錄限制。系統預設科目可以停用但不能刪除設定；自訂科目可在沒有歷史引用時刪除，有引用時只能停用或封存。
 
 ### `curriculum_units` 教材單元
 
@@ -1431,7 +1477,7 @@ Google 快速註冊不會用電子郵件自動合併既有帳號。Google `sub` 
 
 `0011` 的隱私升級會重新建立上述五張統計表。合格明細只包括所有 `instant` 作答，以及 session 已完成的 `complete` 作答；進行中的 `complete` 與任何 `score` 都不納入。每日統計以 `Asia/Taipei` 換日；相近題掌握度先取每位學習者對每題的最新整題結果，再依已確認群組計算不同題目數；學習者每日 session 數只計已完成的 `instant`／`complete` session。重建不從舊統計扣除 `score`，也不從 session aggregate 反推逐題結果。
 
-錯題英雄榜不永久保存名次。查詢依日期範圍與共用篩選條件聚合後，再用資料庫排名函式計算；畫面額外顯示答錯次數、錯誤率、最後作答時間等錯題資料。
+錯題排行榜不永久保存名次。查詢依日期範圍與共用篩選條件聚合後，再用資料庫排名函式計算；畫面額外顯示答錯次數、錯誤率、最後作答時間等錯題資料。
 
 ### `analytics_privacy_policies` 統計隱私政策
 
@@ -1686,10 +1732,10 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 
 ## 共用篩選查詢規則
 
-題目總覽、錯題英雄榜與開始練習必須呼叫同一個後端查詢服務，並共用相同的固定條件、來源專屬條件與權限範圍。三個入口只增加各自的輸出或操作：
+題目總覽、錯題排行榜與開始練習必須呼叫同一個後端查詢服務，並共用相同的固定條件、來源專屬條件與權限範圍。三個入口只增加各自的輸出或操作：
 
 - 題目總覽增加分頁、批次選取與收藏操作。
-- 錯題英雄榜增加日期範圍、答錯次數、錯誤率、最後作答時間與即時計算名次。
+- 錯題排行榜增加日期範圍、答錯次數、錯誤率、最後作答時間與即時計算名次。
 - 開始練習增加題數、檢核方式及難易度比例。啟用比例時忽略一般難易度條件。
 
 一般題目總覽與開始練習先套用帳號及學習者權限，再依就學狀態、目前年級與已啟用科目限制候選題，接著套用固定教材條件、考試級別、來源固定維度規則、來源專屬欄位、收藏、作答狀態及相近題條件，最後才分頁或抽題。不能先取出所有資料再由前端過濾。
@@ -1698,7 +1744,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 
 `exam_level` 是固定篩選條件。篩選面板只在目前來源的 `exam_level` 規則不是 `not_applicable` 時顯示；指定來源限定考試體系時，只列該體系級別。以 `exam_subject_ranges.target_level_id` 建立練習時，首版只選相同級別，不自行展開較低級別或兄弟類別。
 
-錯題英雄榜與歷史練習明細先從該學習者的 `answer_part_results` 或統計明細取得歷史題目，不套用目前年級、目前啟用科目或目前書籍版本限制；這些欄位只能作為歷史題目的篩選條件。從歷史錯題產生相近題時，同年級條件使用原錯題版本的 `grade_id`，不使用學習者目前年級。這可避免升年級後舊錯題消失，也不會把舊錯題的相近題錯配到目前年級。
+錯題排行榜與歷史練習明細先從該學習者的 `answer_part_results` 或統計明細取得歷史題目，不套用目前年級、目前啟用科目或目前書籍版本限制；這些欄位只能作為歷史題目的篩選條件。從歷史錯題產生相近題時，同年級條件使用原錯題版本的 `grade_id`，不使用學習者目前年級。這可避免升年級後舊錯題消失，也不會把舊錯題的相近題錯配到目前年級。
 
 社群錯題排行從 `question_daily_stats` 與必要的作答明細依日期範圍聚合，不套用查詢者目前年級、啟用科目或版本；只套用共用篩選條件、已發布系統題目限制及有效統計隱私政策。API 只回傳題目層級聚合值，不回傳學習者識別資料。可見範圍尚未核准前不開放跨帳號或全站查詢，只提供查詢者有權存取的學習者資料所構成的範圍。
 
@@ -1803,7 +1849,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - 系統題目修改原因：`0005` preflight 會拒絕既有缺漏；系統題目新增或更新 `revision_number > 1` 的版本時，缺少或只有空白的 `change_note` 會由 revision trigger 拒絕；帳號題目含有缺漏的後續版本時，`questions.origin` 的 deferred constraint trigger 會阻止交易以 `origin=system` 提交。這些允許與拒絕案例已納入資料庫限制測試；正式 API 另提供送出前的友善驗證。
 - 小題複習：只有答錯的小題進入複習；其他小題與大題共用內容仍可正確顯示。
 - 排程與佇列：同一計畫可建立多個固定排程；重送啟動要求不重複建立工作階段；後續練習項目消耗後仍能追溯來源。
-- 篩選一致性：總覽、錯題英雄榜與開始練習共用欄位解析及條件語意；一般候選題查詢結果一致，錯題英雄榜以歷史作答為資料範圍，不受目前年級與啟用科目限制。
+- 篩選一致性：總覽、錯題排行榜與開始練習共用欄位解析及條件語意；一般候選題查詢結果一致，錯題排行榜以歷史作答為資料範圍，不受目前年級與啟用科目限制。
 - 適用規則：驗證同一維度任一符合、跨維度全部符合、排除優先、全域規則及版本專屬選項；封存來源或版本後不得顯示失效選項。
 - 比例選題：比例合計、一般難度停用、難度不足補題及總題數不足都符合契約。
 - 相近題掌握：只計不同題目的最新已檢核答對結果，待審核與未確認群組不得觸發排除。
@@ -1826,7 +1872,7 @@ practice_session_items ──< practice_session_item_origins >── answer_part
 - `docs/PRODUCT_SPEC.md`：帳號、學習者、題目、匯入、練習、錯題、收藏、相近題及統計規則。
 - `docs/system-admin-plan.md`：預設系統管理員、題目所有權、授權與稽核邊界。
 - `docs/plan.md`：歷史 JSON API 邊界、目前 PostgreSQL 前端狀態及正式資料庫施工確認節點。
-- `docs/database-completion-matrix.md`：目前規劃需求、122 張業務資料表、正式 API／表單與安全切換狀態對照。
+- `docs/database-completion-matrix.md`：目前規劃需求、124 張業務資料表、正式 API／表單與安全切換狀態對照。
 - `app/lib/demo-data.ts`：歷史介面與 fixture 搬移來源；目前正式主流程不以它作為帳號、題目或作答的權威資料契約。
 - `app/lib/question-filters.ts`：目前共用篩選欄位、來源分類及來源專屬欄位行為。
 - `app/lib/mock-store.ts`：既有 JSON 驗證與舊資料轉換規則。

@@ -14,11 +14,11 @@ import {
     CardTitle,
     FormField,
     Input,
-    NativeSelect,
 } from "@keel-design/ui";
 import type { ReactNode } from "react";
 
 import { AdminFilterBar } from "../admin-filter-bar";
+import { AppSelect as NativeSelect } from "../../app-select";
 import { AdminMetricCard } from "../admin-metric-card";
 import { AdminNotice } from "../admin-notice";
 import { AdminPagination } from "../admin-pagination";
@@ -55,7 +55,7 @@ export function formatMetricValue(value: ViewMetricValueDto): string | number {
         case "policy_required":
             return "尚未設定統計隱私政策";
         case "integration_pending":
-            return "尚未串接";
+            return "無資料";
         case "report_only":
             return "請至報表查看";
         case "no_data":

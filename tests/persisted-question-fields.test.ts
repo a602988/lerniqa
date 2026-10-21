@@ -48,9 +48,10 @@ test("獨立小題逐題切換，但題幹多空格與多欄文字小題維持�
     assert.match(fields, /parts\.every\(\(part\) => part\.answerMode === "text" && part\.answerFieldCount > 1\)/u);
     assert.match(fields, /const usesStepNavigation = parts\.length > 1[\s\S]*&& !usesInlineBlankAnswerFields[\s\S]*&& !usesDedicatedAnswerSlotRows/u);
     assert.match(fields, /const visibleParts = usesStepNavigation \? parts\.slice\(currentIndex, currentIndex \+ 1\) : parts/u);
-    assert.equal(fields.match(/<Button type="button"/gu)?.length, 2);
+    assert.equal(fields.match(/<Button type="button"/gu)?.length, 3);
     assert.match(fields, />上一小題<\/Button>/u);
     assert.match(fields, />下一小題<ArrowRight \/><\/Button>/u);
+    assert.match(fields, /revealedHintCount === 0 \? "查看提示" : "再看一個提示"/u);
     assert.doesNotMatch(fields, /setActiveIndex[^;]*update\(/u);
 });
 

@@ -255,7 +255,7 @@ function createPlan() {
         sanitizedSha256,
         sanitizedByteSize: SANITIZED_BYTES.length,
         sanitizedMimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        storageKey: `sanitized-source-documents/${originalSha256}.docx`,
+        storageKey: `sanitized-source-documents/${SANITIZER_VERSION}/${originalSha256}.docx`,
         assetId: deterministicUuid(`asset:sanitized-source-document:${SANITIZER_VERSION}:${originalSha256}`),
         sourceDocumentId,
         sanitization: {

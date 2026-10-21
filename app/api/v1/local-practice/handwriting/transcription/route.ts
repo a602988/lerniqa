@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         catch {
             return errorResponse(
                 "HANDWRITING_AI_UNAVAILABLE",
-                "本機 AI 目前無法使用，可直接送出並等待人工批改。",
+                "手寫辨識失敗，可直接送出並等待人工批改。",
                 503,
             );
         }

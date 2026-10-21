@@ -4,6 +4,7 @@ import path from "node:path";
 import {
     findLocalPracticeAnswerAsset,
     findLocalPracticeAsset,
+    findLocalPracticeReferenceAsset,
     findLocalPracticeSessionAsset,
 } from "@/app/lib/local-practice-store";
 import {
@@ -74,12 +75,28 @@ export async function GET(
         const searchParams = new URL(request.url).searchParams;
         const kind = searchParams.get("kind");
         const sessionId = searchParams.get("sessionId");
+        const questionId = searchParams.get("questionId");
+        const revisionId = searchParams.get("revisionId");
         if (sessionId !== null && (!UUID_PATTERN.test(sessionId) || kind !== null)) {
             return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
         }
+        if (kind === "reference" && (
+            !questionId
+            || !revisionId
+            || !UUID_PATTERN.test(questionId)
+            || !UUID_PATTERN.test(revisionId)
+            || sessionId !== null
+        )) return errorResponse("ASSET_NOT_FOUND", "找不到題目媒體。", 404);
         const actor = { userId: account.userId, learnerId: account.learner.id };
         const asset = kind === "answer"
             ? await findLocalPracticeAnswerAsset(assetId, actor)
+            : kind === "reference" && questionId && revisionId
+                ? await findLocalPracticeReferenceAsset(
+                    assetId.toLowerCase(),
+                    questionId.toLowerCase(),
+                    revisionId.toLowerCase(),
+                    actor,
+                )
             : sessionId !== null
                 ? await findLocalPracticeSessionAsset(assetId.toLowerCase(), sessionId.toLowerCase(), actor)
             : kind === null

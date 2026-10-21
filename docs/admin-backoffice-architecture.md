@@ -110,7 +110,7 @@ ERP repository `/Users/jean/Documents/GitHub/erp_2026` 只用來參考後台資�
 
 已啟用價格不能原地修改金額、幣別、週期或起日；改價要停用舊價格並建立新草稿。功能型別與限制值必須一致，方案與功能的跨表狀態不能留下無法再調整的限制。
 
-方案 `active` 只表示目錄可供未來選用，不表示支付可用。畫面固定顯示「支付尚未串接」。本階段沒有 account subscription、provider customer、checkout、payment method、invoice、payment、refund、webhook、稅務、proration、entitlement enforcement 或 revenue 報表，也不會建立假方案、付費用戶或收入。
+方案 `active` 只表示目錄可供選用，不表示支付可用。系統管理的免費方案會透過 `account_plan_assignments` 指派給帳號，並在伺服器端執行自建題目與每日作答額度；這不是付費訂閱。畫面固定顯示「支付尚未串接」。本階段仍沒有 provider customer、checkout、payment method、invoice、payment、refund、webhook、稅務、proration 或 revenue 報表。
 
 ## 管理導覽
 

@@ -13,9 +13,7 @@ import {
     DialogTrigger,
     FormField,
     Input,
-    NativeSelect,
 } from "@keel-design/ui";
-import { useRouter } from "next/navigation";
 import {
     type FormEvent,
     type ReactNode,
@@ -26,6 +24,8 @@ import {
 } from "react";
 
 import { AdminNotice } from "../admin-notice";
+import { AppSelect as NativeSelect } from "../../app-select";
+import { useAppRouter } from "../../navigation-feedback";
 import type {
     SubscriptionFeatureDefinitionDto,
     SubscriptionFeatureLimitDto,
@@ -113,7 +113,7 @@ function CatalogMutationDialog({
     children?: ReactNode;
     disabled?: boolean;
 }) {
-    const router = useRouter();
+    const router = useAppRouter();
     const retryEvidence = useRef<CatalogRetryEvidence | null>(null);
     const errorRef = useRef<HTMLDivElement | null>(null);
     const [open, setOpen] = useState(false);
@@ -467,7 +467,7 @@ function StatusAction({
         >
             <AdminNotice tone={targetStatus === "retired" ? "warning" : "info"}>
                 {targetStatus === "active"
-                    ? "啟用只代表 catalog 可供未來選用，支付仍未串接。"
+                    ? "啟用後可供方案目錄選用。"
                     : "停用是終態，不能再退回草稿或重新啟用。"}
             </AdminNotice>
         </CatalogMutationDialog>

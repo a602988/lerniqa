@@ -6,7 +6,7 @@
 
 這份文件把目前已核准的產品需求，對照到正式 PostgreSQL 的資料表、關鍵欄位與關聯，再標示正式 API／表單是否已經接上。範圍以 `docs/PRODUCT_SPEC.md`、`docs/question-database-design.md` 與現有前端流程為準；不把未決定的產品功能或未完成的應用程式串接算成完成。
 
-目前二十一個 migration 共涵蓋 123 張業務資料表，另有一張只供 migration 工具使用的 `schema_migrations`。`0020` 新增教材來源證據，`0021` 新增 Google 快速註冊短效狀態。`0001` 至 `0021` 已通過隔離資料庫往返驗證；`0020` 與 `0021` 尚未套用持久本機資料庫。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
+目前共有二十六個 migration。`0020` 新增教材來源證據，`0021`、`0022` 建立三家社群快速註冊流程，`0023` 建立免費方案額度，`0024` 建立電子郵件註冊的短效引導狀態，`0025` 讓正式篩選欄位支援帳號擁有權與科目範圍，`0026` 讓既有題目內容區塊保存分組且有順序的作答前提示。`0001` 至 `0026` 已通過隔離資料庫的前進、回滾、再次前進與 schema parity 驗證。Lerniqa 是持續開發中的多科目正式產品；帳號、角色、學習者基本資料，以及 `/practice` 的題庫、學習本、排程、session、作答、歷程與錯題流程已使用 session 與學習者權限讀寫本機 PostgreSQL。瀏覽器只保存非識別性的 UI 設定、尚未切換資料庫的收藏，以及安全搬移後保留的舊學習本原始備份。使用者沿既有 `/practice` 選擇「國語 → 國一 → 翰林版 → 第一冊 → 第四課」；`/local-practice` 僅供內部診斷與相容。這不等於 production 後端已上線。
 
 ## 狀態定義
 
@@ -21,14 +21,14 @@
 
 | 需求與流程 | 資料表、關鍵欄位與關聯 | 正式 API／表單應完成的事 | 狀態 |
 | --- | --- | --- | --- |
-| 電子郵件與社群登入、帳號驗證 | `users`、`account_identities`、`verification_challenges`、`google_quick_registrations`；登入身份以 `user_id` 歸戶，token 與密碼只存雜湊。`0012` 已補上 challenge 與電子郵件 identity 的固定綁定，但不含 SMTP outbox；`0021` 保存 Google 快速註冊的短效狀態 | 登入服務驗證 provider、建立或撤銷 session，不把密碼、Google credential、token 或驗證碼回傳前端資料契約 | `/account` 與 auth API 已完成電子郵件密碼註冊、登入、登出與 `me`。`/quick-register` 已完成 Google ID token 驗證後的快速註冊、既有 Google 身份登入及電子郵件衝突保護；Google Cloud Web Client 與真實帳號往返仍待驗收，LINE、Facebook 與帳號綁定未完成。密碼重設與角色 PIN 設定／重設的 API、介面、MailPlus adapter、Nodemailer transport 與不連網針對性測試已完成；密碼重設不改動 `verified_at`，並撤銷全帳號 session。ERP 非機密 SMTP host／port／TLS 已核實，`0012` identity binding 已整合；Lerniqa 憑證、outbox、實際 handshake 與真實投遞尚未完成。同步寄信仍有 timing enumeration 風險，outbox／等時回應是 `0012` 之外的上線阻擋。公開／production HTTPS 與公開登入 rate limit 也待完成 |
+| 電子郵件與社群登入、帳號驗證 | `users`、`account_identities`、`verification_challenges`、`social_quick_registrations`、`social_oauth_attempts`；登入身份以 `user_id` 歸戶，token 與密碼只存雜湊。`0012` 已補上 challenge 與電子郵件 identity 的固定綁定，但不含 SMTP outbox；`0021`、`0022` 保存三家社群快速註冊短效狀態與一次性 OAuth 嘗試 | 登入服務驗證 provider、建立或撤銷 session，不把密碼、供應商 credential、token 或驗證碼回傳前端資料契約 | `/account` 與 auth API 已完成電子郵件密碼註冊、登入、登出與 `me`。`/account` 的 Google、LINE 與 Facebook 按鈕直接啟動授權，既有社群身份直接登入；`/quick-register` 只補充新使用者資料。電子郵件衝突保護已完成；各供應商 App 設定與真實帳號往返仍待驗收，帳號綁定未完成。密碼重設與角色 PIN 設定／重設的 API、介面、MailPlus adapter、Nodemailer transport 與不連網針對性測試已完成；密碼重設不改動 `verified_at`，並撤銷全帳號 session。ERP 非機密 SMTP host／port／TLS 已核實，`0012` identity binding 已整合；Lerniqa 憑證、outbox、實際 handshake 與真實投遞尚未完成。同步寄信仍有 timing enumeration 風險，outbox／等時回應是 `0012` 之外的上線阻擋。公開／production HTTPS 與公開登入 rate limit 也待完成 |
 | 登入 session、帳號身分與角色 | `users.account_role`、`auth_sessions`、`user_roles`、`role_pin_credentials`；一般帳號本人身分、session 目前角色／學習者及 `system_admin` 授權分開；session 建立／恢復與帳號、角色、存取權異動依固定順序取得帳號及學習者鎖 | 公開帳號契約分開回傳 `accountRole`、`activeRole`、`activeLearner` 與管理員授權；`accountRole` 表示主要身分，能力由 `activeRole` 及對應的有效授權決定。快速切換只更新目前 session，不改帳號身分，也不新增角色或學習者存取權 | `0008` 要求 active learner 仍啟用，封存前須同交易撤銷相關 session；`0010` 限制 `account_role` 為 parent／tutor／learner 且必須有相符有效授權。帳號可同時保留其他有效一般角色，因此 `accountRole=learner` 但具有有效 parent／tutor 授權時，切到該 `activeRole` 仍有相應成人能力。角色 PIN 設定／重設要求單一有效且已驗證的電子郵件與仍有效的目標角色，成功後只撤銷該角色的 session。成人角色切換仍以帳號密碼重新確認，角色 PIN 尚不參與切換。`system_admin` 與 production DB caller 邊界仍待完成 |
 | 一個帳號管理或分享多位學習者 | `learners`、`learner_access`；`learner_access` 是唯一正式關係表，不建立 `user_learner_access` 或其他平行表。`(learner_id, user_id, access_role)` 在 `revoked_at IS NULL` 時唯一，`0010` 另限制每帳號至多一筆未撤銷的 self learner 關係 | `/system-settings` 管理帳號身分、有效角色與可存取學習者；所有學習者 API 先檢查已接受、未撤銷的 `learner_access`。有效 `activeRole` 為 parent／tutor 時可使用成人管理能力；切到受管 learner mode 時，帳號身分、建立、帳號層更新與選取端點回 `403`。只有 self learner 能力的帳號可查看自己的系統設定，但不能建立受管學習者 | PostgreSQL 的建立、選取、更新、self learner 唯一性與名稱同步已串接。`/settings` 另管理目前學習者；寫入要求目前 learner、有效關係及 `can_manage_settings=true`。分享整位學習者存取權的邀請仍待建；這與已完成且不授予 learner access 的學習本分享不同 |
 | 學習者基本資料、年級、就學狀態與代表圖片 | `learners.display_name`、`grade_id`、`semester_id`、`education_status`、`school_name`、`avatar_asset_id`，搭配 `grades`、`semesters` 與 `assets` | `/settings` 只操作目前學習者；表單驗證「在學必有年級、不在學不得留學校／學期」，圖片上傳與讀取走受權限保護的附件流程 | 顯示名稱、年級與學期已由正式 API 讀寫 PostgreSQL。就學狀態、學校與代表圖片尚未進入公開 DTO／寫入 API；沒有 `can_manage_settings` 時介面只讀 |
-| 科目、版本、學期與練習偏好 | `subjects`、`subject_aliases`、`grade_subjects`、`book_versions`、`learner_preferences`、`learner_subject_settings`；自訂目錄以 `origin + owner_user_id` 隔離 | 設定表單只列當前學習者可用目錄；科目版本更新驗證科目、年級、出版社與書籍版本，並使用 `lock_version` 防止並行覆寫 | auth 公開 DTO 已提供學期、練習偏好、已啟用科目、出版社、書籍版本及可選版本。`PATCH /api/v1/auth/learners/subject-settings` 只能更新 session 目前學習者，並要求有效 `learner_access.can_manage_settings`；相同值重送不重複改版本。自訂目錄與練習偏好的正式寫入仍待建 |
+| 科目、版本、學期與練習偏好 | `subjects`、`subject_aliases`、`grade_subjects`、`book_versions`、`learner_preferences`、`learner_subject_settings`；自訂目錄以 `origin + owner_user_id` 隔離 | 設定表單只列當前學習者可用目錄；科目版本更新驗證科目、年級、出版社與書籍版本，並使用 `lock_version` 防止並行覆寫；建立自訂科目前比對帳號既有科目及目前可見的系統名稱與別名 | auth 公開 DTO 已提供學期、練習偏好、已啟用科目、出版社、書籍版本及可選版本。`PATCH /api/v1/auth/learners/subject-settings` 只能更新 session 目前學習者，並要求有效 `learner_access.can_manage_settings`；相同值重送不重複改版本。`POST` 已支援加入目錄科目及建立帳號自訂科目；練習偏好的正式寫入仍待建 |
 | 考試名稱、日期與各科範圍 | `exams`、`exam_subject_ranges`；起訖單元、版本、科目與學習者必須一致 | 考試表單以同一交易保存主檔與各科範圍，拒絕跨教材樹或跨學習者關聯 | Schema 已驗證；現有表單狀態仍保存在瀏覽器，尚未寫入正式資料表 |
 | 題庫所有權、穩定題目身份與版本 | `question_banks`、`question_bank_learners`、`questions`、`question_identifiers`、`question_revisions`、`question_revision_reviews`、`question_bank_items`；系統題目的 `revision_number > 1` 時，`change_note` 必須包含非空白修改原因，既有資料升級及 `account -> system` 轉換也會檢查 | 題庫 CRUD 依系統／帳號所有權授權；修改題目建立新 revision 並填寫修改原因，發布與目前版本更新必須同一交易 | Schema、既有資料升級前置檢查與來源轉換反向檢查已驗證；正式 repository、審核 API 與後台表單待建 |
-| 題幹、小題、選項、答案、解析與音訊 | `question_parts`、`question_options`、`question_content_blocks`、`question_answers`；每次練習固定引用 revision；選擇類題目的答案鍵值必須屬於同一小題的選項；`answer_field_count` 保存經來源核准的文字答案欄位數 | 編輯與匯入表單依作答方式驗證內容、選項與答案；正式 API 可回傳答案欄位數，但不應把無權查看的答案送到作答端 | `0007` 檢查答案鍵與同一小題選項；`0009` 進一步要求 published／superseded 的自動判分選擇類小題至少有一個有效答案鍵，自動判分文字題至少有一個非空白可接受答案。`0018` 限制多欄只適用於人工批改文字小題，送出時由伺服器檢查欄位數及非空白值。欄位數不從逗號、空白或參考答案推測。`/practice` 作答前只取得題幹、小題、選項與公開欄位數 |
+| 題目內容、小題、選項、提示、答案、解析與音訊 | `question_parts`、`question_options`、`question_content_blocks`、`question_answers`；`0026` 以 `placement=hint` 與 `hint_index` 在既有內容表保存提示；每次練習固定引用 revision；選擇類題目的答案鍵值必須屬於同一小題的選項；`answer_field_count` 保存經來源核准的文字答案欄位數 | 編輯與匯入表單依作答方式驗證內容、選項與答案；正式 API 可回傳答案欄位數與作答前提示，但不應把無權查看的答案或解析送到作答端 | `0007`、`0009` 與 `0018` 的答案完整性限制維持不變。`0026` 已通過 migration 往返與限制測試；新增題目編輯器、草稿格式、發布交易、預覽及正式練習都使用同一套內容區塊。提示預設收合並逐次展開；圖片解析只透過已解鎖的 session 或具結果檢視權限的題目查詢取得 |
 | 單元、主題、知識點與課綱代碼 | `curriculum_units`、`topics`、`knowledge_points`、`curriculum_codes` 及四組 revision 關聯表；自訂單元、主題與知識點有帳號所有權 | 匯入與編輯只把核准對照寫入正式分類；跨版本歸檔與原生教材位置分開保存 | Schema 已驗證；`/practice` 題庫 API 會從 `question_revision_knowledge_points` 與 `knowledge_points` 讀取正式知識點，不再把題型名稱當成知識點。自訂目錄與完整對照 API 待建 |
 | 題目來源與來源專屬篩選 | `source_categories`、`source_category_dimensions`、`filter_fields`、scope／option／value 關聯；自訂來源有帳號所有權 | 依來源、科目、年級、版本與考試級別產生可用欄位；只允許核准欄位成為可搜尋資料 | Schema 已驗證；自訂來源所有權由 `0005` 補齊。現有 publisher 題庫只設定已確認的 4 組來源維度規則，其餘維度需先有產品規格；正式查詢服務待建 |
 | 圖片、掃描 PDF、舊版 Word、文字貼上與逐題校正 | `assets`、`source_documents`、`source_document_classification_candidates`、`import_batches`、`import_batch_documents`、`import_items`、`question_revision_sources`；`0012` 已建立 `question_enrichment_runs` 與 revision pending suggestions；`0020` 建立補充教材的目錄、處理批次、頁面、OCR 區塊與題目版本證據 | 上傳、掃描、OCR／拆題、人工校正與確認分階段處理；每題保存正確文件、頁碼、裁切圖、題號及冪等鍵。補全建議只能先進 pending sidecar，核准前不得改寫已發布 revision | Schema `0001`–`0020` 已在隔離資料庫通過往返驗證；`0020` 尚未套用持久本機資料庫。Hanlin CLI 題庫已匯入；第四課自修 PDF 的 22 頁 OCR、private 頁面 asset 與 manifest 已完成，`apply` 仍關閉。題庫補全結果也尚未 apply；正式匯入 API／介面與受權 apply 流程待建 |
@@ -47,7 +47,7 @@
 | 管理員稽核與資料刪除／去識別化 | `admin_audit_logs`、`data_erasure_requests`；要求只能以 `pending` 建立並單向推進，身份／目標不可改、不可刪、終態不可變，完成需同交易管理員稽核 | 高權限變更與搬移寫不可變稽核；正式 worker 依核准保存政策真正刪除或去識別化，並留下不含個資的摘要 | 要求 ledger 與流程 Schema 已驗證（`0005`）；真正資料／物件刪除、保存政策與管理 API 待決策 |
 | 正式目錄與 fixture 搬移 | `seed_manifests` 加上全部目標表；每批記錄來源版本、雜湊、筆數與 migration | 搬移工具保持 fixture 唯讀，可重跑，輸出舊 ID 對新 UUID、各表筆數、衝突與隔離報告 | Schema 已驗證；Hanlin 單檔匯入器已可重跑並驗證不建立固定合成身份，但通用 fixture／JSON 搬移工具與 production 資料搬移尚未完成 |
 
-## 122 張業務資料表
+## 124 張業務資料表
 
 | Migration | 數量 | 資料表 |
 | --- | ---: | --- |
@@ -61,6 +61,12 @@
 | `0008_auth_and_import_integrity` | 0 | 補上 active learner session 完整性、帳號／學習者鎖定順序，以及指定 confirmed 批次的原生文件分類修正，不新增資料表 |
 | `0009_automatic_answer_completeness` | 0 | 補上已發布／已取代版本的自動判分答案完整性與升級前置檢查，不新增資料表 |
 | `0010_account_role_and_self_learner` | 0 | 加入 `users.account_role`、self learner 唯一性、名稱／設定權限與帳號角色授權的一致性；既有資料修正只向前，不新增資料表 |
+| `0024_email_registration_onboarding` | 1 | 保存十分鐘有效的電子郵件註冊引導狀態；只保存正規化電子郵件、密碼雜湊與不透明 token 雜湊，完成或逾時後不可再使用 |
+| `0025_account_question_taxonomy` | 0 | 擴充既有 `filter_fields` 的 system／account 擁有權，讓帳號自訂欄位與選項沿用正式題目篩選關聯 |
+| `0026_question_hints` | 0 | 擴充既有 `question_content_blocks` 的 `hint` 位置與 `hint_index`，保存每個小題分組且有順序的作答前提示 |
+| `0027_question_source_analysis_jobs` | 2 | `question_source_analysis_jobs`、`question_source_analysis_runs`；保存圖片題目背景分析的排程、租約、重試、完成結果與每次執行紀錄 |
+| `0028_remembered_accounts` | 2 | `auth_devices`、`auth_device_accounts`；保存登入頁可移除的已記住帳號，不保存 session token 明碼 |
+| `0029_question_source_document_roles` | 0 | 擴充 `import_batch_documents` 的來源用途、判定來源、信心值與理由，讓同一批次分開處理題目、答案、解析及補充圖片 |
 | `0011_score_session_aggregates` | 2 | `practice_score_receipts`、`asset_object_cleanup_jobs`；另為 `practice_sessions` 加入五個計分彙總欄位，清除既有 `score` session 的逐題明細、錯題／相近題佇列與 outbox，從剩餘非 `score` 明細重建五張統計表，並排程清理只屬於舊 `score` 的私有作答物件 |
 | `0012_admin_catalog_and_question_enrichment` | 10 | 帳號復原 identity binding、同題型來源值域、題庫補全 pending suggestion、手寫 AI sidecar 與管理目錄；不含 SMTP outbox |
 | `0013_education_stage_catalog` | 0 | 擴充 `grades.stage` 至高中，建立小一至高三共十二個年級與上下學期正式目錄，不新增資料表 |
@@ -71,8 +77,10 @@
 | `0018_question_answer_field_count` | 0 | 為 `question_parts` 加入 `answer_field_count` 及文字／人工批改限制，不新增資料表 |
 | `0019_question_identifier_question_lookup` | 0 | 為每題首選題號查詢新增複合索引，不新增資料表 |
 | `0020_teaching_source_evidence` | 5 | `source_document_catalog_profiles`、`source_document_processing_runs`、`source_document_pages`、`source_document_blocks`、`question_revision_source_evidence`；另加入 private `source_page` asset purpose |
+| `0021_google_quick_registration` | 1 | `google_quick_registrations`；Google 快速註冊短效狀態，下一個 migration 會改為共用名稱 |
+| `0022_social_quick_registration` | 1 | 將 `google_quick_registrations` 改名為 `social_quick_registrations` 並加入 provider；新增 `social_oauth_attempts` |
 
-`schema_migrations` 是技術性版本紀錄，不列入 122 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
+`schema_migrations` 是技術性版本紀錄，不列入 124 張業務資料表。每張已整合資料表的完整欄位、值域與索引以 `docs/question-database-design.md` 和 migration SQL 為準；本表不重複另一份容易失同步的逐欄位定義。
 
 ## 目前網站的實際資料來源
 
@@ -80,7 +88,7 @@
 | --- | --- | --- |
 | 舊 JSON 題庫與匯入 | 舊 `/api/v1/bootstrap`、`state`、`reset`、`questions`、`imports` 與 storage-key asset 路徑固定回 HTTP `410`，不再向正式主流程提供 fixture 或 runtime JSON | 舊 mock `/bank` 已移除並轉址 `/questions`；需另建受權限、可追溯的 PostgreSQL 匯入 API／介面，不能重新開啟舊端點 |
 | 本機整合題庫與來源文件 | `/practice` 正常分類接入國語／國一／翰林版／第一冊／第四至第六課及語文常識（二）的已發布題目；內部 `/local-practice` 使用相同持久服務。四份原始 Word 文件會先在本機做巨集隔離與安全轉換，asset 存在 `local-data/assets`；其餘 11 份文件尚未匯入 | 本機持久服務已串接；第四、五、六課與語文常識（二）分別有 279、280、258、75 題 published/current，共 892 題。語文常識（二）的 2 張有效統計圖已保存，另 1 題來源破圖保留待檢視。匯入批次、文件、版本、內容與來源關聯保存在持久 PostgreSQL |
-| 帳號、角色與學習者 | `/account`、`/quick-register`、`/system-settings` 與 auth API 實際讀寫 PostgreSQL。持有有效 parent／tutor 授權的帳號切到相應 `activeRole` 後可管理有權存取的學習者，無論主要 `accountRole` 為何；受管 learner mode 的帳號層操作回 `403`；只有 self learner 能力的帳號可查看自己的帳號設定 | 本機身份、session、一般帳號角色、self learner 與學習者關係已串接。信箱驗證及 Google 快速註冊程式已串接；Google Cloud Web Client 與真實帳號往返尚未驗收。密碼重設與角色 PIN 設定／重設的程式與不連網測試已完成，`0012` identity binding 已整合；帳號復原 DB E2E 狀態以本節驗證紀錄為準。SMTP outbox／等時回應、Lerniqa 憑證、handshake 與實際投遞另列為上線阻擋；LINE、Facebook、帳號綁定、邀請分享、角色 PIN 切換、`system_admin` 管理與 production 帳號生命週期尚未完成 |
+| 帳號、角色與學習者 | `/account`、`/quick-register`、`/system-settings` 與 auth API 實際讀寫 PostgreSQL。持有有效 parent／tutor 授權的帳號切到相應 `activeRole` 後可管理有權存取的學習者，無論主要 `accountRole` 為何；受管 learner mode 的帳號層操作回 `403`；只有 self learner 能力的帳號可查看自己的帳號設定 | 本機身份、session、一般帳號角色、self learner 與學習者關係已串接。信箱驗證及三家社群快速註冊程式已串接；各供應商 App 與真實帳號往返尚未驗收。密碼重設與角色 PIN 設定／重設的程式與不連網測試已完成，`0012` identity binding 已整合；帳號復原 DB E2E 狀態以本節驗證紀錄為準。SMTP outbox／等時回應、Lerniqa 憑證、handshake 與實際投遞另列為上線阻擋；帳號綁定、邀請分享、角色 PIN 切換、`system_admin` 管理與 production 帳號生命週期尚未完成 |
 | 目前學習者設定 | `/settings` 從 session 的 active learner 載入；先區分在學或不在學。在學者依資料庫目錄選教育階段、年級與學期，各科書籍版本另行設定；不在學者不保存年級或學期 | 顯示名稱、就學狀態、年級、學期與各科書籍版本由受權限 API 寫入 PostgreSQL。學校、代表圖片、練習偏好與考試的正式寫入仍待完成 |
 | 練習 UI 設定、學習本、排程與收藏 | 學習本與排程以授權 API 讀寫 PostgreSQL；舊瀏覽器資料必須先顯示預覽，再由使用者確認搬移，成功後仍保留原始備份及收據。非識別性的篩選／顯示設定與尚未切換資料庫的收藏仍依 learner ID 保存在 `localStorage` | 學習本、版本、分享、排程、通知及稽核已串接 PostgreSQL。搬移遇到無法安全對應的題目或動態條件時會保留待處理，不猜測；清除瀏覽器資料不會刪除已搬移的學習本或排程 |
 | `/practice` 的練習、作答與錯題 | `/api/v1/local-practice/*` 在伺服器交易內保存 session。`instant`／`complete` 另保存逐題作答、允許的 `wrong_review` 佇列與 `analytics_outbox`；`score` 只保存 aggregate 與不含答案的冪等收據。瀏覽器只以 session UUID 提示恢復，不保存作答結果 | 基本練習、作答與錯題的本機持久服務已串接，結果揭露與保存範圍由 `check_mode` 控制。private 手寫 PNG 與階段性推薦程式已通過針對性測試，`0012` 已整合；private 手寫仍須完成完整 E2E，推薦功能另缺文字骨架、可變值、正式關鍵字資料與完整 E2E |
@@ -108,7 +116,7 @@
 
 判分政策為 `automatic` 且具有完整標準答案時，伺服器才會回傳 `correct` 或 `wrong`。`0009` 讓已發布或已取代版本不能留下缺少可用答案的自動判分小題；人工與 AI 輔助檢視仍可沒有參考答案，結果保持 `pending`。完整操作說明見 `docs/local-practice-pilot.md`。
 
-這些端點已能辨識本機 session 並隔離合成帳號，但不會代理主應用的 JSON 寫入。未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口使用；本機信箱驗證、密碼重設與角色 PIN 設定／重設的 challenge、API 與介面已完成，但 SMTP 執行環境與真實投遞尚未設定。Google 快速註冊程式已完成，Google Cloud Web Client 與真實帳號往返尚未驗收。學習本跨帳號分享已完成本機 API 與介面；分享整位學習者存取權、公開／production HTTPS、公開登入 rate limit、LINE／Facebook、帳號綁定、RLS、production GRANT 與正式角色授權仍未完成，因此不能在 Vercel 或 production 資料庫上當成正式 API。
+這些端點已能辨識本機 session 並隔離合成帳號，但不會代理主應用的 JSON 寫入。未驗證電子郵件可在 localhost 或同一 tailnet 的私有 HTTPS 入口使用；本機信箱驗證、密碼重設與角色 PIN 設定／重設的 challenge、API 與介面已完成，但 SMTP 執行環境與真實投遞尚未設定。三家社群快速註冊程式已完成，各供應商 App 與真實帳號往返尚未驗收。學習本跨帳號分享已完成本機 API 與介面；分享整位學習者存取權、公開／production HTTPS、公開登入 rate limit、帳號綁定、RLS、production GRANT 與正式角色授權仍未完成，因此不能在 Vercel 或 production 資料庫上當成正式 API。
 
 ## 本輪有界驗收矩陣
 
@@ -164,7 +172,7 @@ npm run test:question-enrichment
 node --test tests/practice-catalog-integration.test.mjs
 ```
 
-最近一次完整 `npm run db:test` 已在隔離 PostgreSQL 通過 `0001` 至 `0021` 的首次前進、限制測試、逐層 down、第二次前進與 schema parity。完成後沒有修改持久的 `lerniqa_local`。
+最近一次完整 `npm run db:test` 已在隔離 PostgreSQL 通過 `0001` 至 `0022` 的首次前進、限制測試、逐層 down、第二次前進與 schema parity。完成後沒有修改持久的 `lerniqa_local`。
 
 驗證預設自行在 `/tmp` 建立一次性 PostgreSQL cluster，關閉 TCP、使用私有 Unix socket，並對每個資料庫指令明確指定 host、port、user 與 database；同時以 `PSQLRC=/dev/null` 避免本機設定改變測試行為。`db:test`、import ownership 與 local practice runner 也分別提供 `LERNIQA_DB_TEST_*`、`LERNIQA_IMPORT_OWNERSHIP_TEST_*`、`LERNIQA_PRACTICE_TEST_*` 的 existing-local-server 明確 opt-in。這些模式都要提供本機 Unix socket、port 及預期 data directory，並核對目前作業系統使用者與 non-recovery 狀態；runner 只建立具隨機名稱及本次 ownership comment 的隔離資料庫，清理前再次核對身分，不停止共用 server，也不得連接 production。import ownership 測試只檢查隔離匯入後的資料所有權；local practice 測試使用 279 題規模的合成題庫完成註冊、登入、session 恢復、三種模式的保存與答案揭露、歷程、錯題及 PostgreSQL／Next.js 重啟驗證。`test:account-recovery`、`test:handwriting` 與 `test:question-enrichment` 檢查程式、輸入限制、安全邊界與 repository／route 契約；migration 契約另由 `db:test` 驗證。現有階段性推薦案例由整體 `npm test` 執行，但不代表文字骨架、可變值與正式關鍵字關係已完成。`practice-catalog-integration` 另檢查主 `/practice` 的題庫轉換、最多 500 題的分頁讀取、正式知識點關聯及 learner-keyed `localStorage` 邊界。完成後再執行：
 

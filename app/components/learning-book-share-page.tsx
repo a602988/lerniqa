@@ -2,17 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button, Card, CardContent, FormField } from "@keel-design/ui";
 import { BookOpen, CheckCircle2, LogIn } from "lucide-react";
 import { learningBookMutation } from "../lib/learning-book-client";
 import { practiceApi, PracticeApiError, selectPracticeLearner, type PracticeAccount } from "../lib/practice-client";
+import { AppSelect } from "./app-select";
+import { useAppRouter } from "./navigation-feedback";
 import "./learning-book-workspace.css";
 
 interface InvitePreview { name: string; sharerName: string; expiresAt: string; redeemed: boolean }
 
 export function LearningBookSharePage({ token }: { token: string }) {
-    const router = useRouter();
+    const router = useAppRouter();
     const [account, setAccount] = useState<PracticeAccount>();
     const [preview, setPreview] = useState<InvitePreview>();
     const [learnerId, setLearnerId] = useState("");
@@ -72,7 +73,7 @@ export function LearningBookSharePage({ token }: { token: string }) {
         {preview && account && !received && <Card><CardContent className="learning-book-detail" style={{ padding: "1.5rem" }}><h2>{preview.name}</h2><p>分享者：{preview.sharerName}</p><p>有效至 {new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", dateStyle: "medium", timeStyle: "short" }).format(new Date(preview.expiresAt))}</p>
             <p>領取後會接收來源已發布的更新。你安排的練習與作答保留當時版本；分享者不會因此取得你的作答或成績權限。</p>
             {preview.redeemed && <p className="learning-book-message">此邀請已領取。如先前領取尚未完成，可使用原帳號與學習者再次確認。</p>}
-            {account.learners.length ? <form onSubmit={(event) => { event.preventDefault(); void redeem(); }}><FormField label="領取的學習者"><select className="learning-book-select" value={learnerId} disabled={busy} onChange={(event) => { setLearnerId(event.target.value); requestKey.current = undefined; }}><option value="">請選擇學習者</option>{account.learners.map((learner) => <option key={learner.id} value={learner.id}>{learner.displayName}</option>)}</select></FormField><Button type="submit" disabled={busy || !learnerId}>{busy ? "領取中…" : "確認領取"}</Button></form> : <p>此帳號尚未具有可用的學習者，請先到<Link href="/system-settings">系統設定</Link>建立或取得學習者存取權，再回到此網址領取。</p>}
+            {account.learners.length ? <form onSubmit={(event) => { event.preventDefault(); void redeem(); }}><FormField label="領取的學習者"><AppSelect className="learning-book-select" value={learnerId} disabled={busy} onChange={(event) => { setLearnerId(event.target.value); requestKey.current = undefined; }} options={account.learners.map((learner) => ({ label: learner.displayName, value: learner.id }))} placeholder="請選擇學習者" /></FormField><Button type="submit" disabled={busy || !learnerId}>{busy ? "領取中…" : "確認領取"}</Button></form> : <p>此帳號尚未具有可用的學習者，請先到<Link href="/system-settings">系統設定</Link>建立或取得學習者存取權，再回到此網址領取。</p>}
         </CardContent></Card>}
     </main>;
 }

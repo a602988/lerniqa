@@ -58,6 +58,7 @@ import {
     handwritingRecognitionModeForLabel,
     type HandwritingRecognitionMode,
 } from "@/app/lib/handwriting-recognition.mjs";
+import { consumeDailyPracticeQuestion } from "@/app/lib/account-plan-service";
 
 const RECOMMENDATION_RELATION_METHOD_VERSION = "confirmed-relation-v1";
 
@@ -191,6 +192,8 @@ interface BlockRow extends QueryResultRow {
     question_revision_id: string;
     question_part_id: string | null;
     question_option_id: string | null;
+    placement: "prompt" | "option" | "hint";
+    hint_index: number | null;
     content_type: LocalPracticeContentBlock["contentType"];
     position: number;
     text_content: string | null;
@@ -304,6 +307,23 @@ interface ReferenceAnswerRow extends QueryResultRow {
     option_key: string | null;
     option_label: string | null;
     explanation: string | null;
+}
+
+interface ReferenceBlockRow extends QueryResultRow {
+    owner_id: string;
+    part_id: string;
+    session_id: string | null;
+    question_id: string;
+    revision_id: string;
+    id: string;
+    content_type: LocalPracticeContentBlock["contentType"];
+    position: number;
+    text_content: string | null;
+    asset_id: string | null;
+    mime_type: string | null;
+    width: number | null;
+    height: number | null;
+    alt_text: string | null;
 }
 
 interface SessionHistoryRow extends QueryResultRow {
@@ -466,6 +486,8 @@ async function hydrateLocalPracticeQuestions(
                 block.question_revision_id,
                 block.question_part_id,
                 block.question_option_id,
+                block.placement,
+                block.hint_index,
                 block.content_type,
                 block.position,
                 block.text_content,
@@ -487,8 +509,8 @@ async function hydrateLocalPracticeQuestions(
                     )
                 )
             WHERE block.question_revision_id = ANY($1::uuid[])
-                AND block.placement IN ('prompt', 'option')
-            ORDER BY block.question_revision_id, block.position, block.id
+                AND block.placement IN ('prompt', 'option', 'hint')
+            ORDER BY block.question_revision_id, block.question_part_id, block.hint_index, block.position, block.id
         `, [revisionIds]),
         runQuery<MetadataRow>(`
             SELECT
@@ -555,17 +577,27 @@ async function hydrateLocalPracticeQuestions(
         const filters = filtersFor(row);
         const revisionBlocks = blocksByRevision.get(row.revision_id) ?? [];
         const rootPromptBlocks = revisionBlocks
-            .filter((block) => block.question_part_id === null && block.question_option_id === null)
+            .filter((block) => block.placement === "prompt" && block.question_part_id === null && block.question_option_id === null)
             .map((block) => toContentBlock(block, filters, sessionId));
         const parts = (partsByRevision.get(row.revision_id) ?? [])
             .filter((part) => row.scoped_part_ids == null || row.scoped_part_ids.includes(part.id))
             .map<LocalPracticeQuestionPart>((part) => {
             const promptBlocks = revisionBlocks
-                .filter((block) => block.question_part_id === part.id && block.question_option_id === null)
+                .filter((block) => block.placement === "prompt" && block.question_part_id === part.id && block.question_option_id === null)
                 .map((block) => toContentBlock(block, filters, sessionId));
+            const hintIndexes = [...new Set(revisionBlocks
+                .filter((block) => block.placement === "hint" && block.question_part_id === part.id)
+                .flatMap((block) => block.hint_index === null ? [] : [block.hint_index]))]
+                .sort((first, second) => first - second);
+            const hints = hintIndexes.map((hintIndex) => ({
+                position: hintIndex,
+                blocks: revisionBlocks
+                    .filter((block) => block.placement === "hint" && block.question_part_id === part.id && block.hint_index === hintIndex)
+                    .map((block) => toContentBlock(block, filters, sessionId)),
+            }));
             const options = (optionsByPart.get(part.id) ?? []).map((option) => {
                 const contentBlocks = revisionBlocks
-                    .filter((block) => block.question_option_id === option.id)
+                    .filter((block) => block.placement === "option" && block.question_option_id === option.id)
                     .map((block) => toContentBlock(block, filters, sessionId));
                 return {
                     id: option.id,
@@ -585,6 +617,7 @@ async function hydrateLocalPracticeQuestions(
                 isIndependentlyGradable: part.is_independently_gradable,
                 prompt: blocksToText(promptBlocks),
                 promptBlocks,
+                hints,
                 options,
             };
         });
@@ -2743,17 +2776,45 @@ async function getAttemptHandwritingAssets(
 
 function groupReferenceAnswerRows(
     rows: readonly ReferenceAnswerRow[],
+    blockRows: readonly ReferenceBlockRow[],
 ): Map<string, LocalPracticeReferenceAnswer[]> {
+    const blocks = new Map<string, Map<string, LocalPracticeContentBlock[]>>();
+    for (const row of blockRows) {
+        const byPart = blocks.get(row.owner_id) ?? new Map<string, LocalPracticeContentBlock[]>();
+        const current = byPart.get(row.part_id) ?? [];
+        const query = row.session_id
+            ? new URLSearchParams({ sessionId: row.session_id })
+            : new URLSearchParams({ kind: "reference", questionId: row.question_id, revisionId: row.revision_id });
+        current.push({
+            id: row.id,
+            contentType: row.content_type,
+            position: row.position,
+            text: row.text_content,
+            altText: row.alt_text,
+            asset: row.asset_id && row.mime_type
+                ? {
+                    id: row.asset_id,
+                    mimeType: row.mime_type,
+                    width: row.width,
+                    height: row.height,
+                    url: `/api/v1/local-practice/assets/${row.asset_id}?${query.toString()}`,
+                }
+                : null,
+        });
+        byPart.set(row.part_id, current);
+        blocks.set(row.owner_id, byPart);
+    }
     const grouped = new Map<string, Map<string, LocalPracticeReferenceAnswer>>();
     for (const row of rows) {
         const byPart = grouped.get(row.answer_attempt_id) ?? new Map<string, LocalPracticeReferenceAnswer>();
-        const answer = byPart.get(row.part_id) ?? {
+        const answer: LocalPracticeReferenceAnswer = byPart.get(row.part_id) ?? {
             partId: row.part_id,
             answerMode: row.answer_mode,
             answerKeys: [],
             acceptedValues: [],
             options: [],
             explanation: row.explanation,
+            explanationBlocks: blocks.get(row.answer_attempt_id)?.get(row.part_id) ?? [],
         };
         if (row.answer_key !== null && !answer.answerKeys.includes(row.answer_key)) {
             answer.answerKeys.push(row.answer_key);
@@ -2781,7 +2842,8 @@ async function getAttemptReferenceAnswers(
     attemptIds: readonly string[],
 ): Promise<Map<string, LocalPracticeReferenceAnswer[]>> {
     if (attemptIds.length === 0) return new Map();
-    const result = await client.query<ReferenceAnswerRow>(`
+    const [result, blockResult] = await Promise.all([
+        client.query<ReferenceAnswerRow>(`
         SELECT
             attempt.id AS answer_attempt_id,
             part.id AS part_id,
@@ -2828,8 +2890,50 @@ async function getAttemptReferenceAnswers(
         WHERE attempt.id = ANY($1::uuid[])
         ORDER BY attempt.id, part.position, part.id,
             answer.position, answer.id, disclosed_option.position, disclosed_option.id
-    `, [attemptIds]);
-    return groupReferenceAnswerRows(result.rows);
+    `, [attemptIds]),
+        client.query<ReferenceBlockRow>(`
+            SELECT
+                attempt.id AS owner_id,
+                part.id AS part_id,
+                session.id AS session_id,
+                item.question_id,
+                item.question_revision_id AS revision_id,
+                block.id,
+                block.content_type,
+                block.position,
+                block.text_content,
+                block.asset_id,
+                asset.mime_type,
+                asset.width,
+                asset.height,
+                block.alt_text
+            FROM answer_attempts AS attempt
+            JOIN practice_session_items AS item
+                ON item.id = attempt.practice_session_item_id
+            JOIN practice_sessions AS session
+                ON session.id = item.practice_session_id
+            JOIN answer_part_results AS part_result
+                ON part_result.answer_attempt_id = attempt.id
+            JOIN question_parts AS part
+                ON part.id = part_result.question_part_id
+                AND part.question_revision_id = item.question_revision_id
+            JOIN question_content_blocks AS block
+                ON block.question_revision_id = item.question_revision_id
+                AND block.placement = 'explanation'
+                AND (block.question_part_id IS NULL OR block.question_part_id = part.id)
+            LEFT JOIN assets AS asset
+                ON asset.id = block.asset_id
+                AND asset.deleted_at IS NULL
+                AND asset.scan_status = 'clean'
+                AND (
+                    (block.content_type = 'page_crop' AND asset.purpose = 'page_crop')
+                    OR (block.content_type IN ('image', 'audio') AND asset.purpose = 'question_content')
+                )
+            WHERE attempt.id = ANY($1::uuid[])
+            ORDER BY attempt.id, part.position, block.position, block.id
+        `, [attemptIds]),
+    ]);
+    return groupReferenceAnswerRows(result.rows, blockResult.rows);
 }
 
 /**
@@ -2913,7 +3017,46 @@ export async function getLocalPracticeQuestionReferenceAnswers(
                 404,
             );
         }
-        return groupReferenceAnswerRows(result.rows).get(questionId.toLowerCase()) ?? [];
+        const blockResult = await client.query<ReferenceBlockRow>(`
+            SELECT
+                question.id AS owner_id,
+                part.id AS part_id,
+                NULL::uuid AS session_id,
+                question.id AS question_id,
+                revision.id AS revision_id,
+                block.id,
+                block.content_type,
+                block.position,
+                block.text_content,
+                block.asset_id,
+                asset.mime_type,
+                asset.width,
+                asset.height,
+                block.alt_text
+            FROM questions AS question
+            JOIN question_revisions AS revision
+                ON revision.id = question.current_revision_id
+                AND revision.question_id = question.id
+            JOIN question_parts AS part
+                ON part.question_revision_id = revision.id
+                AND part.is_independently_gradable = true
+            JOIN question_content_blocks AS block
+                ON block.question_revision_id = revision.id
+                AND block.placement = 'explanation'
+                AND (block.question_part_id IS NULL OR block.question_part_id = part.id)
+            LEFT JOIN assets AS asset
+                ON asset.id = block.asset_id
+                AND asset.deleted_at IS NULL
+                AND asset.scan_status = 'clean'
+                AND (
+                    (block.content_type = 'page_crop' AND asset.purpose = 'page_crop')
+                    OR (block.content_type IN ('image', 'audio') AND asset.purpose = 'question_content')
+                )
+            WHERE question.id = $1
+                AND revision.id = $2
+            ORDER BY part.position, block.position, block.id
+        `, [questionId.toLowerCase(), revisionId.toLowerCase()]);
+        return groupReferenceAnswerRows(result.rows, blockResult.rows).get(questionId.toLowerCase()) ?? [];
     });
 }
 
@@ -3548,6 +3691,23 @@ export async function submitLocalPracticeAttempt(
                 400,
             );
         }
+        try {
+            await consumeDailyPracticeQuestion(client, {
+                userId: actor.userId,
+                idempotencyKey: input.idempotencyKey,
+                sessionItemId: item.id,
+            });
+        }
+        catch (error) {
+            if (
+                error instanceof Error
+                && "code" in error
+                && error.code === "DAILY_PRACTICE_LIMIT_REACHED"
+            ) {
+                throw new LocalPracticeRequestError(error.code, error.message, 429);
+            }
+            throw error;
+        }
         const calculationAnchorPartId = input.handwriting && handwrittenPartIds.size === 0
             ? input.handwritingTranscriptionPartId ?? groupedParts.keys().next().value as string | undefined
             : undefined;
@@ -4144,7 +4304,26 @@ export async function findLocalPracticeSessionAsset(
         JOIN assets AS asset ON asset.id = block.asset_id
         WHERE session.id = $1 AND session.learner_id = $2 AND session.created_by_user_id = $3
             AND asset.id = $4 AND asset.deleted_at IS NULL AND asset.scan_status = 'clean'
-            AND block.placement IN ('prompt', 'option')
+            AND (
+                block.placement IN ('prompt', 'option', 'hint')
+                OR (
+                    block.placement = 'explanation'
+                    AND (
+                        (
+                            session.check_mode = 'instant'
+                            AND EXISTS (
+                                SELECT 1
+                                FROM answer_attempts AS disclosed_attempt
+                                WHERE disclosed_attempt.practice_session_item_id = item.id
+                            )
+                        )
+                        OR (
+                            session.check_mode = 'complete'
+                            AND session.status = 'completed'
+                        )
+                    )
+                )
+            )
             AND (
                 (block.content_type = 'page_crop' AND asset.purpose = 'page_crop')
                 OR (block.content_type IN ('image', 'audio') AND asset.purpose = 'question_content')
@@ -4205,7 +4384,7 @@ export async function findLocalPracticeAsset(
                     AND asset.purpose = 'question_content'
                 )
             )
-            AND block.placement IN ('prompt', 'option')
+            AND block.placement IN ('prompt', 'option', 'hint')
             AND question.status = 'published'
             AND revision.status = 'published'
             AND grade.stage = 'junior_high'
@@ -4266,6 +4445,77 @@ export async function findLocalPracticeAsset(
         filters.lesson,
         actor.learnerId,
     ]);
+    const asset = result.rows[0];
+    return asset
+        ? {
+            id: asset.id,
+            storageKey: asset.storage_key,
+            mimeType: asset.mime_type,
+            byteSize: Number(asset.byte_size),
+            checksum: asset.checksum,
+        }
+        : null;
+}
+
+/**
+ * Resolves explanation media only after the actor has permission to view reference answers.
+ *
+ * @param assetId - Requested explanation asset.
+ * @param questionId - Question that owns the current published revision.
+ * @param revisionId - Exact current revision shown by the review response.
+ * @param actor - Authenticated account and active learner.
+ * @returns The authorized asset record, or null when any ownership or disclosure check fails.
+ */
+export async function findLocalPracticeReferenceAsset(
+    assetId: string,
+    questionId: string,
+    revisionId: string,
+    actor: LocalPracticeActor,
+): Promise<LocalPracticeAssetRecord | null> {
+    const result = await queryLocalPostgres<QueryResultRow & {
+        id: string;
+        storage_key: string;
+        mime_type: string;
+        byte_size: string | number;
+        checksum: string;
+    }>(`
+        SELECT DISTINCT asset.id, asset.storage_key, asset.mime_type, asset.byte_size, asset.checksum
+        FROM questions AS question
+        JOIN question_revisions AS revision
+            ON revision.id = question.current_revision_id
+            AND revision.question_id = question.id
+        JOIN question_content_blocks AS block
+            ON block.question_revision_id = revision.id
+            AND block.placement = 'explanation'
+        JOIN assets AS asset
+            ON asset.id = block.asset_id
+            AND asset.deleted_at IS NULL
+            AND asset.scan_status = 'clean'
+        JOIN question_bank_items AS bank_item
+            ON bank_item.question_id = question.id
+        JOIN question_banks AS bank
+            ON bank.id = bank_item.question_bank_id
+            AND bank.status = 'active'
+        JOIN question_bank_learners AS bank_learner
+            ON bank_learner.question_bank_id = bank.id
+            AND bank_learner.learner_id = $4
+        JOIN learner_access AS access
+            ON access.learner_id = bank_learner.learner_id
+            AND access.user_id = $5
+            AND access.can_view_results = true
+            AND access.accepted_at IS NOT NULL
+            AND access.revoked_at IS NULL
+        WHERE asset.id = $1
+            AND question.id = $2
+            AND revision.id = $3
+            AND question.status = 'published'
+            AND revision.status = 'published'
+            AND (
+                (block.content_type = 'page_crop' AND asset.purpose = 'page_crop')
+                OR (block.content_type IN ('image', 'audio') AND asset.purpose = 'question_content')
+            )
+        LIMIT 1
+    `, [assetId, questionId, revisionId, actor.learnerId, actor.userId]);
     const asset = result.rows[0];
     return asset
         ? {

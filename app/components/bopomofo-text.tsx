@@ -1,7 +1,10 @@
 import { Fragment } from "react";
 import { normalizeQuestionDisplayText, tokenizeInlineQuestionText } from "../lib/question-presentation";
 
-const INLINE_TEXT_SEQUENCE = /([\u3105-\u312f\u31a0-\u31bf]+[ˊˇˋ˙]?|□+)/gu;
+const BOPOMOFO_SYLLABLE_PATTERN = "[\\u3105-\\u312f\\u31a0-\\u31bf]+[ˊˇˋ˙]?";
+const BOPOMOFO_SYLLABLE = new RegExp(`^${BOPOMOFO_SYLLABLE_PATTERN}$`, "u");
+const BOPOMOFO_WORD_GROUP = new RegExp(`^(?:${BOPOMOFO_SYLLABLE_PATTERN})(?:\\s+(?:${BOPOMOFO_SYLLABLE_PATTERN}))+$`, "u");
+const INLINE_TEXT_SEQUENCE = new RegExp(`((?:${BOPOMOFO_SYLLABLE_PATTERN})(?:\\s+(?:${BOPOMOFO_SYLLABLE_PATTERN}))+|${BOPOMOFO_SYLLABLE_PATTERN}|□+)`, "gu");
 const BOPOMOFO_TONES = new Set(["ˊ", "ˇ", "ˋ", "˙"]);
 
 function BopomofoToneMark({ tone }: { tone: string }) {
@@ -39,6 +42,10 @@ function BopomofoSyllable({ value }: { value: string }) {
     </span>;
 }
 
+function BopomofoWordGroup({ value }: { value: string }) {
+    return <span className="bopomofo-word-group">{value}</span>;
+}
+
 function InlineFraction({ numerator, denominator }: { numerator: string; denominator: string }) {
     return <span className="question-inline-fraction" role="math" aria-label={`${denominator} 分之 ${numerator}`}>
         <span aria-hidden="true" className="question-inline-fraction-numerator">{normalizeQuestionDisplayText(numerator)}</span>
@@ -48,16 +55,18 @@ function InlineFraction({ numerator, denominator }: { numerator: string; denomin
 
 function InlinePlainText({ text }: { text: string }) {
     return <>{text.split(INLINE_TEXT_SEQUENCE).map((segment, index) => (
-        /^[\u3105-\u312f\u31a0-\u31bf]+[ˊˇˋ˙]?$/u.test(segment)
-            ? <BopomofoSyllable key={`${segment}-${index}`} value={segment} />
-            : /^□+$/u.test(segment)
-                ? <span className="question-placeholder-boxes" key={`${segment}-${index}`}>
-                    <span className="sr-only">{[...segment].map(() => "空格").join("、")}</span>
-                    <span aria-hidden="true" className="question-placeholder-box-sequence">
-                        {[...segment].map((_, placeholderIndex) => <span className="question-placeholder-box" key={placeholderIndex} />)}
+        BOPOMOFO_WORD_GROUP.test(segment)
+            ? <BopomofoWordGroup key={`${segment}-${index}`} value={segment} />
+            : BOPOMOFO_SYLLABLE.test(segment)
+                ? <BopomofoSyllable key={`${segment}-${index}`} value={segment} />
+                : /^□+$/u.test(segment)
+                    ? <span className="question-placeholder-boxes" key={`${segment}-${index}`}>
+                        <span className="sr-only">{[...segment].map(() => "空格").join("、")}</span>
+                        <span aria-hidden="true" className="question-placeholder-box-sequence">
+                            {[...segment].map((_, placeholderIndex) => <span className="question-placeholder-box" key={placeholderIndex} />)}
+                        </span>
                     </span>
-                </span>
-                : <Fragment key={`${segment}-${index}`}>{normalizeQuestionDisplayText(segment)}</Fragment>
+                    : <Fragment key={`${segment}-${index}`}>{normalizeQuestionDisplayText(segment)}</Fragment>
     ))}</>;
 }
 

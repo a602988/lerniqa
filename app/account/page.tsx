@@ -3,6 +3,7 @@
 import { Badge, Button } from "@keel-design/ui";
 import {
     ArrowRight,
+    BookOpen,
     BookOpenCheck,
     CheckCircle2,
     ClipboardCheck,
@@ -13,11 +14,13 @@ import {
     ShieldCheck,
     Sparkles,
     Target,
+    Trash2,
     UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { LerniqaMark } from "../components/lerniqa-mark";
+import Script from "next/script";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { LerniqaLogo, LerniqaMark } from "../components/lerniqa-mark";
 import {
     ACCOUNT_PASSWORD_HINT,
     ACCOUNT_PASSWORD_MAX_LENGTH,
@@ -27,20 +30,16 @@ import {
 import { resolveAccountReturnPath, resolveLearningBookShareReturnPath } from "../lib/account-return-path";
 import {
     AUTH_SESSION_EXPIRED_EVENT,
+    broadcastAuthSessionContextChanged,
     broadcastAuthSessionExpired,
     isAuthSessionExpired,
     isAuthSessionContextStorageEvent,
     isAuthSessionStorageEvent,
+    logoutAuthSession,
 } from "../lib/auth-session-client";
-import {
-    findEducationStage,
-    type EducationCatalog,
-    type EducationStage,
-} from "../lib/education-catalog-contract";
 import styles from "./account.module.css";
 
 type AccountRole = "parent" | "learner" | "tutor";
-type LearnerEducationStatus = "enrolled" | "not_enrolled";
 type AccountMode = "login" | "register";
 type MessageTone = "error" | "success" | "warning";
 
@@ -77,8 +76,24 @@ interface VerificationRequestResponse {
     };
 }
 
-interface EducationCatalogResponse {
-    data: { catalog: EducationCatalog };
+interface SocialRegistration {
+    provider: "google" | "line" | "facebook";
+    displayName: string;
+    email: string;
+}
+
+interface GoogleConfigResponse {
+    data: {
+        clientId: string;
+        registration: SocialRegistration | null;
+    };
+}
+
+interface RememberedAccountRecord {
+    id: string;
+    displayName: string;
+    email: string;
+    current: boolean;
 }
 
 const ROLE_LABELS: Record<AccountRole, string> = {
@@ -101,6 +116,7 @@ function credentialTransportAllowed(): boolean {
 }
 
 export default function AccountPage() {
+    const googleButton = useRef<HTMLDivElement>(null);
     const [account, setAccount] = useState<AccountRecord | null>(null);
     const [mode, setMode] = useState<AccountMode>("login");
     const [loading, setLoading] = useState(true);
@@ -109,13 +125,13 @@ export default function AccountPage() {
     const [message, setMessage] = useState("");
     const [messageTone, setMessageTone] = useState<MessageTone>("success");
     const [transportAllowed, setTransportAllowed] = useState<boolean | null>(null);
-    const [registerRole, setRegisterRole] = useState<AccountRole>("parent");
-    const [educationStatus, setEducationStatus] = useState<LearnerEducationStatus>("enrolled");
-    const [educationCatalog, setEducationCatalog] = useState<EducationCatalog>();
-    const [educationCatalogError, setEducationCatalogError] = useState("");
-    const [educationStage, setEducationStage] = useState<EducationStage | "">("");
-    const [gradeCode, setGradeCode] = useState("");
-    const [semesterCode, setSemesterCode] = useState("");
+    const [googleClientId, setGoogleClientId] = useState("");
+    const [googleScriptReady, setGoogleScriptReady] = useState(false);
+    const [rememberedAccounts, setRememberedAccounts] = useState<RememberedAccountRecord[]>([]);
+    const [rememberedLoading, setRememberedLoading] = useState(true);
+    const [showLoginForm, setShowLoginForm] = useState(false);
+    const [switchRequested, setSwitchRequested] = useState(false);
+    const loginFormVisible = showLoginForm && (!account || switchRequested);
 
     const clearExpiredAccount = useCallback((nextMessage: string) => {
         setAccount(null);
@@ -125,6 +141,7 @@ export default function AccountPage() {
     }, []);
 
     useEffect(() => {
+        setSwitchRequested(new URLSearchParams(window.location.search).get("switch") === "1");
         setTransportAllowed(credentialTransportAllowed());
         void fetch("/api/v1/auth/me", { cache: "no-store" })
             .then(async (response) => {
@@ -146,21 +163,63 @@ export default function AccountPage() {
     }, []);
 
     useEffect(() => {
-        void fetch("/api/v1/auth/catalog", { cache: "no-store" })
-            .then((response) => readApi<EducationCatalogResponse>(response))
+        void fetch("/api/v1/auth/remembered-accounts", { cache: "no-store" })
+            .then((response) => readApi<{ data: { accounts: RememberedAccountRecord[] } }>(response))
             .then(({ data }) => {
-                const preferredStage = data.catalog.stages.find((stage) => stage.code === "junior_high")
-                    ?? data.catalog.stages[0];
-                setEducationCatalog(data.catalog);
-                setEducationStage(preferredStage?.code ?? "");
-                setGradeCode(preferredStage?.grades[0]?.code ?? "");
-                setSemesterCode(data.catalog.semesters[0]?.code ?? "");
-                setEducationCatalogError("");
+                setRememberedAccounts(data.accounts);
+                if (data.accounts.length === 0) setShowLoginForm(true);
             })
-            .catch((error) => {
-                setEducationCatalogError(error instanceof Error ? error.message : "目前無法讀取教育階段與年級。");
-            });
+            .catch(() => setShowLoginForm(true))
+            .finally(() => setRememberedLoading(false));
     }, []);
+
+    useEffect(() => {
+        if (!loginFormVisible || transportAllowed === false) return;
+        void fetch("/api/v1/auth/google/quick-register", { cache: "no-store" })
+            .then((response) => readApi<GoogleConfigResponse>(response))
+            .then(({ data }) => setGoogleClientId(data.clientId))
+            .catch(() => setGoogleClientId(""));
+    }, [loginFormVisible, transportAllowed]);
+
+    useEffect(() => {
+        const target = googleButton.current;
+        const google = window.google;
+        if (!loginFormVisible || !googleScriptReady || !googleClientId || !target || !google) return;
+        target.replaceChildren();
+        google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: ({ credential }) => {
+                setSubmitting(true);
+                setMessage("");
+                void fetch("/api/v1/auth/google/quick-register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "credential", credential }),
+                })
+                    .then((response) => readApi<GoogleConfigResponse>(response))
+                    .then(({ data }) => {
+                        if (data.registration) {
+                            window.location.assign("/quick-register");
+                            return;
+                        }
+                        window.location.replace("/overview");
+                    })
+                    .catch((error) => {
+                        setMessageTone("error");
+                        setMessage(error instanceof Error ? error.message : "Google 登入失敗，請重新選擇帳號。");
+                    })
+                    .finally(() => setSubmitting(false));
+            },
+        });
+        google.accounts.id.renderButton(target, {
+            locale: "zh_TW",
+            shape: "pill",
+            size: "small",
+            text: "signin_with",
+            theme: "outline",
+            width: 138,
+        });
+    }, [googleClientId, googleScriptReady, loginFormVisible]);
 
     useEffect(() => {
         const handleExpired = () => clearExpiredAccount("登入狀態已失效，請重新登入。帳號資料已從此頁清除。");
@@ -270,11 +329,6 @@ export default function AccountPage() {
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!transportAllowed || submitting) return;
-        if (mode === "register" && educationStatus === "enrolled" && (!gradeCode || !semesterCode)) {
-            setMessageTone("error");
-            setMessage("請先選擇教育階段、年級與學期。");
-            return;
-        }
         setSubmitting(true);
         setMessage("");
         try {
@@ -282,44 +336,22 @@ export default function AccountPage() {
             const password = mode === "register"
                 ? validateNewAccountPassword(form.get("password"))
                 : form.get("password");
-            const payload = mode === "login"
-                ? {
-                    email: form.get("email"),
-                    password,
-                }
-                : {
-                    displayName: form.get("displayName"),
-                    learnerName: registerRole === "learner"
-                        ? form.get("displayName")
-                        : form.get("learnerName"),
-                    email: form.get("email"),
-                    password,
-                    role: registerRole,
-                    educationStatus,
-                    gradeCode: educationStatus === "enrolled" ? gradeCode : null,
-                    semesterCode: educationStatus === "enrolled" ? semesterCode : null,
-                };
+            const payload = { email: form.get("email"), password };
             const response = await fetch(`/api/v1/auth/${mode}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
-            const result = await readApi<AccountResponse>(response);
-            setAccount(result.data.account);
-            setMessageTone("success");
-            setMessage(mode === "register" ? "帳號已建立，學習者資料也已連結。" : "登入成功。" );
-            const rawReturnPath = new URLSearchParams(window.location.search).get("returnTo");
-            const returnPath = mode === "login"
-                ? resolveAccountReturnPath(rawReturnPath)
-                : resolveLearningBookShareReturnPath(rawReturnPath);
-
-            if (mode === "register" && result.data.account.emailVerified === false) {
-                await sendVerificationEmail(true);
-            }
-            if (returnPath !== null) {
-                window.location.replace(returnPath);
+            if (mode === "register") {
+                await readApi<{ data: { onboarding: true } }>(response);
+                window.location.assign("/quick-register");
                 return;
             }
+            const result = await readApi<AccountResponse>(response);
+            setAccount(result.data.account);
+            const rawReturnPath = new URLSearchParams(window.location.search).get("returnTo");
+            const destination = resolveAccountReturnPath(rawReturnPath) ?? "/overview";
+            window.location.replace(destination);
         }
         catch (error) {
             setMessageTone("error");
@@ -334,9 +366,7 @@ export default function AccountPage() {
         setSubmitting(true);
         setMessage("");
         try {
-            const response = await fetch("/api/v1/auth/logout", { method: "POST" });
-            await readApi<{ data: { loggedOut: boolean } }>(response);
-            broadcastAuthSessionExpired();
+            await logoutAuthSession();
             setMessageTone("success");
             setMessage("已安全登出。" );
         }
@@ -349,50 +379,106 @@ export default function AccountPage() {
         }
     }
 
+    async function switchRememberedAccount(accountId: string) {
+        if (submitting) return;
+        setSubmitting(true);
+        setMessage("");
+        try {
+            const result = await readApi<AccountResponse>(await fetch(
+                `/api/v1/auth/remembered-accounts/${encodeURIComponent(accountId)}`,
+                { method: "POST" },
+            ));
+            setAccount(result.data.account);
+            broadcastAuthSessionContextChanged();
+            window.location.replace("/overview");
+        }
+        catch (error) {
+            setMessageTone("error");
+            setMessage(error instanceof Error ? error.message : "帳號切換失敗，請重新登入。");
+        }
+        finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function removeRememberedAccount(accountId: string) {
+        if (submitting) return;
+        setSubmitting(true);
+        setMessage("");
+        try {
+            await readApi<{ data: { removed: true } }>(await fetch(
+                `/api/v1/auth/remembered-accounts/${encodeURIComponent(accountId)}`,
+                { method: "DELETE" },
+            ));
+            setRememberedAccounts((accounts) => accounts.filter((candidate) => candidate.id !== accountId));
+        }
+        catch (error) {
+            setMessageTone("error");
+            setMessage(error instanceof Error ? error.message : "無法移除這個帳號。");
+        }
+        finally {
+            setSubmitting(false);
+        }
+    }
+
     return (
         <main className={styles.page}>
+            <Script
+                onLoad={() => setGoogleScriptReady(true)}
+                src="https://accounts.google.com/gsi/client"
+                strategy="afterInteractive"
+            />
             <div className={styles.ambient} aria-hidden="true">
                 <span />
                 <span />
                 <span />
             </div>
+            <span className={styles.floatingDecor} data-position="top-left" aria-hidden="true">
+                <BookOpen />
+            </span>
+            <span className={styles.floatingDecor} data-position="bottom-right" aria-hidden="true">
+                <Sparkles />
+            </span>
             <section className={styles.shell}>
                 <section className={styles.story} aria-labelledby="account-story-title">
                     <div className={styles.storyGlow} aria-hidden="true" />
                     <div className={styles.intro}>
-                        <Link className={styles.storyBrand} href="/overview" aria-label="返回 Lerniqa 首頁">
-                            <span><LerniqaMark /></span>
-                            <strong>Lerniqa</strong>
-                        </Link>
-                        <span className={styles.kicker}><Sparkles aria-hidden="true" />想練就開始，進度接得上</span>
-                        <h1 id="account-story-title">每次練習，都接得上下一次進步</h1>
-                        <p>登入後，依主題與需求安排練習；作答、錯題與最近進度都會持續保存，方便下次接著複習。</p>
+                        <div className={styles.storyBrandRow}>
+                            <Link className={styles.storyBrand} href="/overview" aria-label="返回 Lerniqa 首頁">
+                                <LerniqaLogo className={styles.storyLogo} tone="inverse" />
+                            </Link>
+                            <span className={styles.kicker}><Sparkles aria-hidden="true" />題目變練習</span>
+                        </div>
+                        <h1 id="account-story-title">
+                            <span>把題目，</span>
+                            <span>變成有效練習</span>
+                        </h1>
+                        <p>整理自己的題目，或領取分享題本。作答、錯題與複習進度都會保存。</p>
                     </div>
 
                     <div className={styles.journeyCard} aria-label="Lerniqa 練習與複習流程">
                         <div className={styles.journeyHeading}>
-                            <span>自己的複習節奏</span>
-                            <small>每次回來，都知道接著練什麼</small>
+                            <span>整理、練習、複習</span>
+                            <small>一個地方完成</small>
                         </div>
                         <ol className={styles.journeySteps}>
                             <li>
                                 <span className={styles.stepIcon}><BookOpenCheck aria-hidden="true" /></span>
-                                <span><small>01</small><strong>選擇內容</strong><em>主題・版本・章節・範圍</em></span>
+                                <span><small>01</small><strong>整理題目</strong><em>建立題庫或領取分享</em></span>
                             </li>
                             <li>
                                 <span className={styles.stepIcon}><ClipboardCheck aria-hidden="true" /></span>
-                                <span><small>02</small><strong>完成練習</strong><em>依自己的節奏作答</em></span>
+                                <span><small>02</small><strong>開始練習</strong><em>選好範圍，立即作答</em></span>
                             </li>
                             <li>
                                 <span className={styles.stepIcon}><Target aria-hidden="true" /></span>
-                                <span><small>03</small><strong>回顧錯題</strong><em>找出下一次複習重點</em></span>
+                                <span><small>03</small><strong>複習錯題</strong><em>找出弱點，再練一次</em></span>
                             </li>
                         </ol>
                     </div>
 
                     <div className={styles.promiseGrid}>
-                        <div><ShieldCheck aria-hidden="true" /><span><strong>複習進度持續保存</strong><small>每次作答都能接續回顧</small></span></div>
-                        <div><LockKeyhole aria-hidden="true" /><span><strong>密碼只存安全雜湊</strong><small>不把原始密碼寫進頁面或紀錄</small></span></div>
+                        <div><LockKeyhole aria-hidden="true" /><span><strong>保存練習進度</strong><small>作答與錯題都會留下</small></span></div>
                     </div>
                 </section>
 
@@ -403,7 +489,7 @@ export default function AccountPage() {
                                 <span className={styles.loadingMark}><LerniqaMark /></span>
                                 <span>正在確認帳號狀態…</span>
                             </div>
-                        ) : account ? (
+                        ) : account && !switchRequested ? (
                             <div className={styles.accountState}>
                                 <span className={styles.successIcon}><CheckCircle2 aria-hidden="true" /></span>
                                 <div>
@@ -451,87 +537,67 @@ export default function AccountPage() {
                                 <h2>請改用安全入口</h2>
                                 <p>這個網址不是 HTTPS，因此不接受密碼。請在執行 Lerniqa 的電腦開啟 <code>http://localhost:3500/account</code>，或先替跨裝置入口設定 HTTPS。</p>
                             </div>
+                        ) : rememberedLoading ? (
+                            <div className={styles.centerState} role="status">正在載入這台裝置的帳號…</div>
+                        ) : !showLoginForm && (rememberedAccounts.length > 0 || account) ? (
+                            <div className={styles.accountPicker}>
+                                <div className={styles.formHeading}>
+                                    <span className={styles.formEyebrow}>切換帳號</span>
+                                    <h2>選擇要使用的帳號</h2>
+                                    <p>已在這台裝置登入過的帳號，可直接繼續使用。</p>
+                                </div>
+                                <div className={styles.rememberedList}>
+                                    {rememberedAccounts.map((candidate) => (
+                                        <div className={styles.rememberedAccount} key={candidate.id}>
+                                            <button
+                                                className={styles.rememberedSelect}
+                                                disabled={submitting || candidate.current}
+                                                onClick={() => void switchRememberedAccount(candidate.id)}
+                                                type="button"
+                                            >
+                                                <span className={styles.accountAvatar} aria-hidden="true">{candidate.displayName.slice(0, 1)}</span>
+                                                <span><strong>{candidate.displayName}</strong><small>{candidate.email}</small></span>
+                                                {candidate.current && <Badge tone="success">目前使用中</Badge>}
+                                            </button>
+                                            <button
+                                                className={styles.removeAccount}
+                                                disabled={submitting}
+                                                onClick={() => void removeRememberedAccount(candidate.id)}
+                                                aria-label={`從這台裝置移除 ${candidate.displayName}`}
+                                                title="從這台裝置移除"
+                                                type="button"
+                                            ><Trash2 aria-hidden="true" /></button>
+                                        </div>
+                                    ))}
+                                    {account && !rememberedAccounts.some((candidate) => candidate.current) && (
+                                        <div className={styles.rememberedAccount}>
+                                            <button className={styles.rememberedSelect} disabled type="button">
+                                                <span className={styles.accountAvatar} aria-hidden="true">{account.displayName.slice(0, 1)}</span>
+                                                <span><strong>{account.displayName}</strong><small>{account.email ?? "目前帳號"}</small></span>
+                                                <Badge tone="success">目前使用中</Badge>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                {message && <p className={styles.status} data-tone={messageTone} role="alert">{message}</p>}
+                                <Button appearance="outline" onClick={() => setShowLoginForm(true)} type="button"><UserPlus aria-hidden="true" />登入其他帳號</Button>
+                                {account && <Link className={styles.cancelSwitch} href="/overview">取消切換</Link>}
+                            </div>
                         ) : (
                             <>
                                 <div className={styles.tabs} role="group" aria-label="帳號操作">
                                     <button aria-pressed={mode === "login"} onClick={() => switchMode("login")} type="button"><LogIn aria-hidden="true" />登入</button>
                                     <button aria-pressed={mode === "register"} onClick={() => switchMode("register")} type="button"><UserPlus aria-hidden="true" />建立帳號</button>
                                 </div>
+                                {rememberedAccounts.length > 0 && (
+                                    <button className={styles.backToAccounts} onClick={() => setShowLoginForm(false)} type="button">返回帳號清單</button>
+                                )}
                                 <div className={styles.formHeading}>
                                     <span className={styles.formEyebrow}>{mode === "login" ? "歡迎回來" : "開始使用 Lerniqa"}</span>
                                     <h2>{mode === "login" ? "繼續你的學習旅程" : "建立你的學習帳號"}</h2>
-                                    <p>{mode === "login" ? "使用註冊時的電子郵件與密碼，接續上次的練習。" : "先選擇你使用帳號的身分，系統會依身分建立或連結學習者資料。"}</p>
+                                    <p>{mode === "login" ? "使用註冊時的電子郵件與密碼，接續上次的練習。" : "先用電子郵件與密碼建立帳號，下一步再設定學習者資料。"}</p>
                                 </div>
                                 <form className={styles.form} onSubmit={(event) => void submit(event)}>
-                                    {mode === "register" && (
-                                        <label>你的身分
-                                            <select aria-describedby="register-role-hint" name="role" onChange={(event) => setRegisterRole(event.target.value as AccountRole)} required value={registerRole}>
-                                                <option value="parent">家長</option>
-                                                <option value="learner">學習者本人</option>
-                                                <option value="tutor">一對一家教</option>
-                                            </select>
-                                            <small id="register-role-hint">
-                                                {registerRole === "learner"
-                                                    ? "系統會用帳號稱呼建立本人學習者資料，不必再輸入另一個名稱。"
-                                                    : "先連結一位受管理學習者；建立帳號後可在系統設定新增或管理其他學習者。"}
-                                            </small>
-                                        </label>
-                                    )}
-                                    {mode === "register" && (
-                                        <div className={styles.identityFields} data-single={registerRole === "learner" ? "true" : "false"}>
-                                            <label>帳號稱呼
-                                                <input autoComplete="name" maxLength={80} name="displayName" placeholder={registerRole === "learner" ? "例如：小宇" : "例如：王小姐"} required />
-                                            </label>
-                                            {registerRole !== "learner" && (
-                                                <label>首位受管理學習者稱呼
-                                                    <input autoComplete="off" maxLength={80} name="learnerName" placeholder="可使用暱稱" required />
-                                                </label>
-                                            )}
-                                        </div>
-                                    )}
-                                    {mode === "register" && (
-                                        <div className={styles.identityFields}>
-                                            <label>學習身分
-                                                <select name="educationStatus" onChange={(event) => {
-                                                    const nextStatus = event.target.value as LearnerEducationStatus;
-                                                    setEducationStatus(nextStatus);
-                                                    if (nextStatus === "enrolled" && educationCatalog) {
-                                                        const stage = findEducationStage(educationCatalog, gradeCode)
-                                                            ?? educationCatalog.stages[0];
-                                                        setEducationStage(stage?.code ?? "");
-                                                        setGradeCode(stage?.grades[0]?.code ?? "");
-                                                        setSemesterCode((current) => current || educationCatalog.semesters[0]?.code || "");
-                                                    }
-                                                }} required value={educationStatus}>
-                                                    <option value="enrolled">學生</option>
-                                                    <option value="not_enrolled">社會人士</option>
-                                                </select>
-                                            </label>
-                                            {educationStatus === "enrolled" && <>
-                                                <label>教育階段
-                                                    <select disabled={!educationCatalog?.stages.length} onChange={(event) => {
-                                                        const nextStage = event.target.value as EducationStage;
-                                                        const stage = educationCatalog?.stages.find((candidate) => candidate.code === nextStage);
-                                                        setEducationStage(nextStage);
-                                                        setGradeCode(stage?.grades[0]?.code ?? "");
-                                                    }} required value={educationStage}>
-                                                        {educationCatalog?.stages.map((stage) => <option key={stage.code} value={stage.code}>{stage.name}</option>)}
-                                                    </select>
-                                                </label>
-                                                <label>年級
-                                                    <select disabled={!educationStage} name="gradeCode" onChange={(event) => setGradeCode(event.target.value)} required value={gradeCode}>
-                                                        {educationCatalog?.stages.find((stage) => stage.code === educationStage)?.grades.map((grade) => <option key={grade.code} value={grade.code}>{grade.name}</option>)}
-                                                    </select>
-                                                </label>
-                                                <label>學期
-                                                    <select disabled={!educationCatalog?.semesters.length} name="semesterCode" onChange={(event) => setSemesterCode(event.target.value)} required value={semesterCode}>
-                                                        {educationCatalog?.semesters.map((semester) => <option key={semester.code} value={semester.code}>{semester.name}</option>)}
-                                                    </select>
-                                                </label>
-                                            </>}
-                                        </div>
-                                    )}
-                                    {mode === "register" && educationCatalogError && <p className={styles.status} data-tone="error" role="alert">{educationCatalogError}</p>}
                                     <label>電子郵件<input autoCapitalize="none" autoComplete="email" inputMode="email" maxLength={320} name="email" placeholder="name@example.com" required spellCheck={false} type="email" /></label>
                                     <div className={styles.fieldGroup}>
                                         <span className={styles.fieldLabelRow}>
@@ -542,20 +608,30 @@ export default function AccountPage() {
                                         {mode === "register" && <small id="new-password-hint">{ACCOUNT_PASSWORD_HINT}</small>}
                                     </div>
                                     {message && <p className={styles.status} data-tone={messageTone} role={messageTone === "error" ? "alert" : "status"}>{message}</p>}
-                                    <Button disabled={submitting || (mode === "register" && educationStatus === "enrolled" && (!gradeCode || !semesterCode))} type="submit">
+                                    <Button disabled={submitting} type="submit">
                                         {mode === "login" ? <LogIn aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
-                                        {submitting ? "處理中…" : mode === "login" ? "登入" : "建立帳號並登入"}
+                                        {submitting ? "處理中…" : mode === "login" ? "登入" : "建立帳號"}
                                     </Button>
                                     <div className={styles.quickRegisterDivider}><span>或</span></div>
-                                    <Link className={styles.googleRegisterAction} href="/quick-register">
-                                        <span aria-hidden="true">G</span>
-                                        使用 Google 快速註冊
-                                    </Link>
+                                    <div className={styles.socialRegisterActions}>
+                                        <a href="/api/v1/auth/social/line/authorize">
+                                            <img alt="" src="/social-line.svg" />
+                                            LINE
+                                        </a>
+                                        <a href="/api/v1/auth/social/facebook/authorize">
+                                            <img alt="" src="/social-facebook.svg" />
+                                            Facebook
+                                        </a>
+                                        <div className={styles.googleRegisterAction} aria-label="使用 Google 登入">
+                                            <span aria-hidden="true"><img alt="" src="/social-google.svg" />Google</span>
+                                            <div ref={googleButton} className={styles.googleRegisterControl} />
+                                        </div>
+                                    </div>
                                 </form>
                             </>
                         )}
                     </section>
-                    <p className={styles.securityNote}><ShieldCheck aria-hidden="true" />帳號登入採安全連線，密碼經單向雜湊處理，不保存原始內容。</p>
+                    <p className={styles.securityNote}><ShieldCheck aria-hidden="true" />使用共用裝置時，請從帳號清單移除已儲存的帳號。</p>
                 </div>
             </section>
         </main>

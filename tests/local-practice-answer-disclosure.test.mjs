@@ -76,6 +76,8 @@ test("catalog stays answer-free while detailed attempts read the session-pinned 
     assert.match(disclosure, /answer\.answer_key/u);
     assert.match(disclosure, /answer\.accepted_value/u);
     assert.match(disclosure, /block\.placement = 'explanation'/u);
+    assert.match(store, /explanationBlocks: blocks\.get/u);
+    assert.match(store, /sessionId: row\.session_id/u);
     assert.match(disclosure, /option_content\.label AS option_label/u);
     assert.match(disclosure, /COALESCE\(block\.text_content, block\.alt_text\)/u);
     assert.equal(
@@ -89,9 +91,10 @@ test("catalog stays answer-free while detailed attempts read the session-pinned 
 });
 
 test("explicit question review requires result access, current revision, visibility and no-store", async () => {
-    const [store, route, shared] = await Promise.all([
+    const [store, route, assetRoute, shared] = await Promise.all([
         readFile(new URL("../app/lib/local-practice-store.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/api/v1/local-practice/questions/[questionId]/reference-answer/route.ts", import.meta.url), "utf8"),
+        readFile(new URL("../app/api/v1/local-practice/assets/[assetId]/route.ts", import.meta.url), "utf8"),
         readFile(new URL("../app/api/v1/local-practice/_shared.ts", import.meta.url), "utf8"),
     ]);
     const reader = store.slice(
@@ -104,6 +107,15 @@ test("explicit question review requires result access, current revision, visibil
     assert.match(reader, /bank_learner\.learner_id = \$3/u);
     assert.match(route, /requireLocalPracticeAccount/u);
     assert.match(route, /revisionId/u);
+    const assetReader = store.slice(
+        store.indexOf("export async function findLocalPracticeReferenceAsset("),
+        store.indexOf("export async function findLocalPracticeAnswerAsset("),
+    );
+    assert.match(assetReader, /block\.placement = 'explanation'/u);
+    assert.match(assetReader, /revision\.id = question\.current_revision_id/u);
+    assert.match(assetReader, /access\.can_view_results = true/u);
+    assert.match(assetRoute, /kind === "reference"/u);
+    assert.match(assetRoute, /findLocalPracticeReferenceAsset/u);
     assert.match(shared, /Cache-Control", "private, no-store"/u);
 });
 

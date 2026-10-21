@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input, MultiSelect, NativeSelect } from "@keel-design/ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input } from "@keel-design/ui";
 import { ArrowLeft, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, ChevronUp, Copy, Link2, Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
 import type { LearningBookContent, LearningBookDetail, LearningBookDto, LearningBookInviteDto, LearningBookListQuery, LearningBookListResult, LearningBookMigrationResult, LearningBookNotificationDto, LearningBookPerson, LearningBookScheduleDto } from "../lib/learning-book-contract";
 import { LEARNING_BOOK_POLICY } from "../lib/learning-book-contract";
@@ -9,6 +9,7 @@ import { createLearningBook, getLearningBook, learningBookMutation, learningBook
 import { completeLearningBookMigration, previewLearningBookMigration, readLearningBookMigrationReceipt } from "../lib/learning-book-migration";
 import { practiceApi, PracticeApiError, readLegacyPracticePreferences, writePracticeSessionHint } from "../lib/practice-client";
 import type { LocalPracticeQuestion, LocalPracticeSession } from "../lib/local-practice-types";
+import { AppSelect, AppSelect as NativeSelect } from "./app-select";
 import "./learning-book-workspace.css";
 
 const syncLabels = { synced: "已同步", updated: "來源已有新版", revoked: "已停止分享" };
@@ -20,7 +21,7 @@ const today = () => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slic
 function PeopleFilter({ id, label, people, values, onChange }: { id: string; label: string; people: LearningBookPerson[]; values: string[]; onChange: (values: string[]) => void }) {
     return <div className="learning-book-multi-select">
         <p id={`${id}-label`}>{label}</p>
-        <MultiSelect
+        <AppSelect
             aria-labelledby={`${id}-label`}
             clearAllLabel="全部清除"
             clearable
@@ -37,6 +38,7 @@ function PeopleFilter({ id, label, people, values, onChange }: { id: string; lab
             selectAll
             selectAllLabel="全選"
             selectionIndicator="checkbox"
+            selection="multiple"
             triggerLabelMode="count"
             values={values}
         />

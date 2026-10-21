@@ -81,7 +81,18 @@ const question = {
         { key: "knowledge_dimension", label: "知識向度", rawValue: "正確用字", values: ["正確用字"], valueSource: "document", confidence: 1 },
     ],
     prompt: "公開題幹", promptBlocks: [],
-    parts: [{ id: "part", stableKey: "p1", position: 1, answerMode: "multiple_choice", gradingPolicy: "automatic", isIndependentlyGradable: true, prompt: "", promptBlocks: [], options: [{ id: "opt-a", key: "A", position: 1, label: "甲", contentBlocks: [] }, { id: "opt-b", key: "B", position: 2, label: "乙", contentBlocks: [] }] }],
+    parts: [{ id: "part", stableKey: "p1", position: 1, answerMode: "multiple_choice", gradingPolicy: "automatic", isIndependentlyGradable: true, prompt: "", promptBlocks: [], hints: [], options: [{ id: "opt-a", key: "A", position: 1, label: "甲", contentBlocks: [] }, { id: "opt-b", key: "B", position: 2, label: "乙", contentBlocks: [] }] }],
+};
+
+const authenticatedAccount = {
+    email: "learner@example.com",
+    activeRole: "learner",
+    expiresAt: "2026-10-20T16:00:00.000Z",
+    learner: {
+        id: "authenticated-learner",
+        gradeCode: null,
+        subjectSettings: [],
+    },
 };
 
 test("public catalog joins existing subject/version/unit filters without a private answer", () => {
@@ -147,7 +158,7 @@ test("answer adapter preserves option keys and free text; it never guesses gradi
     assert.equal(result.partResults[0].correct, false);
 });
 
-test("bootstrap loads one database-driven accessible catalog while history paginates beyond 100", async () => {
+test("bootstrap loads the accessible catalog without preloading practice history", async () => {
     const originalFetch = globalThis.fetch;
     const seen = [];
     globalThis.fetch = async (input) => {
@@ -155,39 +166,99 @@ test("bootstrap loads one database-driven accessible catalog while history pagin
         seen.push(url);
         let data;
         let meta;
-        if (url === "/api/v1/auth/me") data = { account: { learner: { id: "authenticated-learner" } } };
+        if (url === "/api/v1/auth/me") data = { account: authenticatedAccount };
         else if (url === "/api/v1/local-practice/questions") {
             data = { questions: Array.from({ length: 892 }, (_, index) => ({ ...question, id: `q${index}` })) };
             meta = { scope: "accessible", total: 892 };
         }
-        else {
-            const page = Number(new URL(url, "http://localhost").searchParams.get("page") ?? "1");
-            data = {
-                attempts: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({ id: `a${(page - 1) * 100 + index}` })),
-                sessions: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({ id: `s${(page - 1) * 100 + index}` })),
-                wrongReviewQueue: {
-                    pendingCount: 101,
-                    items: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({
-                        id: `w${(page - 1) * 100 + index}`,
-                    })),
-                },
-            };
-        }
+        else throw new Error(`bootstrap 不應讀取 ${url}`);
         return new Response(JSON.stringify({ data, meta }), { status: 200 });
     };
     try {
+        client.invalidatePersistedPracticeCatalog();
         const loaded = await client.loadPersistedPractice();
         assert.equal(loaded.questions.length, 892);
-        assert.equal(loaded.attempts.length, 101);
-        assert.equal(loaded.sessions.length, 101);
-        assert.equal(loaded.wrongReviewQueue.pendingCount, 101);
-        assert.equal(loaded.wrongReviewQueue.items.length, 101);
         assert.equal(loaded.account.learner.id, "authenticated-learner");
-        assert.ok(seen.some((url) => url.includes("history?limit=100&page=2")));
         assert.deepEqual(seen.filter((url) => url.includes("/questions")), ["/api/v1/local-practice/questions"]);
-        assert.equal(seen.length, 4);
+        assert.deepEqual(seen, ["/api/v1/auth/me", "/api/v1/local-practice/questions"]);
     }
-    finally { globalThis.fetch = originalFetch; }
+    finally {
+        client.invalidatePersistedPracticeCatalog();
+        globalThis.fetch = originalFetch;
+    }
+});
+
+test("bootstrap revalidates identity while reusing the same session catalog", async () => {
+    const originalFetch = globalThis.fetch;
+    const seen = [];
+    const account = {
+        email: "cache@example.com",
+        activeRole: "learner",
+        expiresAt: "2026-10-20T16:00:00.000Z",
+        learner: {
+            id: "cached-learner",
+            gradeCode: "jh1",
+            subjectSettings: [{ lockVersion: 1, subject: { code: "zh" }, bookVersion: { id: "hanlin-jh1" } }],
+        },
+    };
+    globalThis.fetch = async (input) => {
+        const url = String(input);
+        seen.push(url);
+        if (url === "/api/v1/auth/me") {
+            return new Response(JSON.stringify({ data: { account } }), { status: 200 });
+        }
+        if (url === "/api/v1/local-practice/questions") {
+            return new Response(JSON.stringify({ data: { questions: [question] } }), { status: 200 });
+        }
+        throw new Error(`不應讀取 ${url}`);
+    };
+    try {
+        client.invalidatePersistedPracticeCatalog();
+        const first = await client.loadPersistedPractice();
+        const second = await client.loadPersistedPractice();
+
+        assert.equal(first.questions, second.questions);
+        assert.equal(seen.filter((url) => url === "/api/v1/auth/me").length, 2);
+        assert.equal(seen.filter((url) => url === "/api/v1/local-practice/questions").length, 1);
+    }
+    finally {
+        client.invalidatePersistedPracticeCatalog();
+        globalThis.fetch = originalFetch;
+    }
+});
+
+test("catalog invalidation and learner context changes force a fresh catalog request", async () => {
+    const originalFetch = globalThis.fetch;
+    let account = authenticatedAccount;
+    let catalogRequests = 0;
+    globalThis.fetch = async (input) => {
+        const url = String(input);
+        if (url === "/api/v1/auth/me") {
+            return new Response(JSON.stringify({ data: { account } }), { status: 200 });
+        }
+        if (url === "/api/v1/local-practice/questions") {
+            catalogRequests += 1;
+            return new Response(JSON.stringify({ data: { questions: [{ ...question, id: `q${catalogRequests}` }] } }), { status: 200 });
+        }
+        throw new Error(`不應讀取 ${url}`);
+    };
+    try {
+        client.invalidatePersistedPracticeCatalog();
+        await client.loadPersistedPractice();
+        client.invalidatePersistedPracticeCatalog();
+        await client.loadPersistedPractice();
+        account = {
+            ...authenticatedAccount,
+            learner: { ...authenticatedAccount.learner, id: "second-learner" },
+        };
+        await client.loadPersistedPractice();
+
+        assert.equal(catalogRequests, 3);
+    }
+    finally {
+        client.invalidatePersistedPracticeCatalog();
+        globalThis.fetch = originalFetch;
+    }
 });
 
 test("accessible catalog empty and failure states are not replaced by client defaults", async () => {
@@ -195,7 +266,7 @@ test("accessible catalog empty and failure states are not replaced by client def
     globalThis.fetch = async (input) => {
         const url = String(input);
         if (url === "/api/v1/auth/me") {
-            return new Response(JSON.stringify({ data: { account: { learner: { id: "authenticated-learner" } } } }), { status: 200 });
+            return new Response(JSON.stringify({ data: { account: authenticatedAccount } }), { status: 200 });
         }
         if (url === "/api/v1/local-practice/questions") {
             return new Response(JSON.stringify({ data: { questions: [] }, meta: { scope: "accessible", total: 0 } }), { status: 200 });
@@ -203,11 +274,13 @@ test("accessible catalog empty and failure states are not replaced by client def
         return new Response(JSON.stringify({ data: { attempts: [], sessions: [], wrongReviewQueue: { pendingCount: 0, items: [] } } }), { status: 200 });
     };
     try {
+        client.invalidatePersistedPracticeCatalog();
         assert.deepEqual((await client.loadPersistedPractice()).questions, []);
+        client.invalidatePersistedPracticeCatalog();
         globalThis.fetch = async (input) => {
             const url = String(input);
             if (url === "/api/v1/auth/me") {
-                return new Response(JSON.stringify({ data: { account: { learner: { id: "authenticated-learner" } } } }), { status: 200 });
+                return new Response(JSON.stringify({ data: { account: authenticatedAccount } }), { status: 200 });
             }
             if (url === "/api/v1/local-practice/questions") {
                 return new Response(JSON.stringify({ error: { code: "CATALOG_FAILED", message: "題庫讀取失敗" } }), { status: 503 });
@@ -216,7 +289,10 @@ test("accessible catalog empty and failure states are not replaced by client def
         };
         await assert.rejects(client.loadPersistedPractice(), /題庫讀取失敗/u);
     }
-    finally { globalThis.fetch = originalFetch; }
+    finally {
+        client.invalidatePersistedPracticeCatalog();
+        globalThis.fetch = originalFetch;
+    }
 });
 
 test("large accessible catalog negotiates gzip without changing its private JSON envelope", async () => {
@@ -690,6 +766,60 @@ test("logout and 401 signals clear same-tab and cross-tab account state without 
     }
 });
 
+test("logout ends the server session before notifying the workspace and peer tabs", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalWindow = globalThis.window;
+    const browserEvents = new EventTarget();
+    const written = [];
+    browserEvents.localStorage = { setItem: (key, value) => written.push([key, value]) };
+    globalThis.window = browserEvents;
+    let expiredEvents = 0;
+    browserEvents.addEventListener(authSession.AUTH_SESSION_EXPIRED_EVENT, () => { expiredEvents += 1; });
+
+    try {
+        const calls = [];
+        globalThis.fetch = async (input, init = {}) => {
+            calls.push({ url: String(input), method: init.method });
+            return new Response(JSON.stringify({ data: { loggedOut: true } }), { status: 200 });
+        };
+
+        await authSession.logoutAuthSession();
+
+        assert.deepEqual(calls, [{ url: "/api/v1/auth/logout", method: "POST" }]);
+        assert.equal(expiredEvents, 1);
+        assert.equal(written.length, 1);
+        assert.equal(written[0][0], authSession.AUTH_SESSION_STORAGE_KEY);
+
+        globalThis.fetch = async () => new Response(
+            JSON.stringify({ error: { message: "登出服務暫時無法使用。" } }),
+            { status: 503 },
+        );
+        await assert.rejects(authSession.logoutAuthSession(), /登出服務暫時無法使用/u);
+        assert.equal(expiredEvents, 1);
+        assert.equal(written.length, 1);
+    }
+    finally {
+        globalThis.fetch = originalFetch;
+        if (originalWindow === undefined) delete globalThis.window;
+        else globalThis.window = originalWindow;
+    }
+});
+
+test("workspace logout runs directly without the legacy logout screen", async () => {
+    const [workspace, account, nextConfig] = await Promise.all([
+        readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(workspace, /onSelect=\{\(\) => void logoutWorkspace\(\)\}/u);
+    assert.match(workspace, /await logoutAuthSession\(\)/u);
+    assert.doesNotMatch(workspace, /AUTH_PATHS\.logout|前往帳號中心登出|"\/logout"/u);
+    assert.match(account, /await logoutAuthSession\(\)/u);
+    assert.doesNotMatch(account, /fetch\("\/api\/v1\/auth\/logout"/u);
+    assert.doesNotMatch(nextConfig, /login\|register\|logout/u);
+});
+
 test("account mode, identity, and learner controls use the authenticated server contracts", async () => {
     const originalFetch = globalThis.fetch;
     const calls = [];
@@ -719,6 +849,8 @@ test("account mode, identity, and learner controls use the authenticated server 
             bookVersionId: "20000000-0000-4000-8000-000000000002",
             lockVersion: 4,
         });
+        await client.enablePracticeLearnerSubject({ action: "enable", learnerId: "learner-2", subjectCode: "chinese" });
+        await client.enablePracticeLearnerSubject({ action: "create", learnerId: "learner-2", subjectName: "程式設計" });
         assert.deepEqual(calls, [
             { url: "/api/v1/auth/role", method: "PATCH", body: { targetRole: "parent", password: "current-password" } },
             { url: "/api/v1/auth/role", method: "PATCH", body: { targetRole: "learner" } },
@@ -729,6 +861,8 @@ test("account mode, identity, and learner controls use the authenticated server 
             { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update", learnerId: "learner-2", displayName: "新稱呼", educationStatus: "enrolled", gradeCode: "junior-high-2", semesterCode: "semester-2" } },
             { url: "/api/v1/auth/learners", method: "PATCH", body: { action: "update-current", learnerId: "learner-2", displayName: "本人新稱呼", educationStatus: "not_enrolled", gradeCode: null, semesterCode: null } },
             { url: "/api/v1/auth/learners/subject-settings", method: "PATCH", body: { learnerId: "learner-2", subjectCode: "chinese", bookVersionId: "20000000-0000-4000-8000-000000000002", lockVersion: 4 } },
+            { url: "/api/v1/auth/learners/subject-settings", method: "POST", body: { action: "enable", learnerId: "learner-2", subjectCode: "chinese" } },
+            { url: "/api/v1/auth/learners/subject-settings", method: "POST", body: { action: "create", learnerId: "learner-2", subjectName: "程式設計" } },
         ]);
     }
     finally { globalThis.fetch = originalFetch; }
@@ -742,12 +876,13 @@ test("account system settings and current learner settings stay separate", async
     const learnerSettings = source.slice(source.indexOf("function renderSettings()"), source.indexOf("function renderLearningHistory()"));
     assert.doesNotMatch(navItems, /results/u);
     assert.doesNotMatch(navItems, /id: "bank"|題目匯入/u);
+    assert.match(source, /data-section="question-create"[\s\S]*router\.push\("\/questions\/new\/upload"\)[\s\S]*新增題目/u);
     assert.match(source, /if \(pathname === SECTION_PATHS\.bank\) return "questions"/u);
     assert.match(source, /if \(browserPath === SECTION_PATHS\.bank\)[\s\S]*router\.replace\(SECTION_PATHS\.questions\)/u);
     assert.match(navItems, /label: "學習者設定"/u);
     assert.match(navItems, /label: "系統設定"/u);
     assert.match(source, /pathname !== "\/results"[\s\S]*router\.replace\(SECTION_PATHS\.overview\)/u);
-    assert.match(source, /\{renderLearningHistory\(\)\}/u);
+    assert.match(source, /practiceHistoryStatus === "ready" && renderLearningHistory\(\)/u);
     assert.match(source, /const canAccessSystemSettings = !practiceAccount \|\| Boolean/u);
     assert.match(source, /const canAccessLearnerSettings = !practiceAccount \|\| Boolean\(activeAccountLearner\)/u);
     assert.match(source, /practiceAccount\.activeRole === "parent" \|\| practiceAccount\.activeRole === "tutor"/u);
@@ -767,7 +902,7 @@ test("account system settings and current learner settings stay separate", async
     assert.match(source, /loadEducationCatalog/u);
     assert.match(learnerSettings, /科目與版本/u);
     assert.match(learnerSettings, /availableBookVersions\.length > 0/u);
-    assert.match(learnerSettings, /這個科目沒有建立版本，可直接使用，不會套用版本篩選/u);
+    assert.match(learnerSettings, /此科目沒有建立版本，可直接使用/u);
     assert.match(learnerSettings, /考試設定/u);
     assert.match(learnerSettings, /練習偏好/u);
     assert.doesNotMatch(learnerSettings, /<h3>帳號身分與使用角色<\/h3>|<span>帳號信箱<\/span>/u);
@@ -793,8 +928,8 @@ test("account system settings and current learner settings stay separate", async
     assert.match(source, /setPracticeAccount\(account\);\s+broadcastAuthSessionContextChanged\(\)/u);
     assert.match(source, /window\.addEventListener\("focus", handleFocus\)/u);
     assert.match(source, /document\.addEventListener\("visibilitychange", handleVisibility\)/u);
-    assert.match(source, /updatePersistedPracticeSessionStatus\(restored\.id, "abandoned"\)/u);
-    assert.match(source, /舊練習已安全關閉/u);
+    assert.match(source, /updatePersistedPracticeSessionStatus\(restored\.id, "active"\)/u);
+    assert.match(source, /updatePersistedPracticeSessionStatus\(restored\.id, "paused"\)/u);
     assert.doesNotMatch(source, /RolePin|rolePin|六位數角色密碼|忘記角色密碼|授權新角色/u);
 });
 
@@ -816,7 +951,7 @@ test("score submissions advance cleanly and only deterministic failures discard 
     assert.doesNotMatch(source, /const completesSession = session\.checkMode !== "instant" && session\.index === session\.questionIds\.length - 1/u);
     assert.match(source, /ids\.length > LOCAL_PRACTICE_MAX_QUESTIONS/u);
     assert.match(source, /getPracticeRecords\(activeAttempts, activePracticeSessions\)/u);
-    assert.match(source, /setPracticeSessionsByLearner\(\{ \[learner\.id\]: persisted\.sessions \}\)/u);
+    assert.match(source, /loadPersistedPracticeHistory\(\)[\s\S]*setPracticeSessionsByLearner\(\{ \[persistedLearnerId\]: history\.sessions \}\)/u);
     assert.match(source, /if \(completesSession && scoreSummary\)[\s\S]*disclosure: "score"[\s\S]*setPracticeSessionsByLearner/u);
     assert.match(source, /record\.scoreSummary\.accuracy/u);
     assert.match(source, /僅顯示成績/u);
@@ -833,6 +968,25 @@ test("the formal workspace never falls back to fixture identity after session lo
     assert.match(source, /error instanceof PracticeApiError && error\.status === 401[\s\S]*clearAuthenticatedWorkspace\("登入狀態已失效/u);
     assert.match(source, /function clearAuthenticatedWorkspace|const clearAuthenticatedWorkspace/u);
     assert.match(source, /setPracticeAccount\(undefined\);[\s\S]*setLearners\(\[\]\);[\s\S]*setQuestions\(\[\]\);[\s\S]*router\.replace\("\/account"\)/u);
+});
+
+test("workspace bootstrap keeps the application shell instead of a centered blocking card", async () => {
+    const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+    assert.match(source, /if \(!isHydrated\) return <WorkspaceLoadingScreen phase=\{bootstrapPhase\}/u);
+    assert.match(source, /role="status" aria-live="polite"/u);
+    assert.match(source, /window\.setTimeout\(\(\) => setIsSlow\(true\), 8_000\)/u);
+    assert.doesNotMatch(source, /if \(!isHydrated\).*place-items-center.*正在讀取學習資料/u);
+});
+
+test("workspace wordmark keeps the official logo geometry on light and dark backgrounds", async () => {
+    const [component, styles] = await Promise.all([
+        readFile(new URL("../app/components/lerniqa-mark.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(component, /tone === "inverse" \? "\/Lerniqa_logo\.svg" : "\/logo\.png"/u);
+    assert.doesNotMatch(component, /<text|fontFamily|letterSpacing/u);
+    assert.match(styles, /\.lerniqa-wordmark img[\s\S]*?object-fit: contain/u);
 });
 
 test("publisher numbers are naturally ordered without exposing the source hash", async () => {

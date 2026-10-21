@@ -28,7 +28,7 @@ test("inline formula blocks preserve Word line breaks in both question surfaces"
     assert.match(sharedStyles, /\.question-inline-formula-flow\s*\{[\s\S]*white-space: pre-wrap;/u);
     assert.match(sharedStyles, /\.question-inline-formula-flow\[role="heading"\]\s*\{[\s\S]*line-height: 4rem;/u);
     assert.match(sharedStyles, /\.question-inline-formula-image\s*\{[\s\S]*display: inline-block;[\s\S]*vertical-align: middle;/u);
-    assert.match(practicePage, /hasInlineFormula[\s\S]*\? <span key=\{block\.id\}>\{block\.text\}<\/span>/u);
+    assert.match(practicePage, /hasInlineFormula[\s\S]*\? <span key=\{block\.id\}><BopomofoText text=\{block\.text\} \/><\/span>/u);
     assert.match(practiceStyles, /\.inlineFormulaSequence\s*\{[\s\S]*display: block;[\s\S]*white-space: pre-wrap;/u);
     assert.match(practiceStyles, /\.inlineFormulaAsset\s*\{[\s\S]*vertical-align: middle;/u);
 });

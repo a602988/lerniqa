@@ -1,3 +1,12 @@
+export const HANDWRITING_MODEL_NAME: string;
+export const HANDWRITING_MODEL_DIGEST: string;
+
+export class HandwritingAnalysisError extends Error
+{
+    code: string;
+    retryable: boolean;
+}
+
 export interface HandwritingModel {
     engine: "ollama";
     name: string;

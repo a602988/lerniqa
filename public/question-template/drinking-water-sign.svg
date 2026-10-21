@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title description">
+  <title id="title">飲水處</title>
+  <desc id="description">藍色標誌中有水龍頭與水滴圖案</desc>
+  <rect width="320" height="180" rx="20" fill="#f7f7fb"/>
+  <rect x="80" y="28" width="160" height="124" rx="18" fill="#2f73c8"/>
+  <path d="M118 75h69c14 0 25 11 25 25v8h-22v-8a4 4 0 0 0-4-4h-68Z" fill="#ffffff"/>
+  <path d="M146 58h35v17h-35z" fill="#ffffff"/>
+  <path d="M195 115c0 13-10 23-23 23s-23-10-23-23c0-10 13-28 23-40 10 12 23 30 23 40Z" fill="#9ed9ff"/>
+</svg>

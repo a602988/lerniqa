@@ -8,3 +8,4 @@ __pycache__/
 .vercel
 runtime-data/
 local-data/
+client_secret_*.apps.googleusercontent.com.json

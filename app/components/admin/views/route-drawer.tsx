@@ -9,7 +9,6 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from "@keel-design/ui";
-import { useRouter } from "next/navigation";
 import {
     createContext,
     type MouseEvent,
@@ -21,6 +20,7 @@ import {
 } from "react";
 
 import { leavesCurrentDrawerRoute } from "./route-drawer-navigation";
+import { useAppRouter } from "../../navigation-feedback";
 
 import styles from "./views.module.css";
 
@@ -58,7 +58,7 @@ export function RouteDrawer({
     children,
     size = "lg",
 }: RouteDrawerProps) {
-    const router = useRouter();
+    const router = useAppRouter();
     const navigationGuard = useRef<RouteDrawerNavigationGuard | null>(null);
     const registerNavigationGuard = useCallback<RegisterRouteDrawerNavigationGuard>(
         (guard) => {

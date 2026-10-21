@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import {
     AUTH_SESSION_COOKIE,
     AUTH_SESSION_MAX_AGE_SECONDS,
+    AUTH_DEVICE_COOKIE,
+    AUTH_DEVICE_MAX_AGE_SECONDS,
     AuthServiceError,
     type AuthenticatedAccount,
     type LearnerCheckMode,
     secureCookieForRequest,
+    rememberAuthenticatedAccount,
 } from "@/app/lib/auth-service";
 import { AuthInputError, isCredentialRequestTransportAllowed } from "@/app/lib/auth-input";
 import { EmailVerificationError } from "@/app/lib/email-verification";
@@ -33,7 +36,7 @@ export function handleAuthError(error: unknown) {
         return authErrorResponse(
             error.code,
             error.code === "MAIL_NOT_CONFIGURED"
-                ? "驗證信寄送服務尚未完成設定，請稍後再試。"
+                ? "驗證信目前無法寄出，請稍後再試。"
                 : error.message,
             error.status,
         );
@@ -220,13 +223,47 @@ export function accountResponse(account: AuthenticatedAccount, status = 200) {
     );
 }
 
-export function authenticatedResponse(
+export async function authenticatedResponse(
     request: Request,
     account: AuthenticatedAccount,
     token: string,
     status = 200,
 ) {
     const response = accountResponse(account, status);
+    setAuthSessionCookie(request, response, token);
+    const deviceToken = await rememberAuthenticatedAccount(request, account.userId);
+    setAuthDeviceCookie(request, response, deviceToken);
+    return response;
+}
+
+export async function setAuthenticatedCookies(
+    request: Request,
+    response: NextResponse,
+    account: AuthenticatedAccount,
+    token: string,
+): Promise<void> {
+    setAuthSessionCookie(request, response, token);
+    const deviceToken = await rememberAuthenticatedAccount(request, account.userId);
+    setAuthDeviceCookie(request, response, deviceToken);
+}
+
+function setAuthDeviceCookie(request: Request, response: NextResponse, token: string): void {
+    response.cookies.set({
+        name: AUTH_DEVICE_COOKIE,
+        value: token,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: secureCookieForRequest(request),
+        path: "/",
+        maxAge: AUTH_DEVICE_MAX_AGE_SECONDS,
+    });
+}
+
+export function setAuthSessionCookie(
+    request: Request,
+    response: NextResponse,
+    token: string,
+): void {
     response.cookies.set({
         name: AUTH_SESSION_COOKIE,
         value: token,
@@ -236,7 +273,6 @@ export function authenticatedResponse(
         path: "/",
         maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
     });
-    return response;
 }
 
 export function clearSessionCookie(request: Request, response: NextResponse): void {

@@ -40,6 +40,11 @@ const EXPECTED_MIGRATIONS = Object.freeze([
     ["0019", "question_identifier_question_lookup"],
     ["0020", "teaching_source_evidence"],
     ["0021", "google_quick_registration"],
+    ["0022", "social_quick_registration"],
+    ["0023", "free_plan_quotas"],
+    ["0024", "email_registration_onboarding"],
+    ["0025", "account_question_taxonomy"],
+    ["0026", "question_hints"],
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -796,9 +801,11 @@ async function assertSchema(client) {
     const result = await client.query("SELECT version, name FROM schema_migrations ORDER BY version");
     const actual = result.rows.map(({ version, name }) => [version, name]);
     if (JSON.stringify(actual) !== JSON.stringify(EXPECTED_MIGRATIONS)) {
+        const firstVersion = EXPECTED_MIGRATIONS[0][0];
+        const lastVersion = EXPECTED_MIGRATIONS.at(-1)[0];
         fail(
             "SCHEMA_VERSION_MISMATCH",
-            `本機資料庫 migration 必須精確為 0001–0019；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
+            `本機資料庫 migration 必須精確為 ${firstVersion}–${lastVersion}；目前為 ${actual.map(([version]) => version).join(", ") || "空"}。`,
         );
     }
 }
@@ -1052,6 +1059,8 @@ export async function seedHanlinCatalog(client, plan) {
             selection_mode: "single",
             sort_order: field.sortOrder,
             status: "active",
+            origin: "system",
+            owner_user_id: null,
         }, ["id"]);
         await ensureRow(client, "filter_field_scopes", {
             id: filterScopeId,

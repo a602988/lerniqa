@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         catch {
             return errorResponse(
                 "HANDWRITING_OCR_UNAVAILABLE",
-                "快速手寫辨識目前無法預先載入，送出時仍會嘗試本機 AI。",
+                "手寫辨識預先載入失敗，送出時會再次嘗試。",
                 503,
             );
         }

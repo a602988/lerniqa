@@ -1,8 +1,7 @@
-import {
-    Button, FormField, Input, MultiSelect, NativeSelect,
-} from "@keel-design/ui";
+import { Button, FormField, Input } from "@keel-design/ui";
 import { ChevronDown, ChevronUp, Library, RotateCcw, Search } from "lucide-react";
 import { KeyboardEvent, ReactNode, useEffect, useMemo, useRef } from "react";
+import { AppSelect, AppSelect as NativeSelect } from "./app-select";
 import { ALL_UNITS, Question, QuestionCollection, Subject } from "../lib/demo-data";
 import {
     ALL_QUESTION_FILTERS, getPreferredQuestionSemester, getQuestionFilterOptions, normalizeQuestionFilterSelection,
@@ -136,7 +135,7 @@ function MultiSelectFilter({ id, label, options, value, disabled = false, onChan
     return (
         <div className="question-filter-multi-select grid content-start gap-2" ref={containerRef} onClickCapture={scheduleMenuFit} onKeyDownCapture={handleKeyDownCapture}>
             <p className="text-sm font-semibold" id={`${id}-label`}>{label}</p>
-            <MultiSelect
+            <AppSelect
                 aria-labelledby={`${id}-label`}
                 clearAllLabel="全部清除"
                 clearable
@@ -153,6 +152,7 @@ function MultiSelectFilter({ id, label, options, value, disabled = false, onChan
                 selectAll
                 selectAllLabel="全選"
                 selectionIndicator="checkbox"
+                selection="multiple"
                 triggerLabelMode="count"
                 values={selected}
             />
@@ -203,7 +203,7 @@ export function SubjectFilter({ subjects, value, multiple = false, className = "
     );
 }
 
-/** 顯示題目總覽與錯題英雄榜共用的完整題目篩選。 */
+/** 顯示題目總覽與錯題排行榜共用的完整題目篩選。 */
 export function QuestionFilterPanel({
     idPrefix,
     subjects,

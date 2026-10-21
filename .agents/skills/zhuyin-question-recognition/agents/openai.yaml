@@ -1,0 +1,6 @@
+interface:
+  display_name: "注音題目辨識"
+  short_description: "校對試卷圖片中的注音符號與作答位置"
+  default_prompt: "使用 $zhuyin-question-recognition 分析這張試卷圖片，無法確認的注音保留為原圖裁切。"
+policy:
+  allow_implicit_invocation: true

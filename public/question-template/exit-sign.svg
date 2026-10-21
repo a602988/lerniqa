@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title description">
+  <title id="title">出口方向</title>
+  <desc id="description">綠色標誌中有人形向右方出口移動</desc>
+  <rect width="320" height="180" rx="20" fill="#f7f7fb"/>
+  <rect x="63" y="28" width="194" height="124" rx="18" fill="#26915f"/>
+  <circle cx="125" cy="66" r="12" fill="#ffffff"/>
+  <path d="m122 82 22 18 21-18m-42 1-13 34m28-16-3 35m6-35 22 25" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M178 104h43m-16-16 16 16-16 16" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

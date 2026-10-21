@@ -31,6 +31,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasCompleteAnswerSlots, setAnswerSlot, splitAnswerSlots } from "../lib/answer-slots";
 import { BopomofoText } from "../components/bopomofo-text";
+import { AppSelect } from "../components/app-select";
 import { LerniqaMark } from "../components/lerniqa-mark";
 import { MathFormula } from "../components/math-formula";
 import { QuestionTable } from "../components/question-table";
@@ -794,9 +795,7 @@ export default function LocalPracticePage() {
                                 <div className={styles.selectionTools}>
                                     <label>
                                         <span>本頁加入題數</span>
-                                        <select value={selectionCount} onChange={(event) => setSelectionCount(Number(event.target.value))}>
-                                            {COUNT_OPTIONS.map((count) => <option value={count} key={count}>{count} 題</option>)}
-                                        </select>
+                                        <AppSelect value={String(selectionCount)} onChange={(event) => setSelectionCount(Number(event.target.value))} options={COUNT_OPTIONS.map((count) => ({ label: `${count} 題`, value: String(count) }))} />
                                     </label>
                                     <Button appearance="outline" disabled={!questions.length || selectedIds.size >= LOCAL_PRACTICE_MAX_QUESTIONS} onClick={addPageSelection}>加入本頁前 {selectionCount} 題</Button>
                                     {selectedIds.size > 0 && <Button appearance="ghost" tone="muted" onClick={() => setSelectedIds(new Set())}><X aria-hidden="true" />清除</Button>}

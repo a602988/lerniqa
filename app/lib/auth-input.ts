@@ -5,17 +5,20 @@ export type AccountRole = (typeof ACCOUNT_ROLES)[number];
 export type LearnerEducationStatus = (typeof LEARNER_EDUCATION_STATUSES)[number];
 
 export interface RegisterAccountInput {
-    displayName: string;
-    learnerName: string;
     email: string;
     password: string;
+}
+
+export interface CompleteEmailRegistrationInput {
+    displayName: string;
+    learnerName: string;
     role: AccountRole;
     educationStatus: LearnerEducationStatus;
     gradeCode: string | null;
     semesterCode: string | null;
 }
 
-export interface GoogleQuickRegistrationInput {
+export interface SocialQuickRegistrationInput {
     learnerName: string;
     role: AccountRole;
     educationStatus: LearnerEducationStatus;
@@ -25,7 +28,7 @@ export interface GoogleQuickRegistrationInput {
 
 export type GoogleQuickRegistrationRequest =
     | Readonly<{ action: "credential"; credential: string }>
-    | Readonly<{ action: "complete"; registration: GoogleQuickRegistrationInput }>;
+    | Readonly<{ action: "complete"; registration: SocialQuickRegistrationInput }>;
 
 export interface LoginAccountInput {
     email: string;
@@ -86,10 +89,17 @@ export interface UpdateLearnerSubjectSettingInput {
     lockVersion: number;
 }
 
-export interface EnableLearnerSubjectInput {
-    learnerId: string;
-    subjectCode: string;
-}
+export type EnableLearnerSubjectInput =
+    | Readonly<{
+        action: "enable";
+        learnerId: string;
+        subjectCode: string;
+    }>
+    | Readonly<{
+        action: "create";
+        learnerId: string;
+        subjectName: string;
+    }>;
 
 export const ACCOUNT_PASSWORD_MIN_LENGTH = 8;
 export const ACCOUNT_PASSWORD_MAX_LENGTH = 128;
@@ -333,6 +343,16 @@ export function parseRegisterAccountInput(value: unknown): RegisterAccountInput 
     if (!isRecord(value)) {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "註冊資料格式不正確。");
     }
+    return {
+        email: normalizeAccountEmail(value.email),
+        password: validateNewAccountPassword(value.password),
+    };
+}
+
+export function parseCompleteEmailRegistrationInput(value: unknown): CompleteEmailRegistrationInput {
+    if (!isRecord(value)) {
+        throw new AuthInputError("INVALID_ACCOUNT_INPUT", "帳號設定資料格式不正確。");
+    }
     const displayName = normalizeName(value.displayName, "帳號稱呼");
     const role = parseRole(value.role);
     const education = parseLearnerEducationFields(value);
@@ -341,14 +361,12 @@ export function parseRegisterAccountInput(value: unknown): RegisterAccountInput 
         learnerName: role === "learner"
             ? displayName
             : normalizeName(value.learnerName, "學習者稱呼"),
-        email: normalizeAccountEmail(value.email),
-        password: validateNewAccountPassword(value.password),
         role,
         ...education,
     };
 }
 
-export function parseGoogleQuickRegistrationInput(value: unknown): GoogleQuickRegistrationInput {
+export function parseGoogleQuickRegistrationInput(value: unknown): SocialQuickRegistrationInput {
     if (!isRecord(value)) {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "快速註冊資料格式不正確。");
     }
@@ -465,10 +483,22 @@ export function parseEnableLearnerSubjectInput(value: unknown): EnableLearnerSub
     if (!isRecord(value)) {
         throw new AuthInputError("INVALID_ACCOUNT_INPUT", "新增科目資料格式不正確。");
     }
-    return {
-        learnerId: normalizeUuid(value.learnerId, "學習者識別碼"),
-        subjectCode: normalizeCatalogCode(value.subjectCode, "科目", 60),
-    };
+    const learnerId = normalizeUuid(value.learnerId, "學習者識別碼");
+    if (value.action === "enable") {
+        return {
+            action: value.action,
+            learnerId,
+            subjectCode: normalizeCatalogCode(value.subjectCode, "科目", 60),
+        };
+    }
+    if (value.action === "create") {
+        return {
+            action: value.action,
+            learnerId,
+            subjectName: normalizeName(value.subjectName, "科目名稱"),
+        };
+    }
+    throw new AuthInputError("INVALID_ACCOUNT_INPUT", "新增科目動作不正確。");
 }
 
 function normalizedUrl(value: string | null): URL | null {

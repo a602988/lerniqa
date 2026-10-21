@@ -12,9 +12,10 @@ import {
 } from "./auth-crypto";
 import type {
     AccountRole,
+    CompleteEmailRegistrationInput,
     CreateAccountLearnerInput,
     EnableLearnerSubjectInput,
-    GoogleQuickRegistrationInput,
+    SocialQuickRegistrationInput,
     LearnerEducationStatus,
     LoginAccountInput,
     RegisterAccountInput,
@@ -26,8 +27,18 @@ import { queryLocalPostgres, withLocalPostgresTransaction } from "./local-postgr
 
 export const AUTH_SESSION_COOKIE = "lerniqa_session";
 export const AUTH_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
-export const GOOGLE_QUICK_REGISTRATION_COOKIE = "lerniqa_google_registration";
-export const GOOGLE_QUICK_REGISTRATION_MAX_AGE_SECONDS = 10 * 60;
+export const AUTH_DEVICE_COOKIE = "lerniqa_device";
+export const AUTH_DEVICE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+export const EMAIL_REGISTRATION_COOKIE = "lerniqa_email_registration";
+export const EMAIL_REGISTRATION_MAX_AGE_SECONDS = 10 * 60;
+export const SOCIAL_QUICK_REGISTRATION_COOKIE = "lerniqa_social_registration";
+export const SOCIAL_QUICK_REGISTRATION_MAX_AGE_SECONDS = 10 * 60;
+export const SOCIAL_OAUTH_ATTEMPT_COOKIE = "lerniqa_social_oauth";
+export const SOCIAL_OAUTH_NONCE_COOKIE = "lerniqa_social_nonce";
+export const SOCIAL_OAUTH_MAX_AGE_SECONDS = 10 * 60;
+
+export type SocialIdentityProvider = "google" | "line" | "facebook";
+export type RedirectIdentityProvider = Exclude<SocialIdentityProvider, "google">;
 
 const DEFAULT_GRADE_CODE = "junior-high-1";
 const DEFAULT_SEMESTER_CODE = "semester-1";
@@ -112,17 +123,25 @@ export interface IssuedAuthSession {
     token: string;
 }
 
-export interface GoogleQuickRegistrationProfile {
+export interface RememberedAccount {
+    id: string;
+    displayName: string;
+    email: string;
+    current: boolean;
+}
+
+export interface SocialQuickRegistrationProfile {
+    provider: SocialIdentityProvider;
     displayName: string;
     email: string;
 }
 
-export type GoogleQuickRegistrationStart =
+export type SocialQuickRegistrationStart =
     | Readonly<{ kind: "authenticated"; issued: IssuedAuthSession }>
     | Readonly<{
         kind: "pending";
         token: string;
-        profile: GoogleQuickRegistrationProfile;
+        profile: SocialQuickRegistrationProfile;
     }>;
 
 export class AuthServiceError extends Error {
@@ -174,11 +193,18 @@ interface LoginRow extends QueryResultRow {
     learner_id: string;
 }
 
-interface GoogleQuickRegistrationRow extends QueryResultRow {
+interface SocialQuickRegistrationRow extends QueryResultRow {
     id: string;
+    provider: SocialIdentityProvider;
     provider_subject: string;
     email_normalized: string;
     display_name: string;
+}
+
+interface EmailRegistrationRow extends QueryResultRow {
+    id: string;
+    email_normalized: string;
+    password_hash: string;
 }
 
 interface LoginIdentityRow extends QueryResultRow {
@@ -881,7 +907,8 @@ async function readAccessibleLearners(
                     AND candidate.status = 'active'
                     AND (candidate.origin = 'system' OR candidate.owner_user_id = $1)
                     AND (
-                        learner.grade_id IS NULL
+                        candidate.origin = 'account'
+                        OR learner.grade_id IS NULL
                         OR EXISTS (
                             SELECT 1
                             FROM grade_subjects AS grade_subject
@@ -977,7 +1004,7 @@ interface AccountRegistrationProfile {
 }
 
 interface RegistrationIdentity {
-    provider: "email" | "google";
+    provider: "email" | SocialIdentityProvider;
     subject: string;
     email: string;
     passwordHash: string | null;
@@ -1124,16 +1151,132 @@ async function readLoginCandidate(
     return result.rows[0];
 }
 
-export async function registerAccount(input: RegisterAccountInput): Promise<IssuedAuthSession> {
+export async function beginEmailRegistration(
+    input: RegisterAccountInput,
+): Promise<Readonly<{ token: string; email: string }>> {
     const passwordHash = await hashAccountPassword(input.password);
     try {
-        return await withLocalPostgresTransaction((client) => createRegisteredAccount(client, input, {
-            provider: "email",
-            subject: input.email,
-            email: input.email,
-            passwordHash,
-            verified: false,
-        }));
+        return await withLocalPostgresTransaction(async (client) => {
+            const identity = await client.query(`
+                SELECT 1 FROM account_identities
+                WHERE email_normalized = $1 AND revoked_at IS NULL
+                LIMIT 1
+            `, [input.email]);
+            if (identity.rowCount) {
+                throw new AuthServiceError(
+                    "EMAIL_ALREADY_REGISTERED",
+                    "這個電子郵件已註冊，請改用登入。",
+                    409,
+                );
+            }
+            await client.query(`
+                UPDATE email_registration_onboarding
+                SET consumed_at = COALESCE(consumed_at, transaction_timestamp())
+                WHERE email_normalized = $1 AND consumed_at IS NULL
+            `, [input.email]);
+            const token = createOpaqueToken();
+            await client.query(`
+                INSERT INTO email_registration_onboarding (
+                    id, token_hash, email_normalized, password_hash, expires_at
+                )
+                VALUES (
+                    $1, $2, $3, $4,
+                    transaction_timestamp() + ($5::integer * interval '1 second')
+                )
+            `, [
+                randomUUID(),
+                hashOpaqueToken(token),
+                input.email,
+                passwordHash,
+                EMAIL_REGISTRATION_MAX_AGE_SECONDS,
+            ]);
+            return { token, email: input.email };
+        });
+    }
+    catch (error) {
+        if (error instanceof AuthServiceError) throw error;
+        if (databaseCode(error) === "23505") {
+            throw new AuthServiceError(
+                "EMAIL_ALREADY_REGISTERED",
+                "這個電子郵件已註冊，請改用登入。",
+                409,
+            );
+        }
+        throw error;
+    }
+}
+
+export function emailRegistrationTokenFromRequest(request: Request): string | null {
+    return opaqueCookieFromRequest(request, EMAIL_REGISTRATION_COOKIE);
+}
+
+export async function readEmailRegistration(
+    request: Request,
+): Promise<Readonly<{ email: string }>> {
+    const token = emailRegistrationTokenFromRequest(request);
+    if (!token) {
+        throw new AuthServiceError("EMAIL_REGISTRATION_REQUIRED", "請先建立帳號。", 401);
+    }
+    const result = await queryLocalPostgres<EmailRegistrationRow>(`
+        SELECT id, email_normalized, password_hash
+        FROM email_registration_onboarding
+        WHERE token_hash = $1
+            AND consumed_at IS NULL
+            AND expires_at > statement_timestamp()
+        LIMIT 1
+    `, [hashOpaqueToken(token)]);
+    const registration = result.rows[0];
+    if (!registration) {
+        throw new AuthServiceError(
+            "EMAIL_REGISTRATION_EXPIRED",
+            "帳號設定已逾時，請重新建立帳號。",
+            401,
+        );
+    }
+    return { email: registration.email_normalized };
+}
+
+export async function completeEmailRegistration(
+    request: Request,
+    input: CompleteEmailRegistrationInput,
+): Promise<IssuedAuthSession> {
+    const token = emailRegistrationTokenFromRequest(request);
+    if (!token) {
+        throw new AuthServiceError("EMAIL_REGISTRATION_REQUIRED", "請先建立帳號。", 401);
+    }
+    try {
+        return await withLocalPostgresTransaction(async (client) => {
+            const result = await client.query<EmailRegistrationRow>(`
+                SELECT id, email_normalized, password_hash
+                FROM email_registration_onboarding
+                WHERE token_hash = $1
+                    AND consumed_at IS NULL
+                    AND expires_at > transaction_timestamp()
+                LIMIT 1
+                FOR UPDATE
+            `, [hashOpaqueToken(token)]);
+            const registration = result.rows[0];
+            if (!registration) {
+                throw new AuthServiceError(
+                    "EMAIL_REGISTRATION_EXPIRED",
+                    "帳號設定已逾時，請重新建立帳號。",
+                    401,
+                );
+            }
+            const issued = await createRegisteredAccount(client, input, {
+                provider: "email",
+                subject: registration.email_normalized,
+                email: registration.email_normalized,
+                passwordHash: registration.password_hash,
+                verified: false,
+            });
+            await client.query(`
+                UPDATE email_registration_onboarding
+                SET consumed_at = transaction_timestamp()
+                WHERE id = $1
+            `, [registration.id]);
+            return issued;
+        });
     }
     catch (error) {
         if (error instanceof AuthServiceError) throw error;
@@ -1185,26 +1328,173 @@ export async function loginAccount(input: LoginAccountInput): Promise<IssuedAuth
     });
 }
 
-export async function beginGoogleQuickRegistration(
+async function readDefaultLoginCandidate(client: PoolClient, userId: string): Promise<LoginRow | undefined> {
+    const result = await client.query<LoginRow>(`
+        SELECT app_user.id AS user_id, NULL::text AS password_hash, role.role, access.learner_id
+        FROM users AS app_user
+        JOIN user_roles AS role
+            ON role.user_id = app_user.id
+            AND role.role IN ('parent', 'learner', 'tutor')
+            AND role.revoked_at IS NULL
+        JOIN learner_access AS access
+            ON access.user_id = app_user.id
+            AND access.accepted_at IS NOT NULL
+            AND access.revoked_at IS NULL
+        JOIN learners AS learner
+            ON learner.id = access.learner_id
+            AND learner.status = 'active'
+        WHERE app_user.id = $1 AND app_user.status = 'active'
+        ORDER BY
+            CASE WHEN role.role = app_user.account_role THEN 0 ELSE 1 END,
+            CASE WHEN access.access_role = app_user.account_role THEN 0 ELSE 1 END,
+            CASE WHEN role.role = access.access_role THEN 0 ELSE 1 END,
+            access.accepted_at, access.learner_id, role.granted_at, role.role, access.id, role.id
+        LIMIT 1
+    `, [userId]);
+    return result.rows[0];
+}
+
+function deviceTokenFromRequest(request: Request): string | null {
+    return opaqueCookieFromRequest(request, AUTH_DEVICE_COOKIE);
+}
+
+export async function rememberAuthenticatedAccount(request: Request, userId: string): Promise<string> {
+    const existingToken = deviceTokenFromRequest(request);
+    return withLocalPostgresTransaction(async (client) => {
+        let deviceToken = existingToken;
+        let deviceId: string | undefined;
+        if (deviceToken) {
+            const device = await client.query<{ id: string }>(`
+                SELECT id FROM auth_devices
+                WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > transaction_timestamp()
+                LIMIT 1 FOR UPDATE
+            `, [hashOpaqueToken(deviceToken)]);
+            deviceId = device.rows[0]?.id;
+        }
+        if (!deviceId) {
+            deviceId = randomUUID();
+            deviceToken = createOpaqueToken();
+            await client.query(`
+                INSERT INTO auth_devices (id, token_hash, expires_at)
+                VALUES ($1, $2, transaction_timestamp() + ($3::integer * interval '1 second'))
+            `, [deviceId, hashOpaqueToken(deviceToken), AUTH_DEVICE_MAX_AGE_SECONDS]);
+        }
+        const account = await client.query<{ id: string }>(`
+            SELECT id FROM auth_device_accounts
+            WHERE device_id = $1 AND user_id = $2 AND removed_at IS NULL
+            LIMIT 1 FOR UPDATE
+        `, [deviceId, userId]);
+        if (account.rows[0]) {
+            await client.query(`UPDATE auth_device_accounts SET last_used_at = transaction_timestamp() WHERE id = $1`, [account.rows[0].id]);
+        }
+        else {
+            await client.query(`
+                INSERT INTO auth_device_accounts (id, device_id, user_id)
+                VALUES ($1, $2, $3)
+            `, [randomUUID(), deviceId, userId]);
+        }
+        await client.query(`UPDATE auth_devices SET last_seen_at = transaction_timestamp() WHERE id = $1`, [deviceId]);
+        return deviceToken!;
+    });
+}
+
+export async function listRememberedAccounts(request: Request): Promise<RememberedAccount[]> {
+    const deviceToken = deviceTokenFromRequest(request);
+    if (!deviceToken) return [];
+    const sessionToken = sessionTokenFromRequest(request);
+    const result = await queryLocalPostgres<RememberedAccount & QueryResultRow>(`
+        SELECT
+            remembered.id,
+            app_user.display_name AS "displayName",
+            identity.email_normalized AS email,
+            COALESCE(current_session.user_id = remembered.user_id, false) AS current
+        FROM auth_devices AS device
+        JOIN auth_device_accounts AS remembered
+            ON remembered.device_id = device.id AND remembered.removed_at IS NULL
+        JOIN users AS app_user ON app_user.id = remembered.user_id AND app_user.status = 'active'
+        JOIN LATERAL (
+            SELECT candidate.email_normalized
+            FROM account_identities AS candidate
+            WHERE candidate.user_id = remembered.user_id
+                AND candidate.revoked_at IS NULL
+                AND candidate.email_normalized IS NOT NULL
+            ORDER BY CASE candidate.provider WHEN 'email' THEN 0 WHEN 'google' THEN 1 ELSE 2 END, candidate.created_at, candidate.id
+            LIMIT 1
+        ) AS identity ON true
+        LEFT JOIN auth_sessions AS current_session
+            ON current_session.token_hash = $2
+            AND current_session.revoked_at IS NULL
+            AND current_session.expires_at > transaction_timestamp()
+        WHERE device.token_hash = $1
+            AND device.revoked_at IS NULL
+            AND device.expires_at > transaction_timestamp()
+        ORDER BY remembered.last_used_at DESC, remembered.id
+    `, [hashOpaqueToken(deviceToken), sessionToken ? hashSessionToken(sessionToken) : ""]);
+    return result.rows;
+}
+
+export async function switchRememberedAccount(request: Request, accountId: string): Promise<IssuedAuthSession> {
+    const deviceToken = deviceTokenFromRequest(request);
+    if (!deviceToken) throw new AuthServiceError("REMEMBERED_ACCOUNT_REQUIRED", "這個裝置沒有可切換的帳號。", 401);
+    return withLocalPostgresTransaction(async (client) => {
+        const remembered = await client.query<{ id: string; user_id: string }>(`
+            SELECT remembered.id, remembered.user_id
+            FROM auth_devices AS device
+            JOIN auth_device_accounts AS remembered ON remembered.device_id = device.id
+            WHERE device.token_hash = $1
+                AND device.revoked_at IS NULL
+                AND device.expires_at > transaction_timestamp()
+                AND remembered.id = $2
+                AND remembered.removed_at IS NULL
+            LIMIT 1 FOR UPDATE OF remembered
+        `, [hashOpaqueToken(deviceToken), accountId]);
+        const record = remembered.rows[0];
+        if (!record) throw new AuthServiceError("REMEMBERED_ACCOUNT_NOT_FOUND", "找不到這個已儲存帳號。", 404);
+        await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [record.user_id]);
+        const candidate = await readDefaultLoginCandidate(client, record.user_id);
+        if (!candidate) throw new AuthServiceError("REMEMBERED_ACCOUNT_UNAVAILABLE", "這個帳號目前無法登入。", 403);
+        const issued = await issueSession(client, { userId: candidate.user_id, role: candidate.role, learnerId: candidate.learner_id });
+        await client.query(`UPDATE auth_device_accounts SET last_used_at = transaction_timestamp() WHERE id = $1`, [record.id]);
+        return { account: await readSessionById(client, issued.sessionId), token: issued.token };
+    });
+}
+
+export async function removeRememberedAccount(request: Request, accountId: string): Promise<void> {
+    const deviceToken = deviceTokenFromRequest(request);
+    if (!deviceToken) return;
+    await queryLocalPostgres(`
+        UPDATE auth_device_accounts AS remembered
+        SET removed_at = COALESCE(removed_at, transaction_timestamp())
+        FROM auth_devices AS device
+        WHERE remembered.device_id = device.id
+            AND device.token_hash = $1
+            AND device.revoked_at IS NULL
+            AND remembered.id = $2
+            AND remembered.removed_at IS NULL
+    `, [hashOpaqueToken(deviceToken), accountId]);
+}
+
+export async function beginSocialQuickRegistration(
+    provider: SocialIdentityProvider,
     identity: Readonly<{ subject: string; email: string; displayName: string }>,
-): Promise<GoogleQuickRegistrationStart> {
+): Promise<SocialQuickRegistrationStart> {
     return withLocalPostgresTransaction(async (client) => {
         const identityResult = await client.query<LoginIdentityRow>(`
             SELECT identity.user_id
             FROM account_identities AS identity
-            WHERE identity.provider = 'google'
-                AND identity.provider_subject = $1
+            WHERE identity.provider = $1
+                AND identity.provider_subject = $2
                 AND identity.revoked_at IS NULL
             LIMIT 1
-        `, [identity.subject]);
+        `, [provider, identity.subject]);
         const userId = identityResult.rows[0]?.user_id;
         if (userId) {
             await client.query("SELECT lerniqa_lock_auth_user($1::uuid)", [userId]);
-            const candidate = await readLoginCandidate(client, userId, "google", identity.subject);
+            const candidate = await readLoginCandidate(client, userId, provider, identity.subject);
             if (!candidate) {
                 throw new AuthServiceError(
-                    "GOOGLE_ACCOUNT_UNAVAILABLE",
-                    "這個 Google 帳號目前無法登入。",
+                    "SOCIAL_ACCOUNT_UNAVAILABLE",
+                    "這個社群帳號目前無法登入。",
                     403,
                 );
             }
@@ -1227,71 +1517,78 @@ export async function beginGoogleQuickRegistration(
         `, [identity.email]);
         if (emailConflict.rowCount) {
             throw new AuthServiceError(
-                "GOOGLE_EMAIL_ALREADY_REGISTERED",
+                "SOCIAL_EMAIL_ALREADY_REGISTERED",
                 "這個電子郵件已註冊，請改用密碼登入。",
                 409,
             );
         }
 
         await client.query(`
-            UPDATE google_quick_registrations
+            UPDATE social_quick_registrations
             SET consumed_at = COALESCE(consumed_at, transaction_timestamp())
-            WHERE provider_subject = $1
+            WHERE provider = $1
+                AND provider_subject = $2
                 AND consumed_at IS NULL
-        `, [identity.subject]);
+        `, [provider, identity.subject]);
         const token = createOpaqueToken();
         await client.query(`
-            INSERT INTO google_quick_registrations (
-                id, token_hash, provider_subject, email_normalized, display_name, expires_at
+            INSERT INTO social_quick_registrations (
+                id, token_hash, provider, provider_subject,
+                email_normalized, display_name, expires_at
             )
             VALUES (
-                $1, $2, $3, $4, $5,
-                transaction_timestamp() + ($6::integer * interval '1 second')
+                $1, $2, $3, $4, $5, $6,
+                transaction_timestamp() + ($7::integer * interval '1 second')
             )
         `, [
             randomUUID(),
             hashOpaqueToken(token),
+            provider,
             identity.subject,
             identity.email,
             identity.displayName,
-            GOOGLE_QUICK_REGISTRATION_MAX_AGE_SECONDS,
+            SOCIAL_QUICK_REGISTRATION_MAX_AGE_SECONDS,
         ]);
         return {
             kind: "pending",
             token,
-            profile: { displayName: identity.displayName, email: identity.email },
+            profile: { provider, displayName: identity.displayName, email: identity.email },
         };
     });
 }
 
-export function googleQuickRegistrationTokenFromRequest(request: Request): string | null {
+function opaqueCookieFromRequest(request: Request, cookieName: string): string | null {
     const cookieHeader = request.headers.get("cookie");
     if (!cookieHeader) return null;
     for (const item of cookieHeader.split(";")) {
         const separator = item.indexOf("=");
         if (separator < 0) continue;
         const name = item.slice(0, separator).trim();
-        if (name !== GOOGLE_QUICK_REGISTRATION_COOKIE) continue;
+        if (name !== cookieName) continue;
         const token = item.slice(separator + 1).trim();
         return /^[A-Za-z0-9_-]{43}$/u.test(token) ? token : null;
     }
     return null;
 }
 
-export async function readGoogleQuickRegistration(
+export function socialQuickRegistrationTokenFromRequest(request: Request): string | null {
+    return opaqueCookieFromRequest(request, SOCIAL_QUICK_REGISTRATION_COOKIE);
+}
+
+export async function readSocialQuickRegistration(
     request: Request,
-): Promise<GoogleQuickRegistrationProfile> {
-    const token = googleQuickRegistrationTokenFromRequest(request);
+): Promise<SocialQuickRegistrationProfile> {
+    const token = socialQuickRegistrationTokenFromRequest(request);
     if (!token) {
         throw new AuthServiceError(
-            "GOOGLE_REGISTRATION_REQUIRED",
-            "請先選擇 Google 帳號。",
+            "SOCIAL_REGISTRATION_REQUIRED",
+            "請先選擇快速註冊方式。",
             401,
         );
     }
-    const result = await queryLocalPostgres<GoogleQuickRegistrationRow>(`
-        SELECT id, provider_subject, email_normalized, display_name
-        FROM google_quick_registrations
+    const result = await queryLocalPostgres<SocialQuickRegistrationRow>(`
+        SELECT id, provider, provider_subject, email_normalized, display_name
+        FROM social_quick_registrations
         WHERE token_hash = $1
             AND consumed_at IS NULL
             AND expires_at > statement_timestamp()
@@ -1300,35 +1597,36 @@ export async function readGoogleQuickRegistration(
     const registration = result.rows[0];
     if (!registration) {
         throw new AuthServiceError(
-            "GOOGLE_REGISTRATION_EXPIRED",
-            "Google 快速註冊已逾時，請重新選擇帳號。",
+            "SOCIAL_REGISTRATION_EXPIRED",
+            "快速註冊已逾時，請重新選擇帳號。",
             401,
         );
     }
     return {
+        provider: registration.provider,
         displayName: registration.display_name,
         email: registration.email_normalized,
     };
 }
 
-export async function completeGoogleQuickRegistration(
+export async function completeSocialQuickRegistration(
     request: Request,
-    input: GoogleQuickRegistrationInput,
+    input: SocialQuickRegistrationInput,
 ): Promise<IssuedAuthSession> {
-    const token = googleQuickRegistrationTokenFromRequest(request);
+    const token = socialQuickRegistrationTokenFromRequest(request);
     if (!token) {
         throw new AuthServiceError(
-            "GOOGLE_REGISTRATION_REQUIRED",
-            "請先選擇 Google 帳號。",
+            "SOCIAL_REGISTRATION_REQUIRED",
+            "請先選擇快速註冊方式。",
             401,
         );
     }
 
     try {
         return await withLocalPostgresTransaction(async (client) => {
-            const result = await client.query<GoogleQuickRegistrationRow>(`
-                SELECT id, provider_subject, email_normalized, display_name
-                FROM google_quick_registrations
+            const result = await client.query<SocialQuickRegistrationRow>(`
+                SELECT id, provider, provider_subject, email_normalized, display_name
+                FROM social_quick_registrations
                 WHERE token_hash = $1
                     AND consumed_at IS NULL
                     AND expires_at > transaction_timestamp()
@@ -1338,8 +1636,8 @@ export async function completeGoogleQuickRegistration(
             const registration = result.rows[0];
             if (!registration) {
                 throw new AuthServiceError(
-                    "GOOGLE_REGISTRATION_EXPIRED",
-                    "Google 快速註冊已逾時，請重新選擇帳號。",
+                    "SOCIAL_REGISTRATION_EXPIRED",
+                    "快速註冊已逾時，請重新選擇帳號。",
                     401,
                 );
             }
@@ -1354,14 +1652,14 @@ export async function completeGoogleQuickRegistration(
                 gradeCode: input.gradeCode,
                 semesterCode: input.semesterCode,
             }, {
-                provider: "google",
+                provider: registration.provider,
                 subject: registration.provider_subject,
                 email: registration.email_normalized,
                 passwordHash: null,
                 verified: true,
             });
             await client.query(`
-                UPDATE google_quick_registrations
+                UPDATE social_quick_registrations
                 SET consumed_at = transaction_timestamp()
                 WHERE id = $1
             `, [registration.id]);
@@ -1372,13 +1670,82 @@ export async function completeGoogleQuickRegistration(
         if (error instanceof AuthServiceError) throw error;
         if (databaseCode(error) === "23505") {
             throw new AuthServiceError(
-                "GOOGLE_ACCOUNT_ALREADY_REGISTERED",
-                "這個 Google 帳號或電子郵件已註冊，請重新登入。",
+                "SOCIAL_ACCOUNT_ALREADY_REGISTERED",
+                "這個社群帳號或電子郵件已註冊，請重新登入。",
                 409,
             );
         }
         throw error;
     }
+}
+
+export async function createSocialOAuthAttempt(
+    provider: RedirectIdentityProvider,
+): Promise<Readonly<{ token: string; state: string; nonce: string | null }>> {
+    const token = createOpaqueToken();
+    const state = createOpaqueToken();
+    const nonce = provider === "line" ? createOpaqueToken() : null;
+    await queryLocalPostgres(`
+        INSERT INTO social_oauth_attempts (
+            id, provider, token_hash, state_hash, nonce_hash, expires_at
+        )
+        VALUES (
+            $1, $2, $3, $4, $5,
+            transaction_timestamp() + ($6::integer * interval '1 second')
+        )
+    `, [
+        randomUUID(),
+        provider,
+        hashOpaqueToken(token),
+        hashOpaqueToken(state),
+        nonce ? hashOpaqueToken(nonce) : null,
+        SOCIAL_OAUTH_MAX_AGE_SECONDS,
+    ]);
+    return { token, state, nonce };
+}
+
+export async function consumeSocialOAuthAttempt(
+    request: Request,
+    provider: RedirectIdentityProvider,
+    state: string,
+): Promise<string | null> {
+    const token = opaqueCookieFromRequest(request, SOCIAL_OAUTH_ATTEMPT_COOKIE);
+    const nonce = opaqueCookieFromRequest(request, SOCIAL_OAUTH_NONCE_COOKIE);
+    if (!token || !/^[A-Za-z0-9_-]{43}$/u.test(state)) {
+        throw new AuthServiceError("SOCIAL_OAUTH_INVALID", "快速註冊驗證已失效，請重新開始。", 401);
+    }
+    if (provider === "line" && !nonce) {
+        throw new AuthServiceError("SOCIAL_OAUTH_INVALID", "LINE 快速註冊驗證已失效，請重新開始。", 401);
+    }
+    return withLocalPostgresTransaction(async (client) => {
+        const result = await client.query<{ id: string }>(`
+            SELECT id
+            FROM social_oauth_attempts
+            WHERE provider = $1
+                AND token_hash = $2
+                AND state_hash = $3
+                AND nonce_hash IS NOT DISTINCT FROM $4
+                AND consumed_at IS NULL
+                AND expires_at > transaction_timestamp()
+            LIMIT 1
+            FOR UPDATE
+        `, [
+            provider,
+            hashOpaqueToken(token),
+            hashOpaqueToken(state),
+            nonce ? hashOpaqueToken(nonce) : null,
+        ]);
+        const attempt = result.rows[0];
+        if (!attempt) {
+            throw new AuthServiceError("SOCIAL_OAUTH_INVALID", "快速註冊驗證已失效，請重新開始。", 401);
+        }
+        await client.query(`
+            UPDATE social_oauth_attempts
+            SET consumed_at = transaction_timestamp()
+            WHERE id = $1
+        `, [attempt.id]);
+        return nonce;
+    });
 }
 
 export async function logoutAccount(request: Request): Promise<void> {
@@ -1988,29 +2355,98 @@ export async function enableLearnerSubject(
             throw new AuthServiceError("LEARNER_SETTINGS_FORBIDDEN", "沒有權限修改這位學習者的科目設定。", 403);
         }
 
-        const subjectResult = await client.query<{ subject_id: string } & QueryResultRow>(`
-            SELECT subject.id AS subject_id
-            FROM subjects AS subject
-            WHERE subject.code = $1
-                AND subject.subject_kind = 'leaf'
-                AND subject.status = 'active'
-                AND (subject.origin = 'system' OR subject.owner_user_id = $2)
-                AND (
-                    $3::uuid IS NULL
-                    OR EXISTS (
-                        SELECT 1
-                        FROM grade_subjects AS grade_subject
-                        WHERE grade_subject.grade_id = $3
-                            AND grade_subject.subject_id = subject.id
-                            AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
-                            AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+        let subjectId: string;
+        if (input.action === "enable") {
+            const subjectResult = await client.query<{ subject_id: string } & QueryResultRow>(`
+                SELECT subject.id AS subject_id
+                FROM subjects AS subject
+                WHERE subject.code = $1
+                    AND subject.subject_kind = 'leaf'
+                    AND subject.status = 'active'
+                    AND (subject.origin = 'system' OR subject.owner_user_id = $2)
+                    AND (
+                        subject.origin = 'account'
+                        OR $3::uuid IS NULL
+                        OR EXISTS (
+                            SELECT 1
+                            FROM grade_subjects AS grade_subject
+                            WHERE grade_subject.grade_id = $3
+                                AND grade_subject.subject_id = subject.id
+                                AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
+                                AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+                        )
                     )
+                LIMIT 1
+            `, [input.subjectCode, session.user_id, learner.grade_id]);
+            const subject = subjectResult.rows[0];
+            if (!subject) {
+                throw new AuthServiceError("LEARNER_SUBJECT_NOT_AVAILABLE", "這個科目不適用於目前學習者。", 400);
+            }
+            subjectId = subject.subject_id;
+        }
+        else {
+            await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [session.user_id]);
+            const normalizedName = input.subjectName.toLowerCase();
+            const conflictResult = await client.query<{ origin: "account" | "system" } & QueryResultRow>(`
+                SELECT conflict.origin
+                FROM (
+                    SELECT subject.origin, subject.id
+                    FROM subjects AS subject
+                    WHERE lower(subject.normalized_name) = $1
+                        AND (
+                            subject.owner_user_id = $2
+                            OR (
+                                subject.origin = 'system'
+                                AND subject.status = 'active'
+                                AND (
+                                    $3::uuid IS NULL
+                                    OR EXISTS (
+                                        SELECT 1
+                                        FROM grade_subjects AS grade_subject
+                                        WHERE grade_subject.grade_id = $3
+                                            AND grade_subject.subject_id = subject.id
+                                            AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
+                                            AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+                                    )
+                                )
+                            )
+                        )
+                    UNION ALL
+                    SELECT 'system'::varchar AS origin, alias.subject_id AS id
+                    FROM subject_aliases AS alias
+                    JOIN subjects AS subject ON subject.id = alias.subject_id
+                    WHERE alias.status = 'active'
+                        AND subject.status = 'active'
+                        AND lower(alias.normalized_alias) = $1
+                        AND (
+                            $3::uuid IS NULL
+                            OR EXISTS (
+                                SELECT 1
+                                FROM grade_subjects AS grade_subject
+                                WHERE grade_subject.grade_id = $3
+                                    AND grade_subject.subject_id = subject.id
+                                    AND (grade_subject.active_from IS NULL OR grade_subject.active_from <= CURRENT_DATE)
+                                    AND (grade_subject.active_until IS NULL OR grade_subject.active_until >= CURRENT_DATE)
+                            )
+                        )
+                ) AS conflict
+                LIMIT 1
+            `, [normalizedName, session.user_id, learner.grade_id]);
+            const conflict = conflictResult.rows[0];
+            if (conflict?.origin === "system") {
+                throw new AuthServiceError("SUBJECT_NAME_MATCHES_CATALOG", "目錄已有這個科目，請直接從清單選擇。", 409);
+            }
+            if (conflict) {
+                throw new AuthServiceError("SUBJECT_NAME_ALREADY_EXISTS", "這個自訂科目已存在，請直接從清單選擇。", 409);
+            }
+            subjectId = randomUUID();
+            await client.query(`
+                INSERT INTO subjects (
+                    id, code, name, normalized_name, parent_subject_id,
+                    subject_kind, origin, owner_user_id, status
                 )
-            LIMIT 1
-        `, [input.subjectCode, session.user_id, learner.grade_id]);
-        const subject = subjectResult.rows[0];
-        if (!subject) {
-            throw new AuthServiceError("LEARNER_SUBJECT_NOT_AVAILABLE", "這個科目不適用於目前學習者。", 400);
+                VALUES ($1, $2, $3, $4, NULL, 'leaf', 'account', $5, 'active')
+            `, [subjectId, `custom-${subjectId}`, input.subjectName, normalizedName, session.user_id]);
         }
 
         await client.query(`
@@ -2031,7 +2467,7 @@ export async function enableLearnerSubject(
                 END,
                 lock_version = learner_subject_settings.lock_version + 1,
                 updated_at = transaction_timestamp()
-        `, [randomUUID(), input.learnerId, subject.subject_id]);
+        `, [randomUUID(), input.learnerId, subjectId]);
 
         return readSessionById(client, session.session_id);
     });
